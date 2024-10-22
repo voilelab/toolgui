@@ -1,5 +1,13 @@
 import React, { Component } from "react";
 
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
+import MenuIcon from '@mui/icons-material/Menu';
+
 import { ThemeModeButton } from './ThemeModeButton';
 import { AppConf } from "./AppConf";
 
@@ -27,6 +35,25 @@ export class AppNavbar extends Component<AppNavbarProps> {
   }
 
   render() {
+    return <AppBar position="static" color="default" sx={{ boxShadow: 0 }}>
+      <Toolbar>
+        {
+          this.props.appConf.page_names.map(name =>
+            <Button
+              key={name}
+              variant="text"
+              color={name === this.props.pageName ? "primary" : "inherit"}
+              onClick={() => { this.jumpToPage(name) }}
+              startIcon={this.props.appConf.page_confs[name].emoji}>
+              {this.props.appConf.page_confs[name].title}
+            </Button>
+          )
+        }
+      </Toolbar>
+    </AppBar>
+  }
+
+  render1() {
     return <nav className="navbar" role="navigation" aria-label="main navigation">
       <div className="navbar-menu container">
         <div className="navbar-start">

@@ -558,7 +558,13 @@ func FuncCachePage(p *tgframe.Params) error {
 
 func main() {
 	app := tgframe.NewApp()
-	app.AddPage("index", "Index", MainPage)
+
+	app.AddPageByConfig(&tgframe.PageConfig{
+		Name:  "index",
+		Title: "Index",
+		Emoji: "🏠",
+	}, MainPage)
+
 	app.AddPage("content", "Content", ContentPage)
 	app.AddPage("data", "Data", DataPage)
 	app.AddPage("input", "Input", InputPage)

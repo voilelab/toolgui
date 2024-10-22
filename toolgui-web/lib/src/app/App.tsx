@@ -148,7 +148,7 @@ export class App extends Component<AppProps, AppState> {
 
   render() {
     return (
-      <div className="px-2">
+      <div>
         <AppNavbar
           appConf={this.props.appConf}
           running={this.state.running}
@@ -161,13 +161,15 @@ export class App extends Component<AppProps, AppState> {
             })
           }} />
 
-        <AppBody
-          appConf={this.props.appConf}
-          pageFound={this.state.pageFound}
-          forest={this.state.forest}
-          update={(e) => { this.props.update(e) }}
-          upload={async (f) => await this.props.upload(f)}
-          darkMode={this.state.darkMode} />
+        <div className="px-2">
+          <AppBody
+            appConf={this.props.appConf}
+            pageFound={this.state.pageFound}
+            forest={this.state.forest}
+            update={(e) => { this.props.update(e) }}
+            upload={async (f) => await this.props.upload(f)}
+            darkMode={this.state.darkMode} />
+        </div>
 
         <AppError error={this.state.error} />
       </div >

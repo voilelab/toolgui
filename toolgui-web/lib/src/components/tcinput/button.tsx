@@ -1,4 +1,5 @@
 import React from "react"
+import Button from '@mui/material/Button'
 
 import { Props } from "../component_interface"
 
@@ -10,9 +11,10 @@ export function TButton({ node, update }: Props) {
   }
 
   return (
-    <button
+    <Button
+      variant="contained"
+      color={node.props.color}
       id={node.props.id}
-      className={className}
       disabled={node.props.disabled}
       onClick={
         (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -24,6 +26,6 @@ export function TButton({ node, update }: Props) {
         }
       }>
       {node.props.label}
-    </button>
+    </Button>
   )
 }
