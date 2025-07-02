@@ -1,10 +1,29 @@
-issues:
-  exclude-dirs:
-    - toolgui-web
+version: "2"
 
-linters-settings:
-  errcheck:
-    exclude-functions:
-      - (golang.org/x/net/websocket.Codec).Send
-      - (golang.org/x/net/websocket.Codec).Receive
-      - (net/http.ResponseWriter).Write
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - (golang.org/x/net/websocket.Codec).Send
+        - (golang.org/x/net/websocket.Codec).Receive
+        - (net/http.ResponseWriter).Write
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - toolgui-web
+      - third_party$
+      - builtin$
+      - examples$
+
+formatters:
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
