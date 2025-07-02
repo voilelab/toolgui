@@ -11,9 +11,9 @@ import (
 
 	"net/http"
 
-	toolguiweb "github.com/VoileLab/toolgui/toolgui-web"
-	"github.com/VoileLab/toolgui/toolgui/tgframe"
-	"github.com/VoileLab/toolgui/toolgui/tgutil"
+	toolguiweb "github.com/voilelab/toolgui/toolgui-web"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 
 	"golang.org/x/net/websocket"
 )

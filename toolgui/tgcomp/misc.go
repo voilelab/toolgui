@@ -1,6 +1,6 @@
 package tgcomp
 
-import "github.com/VoileLab/toolgui/toolgui/tgcomp/tcmisc"
+import "github.com/voilelab/toolgui/toolgui/tgcomp/tcmisc"
 
 // Echo will execute lambda and show the code in the lambda.
 // To use Echo, we need to store the code in advance (usually by embedded).

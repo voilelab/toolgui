@@ -1,6 +1,6 @@
 package tgcomp
 
-import "github.com/VoileLab/toolgui/toolgui/tgcomp/tcdata"
+import "github.com/voilelab/toolgui/toolgui/tgcomp/tcdata"
 
 // JSON create a JSON viewer for v.
 var JSON = tcdata.JSON

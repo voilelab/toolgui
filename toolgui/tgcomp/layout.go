@@ -1,6 +1,6 @@
 package tgcomp
 
-import "github.com/VoileLab/toolgui/toolgui/tgcomp/tclayout"
+import "github.com/voilelab/toolgui/toolgui/tgcomp/tclayout"
 
 // Box create a box container.
 var Box = tclayout.Box

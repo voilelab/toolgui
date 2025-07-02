@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/VoileLab/toolgui/toolgui/tgutil"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 // ErrPageNotFound is the error that the page is not found.

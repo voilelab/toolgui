@@ -7,8 +7,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/VoileLab/toolgui/toolgui/tgcomp/tccontent"
-	"github.com/VoileLab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tccontent"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 type echoCodeCache struct {

@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/VoileLab/toolgui/toolgui/tgutil"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 // State is the state of a user's session.

@@ -13,18 +13,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/VoileLab/toolgui/toolgui/tgcomp"
-	"github.com/VoileLab/toolgui/toolgui/tgcomp/tcinput"
-	"github.com/VoileLab/toolgui/toolgui/tgcomp/tcutil"
-	"github.com/VoileLab/toolgui/toolgui/tgexec"
-	"github.com/VoileLab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgcomp"
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
+	"github.com/voilelab/toolgui/toolgui/tgexec"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 //go:embed main.go
 var code string
 
 const readme = `
-# [ToolGUI](https://github.com/VoileLab/toolgui)
+# [ToolGUI](https://github.com/voilelab/toolgui)
 
 This Go package provides a framework for rapidly building interactive data
 dashboards and web applications. It aims to offer a similar development
@@ -42,9 +42,9 @@ experience to Streamlit for Python users.
 package main
 
 import (
-	"github.com/VoileLab/toolgui/toolgui/tgcomp"
-	"github.com/VoileLab/toolgui/toolgui/tgexec"
-	"github.com/VoileLab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgcomp"
+	"github.com/voilelab/toolgui/toolgui/tgexec"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 func main() {

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/VoileLab/toolgui/toolgui/tgcomp"
-	"github.com/VoileLab/toolgui/toolgui/tgexec"
-	"github.com/VoileLab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgcomp"
+	"github.com/voilelab/toolgui/toolgui/tgexec"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 type TODOList struct {
