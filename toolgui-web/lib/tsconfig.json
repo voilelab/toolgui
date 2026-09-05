@@ -1,5 +1,15 @@
 {
   "compilerOptions": {
+    // react-scripts used to pull ambient @types that masked the missing
+    // target/lib here; spell them out now that it is gone.
+    "target": "es2015",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "jsx": "react-jsx",
     "checkJs": false,
     "baseUrl": ".",
