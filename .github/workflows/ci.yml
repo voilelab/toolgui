@@ -1,0 +1,118 @@
+name: CI
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+
+jobs:
+  go:
+    name: Go Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # toolgui-web/web.go embeds app/build, so it must exist to compile
+      - name: Fake build assets
+        run: |
+          mkdir -p toolgui-web/app/build/static
+          echo "fake" > toolgui-web/app/build/index.html
+          echo "fake" > toolgui-web/app/build/static/fake.txt
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+  web:
+    name: Web Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: toolgui-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: toolgui-web/yarn.lock
+
+      - name: Install
+        run: yarn install --frozen-lockfile
+
+      - name: Build lib
+        run: yarn workspace @toolgui-web/lib build
+
+      - name: Typecheck lib
+        run: yarn workspace @toolgui-web/lib typecheck
+
+      - name: Build app
+        run: yarn workspace @toolgui-web/app build
+
+  e2e:
+    name: E2E
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: |
+            toolgui-web/yarn.lock
+            toolgui-e2e/yarn.lock
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build web assets
+        working-directory: toolgui-web
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @toolgui-web/lib build
+          yarn workspace @toolgui-web/app build
+
+      # cypress.config.js points at localhost:3000, where the demo listens
+      - name: Start demo server
+        run: |
+          go build -o /tmp/toolgui-demo ./cmd/toolgui-demo
+          nohup /tmp/toolgui-demo > /tmp/toolgui-demo.log 2>&1 &
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: toolgui-e2e
+          browser: chrome
+          wait-on: http://localhost:3000
+          wait-on-timeout: 60
+
+      - name: Dump demo server log
+        if: failure()
+        run: cat /tmp/toolgui-demo.log
+
+      - name: Upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: toolgui-e2e/cypress/screenshots
+          if-no-files-found: ignore
