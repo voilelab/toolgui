@@ -72,10 +72,20 @@ cypress e2e:chrome
 cypress e2e:firefox
 ```
 
+### Desktop app
+
+`toolgui-wails` is a separate Go module that runs the same app in a desktop
+window with Wails v1. It needs GTK and WebKit, which is why it stays out of the
+main module. See [toolgui-wails/README.md](toolgui-wails/README.md).
+
+```shell
+task run_wails_hello
+```
+
 ### Build without the web assets
 
-`toolgui-web/web.go` embeds `toolgui-web/app/build`, which is not committed on
-`dev`. To compile Go code without running a frontend build:
+`toolgui-web/web.go` and `toolgui-wails/assets.go` embed build output that is
+not committed on `dev`. To compile Go code without running a frontend build:
 
 ```shell
 task stub_assets

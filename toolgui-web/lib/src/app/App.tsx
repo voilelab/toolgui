@@ -9,6 +9,24 @@ import { setIcon } from '../util/seticon';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
 
+// pageNameFromLocation reads the page name off the URL.
+function pageNameFromLocation(appConf: AppConf): string {
+  if (!appConf.hash_page_name_mode) {
+    return window.location.pathname.substring(1)
+  }
+
+  if (window.location.hash) {
+    // should be #/{name}
+    return window.location.hash.substring(2)
+  }
+
+  if (appConf.page_names.length > 0) {
+    return appConf.page_names[0]
+  }
+
+  return ''
+}
+
 const NOTIFY_TYPE_CREATE = 1
 const NOTIFY_TYPE_UPDATE = 2
 const NOTIFY_TYPE_DELETE = 3
@@ -18,6 +36,12 @@ interface AppProps {
   appConf: AppConf
   update: (event: any) => void
   upload: UploadFunc
+
+  // pageName and onNavigate let a transport without a URL (a desktop
+  // webview) drive the routing. Left out, the page comes from window.location
+  // and navigating moves the browser.
+  pageName?: string
+  onNavigate?: (name: string) => void
 }
 
 interface AppState {
@@ -33,17 +57,8 @@ export class App extends Component<AppProps, AppState> {
   constructor(props: AppProps) {
     super(props);
 
-    var pageName = ''
-    if (this.props.appConf.hash_page_name_mode) {
-      if (window.location.hash) {
-        // should be #/{name}
-        pageName = window.location.hash.substring(2)
-      } else if (this.props.appConf.page_names.length > 0) {
-        pageName = this.props.appConf.page_names[0]
-      }
-    } else {
-      pageName = window.location.pathname.substring(1)
-    }
+    const pageName = props.pageName !== undefined ?
+      props.pageName : pageNameFromLocation(props.appConf)
 
     const curconf = this.props.appConf.page_confs[pageName]
     let pageFound = true
@@ -155,6 +170,7 @@ export class App extends Component<AppProps, AppState> {
           running={this.state.running}
           pageFound={this.state.pageFound}
           pageName={this.state.pageName}
+          onNavigate={this.props.onNavigate}
           rerun={() => { this.props.update({}) }}
           onChange={(darkMode) => {
             this.setState({

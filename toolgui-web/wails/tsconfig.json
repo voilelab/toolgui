@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    // Same level as @toolgui-web/app, so the two adapters stay comparable.
+    "strict": false,
+    "paths": {
+      "@toolgui-web/wails/src": [
+        "src"
+      ],
+    }
+  },
+  "include": [
+    "src",
+  ]
+}
