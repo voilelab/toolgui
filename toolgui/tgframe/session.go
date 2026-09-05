@@ -24,22 +24,34 @@ type ResultPack struct {
 
 // SendPackFunc sends a pack ([NotifyPack], [ReadyPack] or [ResultPack]) to the
 // GUI client. It's the only thing a [Session] needs from a transport.
+// A Session serializes its calls, so it doesn't have to be safe for
+// concurrent use.
 type SendPackFunc func(pack any) error
 
 // Session binds a state to a page and turns user events into page runs.
 // It's transport-agnostic: web, desktop or any other executor only has to
 // feed it events and provide a [SendPackFunc].
+//
+// A Session is safe for concurrent use, so a transport may hand it events
+// from more than one goroutine.
 type Session struct {
 	app      *App
 	pageName string
 	state    *State
 	send     SendPackFunc
 
+	// handling serializes the stop-apply-run sequence, so an event can't
+	// have its stop signal cleared by the event before it.
+	handling sync.Mutex
+
+	// sendLock serializes the calls to send.
+	sendLock sync.Mutex
+
 	// stopUpdating tells the running page func to interrupt itself.
 	stopUpdating atomic.Bool
 
-	// running is held while a page func is running. It's locked by the
-	// caller of a run and unlocked by the runner goroutine.
+	// running is held while a page func is running. It's locked before a run
+	// is launched and unlocked by the runner goroutine.
 	running sync.Mutex
 
 	closed atomic.Bool
@@ -60,19 +72,14 @@ func NewSession(app *App, pageName string, state *State, send SendPackFunc) (*Se
 	}, nil
 }
 
-// State return the state of the session.
-func (s *Session) State() *State {
-	return s.state
-}
-
-// SetFile store an uploaded file into the state.
-func (s *Session) SetFile(name string, bs []byte) {
-	s.state.SetFile(name, bs)
-}
-
 // HandleRawEvent parse a raw event and rerun the page with it.
 // On a parse error it reports the error to the client and returns it.
+// It does nothing on a closed session.
 func (s *Session) HandleRawEvent(bs []byte) error {
+	if s.closed.Load() {
+		return nil
+	}
+
 	event, err := ParseEvent(bs)
 	if err != nil {
 		s.sendResult(&ResultPack{Error: err.Error()})
@@ -85,8 +92,11 @@ func (s *Session) HandleRawEvent(bs []byte) error {
 
 // HandleEvent apply the event to the state and rerun the page.
 // A running page func is interrupted first, so the caller doesn't have to
-// wait for it.
+// wait for it. It does nothing on a closed session.
 func (s *Session) HandleEvent(event Event) {
+	s.handling.Lock()
+	defer s.handling.Unlock()
+
 	if s.closed.Load() {
 		return
 	}
@@ -94,7 +104,7 @@ func (s *Session) HandleEvent(event Event) {
 	s.beginRun()
 
 	// tell client we cut the previous runner
-	err := s.send(&ReadyPack{Ready: true})
+	err := s.sendPack(&ReadyPack{Ready: true})
 	if err != nil {
 		slog.Error("send ready pack", "error", err)
 	}
@@ -108,7 +118,7 @@ func (s *Session) HandleEvent(event Event) {
 			panic(ErrUpdateInterrupt)
 		}
 
-		err := s.send(pack)
+		err := s.sendPack(pack)
 		if err != nil {
 			panic(err)
 		}
@@ -132,15 +142,27 @@ func (s *Session) HandleEvent(event Event) {
 // Close interrupt the running page func and wait for it.
 // Events received after Close are ignored.
 func (s *Session) Close() {
+	s.handling.Lock()
+	defer s.handling.Unlock()
+
 	s.closed.Store(true)
 	s.beginRun()
 	s.endRun()
 }
 
+// sendPack send a pack to the client. Sends are serialized, so a transport
+// never sees two of them at once.
+func (s *Session) sendPack(pack any) error {
+	s.sendLock.Lock()
+	defer s.sendLock.Unlock()
+
+	return s.send(pack)
+}
+
 // sendResult send a result pack. A failed send is only logged: it means the
 // client is gone and there is nowhere left to report it to.
 func (s *Session) sendResult(pack *ResultPack) {
-	err := s.send(pack)
+	err := s.sendPack(pack)
 	if err != nil {
 		slog.Error("send result pack", "error", err)
 	}
