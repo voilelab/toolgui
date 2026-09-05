@@ -75,7 +75,7 @@ func (s *Session) SetFile(name string, bs []byte) {
 func (s *Session) HandleRawEvent(bs []byte) error {
 	event, err := ParseEvent(bs)
 	if err != nil {
-		s.send(&ResultPack{Error: err.Error()})
+		s.sendResult(&ResultPack{Error: err.Error()})
 		return tgutil.Errorf("%w", err)
 	}
 
@@ -120,12 +120,12 @@ func (s *Session) HandleEvent(event Event) {
 
 		err := s.app.RunWithHandlingPanic(s.pageName, s.state, sendNotifyPack)
 		if err != nil {
-			s.send(&ResultPack{Error: err.Error()})
+			s.sendResult(&ResultPack{Error: err.Error()})
 			slog.Error("run err", "error", err)
 			return
 		}
 
-		s.send(&ResultPack{Success: true})
+		s.sendResult(&ResultPack{Success: true})
 	}()
 }
 
@@ -135,6 +135,15 @@ func (s *Session) Close() {
 	s.closed.Store(true)
 	s.beginRun()
 	s.endRun()
+}
+
+// sendResult send a result pack. A failed send is only logged: it means the
+// client is gone and there is nowhere left to report it to.
+func (s *Session) sendResult(pack *ResultPack) {
+	err := s.send(pack)
+	if err != nil {
+		slog.Error("send result pack", "error", err)
+	}
 }
 
 // beginRun send the stop signal and wait for the running page func.
