@@ -11,7 +11,7 @@ For example, if a page function implements as:
 ```go
 tgcomp.Text(p.Main, "Text")
 tgcomp.Button(p.State, p.Main, "Button")
-box := tgcomp.Box("box")
+box := tgcomp.Box(p.Main, "box")
 tgcomp.Text(box, "Text1")
 tgcomp.Text(box, "Text2")
 ```

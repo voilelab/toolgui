@@ -10,7 +10,7 @@ func Table(c *tgframe.Container, head []string, table [][]string)
 
 * `c` is Parent container.
 * `head` is the head of table.
-* `body` is the body of table.
+* `table` is the body of table.
 
 ## Example
 

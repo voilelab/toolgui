@@ -15,7 +15,7 @@ func HtmlWithID(c *tgframe.Container, html string, id string)
 * `html`: Html content to display.
 * `id`: Id of the component.
 
-### Example
+## Example
 
 ```go
 tgcomp.Html(p.Main, "<b>Hello world gen by html component</b>")

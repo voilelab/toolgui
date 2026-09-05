@@ -5,6 +5,7 @@ Column provides columns layout.
 ## Usage
 
 - Column create N columns.
+- Column1 create 1 column.
 - Column2 create 2 columns.
 - Column3 create 3 columns.
 - EqColumn create N columns with equal width.
@@ -16,6 +17,7 @@ Column provides columns layout.
 
 ```go
 func Column(c *tgframe.Container, id string, n uint) []*tgframe.Container
+func Column1(c *tgframe.Container, id string) *tgframe.Container
 func Column2(c *tgframe.Container, id string) (*tgframe.Container, *tgframe.Container)
 func Column3(c *tgframe.Container, id string) (*tgframe.Container, *tgframe.Container, *tgframe.Container)
 

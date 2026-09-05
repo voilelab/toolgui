@@ -6,7 +6,7 @@ Button create a button and return true if it's clicked.
 
 ```go
 func Button(s *tgframe.State, c *tgframe.Container, label string) bool
-func ButtonWithConf(s *tgframe.State, c *tgframe.Container, conf *tgcomp.ButtonConf) bool
+func ButtonWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *ButtonConf) bool
 ```
 
 * `s` is State.

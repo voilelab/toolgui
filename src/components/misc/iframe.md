@@ -28,7 +28,7 @@ tgcomp.Iframe(p.Main, "<h1>Hello World</h1>", true)
 
 ### Script
 
-Show a button that updates the iframe content.
+Run a script inside the iframe to update its content.
 
 ```go
 htmlWithScript := `
@@ -49,12 +49,12 @@ tgcomp.IframeWithID(
 
 Show a button that updates the iframe content.
 
-In the iframe, there are four functions injected:
+In the iframe, there are four values injected on `window`:
 
-* `window.update(data)` - update the iframe content with the data.
-* `window.theme` - current theme
-* `window.upload(data)` - upload a file to the server
-* `window.props` - props of the iframe component
+* `window.update(data)` - function. Send data back to the server.
+* `window.upload(data)` - function. Upload a file to the server.
+* `window.theme` - current theme.
+* `window.props` - props of the iframe component.
 
 ```go
 tgcomp.IframeWithID(

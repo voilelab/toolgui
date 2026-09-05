@@ -8,7 +8,7 @@ Textbox create a textbox and return its value.
 
 ```go
 func Textbox(s *tgframe.State, c *tgframe.Container, label string) string
-func TextboxWithConf(s *tgframe.State, c *tgframe.Container, conf *tgcomp.TextboxConf) string
+func TextboxWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *TextboxConf) string
 ```
 
 ### Parameters

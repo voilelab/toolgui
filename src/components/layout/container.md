@@ -1,8 +1,8 @@
 # Container
 
 Container is the most basic layout component.
-Their definition are in tgframe.
-The Main "container" and Sidebar "container" are Containers. 
+Its definition is in tgframe.
+The Main "container" and Sidebar "container" are Containers.
 
 ## Usage
 
