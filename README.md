@@ -70,4 +70,25 @@ task run_demo
 cd toolgui-e2e
 cypress e2e:chrome
 cypress e2e:firefox
+```
+
+### Build without the web assets
+
+`toolgui-web/web.go` embeds `toolgui-web/app/build`, which is not committed on
+`dev`. To compile Go code without running a frontend build:
+
+```shell
+task stub_assets
+go build ./...
 ```
+
+## Release
+
+Releases are cut by the **Release** GitHub Action (`Actions` → `Release` → `Run
+workflow`), with a `vX.Y.Z` version as input. It builds the web assets from
+`dev`, commits them, tags, and pushes.
+
+`go get` resolves tags, so the tagged commit is what has to carry
+`toolgui-web/app/build` — that is the only reason the built assets live in git
+at all. `main` is a CI-owned mirror of the latest release commit; do not commit
+to it by hand.

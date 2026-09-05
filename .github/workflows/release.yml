@@ -1,0 +1,106 @@
+name: Release
+
+# Builds the web assets, commits them on top of dev, tags, and publishes.
+# `go get` resolves tags, so the tagged commit is what must carry app/build.
+# main is a CI-owned mirror of the latest release commit.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (vX.Y.Z)'
+        required: true
+
+jobs:
+  release:
+    name: Build assets and tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version }}
+    steps:
+      - name: Validate version
+        run: |
+          if ! [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must look like v1.2.3, got '$VERSION'"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Check tag is free
+        run: |
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            echo "::error::tag $VERSION already exists"
+            exit 1
+          fi
+
+      # v0.2.3 shipped a go.mod whose path no longer matched the repo, which
+      # broke `go get` until the next release. Never again.
+      - name: Check module path matches repository
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          want="github.com/$REPO"
+          got="$(sed -n 's/^module[[:space:]]\+//p' go.mod | head -1)"
+          if [ "$got" != "$want" ]; then
+            echo "::error::go.mod declares '$got' but repository is '$want'"
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: toolgui-web/yarn.lock
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build web assets
+        working-directory: toolgui-web
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @toolgui-web/lib build
+          yarn workspace @toolgui-web/lib typecheck
+          yarn workspace @toolgui-web/app build
+
+      - name: Verify assets exist
+        run: |
+          test -f toolgui-web/app/build/index.html
+          test -n "$(ls -A toolgui-web/app/build/static)"
+
+      # Compile against the real assets, not the CI stub.
+      - name: Build and test
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+
+      - name: Commit assets and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # app/build is gitignored on dev; -f includes it for the release only.
+          git add -f toolgui-web/app/build
+          git commit -m "Build assets for $VERSION"
+          git tag -a "$VERSION" -m "$VERSION"
+
+      - name: Push tag and main
+        run: |
+          git push origin "refs/tags/$VERSION"
+          git push --force origin "HEAD:refs/heads/main"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$VERSION" --title "$VERSION" --generate-notes

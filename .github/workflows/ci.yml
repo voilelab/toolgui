@@ -19,12 +19,8 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
 
-      # toolgui-web/web.go embeds app/build, so it must exist to compile
-      - name: Fake build assets
-        run: |
-          mkdir -p toolgui-web/app/build/static
-          echo "fake" > toolgui-web/app/build/index.html
-          echo "fake" > toolgui-web/app/build/static/fake.txt
+      - name: Stub web assets
+        run: ./scripts/stub-assets.sh
 
       - name: Build
         run: go build ./...
