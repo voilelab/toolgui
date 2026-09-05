@@ -3,8 +3,7 @@ package tgutil
 import (
 	"sync"
 	"time"
-
-	"github.com/google/uuid"
+	"uuid"
 )
 
 // UUIDMap provide a goroutine-safe mapping from UUID to T.
