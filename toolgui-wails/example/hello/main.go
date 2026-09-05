@@ -1,7 +1,7 @@
-// Command hello is a minimal ToolGUI desktop app.
+// Command hello is a minimal ToolGUI desktop app. The wails CLI builds it,
+// driven by the wails.json next to this file:
 //
-//	task asset_wails
-//	go run -tags "production,webkit2_41" ./example/hello
+//	task run_wails_hello
 package main
 
 import (

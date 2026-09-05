@@ -40,18 +40,34 @@ tasks:
       - task: asset_app
       - go run ./cmd/toolgui-todo/main.go
 
-  # Desktop demo. Needs the webview deps, see toolgui-wails/README.md.
-  run_wails_hello:
-    dir: ./toolgui-wails
+  # The wails CLI builds the frontend and the app, and supplies the build tags
+  # and macOS frameworks a desktop build needs. Needs the webview deps, see
+  # toolgui-wails/README.md.
+  wails_hello:
+    internal: true
+    dir: ./toolgui-wails/example/hello
     vars:
       # webkit2_41 is Linux only, and only for distributions that dropped
       # WebKit2GTK 4.0. Override with TAGS= on one that still ships it.
-      DEFAULT_TAGS: '{{if eq OS "linux"}}production,webkit2_41{{else}}production{{end}}'
+      DEFAULT_TAGS: '{{if eq OS "linux"}}webkit2_41{{end}}'
       TAGS: '{{.TAGS | default .DEFAULT_TAGS}}'
-      # wails uses UTType for its file dialogs but never links the framework:
-      # its own CLI adds this to CGO_LDFLAGS, and we call go directly.
-      MAC_LDFLAGS: '{{if eq OS "darwin"}}CGO_LDFLAGS="-framework UniformTypeIdentifiers $CGO_LDFLAGS" {{end}}'
+      TAG_FLAG: '{{if .TAGS}}-tags {{.TAGS}}{{end}}'
     cmds:
-      - task: asset_lib
-      - task: asset_wails
-      - '{{.MAC_LDFLAGS}}go run -tags "{{.TAGS}}" ./example/hello'
+      # The CLI generates bindings before it builds the frontend, so the embed
+      # in assets.go has to resolve before any of it runs.
+      - task: stub_assets
+      - go tool wails {{.WAILS_CMD}} {{.TAG_FLAG}}
+
+  # Desktop demo, with the frontend served from disk and a Go file watcher.
+  run_wails_hello:
+    cmds:
+      - task: wails_hello
+        vars:
+          WAILS_CMD: dev
+
+  # Desktop demo as a packaged binary, in example/hello/build/bin.
+  build_wails_hello:
+    cmds:
+      - task: wails_hello
+        vars:
+          WAILS_CMD: build

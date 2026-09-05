@@ -47,43 +47,43 @@ this module off `tgexec`, which embeds the whole web bundle.
 
 ## Building
 
-The frontend is an ordinary Vite build that `assets.go` embeds:
+The wails CLI is pinned as a tool dependency of this module, so there is
+nothing to install:
 
 ```shell
-task asset_lib
-task asset_wails
+task run_wails_hello     # dev mode: frontend from disk, Go files watched
+task build_wails_hello   # packaged binary, in example/hello/build/bin
 ```
 
-Then, from this directory:
+Both run `go tool wails` in `example/hello`, whose `wails.json` points the CLI
+at the frontend workspace. The CLI builds the frontend into `frontend/dist`,
+generates the bindings and compiles the app, and supplies the build flags a
+desktop build needs — including the macOS frameworks, which are easy to miss
+by hand.
 
-```shell
-go run -tags "production,webkit2_41" ./example/hello
-```
-
-`task run_wails_hello` runs the same thing and picks the flags below for the
-platform it is on.
+One ordering detail: the CLI generates bindings *before* it builds the
+frontend, and generating them compiles this package, whose `assets.go` embeds
+`frontend/dist`. So the embed has to resolve before any of it runs, which is
+what `task stub_assets` is for. Both tasks do that first.
 
 ### Build tags
 
-- `production` picks the real app. Without it Wails compiles a stub that
-  returns `Wails applications will not build without the correct build tags.`
-  Use `dev` instead for a debug build with devtools.
-- `webkit2_41` asks for WebKit2GTK 4.1, on Linux only. Drop it on a
-  distribution that still ships 4.0, which is what Wails asks for by default.
+- `webkit2_41` asks for WebKit2GTK 4.1, on Linux only. The tasks add it there;
+  pass `TAGS=` to drop it on a distribution that still ships 4.0, which is
+  what Wails asks for by default.
+- `production` picks the real app over a stub that refuses to run. The CLI
+  adds it, and `dev` in dev mode.
 
-### macOS
+### Without the CLI
 
-Wails calls `UTType` for its file dialogs but never links the framework that
-defines it: its own CLI puts that in `CGO_LDFLAGS`, and building with plain
-`go` does not. Without it the link fails with
-`Undefined symbols: _OBJC_CLASS_$_UTType`.
+The module itself is an ordinary Go package, so a plain build works — it just
+has to supply what the CLI would:
 
 ```shell
-CGO_LDFLAGS="-framework UniformTypeIdentifiers" go run -tags production ./example/hello
+# macOS 11+: wails calls UTType for its file dialogs but never links the
+# framework that defines it, so the link fails on _OBJC_CLASS_$_UTType.
+CGO_LDFLAGS="-framework UniformTypeIdentifiers" go build -tags production ./example/hello
 ```
-
-`wails build` also sets `-mmacosx-version-min`; add it if you are building
-for older macOS rather than just running the thing.
 
 ### Webview dependencies
 

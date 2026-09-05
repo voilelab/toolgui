@@ -24,6 +24,14 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: toolgui-wails/go.sum
 
+      # The CLI build runs yarn in the frontend workspace.
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: toolgui-web/yarn.lock
+
       - name: Install webview deps
         run: |
           sudo apt-get update
@@ -46,3 +54,9 @@ jobs:
 
       - name: Test
         run: go test -tags "$WAILS_TAGS" ./...
+
+      # The library builds with plain go above. This covers the other half:
+      # wails.json, the frontend build and the embed, the way a user builds.
+      - name: Build the example with the wails CLI
+        working-directory: toolgui-wails/example/hello
+        run: go tool wails build -tags webkit2_41
