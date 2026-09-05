@@ -1,1 +1,7 @@
 /node_modules
+
+# Written by the wails CLI to cache frontend:install.
+package.json.md5
+
+# Generated bindings; the adapter declares its own, see src/api/backend.ts.
+/wailsjs

@@ -75,7 +75,7 @@ cypress e2e:firefox
 ### Desktop app
 
 `toolgui-wails` is a separate Go module that runs the same app in a desktop
-window with Wails v1. It needs GTK and WebKit, which is why it stays out of the
+window with Wails v2. It needs GTK and WebKit, which is why it stays out of the
 main module. See [toolgui-wails/README.md](toolgui-wails/README.md).
 
 ```shell

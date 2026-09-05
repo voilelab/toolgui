@@ -1,2 +1,5 @@
 # Built by `task asset_wails` from toolgui-web/wails.
-assets/
+frontend/
+
+# wails CLI output for the example app.
+example/hello/build/

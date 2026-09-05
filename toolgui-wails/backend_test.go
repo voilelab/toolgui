@@ -7,17 +7,12 @@ import (
 	"time"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
-
-	"github.com/wailsapp/wails"
-	"github.com/wailsapp/wails/lib/interfaces"
-	"github.com/wailsapp/wails/lib/messages"
-	wailsruntime "github.com/wailsapp/wails/runtime"
 )
 
 const testPageName = "index"
 
-// fakeEvents is an [interfaces.EventManager] that records the packs emitted
-// to the frontend, so the bound methods can be tested without a window.
+// fakeEvents stands in for the window's event stream, recording the packs the
+// frontend would receive.
 type fakeEvents struct {
 	packs chan map[string]any
 }
@@ -26,16 +21,7 @@ func newFakeEvents() *fakeEvents {
 	return &fakeEvents{packs: make(chan map[string]any, 256)}
 }
 
-func (f *fakeEvents) Emit(eventName string, optionalData ...any) {
-	if eventName != PackEventName || len(optionalData) == 0 {
-		return
-	}
-
-	packJSON, ok := optionalData[0].(string)
-	if !ok {
-		return
-	}
-
+func (f *fakeEvents) emit(packJSON string) {
 	var pack map[string]any
 	if json.Unmarshal([]byte(packJSON), &pack) != nil {
 		return
@@ -43,13 +29,6 @@ func (f *fakeEvents) Emit(eventName string, optionalData ...any) {
 
 	f.packs <- pack
 }
-
-func (f *fakeEvents) PushEvent(*messages.EventData)         {}
-func (f *fakeEvents) OnMultiple(string, func(...any), uint) {}
-func (f *fakeEvents) Once(string, func(...any))             {}
-func (f *fakeEvents) On(string, func(...any))               {}
-func (f *fakeEvents) Start(interfaces.Renderer)             {}
-func (f *fakeEvents) Shutdown()                             {}
 
 // waitResult collects packs until the run reports its result.
 func (f *fakeEvents) waitResult(t *testing.T) (map[string]any, []map[string]any) {
@@ -74,13 +53,7 @@ func newTestToolGUI(t *testing.T, app *tgframe.App) (*ToolGUI, *fakeEvents) {
 
 	events := newFakeEvents()
 	backend := NewToolGUI(app)
-
-	err := backend.WailsInit(&wails.Runtime{
-		Events: wailsruntime.NewEvents(events),
-	})
-	if err != nil {
-		t.Fatalf("WailsInit: %v", err)
-	}
+	backend.emit = events.emit
 
 	return backend, events
 }
@@ -121,7 +94,7 @@ func TestToolGUIStartRunsPage(t *testing.T) {
 		addTestComponent(p, "comp")
 		return nil
 	}))
-	defer backend.WailsShutdown()
+	defer backend.shutdown(t.Context())
 
 	err := backend.Start(testPageName)
 	if err != nil {
@@ -160,7 +133,7 @@ func TestToolGUIUpdateReruns(t *testing.T) {
 		}
 		return nil
 	}))
-	defer backend.WailsShutdown()
+	defer backend.shutdown(t.Context())
 
 	err := backend.Start(testPageName)
 	if err != nil {
@@ -186,7 +159,7 @@ func TestToolGUIUpdateBadEvent(t *testing.T) {
 	backend, _ := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
 		return nil
 	}))
-	defer backend.WailsShutdown()
+	defer backend.shutdown(t.Context())
 
 	err := backend.Start(testPageName)
 	if err != nil {
@@ -220,7 +193,7 @@ func TestToolGUIUploadFile(t *testing.T) {
 		files <- p.State.GetFile("a.txt")
 		return nil
 	}))
-	defer backend.WailsShutdown()
+	defer backend.shutdown(t.Context())
 
 	err := backend.Start(testPageName)
 	if err != nil {
@@ -249,7 +222,7 @@ func TestToolGUIUploadFileBadBase64(t *testing.T) {
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
 		return nil
 	}))
-	defer backend.WailsShutdown()
+	defer backend.shutdown(t.Context())
 
 	err := backend.Start(testPageName)
 	if err != nil {
@@ -280,7 +253,7 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 	app.AddPage("second", "Second", runFunc)
 
 	backend, events := newTestToolGUI(t, app)
-	defer backend.WailsShutdown()
+	defer backend.shutdown(t.Context())
 
 	err := backend.Start("first")
 	if err != nil {

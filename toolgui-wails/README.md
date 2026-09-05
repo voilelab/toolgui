@@ -1,6 +1,6 @@
 # toolgui-wails
 
-Runs a ToolGUI app in a desktop window with [Wails v1](https://github.com/wailsapp/wails),
+Runs a ToolGUI app in a desktop window with [Wails v2](https://wails.io),
 instead of serving it over HTTP.
 
 ```go
@@ -17,8 +17,8 @@ is the same `@toolgui-web/lib` components with a different adapter around them.
 
 ## Why a separate module
 
-Wails v1 needs cgo, GTK and WebKit. Keeping it in its own module means people
-who only build web apps never pull any of that in.
+Wails needs cgo, GTK and WebKit. Keeping it in its own module means people who
+only build web apps never pull any of that in.
 
 The module uses the parent from the working tree:
 
@@ -32,47 +32,65 @@ toolgui has no tags yet, so there is no released version to require instead.
 
 | Web | Desktop |
 | --- | --- |
-| `GET /api/app` | `window.backend.ToolGUI.AppConf()` |
+| `GET /api/app` | `window.go.tgwails.ToolGUI.AppConf()` |
 | update websocket | `Update(eventJSON)` + the `toolgui:pack` event |
 | `POST /api/files` | `UploadFile(name, base64)` |
 | a page load | `Start(pageName)` |
 
-Wails converts a JSON argument straight to the parameter type, which rules out
-structs, so every payload crosses as a string. Packs go out on a single event
-name so create/update/delete/result keep the order the page produced them in.
+Payloads cross as JSON strings — the same ones the websocket carries, so both
+transports share a wire format. Packs go out on a single event name so
+create/update/delete/result keep the order the page produced them in.
+
+Wails serves the frontend from its own origin, so the asset server could carry
+the plain HTTP endpoints too. Bound methods handle all four instead, to keep
+this module off `tgexec`, which embeds the whole web bundle.
 
 ## Building
 
-The frontend is bundled into one JS and one CSS file, which `assets.go` embeds,
-because that is what Wails v1 injects into the webview:
+The wails CLI is pinned as a tool dependency of this module, so there is
+nothing to install:
 
 ```shell
-task asset_lib
-task asset_wails
+task run_wails_hello     # dev mode: frontend from disk, Go files watched
+task build_wails_hello   # packaged binary, in example/hello/build/bin
 ```
 
-Then, from this directory:
+Both run `go tool wails` in `example/hello`, whose `wails.json` points the CLI
+at the frontend workspace. The CLI builds the frontend into `frontend/dist`,
+generates the bindings and compiles the app, and supplies the build flags a
+desktop build needs — including the macOS frameworks, which are easy to miss
+by hand.
+
+One ordering detail: the CLI generates bindings *before* it builds the
+frontend, and generating them compiles this package, whose `assets.go` embeds
+`frontend/dist`. So the embed has to resolve before any of it runs, which is
+what `task stub_assets` is for. Both tasks do that first.
+
+### Build tags
+
+- `webkit2_41` asks for WebKit2GTK 4.1, on Linux only. The tasks add it there;
+  pass `TAGS=` to drop it on a distribution that still ships 4.0, which is
+  what Wails asks for by default.
+- `production` picks the real app over a stub that refuses to run. The CLI
+  adds it, and `dev` in dev mode.
+
+### Without the CLI
+
+The module itself is an ordinary Go package, so a plain build works — it just
+has to supply what the CLI would:
 
 ```shell
-go run ./example/hello
+# macOS 11+: wails calls UTType for its file dialogs but never links the
+# framework that defines it, so the link fails on _OBJC_CLASS_$_UTType.
+CGO_LDFLAGS="-framework UniformTypeIdentifiers" go build -tags production ./example/hello
 ```
 
 ### Webview dependencies
 
-Building needs GTK 3 and WebKit2GTK. On Debian and Ubuntu:
+On Debian and Ubuntu:
 
 ```shell
-sudo apt-get install libgtk-3-dev libwebkit2gtk-4.0-dev
+sudo apt-get install libgtk-3-dev libwebkit2gtk-4.1-dev
 ```
 
-Ubuntu dropped `libwebkit2gtk-4.0-dev` after 22.04, while wails v1 still asks
-pkg-config for `webkit2gtk-4.0`. On a newer release, install
-`libwebkit2gtk-4.1-dev` and point the old name at it:
-
-```shell
-printf 'Name: webkit2gtk-4.0 shim\nDescription: shim\nVersion: %s\nRequires: webkit2gtk-4.1\n' \
-  "$(pkg-config --modversion webkit2gtk-4.1)" \
-  | sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc
-```
-
-`.github/workflows/wails.yml` does the same thing.
+`.github/workflows/wails.yml` does the same and builds with both tags.

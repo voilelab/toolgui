@@ -6,7 +6,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT/toolgui-web/app/build"
-WAILS_DIR="$ROOT/toolgui-wails/assets"
+WAILS_DIR="$ROOT/toolgui-wails/frontend/dist"
 
 if [ -f "$BUILD_DIR/index.html" ]; then
 	echo "web assets already present, skipping stub"
@@ -23,14 +23,15 @@ HTML
 	echo "stubbed web assets in $BUILD_DIR"
 fi
 
-if [ -f "$WAILS_DIR/app.js" ]; then
+if [ -f "$WAILS_DIR/index.html" ]; then
 	echo "wails assets already present, skipping stub"
 else
 	mkdir -p "$WAILS_DIR"
-	echo "/* Placeholder. Run \`task asset_wails\` to build the real assets. */" \
-		> "$WAILS_DIR/app.js"
-	echo "/* Placeholder. Run \`task asset_wails\` to build the real assets. */" \
-		> "$WAILS_DIR/app.css"
+	cat > "$WAILS_DIR/index.html" <<'HTML'
+<!doctype html>
+<title>toolgui: assets not built</title>
+<p>Placeholder page. Run <code>task asset_wails</code> to build the real desktop assets.</p>
+HTML
 
 	echo "stubbed wails assets in $WAILS_DIR"
 fi

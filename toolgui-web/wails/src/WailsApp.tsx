@@ -1,9 +1,7 @@
 import React, { Component } from "react"
 
-import Wails from "@wailsapp/runtime"
-
 import { App, AppConf, dispatchPack, UpdateEvent } from "@toolgui-web/lib"
-import { backend, getAppConf, sendEvent, uploadFile } from "./api/backend"
+import { backend, getAppConf, onEvent, sendEvent, uploadFile } from "./api/backend"
 
 // packEventName is the Wails event carrying every pack. One event name keeps
 // create/update/delete/result in the order the page produced them.
@@ -33,7 +31,7 @@ export class WailsApp extends Component<{}, WailsAppState> {
     const pageName = appConf.page_names.length > 0 ? appConf.page_names[0] : ''
 
     // Listen before the first run: packs emitted with no listener are lost.
-    Wails.Events.On(PACK_EVENT_NAME, (packJSON: string) => {
+    onEvent(PACK_EVENT_NAME, (packJSON: string) => {
       const app = this.appEle.current
       if (!app) {
         return

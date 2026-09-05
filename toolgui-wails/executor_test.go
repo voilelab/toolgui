@@ -12,8 +12,9 @@ func TestConfDefaults(t *testing.T) {
 	if conf.Width != def.Width || conf.Height != def.Height {
 		t.Fatalf("expect the default size, got %dx%d", conf.Width, conf.Height)
 	}
-	if conf.Colour != def.Colour {
-		t.Fatalf("expect the default colour, got %q", conf.Colour)
+	// Compare the colours, not the pointers.
+	if *conf.Background != *def.Background {
+		t.Fatalf("expect the default background, got %v", conf.Background)
 	}
 
 	// A window is resizable unless the caller opts out, so the zero value of

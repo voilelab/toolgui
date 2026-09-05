@@ -1,0 +1,12 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "hello",
+  "outputfilename": "hello",
+
+  "frontend:dir": "../../../toolgui-web/wails",
+  "frontend:install": "yarn",
+  "frontend:build": "yarn build",
+
+  "assetdir": "../../frontend/dist",
+  "wailsjsdir": "./build"
+}

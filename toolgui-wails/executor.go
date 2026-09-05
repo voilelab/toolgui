@@ -1,4 +1,4 @@
-// Package tgwails runs a ToolGUI app in a desktop window with Wails v1.
+// Package tgwails runs a ToolGUI app in a desktop window with Wails v2.
 //
 // It's the desktop counterpart of tgexec.WebExecutor: same app, same pages,
 // same frontend components, with bound methods and Wails events in place of
@@ -13,8 +13,13 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 
-	"github.com/wailsapp/wails"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
+
+// RGBA is a window colour. [options.NewRGBA] builds one.
+type RGBA = options.RGBA
 
 // Conf configures the desktop window. The zero value is usable: see
 // [DefaultConf] for what the empty fields fall back to.
@@ -25,24 +30,23 @@ type Conf struct {
 	// Width and Height are the window size in pixels.
 	Width, Height int
 
-	// Colour is the window background, as "#fff", "rgb(255,255,255)" or
-	// "rgba(255,255,255,1)".
-	Colour string
+	// Background is the window background colour.
+	Background *RGBA
 
 	// DisableResize stops the user resizing the window.
 	DisableResize bool
 
-	// DisableInspector hides the webview devtools.
-	DisableInspector bool
+	// Frameless drops the window decorations.
+	Frameless bool
 }
 
 // DefaultConf return the config used for the fields a caller leaves empty.
 func DefaultConf() *Conf {
 	return &Conf{
-		Title:  "ToolGUI",
-		Width:  1024,
-		Height: 768,
-		Colour: "#ffffff",
+		Title:      "ToolGUI",
+		Width:      1024,
+		Height:     768,
+		Background: options.NewRGBA(255, 255, 255, 1),
 	}
 }
 
@@ -62,8 +66,8 @@ func (c *Conf) withDefaults() *Conf {
 	if filled.Height == 0 {
 		filled.Height = def.Height
 	}
-	if filled.Colour == "" {
-		filled.Colour = def.Colour
+	if filled.Background == nil {
+		filled.Background = def.Background
 	}
 
 	return &filled
@@ -86,21 +90,22 @@ func NewExecutor(app *tgframe.App, conf *Conf) *Executor {
 
 // Run open the window and block until the user closes it.
 func (e *Executor) Run() error {
-	wailsApp := wails.CreateApp(&wails.AppConfig{
+	backend := NewToolGUI(e.app)
+
+	err := wails.Run(&options.App{
 		Title:            e.conf.Title,
 		Width:            e.conf.Width,
 		Height:           e.conf.Height,
-		Colour:           e.conf.Colour,
-		Resizable:        !e.conf.DisableResize,
-		DisableInspector: e.conf.DisableInspector,
+		BackgroundColour: e.conf.Background,
+		DisableResize:    e.conf.DisableResize,
+		Frameless:        e.conf.Frameless,
 
-		JS:  JS,
-		CSS: CSS,
+		AssetServer: &assetserver.Options{Assets: Assets},
+
+		OnStartup:  backend.start,
+		OnShutdown: backend.shutdown,
+		Bind:       []any{backend},
 	})
-
-	wailsApp.Bind(NewToolGUI(e.app))
-
-	err := wailsApp.Run()
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

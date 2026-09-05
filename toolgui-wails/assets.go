@@ -1,14 +1,10 @@
 package tgwails
 
-import _ "embed"
+import "embed"
 
-// JS is the bundled frontend. Wails v1 injects it into the webview, so it has
-// to be a single file. Build it with `task asset_wails`.
+// Assets is the built frontend. Wails serves it from its own origin, so it
+// stays an ordinary directory of files rather than one inlined bundle.
+// Build it with `task asset_wails`.
 //
-//go:embed assets/app.js
-var JS string
-
-// CSS is the bundled stylesheet, single file for the same reason.
-//
-//go:embed assets/app.css
-var CSS string
+//go:embed all:frontend/dist
+var Assets embed.FS
