@@ -16,7 +16,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: stable
+          # Pin to go.mod: a Go newer than golangci-lint's own build panics it
           go-version-file: go.mod
           cache-dependency-path: go.sum
       
