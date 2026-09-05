@@ -6,7 +6,8 @@
   "workspaces": {
     "packages": [
       "app",
-      "lib"
+      "lib",
+      "wails"
     ]
   },
   "resolutions": {

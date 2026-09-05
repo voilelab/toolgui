@@ -19,6 +19,14 @@ tasks:
       - yarn
       - yarn build
       - yarn typecheck
+
+  # Builds into toolgui-wails/assets, which assets.go embeds.
+  asset_wails:
+    dir: ./toolgui-web/wails
+    cmds:
+      - yarn
+      - yarn build
+      - yarn typecheck
   
   run_demo:
     cmds:
@@ -31,3 +39,11 @@ tasks:
       - task: asset_lib
       - task: asset_app
       - go run ./cmd/toolgui-todo/main.go
+
+  # Desktop demo. Needs the webview deps, see toolgui-wails/README.md.
+  run_wails_hello:
+    dir: ./toolgui-wails
+    cmds:
+      - task: asset_lib
+      - task: asset_wails
+      - go run ./example/hello

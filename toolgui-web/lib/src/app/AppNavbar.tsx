@@ -8,6 +8,7 @@ interface AppNavbarProps {
   running: boolean
   pageFound: boolean
   pageName: string
+  onNavigate?: (name: string) => void
   rerun: () => void
   onChange: (darkMode: string) => void
 }
@@ -18,6 +19,11 @@ export class AppNavbar extends Component<AppNavbarProps> {
   }
 
   jumpToPage(name: string) {
+    if (this.props.onNavigate) {
+      this.props.onNavigate(name)
+      return
+    }
+
     if (this.props.appConf.hash_page_name_mode) {
       window.location.href = '#/' + name
       window.location.reload();
