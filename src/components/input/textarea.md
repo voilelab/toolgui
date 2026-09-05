@@ -8,15 +8,15 @@ Textarea create a textarea and return its value.
 
 ```go
 func Textarea(s *tgframe.State, c *tgframe.Container, label string) string
-func TextareaWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *tgcomp.TextareaConfig) string
+func TextareaWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *TextareaConf) string
 ```
 
 ### Parameters
 
 * `s` is State.
 * `c` is Parent container.
-* `label` is the label for textbox.
-* `height` is heigh of the textarea.
+* `label` is the label for textarea.
+* `conf` is the configuration of the textarea.
 
 ```go
 // TextareaConf is the configuration for a textarea.
@@ -38,7 +38,8 @@ type TextareaConf struct {
 ## Example
 
 ```go
-textareaValue := tgcomp.Textarea(p.State, p.Main, "Textarea", 5)
+textareaValue := tgcomp.TextareaWithConf(p.State, p.Main, "Textarea",
+	&tgcomp.TextareaConf{Height: 5})
 tgcomp.TextWithID(p.Main, "Value: "+textareaValue, "textarea_result")
 ```
 

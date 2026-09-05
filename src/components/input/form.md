@@ -20,9 +20,10 @@ func Form(c *tgframe.Container, id string) *tgframe.Container
 ## Example
 
 ```go
+var a, b *float64
 tgcomp.Form(formCompCol, "form").With(func(c *tgframe.Container) {
-	a = tgcomp.Number(c, p.State, "a")
-	b = tgcomp.Number(c, p.State, "b")
+	a = tgcomp.NumberFloat64(p.State, c, "a")
+	b = tgcomp.NumberFloat64(p.State, c, "b")
 })
 
 if a != nil && b != nil {

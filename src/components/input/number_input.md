@@ -19,6 +19,10 @@ func NumberWithConfInt64(s *tgframe.State, c *tgframe.Container, label string, c
 * `s` is State.
 * `c` is Parent container.
 * `label` is the label of the number input.
+* `conf` is the configuration of the number input.
+
+`NumberConf` is generic, so it has no alias in `tgcomp`.
+Import it from `github.com/voilelab/toolgui/toolgui/tgcomp/tcinput`.
 
 ```go
 // NumberConf is the configuration for a number component.
@@ -48,23 +52,23 @@ type NumberConf[T float64 | int64] struct {
 	ID string
 }
 
-func (c *NumberConf[T]) SetDefault(default T) *NumberConf[T] {
-	c.Default = &default
+func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T] {
+	c.Default = &v
 	return c
 }
 
-func (c *NumberConf[T]) SetMin(min T) *NumberConf[T] {
-	c.Min = &min
+func (c *NumberConf[T]) SetMin(v T) *NumberConf[T] {
+	c.Min = &v
 	return c
 }
 
-func (c *NumberConf[T]) SetMax(max T) *NumberConf[T] {
-	c.Max = &max
+func (c *NumberConf[T]) SetMax(v T) *NumberConf[T] {
+	c.Max = &v
 	return c
 }
 
-func (c *NumberConf[T]) SetStep(step T) *NumberConf[T] {
-	c.Step = &step
+func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
+	c.Step = &v
 	return c
 }
 ```
@@ -72,8 +76,8 @@ func (c *NumberConf[T]) SetStep(step T) *NumberConf[T] {
 ## Example
 
 ```go
-numberValue := tgcomp.NumberWithConfFloat64(numberCompCol, p.State, "Number",
-	(&tgcomp.NumberConf[float64]{
+numberValue := tgcomp.NumberWithConfFloat64(p.State, numberCompCol, "Number",
+	(&tcinput.NumberConf[float64]{
 		Placeholder: "input the value here",
 		Color:       tcutil.ColorSuccess,
 	}).SetMin(10).SetMax(20).SetStep(2))

@@ -1,6 +1,6 @@
 # ToolGUI
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/VoileLab/toolgui.svg)](https://pkg.go.dev/github.com/VoileLab/toolgui)
+[![Go Reference](https://pkg.go.dev/badge/github.com/voilelab/toolgui.svg)](https://pkg.go.dev/github.com/voilelab/toolgui)
 
 This Go package provides a framework for rapidly building interactive data
 dashboards and web applications. It aims to offer a similar development

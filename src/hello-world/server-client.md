@@ -8,9 +8,9 @@
 package main
 
 import (
-	"github.com/VoileLab/toolgui/toolgui/tgcomp"
-	"github.com/VoileLab/toolgui/toolgui/tgexec"
-	"github.com/VoileLab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgcomp"
+	"github.com/voilelab/toolgui/toolgui/tgexec"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 func main() {
@@ -33,13 +33,13 @@ go mod tidy
 
 3. Run helloworld
 
-```go
+```bash
 go run main.go
 ```
 
 ## Explain
 
-* Create a ToolGUI App: The `App` intance include the info that app needs.
+* Create a ToolGUI App: The `App` instance includes the info that app needs.
 
 ```go
 app := tgframe.NewApp()
@@ -62,8 +62,8 @@ func(p *tgframe.Params) error {
 }
 ```
 
-* WebExecuter: The `App` only includes the logic of app, but not includes GUI.
-The we executer provide web server GUI interface for `App`.
+* WebExecutor: The `App` only includes the logic of app, but not the GUI.
+The web executor provides a web server GUI interface for `App`.
 
 ```go
 tgexec.NewWebExecutor(app).StartService(":3001")

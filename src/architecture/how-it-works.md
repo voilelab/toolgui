@@ -24,10 +24,10 @@ In this round, `tgcomp.Button` will return `true` and `Hi` will render.
 
 How?
 
-Since we delcare a button which its id is `Click me`, and when the button clicked,
+Since we declare a button whose id is `Click me`, and when the button is clicked,
 we store `true` with key `Click me` into `p.State`.
 
-When entering `tccinput.Button`, it will check if there is any data store
+When entering `tgcomp.Button`, it will check if there is any data stored
 in `p.State` with key `Click me`.
 
 ## Server-Client Architecture

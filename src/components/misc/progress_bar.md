@@ -7,14 +7,22 @@ ProgressBar is a component that displays a progress bar.
 ### Interface
 
 ```go
-func ProgressBar(c *tgframe.Container, value int, label string) *ProgressBarComponent
+func ProgressBar(c *tgframe.Container, value int, label string) *progressBarComponent
 ```
 
 ### Parameters
 
 * `c`: Parent container.
-* `value`: Value of the progress bar.
+* `value`: Value of the progress bar, between 0 and 100.
 * `label`: Label of the progress bar.
+
+The returned component can be updated while the page function is running:
+
+```go
+func (p *progressBarComponent) SetValue(value int)
+func (p *progressBarComponent) SetLabel(label string)
+func (p *progressBarComponent) Remove()
+```
 
 ## Example
 

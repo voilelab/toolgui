@@ -16,6 +16,7 @@ func CheckboxWithConf(s *tgframe.State, c *tgframe.Container, label string, conf
 * `s` is State.
 * `c` is Parent container.
 * `label` is the text on checkbox.
+* `conf` is the configuration of the checkbox.
 
 ```go
 // CheckboxConf is the configuration for a checkbox.

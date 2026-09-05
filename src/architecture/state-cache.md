@@ -1,7 +1,7 @@
 # State Cache
 
 State-level cache stores data specific to the current view or "page" displayed to the user.
-This data lost when the user navigates away from the page or refreshes it.
+This data is lost when the user navigates away from the page or refreshes it.
 
 ## Example of variable
 

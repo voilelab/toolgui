@@ -13,11 +13,12 @@ func DownloadButtonWithConf(s *tgframe.State, c *tgframe.Container, text string,
 
 ### Parameters
 
+* `s` is State.
 * `c` is Parent container.
-* `text` is the link text.
+* `text` is the text on button.
 * `body` is the bytes of file.
-* `filename` is the file name.
 * `conf` is the configuration of the download button.
+  The file name is set by `conf.Filename`.
 
 ```go
 type DownloadButtonConf struct {
@@ -41,8 +42,9 @@ type DownloadButtonConf struct {
 ## Example
 
 ```go
-tgcomp.DownloadButton(p.State, p.Main,
-    "Download", []byte("123"), "123.txt")
+tgcomp.DownloadButtonWithConf(p.State, p.Main,
+    "Download", []byte("123"),
+    &tgcomp.DownloadButtonConf{Filename: "123.txt"})
 ```
 
 ![download button component](download_button.png)

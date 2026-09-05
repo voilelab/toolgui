@@ -8,7 +8,7 @@ Image component display an image.
 
 ```go
 func Image(c *tgframe.Container, img any)
-func ImageWithConf(c *tgframe.Container, img any, conf *tgcomp.ImageConf)
+func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf)
 ```
 
 ### Parameters

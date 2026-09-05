@@ -3,7 +3,7 @@
 The input components provide UI for app-user to input their data.
 
 ```go
-import "github.com/VoileLab/toolgui/toolgui/tgcomp"
+import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
 The demo page can be found here:

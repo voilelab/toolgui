@@ -3,7 +3,7 @@
 The data components display data in some special form.
 
 ```go
-import "github.com/VoileLab/toolgui/toolgui/tgcomp"
+import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
 The demo page can be found here:
