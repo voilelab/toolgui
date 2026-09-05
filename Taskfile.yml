@@ -1,6 +1,11 @@
 version: '3'
 
 tasks:
+  # Placeholder assets so `go build` works without a yarn build.
+  stub_assets:
+    cmds:
+      - ./scripts/stub-assets.sh
+
   asset_lib:
     dir: ./toolgui-web/lib
     cmds:
