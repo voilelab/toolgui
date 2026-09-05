@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "license": "MIT",
   "devDependencies": {
-    "cypress": "^13.13.0"
+    "cypress": "^15.21.1"
   },
   "scripts": {
     "e2e:chrome": "cypress run --browser chrome",
