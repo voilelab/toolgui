@@ -4,6 +4,9 @@ import Wails from '@wailsapp/runtime'
 
 // The browser build pulls these off a CDN from index.html. A desktop app has
 // to work offline, so they are bundled into the single CSS file instead.
+//
+// bulma is pinned to the version app/index.html loads: the two have to render
+// the same, and 1.0.4 turned the selected navbar item's text dark.
 import 'bulma/css/bulma.min.css'
 // Font Awesome's base classes and animations only: solid.css carries the
 // webfont, which a data: URL document will not load. icons.css draws the four
