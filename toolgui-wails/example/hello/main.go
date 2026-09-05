@@ -1,7 +1,7 @@
 // Command hello is a minimal ToolGUI desktop app.
 //
 //	task asset_wails
-//	go run ./example/hello
+//	go run -tags "production,webkit2_41" ./example/hello
 package main
 
 import (

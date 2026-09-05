@@ -1,8 +1,8 @@
 import { AppConf, UpdateEvent, UploadResult } from "@toolgui-web/lib"
 
-// Backend is the Go struct Wails binds. Every bound method returns a promise,
-// and arguments cross as strings because Wails converts JSON values straight
-// to the parameter type.
+// Backend is the Go struct Wails binds. Every bound method returns a promise.
+// Payloads cross as JSON strings, the same ones the websocket transport
+// carries, so both lanes share a wire format.
 interface Backend {
   AppConf(): Promise<string>
   Start(pageName: string): Promise<void>
@@ -10,14 +10,25 @@ interface Backend {
   UploadFile(name: string, dataBase64: string): Promise<void>
 }
 
+// WailsRuntime is the slice of window.runtime this adapter uses.
+interface WailsRuntime {
+  EventsOn(eventName: string, callback: (...data: any[]) => void): () => void
+}
+
 declare global {
   interface Window {
-    backend: { ToolGUI: Backend }
+    // Wails names bindings after the Go package and struct they came from.
+    go: { tgwails: { ToolGUI: Backend } }
+    runtime: WailsRuntime
   }
 }
 
 export function backend(): Backend {
-  return window.backend.ToolGUI
+  return window.go.tgwails.ToolGUI
+}
+
+export function onEvent(eventName: string, callback: (data: string) => void) {
+  window.runtime.EventsOn(eventName, callback)
 }
 
 // getAppConf is the desktop counterpart of GET /api/app.

@@ -10,6 +10,8 @@ jobs:
   wails:
     name: Wails Build & Test
     runs-on: ubuntu-latest
+    env:
+      WAILS_TAGS: production,webkit2_41
     defaults:
       run:
         working-directory: toolgui-wails
@@ -26,11 +28,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
-          # wails v1 asks pkg-config for webkit2gtk-4.0, which Ubuntu dropped
-          # after 22.04. Point that name at 4.1.
-          printf 'Name: webkit2gtk-4.0 shim\nDescription: Maps the wails v1 dependency onto webkit2gtk-4.1\nVersion: %s\nRequires: webkit2gtk-4.1\n' \
-            "$(pkg-config --modversion webkit2gtk-4.1)" \
-            | sudo tee /usr/lib/x86_64-linux-gnu/pkgconfig/webkit2gtk-4.0.pc > /dev/null
 
       - name: Stub assets
         working-directory: .
@@ -39,11 +36,13 @@ jobs:
       - name: Gofmt
         run: test -z "$(gofmt -l .)"
 
+      # production picks the real app over the stub that tells you to set build
+      # tags; webkit2_41 asks for the webkit Ubuntu still ships.
       - name: Build
-        run: go build ./...
+        run: go build -tags "$WAILS_TAGS" ./...
 
       - name: Vet
-        run: go vet ./...
+        run: go vet -tags "$WAILS_TAGS" ./...
 
       - name: Test
-        run: go test ./...
+        run: go test -tags "$WAILS_TAGS" ./...

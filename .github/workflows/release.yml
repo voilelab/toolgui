@@ -2,7 +2,7 @@ name: Release
 
 # Builds the web assets, commits them on top of dev, tags, and publishes.
 # `go get` resolves tags, so the tagged commit is what must carry app/build and
-# toolgui-wails/assets.
+# toolgui-wails/frontend/dist.
 # main is a CI-owned mirror of the latest release commit.
 
 on:
@@ -80,10 +80,9 @@ jobs:
         run: |
           test -f toolgui-web/app/build/index.html
           test -n "$(ls -A toolgui-web/app/build/static)"
-          # toolgui-wails/assets.go embeds these two, so a tag without them
-          # breaks `go get` for the desktop module.
-          test -s toolgui-wails/assets/app.js
-          test -s toolgui-wails/assets/app.css
+          # toolgui-wails/assets.go embeds this, so a tag without it breaks
+          # `go get` for the desktop module.
+          test -s toolgui-wails/frontend/dist/index.html
 
       # Compile against the real assets, not the CI stub.
       - name: Build and test
@@ -97,7 +96,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # Both are gitignored on dev; -f includes them for the release only.
-          git add -f toolgui-web/app/build toolgui-wails/assets
+          git add -f toolgui-web/app/build toolgui-wails/frontend/dist
           git commit -m "Build assets for $VERSION"
           git tag -a "$VERSION" -m "$VERSION"
 

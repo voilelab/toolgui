@@ -40,10 +40,13 @@ tasks:
       - task: asset_app
       - go run ./cmd/toolgui-todo/main.go
 
-  # Desktop demo. Needs the webview deps, see toolgui-wails/README.md.
+  # Desktop demo. Needs the webview deps and the wails build tags, see
+  # toolgui-wails/README.md.
   run_wails_hello:
     dir: ./toolgui-wails
+    vars:
+      TAGS: '{{.TAGS | default "production,webkit2_41"}}'
     cmds:
       - task: asset_lib
       - task: asset_wails
-      - go run ./example/hello
+      - go run -tags "{{.TAGS}}" ./example/hello

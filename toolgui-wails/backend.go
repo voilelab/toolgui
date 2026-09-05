@@ -1,6 +1,7 @@
 package tgwails
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"sync"
@@ -8,7 +9,7 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 
-	"github.com/wailsapp/wails"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // PackEventName is the Wails event every pack is emitted on. A single event
@@ -19,17 +20,19 @@ const PackEventName = "toolgui:pack"
 var ErrNoSession = tgutil.NewError("no session, call Start first")
 
 // ToolGUI is the struct Wails binds. Its exported methods reach the frontend
-// as window.backend.ToolGUI.<Method>, each returning a promise.
+// as window.go.tgwails.ToolGUI.<Method>, each returning a promise.
 //
-// Wails converts a JSON argument straight to the parameter type, which rules
-// out structs, so every payload crosses as a string.
+// Payloads cross as JSON strings, the same ones the web executor sends over
+// its websocket, so both transports carry an identical wire format.
 type ToolGUI struct {
 	app *tgframe.App
 
-	runtime *wails.Runtime
+	// emit hands one pack to the frontend. It's wired up when the window
+	// starts, which is also what lets the tests run without one.
+	emit func(packJSON string)
 
-	// lock guards the session and the state it runs on. Bound methods are
-	// called from the IPC goroutine, WailsShutdown from another.
+	// lock guards the session and the state it runs on: bound methods are
+	// called from the frontend's goroutine, shutdown from another.
 	lock    sync.Mutex
 	session *tgframe.Session
 	state   *tgframe.State
@@ -40,14 +43,17 @@ func NewToolGUI(app *tgframe.App) *ToolGUI {
 	return &ToolGUI{app: app}
 }
 
-// WailsInit is called by Wails before the frontend starts.
-func (t *ToolGUI) WailsInit(runtime *wails.Runtime) error {
-	t.runtime = runtime
-	return nil
+// start is wired to [options.App.OnStartup] rather than being a bound method,
+// so the frontend never sees it. The context it gets is what the Wails
+// runtime needs to reach this window.
+func (t *ToolGUI) start(ctx context.Context) {
+	t.emit = func(packJSON string) {
+		runtime.EventsEmit(ctx, PackEventName, packJSON)
+	}
 }
 
-// WailsShutdown is called by Wails when the window closes.
-func (t *ToolGUI) WailsShutdown() {
+// shutdown is wired to [options.App.OnShutdown].
+func (t *ToolGUI) shutdown(ctx context.Context) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
@@ -129,7 +135,7 @@ func (t *ToolGUI) UploadFile(name string, dataBase64 string) error {
 // send push a pack to the frontend. [tgframe.Session] serializes the calls,
 // and the Wails event queue preserves their order.
 func (t *ToolGUI) send(pack any) error {
-	if t.runtime == nil {
+	if t.emit == nil {
 		return tgutil.NewError("wails runtime is not ready")
 	}
 
@@ -138,7 +144,7 @@ func (t *ToolGUI) send(pack any) error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	t.runtime.Events.Emit(PackEventName, string(bs))
+	t.emit(string(bs))
 	return nil
 }
 
