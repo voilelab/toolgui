@@ -43,7 +43,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
           cache-dependency-path: toolgui-web/yarn.lock
 
@@ -55,6 +55,12 @@ jobs:
 
       - name: Typecheck lib
         run: yarn workspace @toolgui-web/lib typecheck
+
+      - name: Typecheck app
+        run: yarn workspace @toolgui-web/app typecheck
+
+      - name: Test app
+        run: yarn workspace @toolgui-web/app test
 
       - name: Build app
         run: yarn workspace @toolgui-web/app build
@@ -68,7 +74,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: yarn
           cache-dependency-path: |
             toolgui-web/yarn.lock

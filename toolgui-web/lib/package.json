@@ -2,6 +2,7 @@
   "name": "@toolgui-web/lib",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
@@ -11,9 +12,6 @@
   "dependencies": {
     "@babel/cli": "^7.29.7",
     "@babel/core": "^7.29.7",
-    "@testing-library/jest-dom": "^5.14.1",
-    "@testing-library/react": "^13.0.0",
-    "@testing-library/user-event": "^13.2.1",
     "@types/katex": "^0.16.7",
     "@types/react": "^18.3.11",
     "dompurify": "^3.4.14",
@@ -21,20 +19,12 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
-    "react-scripts": "5.0.1",
     "react-syntax-highlighter": "^15.5.0",
-    "typescript": "^5.5.2",
-    "webpack": "^5.110.3"
+    "typescript": "^5.5.2"
   },
   "scripts": {
     "build": "./node_modules/.bin/babel --out-dir build --source-maps --extensions \".js,.mjs,.jsx,.ts,.tsx\" src",
     "typecheck": "tsc"
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [
@@ -49,6 +39,9 @@
     ]
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.29.7",
+    "@babel/preset-react": "^7.29.7",
+    "@babel/preset-typescript": "^7.29.7",
     "@types/react-syntax-highlighter": "^15.5.13"
   }
 }
