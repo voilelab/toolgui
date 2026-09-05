@@ -8,6 +8,7 @@ import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
+import { getStoredValue } from '../util/storage';
 
 // pageNameFromLocation reads the page name off the URL.
 function pageNameFromLocation(appConf: AppConf): string {
@@ -82,7 +83,7 @@ export class App extends Component<AppProps, AppState> {
       pageFound: pageFound,
       pageName: pageName,
       error: null,
-      darkMode: localStorage.darkMode,
+      darkMode: getStoredValue('darkMode'),
     }
   }
 

@@ -1,5 +1,7 @@
 import React, { Component } from 'react'
 
+import { getStoredValue, setStoredValue } from '../util/storage'
+
 interface ThemeModeButtonState {
   darkMode: string
 }
@@ -12,7 +14,7 @@ export class ThemeModeButton extends Component<ThemeModeButtonProps, ThemeModeBu
   constructor(props: ThemeModeButtonProps) {
     super(props);
     this.state = {
-      darkMode: localStorage.darkMode,
+      darkMode: getStoredValue('darkMode'),
     }
   }
 
@@ -26,7 +28,7 @@ export class ThemeModeButton extends Component<ThemeModeButtonProps, ThemeModeBu
       const newValue = preState.darkMode === 'dark' ? 'light' : 'dark'
       const root = document.getElementsByTagName('html')[0];
       root.className = 'theme-' + newValue
-      localStorage.darkMode = newValue
+      setStoredValue('darkMode', newValue)
       this.props.onChange(newValue)
       return {
         darkMode: newValue

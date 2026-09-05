@@ -5,10 +5,11 @@ import Wails from '@wailsapp/runtime'
 // The browser build pulls these off a CDN from index.html. A desktop app has
 // to work offline, so they are bundled into the single CSS file instead.
 import 'bulma/css/bulma.min.css'
-// Only the solid set: the components use fa-moon, fa-sun, fa-spinner and
-// fa-upload, and every unused webfont would be inlined into the CSS.
+// Font Awesome's base classes and animations only: solid.css carries the
+// webfont, which a data: URL document will not load. icons.css draws the four
+// icons the components use instead.
 import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
-import '@fortawesome/fontawesome-free/css/solid.min.css'
+import './icons.css'
 import './index.css'
 
 import { WailsApp } from './WailsApp'
