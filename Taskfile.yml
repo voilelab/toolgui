@@ -40,13 +40,18 @@ tasks:
       - task: asset_app
       - go run ./cmd/toolgui-todo/main.go
 
-  # Desktop demo. Needs the webview deps and the wails build tags, see
-  # toolgui-wails/README.md.
+  # Desktop demo. Needs the webview deps, see toolgui-wails/README.md.
   run_wails_hello:
     dir: ./toolgui-wails
     vars:
-      TAGS: '{{.TAGS | default "production,webkit2_41"}}'
+      # webkit2_41 is Linux only, and only for distributions that dropped
+      # WebKit2GTK 4.0. Override with TAGS= on one that still ships it.
+      DEFAULT_TAGS: '{{if eq OS "linux"}}production,webkit2_41{{else}}production{{end}}'
+      TAGS: '{{.TAGS | default .DEFAULT_TAGS}}'
+      # wails uses UTType for its file dialogs but never links the framework:
+      # its own CLI adds this to CGO_LDFLAGS, and we call go directly.
+      MAC_LDFLAGS: '{{if eq OS "darwin"}}CGO_LDFLAGS="-framework UniformTypeIdentifiers $CGO_LDFLAGS" {{end}}'
     cmds:
       - task: asset_lib
       - task: asset_wails
-      - go run -tags "{{.TAGS}}" ./example/hello
+      - '{{.MAC_LDFLAGS}}go run -tags "{{.TAGS}}" ./example/hello'

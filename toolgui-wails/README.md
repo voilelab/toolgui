@@ -60,13 +60,30 @@ Then, from this directory:
 go run -tags "production,webkit2_41" ./example/hello
 ```
 
+`task run_wails_hello` runs the same thing and picks the flags below for the
+platform it is on.
+
 ### Build tags
 
 - `production` picks the real app. Without it Wails compiles a stub that
   returns `Wails applications will not build without the correct build tags.`
   Use `dev` instead for a debug build with devtools.
-- `webkit2_41` asks for WebKit2GTK 4.1. Drop it on a distribution that still
-  ships 4.0, which is what Wails asks for by default.
+- `webkit2_41` asks for WebKit2GTK 4.1, on Linux only. Drop it on a
+  distribution that still ships 4.0, which is what Wails asks for by default.
+
+### macOS
+
+Wails calls `UTType` for its file dialogs but never links the framework that
+defines it: its own CLI puts that in `CGO_LDFLAGS`, and building with plain
+`go` does not. Without it the link fails with
+`Undefined symbols: _OBJC_CLASS_$_UTType`.
+
+```shell
+CGO_LDFLAGS="-framework UniformTypeIdentifiers" go run -tags production ./example/hello
+```
+
+`wails build` also sets `-mmacosx-version-min`; add it if you are building
+for older macOS rather than just running the thing.
 
 ### Webview dependencies
 
