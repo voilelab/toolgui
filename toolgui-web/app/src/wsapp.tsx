@@ -1,6 +1,6 @@
 import React, { Component } from "react"
 
-import { App } from "@toolgui-web/lib"
+import { App, dispatchPack } from "@toolgui-web/lib"
 import { AppConf } from "@toolgui-web/lib"
 import { StatefulWebSocket } from "./api/StatefulWebSocket"
 import { getAppConf } from "./api/AppConfAPI"
@@ -42,25 +42,7 @@ export class WSApp extends Component<{}, WSState> {
     }
 
     const conn = new StatefulWebSocket(pageName, pack => {
-      if (pack.success !== undefined) {
-        if (!pack.success) {
-          console.error(pack)
-        }
-
-        this.appEle.current.finishUpdate(pack)
-        return
-      }
-
-      if (pack.ready !== undefined) {
-        if (!pack.ready) {
-          console.error(pack)
-        }
-
-        this.appEle.current.startUpdate()
-        return
-      }
-
-      this.appEle.current.receiveNotifyPack(pack)
+      dispatchPack(this.appEle.current, pack)
     })
 
     conn.onConnect = () => {

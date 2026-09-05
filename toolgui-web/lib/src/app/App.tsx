@@ -7,6 +7,7 @@ import { AppNavbar } from './AppNavbar';
 import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
 import { AppError, Error } from './AppError';
+import { UploadFunc } from './Upload';
 
 const NOTIFY_TYPE_CREATE = 1
 const NOTIFY_TYPE_UPDATE = 2
@@ -16,7 +17,7 @@ const NOTIFY_TYPE_DELETE = 3
 interface AppProps {
   appConf: AppConf
   update: (event: any) => void
-  upload: (file: File) => Promise<Response>
+  upload: UploadFunc
 }
 
 interface AppState {

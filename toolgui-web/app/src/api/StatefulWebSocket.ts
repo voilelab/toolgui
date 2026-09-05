@@ -1,3 +1,5 @@
+import { UploadResult } from "@toolgui-web/lib"
+
 const healthCheckURL = "/api/health"
 
 const fileUploadURL = "/api/files"
@@ -191,18 +193,24 @@ export class StatefulWebSocket {
     this.conn.send(JSON.stringify(pack))
   }
 
-  async uploadFile(file: File) {
+  async uploadFile(file: File): Promise<UploadResult> {
     if (this.stateID === '') {
-      throw new Error('state id is not prepared')
+      return { ok: false, error: 'state id is not prepared' }
     }
 
     const formData = new FormData()
     formData.append('file', file, file.name)
 
-    return await fetch(fileUploadURL, {
+    const resp = await fetch(fileUploadURL, {
       method: 'POST',
       body: formData,
       headers: { STATE_ID: this.stateID },
     })
+
+    if (!resp.ok) {
+      return { ok: false, error: `upload failed with status ${resp.status}` }
+    }
+
+    return { ok: true }
   }
 }

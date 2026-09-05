@@ -14,7 +14,7 @@ export function TFileupload({ node, update, upload }: Props) {
     const file = e.target.files[0]
 
     upload(file).then(val => {
-      if (val.status != 200) {
+      if (!val.ok) {
         console.error(val)
         return
       }

@@ -4,13 +4,14 @@ import { TComponent } from "../components/factory";
 import { MessagePageNotFound } from "./MessagePageNotFound";
 import { UpdateEvent } from "./UpdateEvent";
 import { Forest } from "./Nodes";
+import { UploadFunc } from "./Upload";
 
 interface AppBodyProps {
   appConf: AppConf
   pageFound: boolean
   forest: Forest
   update: (e: UpdateEvent) => void
-  upload: (file: File) => Promise<Response>
+  upload: UploadFunc
   darkMode: string
 }
 
