@@ -5,8 +5,6 @@ import (
 	"io"
 	"log/slog"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"net/http"
@@ -24,7 +22,9 @@ import (
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
 // ErrUpdateInterrupt is raise at panic when current state is going to interrupt
-var ErrUpdateInterrupt = tgutil.NewError("update interrupt")
+//
+// Deprecated: use [tgframe.ErrUpdateInterrupt].
+var ErrUpdateInterrupt = tgframe.ErrUpdateInterrupt
 
 // FIXME: use errors.Is or errors.As
 const forceClosedByRemoteStr = "An existing connection was forcibly closed by the remote host."
@@ -40,15 +40,6 @@ type WebExecutor struct {
 
 type stateIDPack struct {
 	StateID string `json:"state_id"`
-}
-
-type resultPack struct {
-	Error   string `json:"error,omitempty"`
-	Success bool   `json:"success"`
-}
-
-type readyPack struct {
-	Ready bool `json:"ready"`
 }
 
 // NewWebExecutor return a WebExecutor.
@@ -72,7 +63,7 @@ func (e *WebExecutor) Destroy() {
 func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	pageName := ws.Request().PathValue("name")
 	if !e.app.HasPage(pageName) {
-		websocket.JSON.Send(ws, &resultPack{
+		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   "page not found",
 			Success: false,
 		})
@@ -83,7 +74,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	var pack stateIDPack
 	err := websocket.JSON.Receive(ws, &pack)
 	if err != nil {
-		websocket.JSON.Send(ws, &resultPack{
+		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   err.Error(),
 			Success: false,
 		})
@@ -103,7 +94,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		})
 	} else {
 		if alive {
-			websocket.JSON.Send(ws, &resultPack{
+			websocket.JSON.Send(ws, &tgframe.ResultPack{
 				Error:   "state id already alive",
 				Success: false,
 			})
@@ -114,8 +105,16 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		e.stateMap.SetAlive(stateID, true)
 	}
 
-	var stopUpdating atomic.Bool
-	var running sync.Mutex
+	session, err := tgframe.NewSession(e.app, pageName, state,
+		func(pack any) error { return websocket.JSON.Send(ws, pack) })
+	if err != nil {
+		websocket.JSON.Send(ws, &tgframe.ResultPack{
+			Error:   err.Error(),
+			Success: false,
+		})
+		slog.Error("new session", "error", err)
+		return
+	}
 
 	for {
 		var bs []byte
@@ -124,15 +123,12 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 			if err == io.EOF || strings.Contains(err.Error(), forceClosedByRemoteStr) {
 				// Connection closed
 
-				// sending stop signal and wait for runner
-				stopUpdating.Store(true)
-				running.Lock()
-
+				session.Close()
 				e.stateMap.SetAlive(stateID, false)
 				break
 			}
 
-			websocket.JSON.Send(ws, &resultPack{
+			websocket.JSON.Send(ws, &tgframe.ResultPack{
 				Error:   err.Error(),
 				Success: false,
 			})
@@ -140,58 +136,10 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 			continue
 		}
 
-		event, err := tgframe.ParseEvent(bs)
+		err = session.HandleRawEvent(bs)
 		if err != nil {
-			websocket.JSON.Send(ws, &resultPack{
-				Error:   err.Error(),
-				Success: false,
-			})
-			continue
+			slog.Error("handle event", "error", err)
 		}
-
-		// sending stop signal and wait for runner
-		stopUpdating.Store(true)
-		running.Lock()
-
-		// tell client we cut the previous runner
-		err = websocket.JSON.Send(ws, &readyPack{
-			Ready: true,
-		})
-		if err != nil {
-			slog.Error("send ready pack", "error", err)
-		}
-
-		// Clear temp state
-		state.SetClickID("")
-		event.ApplyState(state)
-
-		sendNotifyPack := func(pack tgframe.NotifyPack) {
-			if stopUpdating.Load() {
-				panic(ErrUpdateInterrupt)
-			}
-
-			err := websocket.JSON.Send(ws, pack)
-			if err != nil {
-				panic(err)
-			}
-		}
-
-		stopUpdating.Store(false)
-		go func() {
-			defer running.Unlock()
-			err := e.app.RunWithHandlingPanic(pageName, state, sendNotifyPack)
-			if err != nil {
-				websocket.JSON.Send(ws, &resultPack{
-					Error:   err.Error(),
-					Success: false,
-				})
-				slog.Error("run err", "error", err)
-			} else {
-				websocket.JSON.Send(ws, &resultPack{
-					Success: true,
-				})
-			}
-		}()
 	}
 }
 

@@ -1,2 +1,5 @@
 export { App } from "./app/App"
+export { dispatchPack } from "./app/dispatch"
 export type { AppConf } from "./app/AppConf"
+export type { UpdateEvent } from "./app/UpdateEvent"
+export type { UploadFunc, UploadResult } from "./app/Upload"
