@@ -15,6 +15,26 @@ describe('Nav', () => {
       .should('have.class', 'is-active')
   })
 
+  it('Page links are real links', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav .menu-list').contains('Layout')
+      .should('have.attr', 'href', '/layout')
+      .focus().should('have.focus')
+  })
+
+  it('The navigation landmark covers only the page list', () => {
+    cy.visit('/sidebar')
+    cy.contains('Show sidebar').click()
+    cy.get('.toolgui-nav').contains('Sidebar is here').should('exist')
+
+    cy.get('.toolgui-nav').should('not.have.attr', 'role')
+    cy.get('nav[aria-label="main navigation"]').within(() => {
+      cy.get('.menu-list').should('exist')
+      cy.contains('Sidebar is here').should('not.exist')
+      cy.contains('Rerun').should('not.exist')
+    })
+  })
+
   it('The page sidebar shares the left column', () => {
     cy.visit('/sidebar')
     cy.get('.toolgui-nav').contains('Sidebar is here').should('not.exist')

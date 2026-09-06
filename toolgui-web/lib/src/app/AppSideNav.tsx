@@ -55,6 +55,17 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     }
   }
 
+  // pageHref keeps the anchors real links. A transport with its own
+  // navigation has no URL to point at, so it gets the hash form; the click
+  // handler cancels the default either way.
+  pageHref(name: string) {
+    if (this.props.onNavigate || this.props.appConf.hash_page_name_mode) {
+      return '#/' + name
+    }
+
+    return '/' + name
+  }
+
   sidebarNode() {
     return this.props.forest.nodes[this.props.appConf.sidebar_container_id]
   }
@@ -63,7 +74,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     const sidebarNode = this.sidebarNode()
     const hasSidebar = sidebarNode.children.length > 0
 
-    return <aside className="toolgui-nav" role="navigation" aria-label="main navigation">
+    return <aside className="toolgui-nav">
       <button className="button is-ghost toolgui-nav-burger"
         aria-label="menu"
         aria-expanded={this.state.open}
@@ -75,13 +86,14 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
       </button>
 
       <div className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
-        <div className="menu">
+        <nav className="menu" aria-label="main navigation">
           <ul className="menu-list">
             {
               this.props.appConf.page_names.map(name =>
                 <li key={name}>
                   <a className={name === this.props.pageName ? 'is-active' : ''}
-                    onClick={() => { this.jumpToPage(name) }}>
+                    href={this.pageHref(name)}
+                    onClick={(e) => { e.preventDefault(); this.jumpToPage(name) }}>
                     {this.props.appConf.page_confs[name].emoji}
                     {this.props.appConf.page_confs[name].title}
                   </a>
@@ -89,7 +101,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
               )
             }
           </ul>
-        </div>
+        </nav>
 
         {hasSidebar ?
           <div>
