@@ -1,0 +1,78 @@
+/* App shell: a fixed-width left column beside the page content. */
+.toolgui-shell {
+  display: flex;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+.toolgui-nav {
+  flex: 0 0 240px;
+  width: 240px;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.75rem;
+  /* Sticky so the column stays put while the page scrolls, with its own
+     scrollbar for when the nav and the page sidebar outgrow the viewport. */
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+  background-color: var(--bulma-scheme-main-bis);
+  border-right: 1px solid var(--bulma-border-weak);
+}
+
+.toolgui-nav-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  gap: 0.75rem;
+}
+
+/* Only shown on mobile, where it toggles .toolgui-nav-body. */
+.toolgui-nav-burger {
+  display: none;
+}
+
+/* Pins the rerun and theme controls to the bottom of the column. */
+.toolgui-nav-foot {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+/* min-width:0 keeps wide children (tables, code blocks) from stretching this
+   flex item past the viewport instead of scrolling inside it. */
+.toolgui-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 1.5rem 1rem;
+}
+
+/* Below Bulma's tablet breakpoint the column becomes a collapsible top bar. */
+@media screen and (max-width: 768px) {
+  .toolgui-shell {
+    flex-direction: column;
+  }
+
+  .toolgui-nav {
+    position: static;
+    flex: none;
+    width: auto;
+    max-height: none;
+    overflow-y: visible;
+    border-right: none;
+    border-bottom: 1px solid var(--bulma-border-weak);
+  }
+
+  .toolgui-nav-burger {
+    display: inline-flex;
+    align-self: flex-start;
+  }
+
+  .toolgui-nav-body {
+    display: none;
+  }
+
+  .toolgui-nav-body.is-open {
+    display: flex;
+  }
+}
