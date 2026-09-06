@@ -21,6 +21,15 @@ enum WebSocketAction {
   // TODO: support timeout check
 }
 
+// Reconnect backoff. Without it a connection the server closes right away --
+// an unknown page name, say -- reconnects in a tight loop.
+const RECONNECT_BASE_MS = 500
+const RECONNECT_MAX_MS = 30000
+
+// A connection that lived this long counts as healthy, so the next drop
+// retries from the base delay.
+const HEALTHY_CONN_MS = 5000
+
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -44,6 +53,12 @@ export class StatefulWebSocket {
   pageName: string
   stateID: string
 
+  /** Delay before the next reconnect, grown on each short-lived connection. */
+  reconnectMS: number
+
+  /** Timestamp the current connection was opened at. */
+  connectAt: number
+
   /** Receive pack from connected websocket. */
   recv: (pack: any) => void
 
@@ -59,6 +74,8 @@ export class StatefulWebSocket {
     this.conn = null
     this.stateID = ''
     this.recv = recv
+    this.reconnectMS = 0
+    this.connectAt = 0
   }
 
   init() {
@@ -133,6 +150,10 @@ export class StatefulWebSocket {
   }
 
   async ping() {
+    if (this.reconnectMS > 0) {
+      await sleep(this.reconnectMS)
+    }
+
     var waitMS = 200
 
     while (1) {
@@ -159,6 +180,7 @@ export class StatefulWebSocket {
   }
 
   tryConnect() {
+    this.connectAt = Date.now()
     this.conn = new WebSocket(getUpdateURI(this.pageName))
     var that = this
 
@@ -181,6 +203,15 @@ export class StatefulWebSocket {
 
     this.conn.onclose = function () {
       that.conn = null
+
+      if (Date.now() - that.connectAt >= HEALTHY_CONN_MS) {
+        that.reconnectMS = 0
+      } else {
+        that.reconnectMS = Math.min(
+          that.reconnectMS === 0 ? RECONNECT_BASE_MS : that.reconnectMS * 2,
+          RECONNECT_MAX_MS)
+      }
+
       that.walk(WebSocketAction.Closed)
     }
   }

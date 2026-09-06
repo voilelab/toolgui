@@ -41,6 +41,14 @@ export class WSApp extends Component<{}, WSState> {
       pageName = window.location.pathname.substring(1)
     }
 
+    // A page the app does not have has nothing to connect to: the server
+    // closes the socket at once, and reconnecting only spams its log. App
+    // renders the not-found page from appConf on its own.
+    if (!appConf.page_confs[pageName]) {
+      this.setState({ appConf, pageName, conn: null })
+      return
+    }
+
     const conn = new StatefulWebSocket(pageName, pack => {
       dispatchPack(this.appEle.current, pack)
     })
@@ -66,8 +74,13 @@ export class WSApp extends Component<{}, WSState> {
     return (
       <App appConf={this.state.appConf}
         ref={this.appEle}
-        update={(pack) => { this.state.conn.send(pack) }}
-        upload={(f) => { return this.state.conn.uploadFile(f) }} />
+        update={(pack) => { this.state.conn?.send(pack) }}
+        upload={(f) => {
+          if (!this.state.conn) {
+            return Promise.resolve({ ok: false, error: 'not connected' })
+          }
+          return this.state.conn.uploadFile(f)
+        }} />
     )
   }
 }
