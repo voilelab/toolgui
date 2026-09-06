@@ -20,6 +20,10 @@ type ReadyPack struct {
 type ResultPack struct {
 	Error   string `json:"error,omitempty"`
 	Success bool   `json:"success"`
+
+	// Fatal marks an error retrying cannot fix, so a client knows to stop
+	// reconnecting instead of asking again.
+	Fatal bool `json:"fatal,omitempty"`
 }
 
 // SendPackFunc sends a pack ([NotifyPack], [ReadyPack] or [ResultPack]) to the

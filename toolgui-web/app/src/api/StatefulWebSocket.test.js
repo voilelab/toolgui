@@ -62,6 +62,17 @@ test('a connection the server drops at once retries with a growing delay', async
   expect(sockets).toHaveLength(3)
 })
 
+test('a page the server rejects for good is not asked for again', async () => {
+  const ws = new StatefulWebSocket('main', () => { })
+  await connect(ws)
+
+  last().onopen()
+  last().onmessage({ data: JSON.stringify({ success: false, fatal: true, error: 'page not found' }) })
+  last().onclose()
+  await vi.advanceTimersByTimeAsync(60000)
+  expect(sockets).toHaveLength(1)
+})
+
 test('a connection that stayed open a while reconnects at once', async () => {
   const ws = new StatefulWebSocket('index', () => { })
   await connect(ws)

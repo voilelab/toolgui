@@ -63,9 +63,12 @@ func (e *WebExecutor) Destroy() {
 func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	pageName := ws.Request().PathValue("name")
 	if !e.app.HasPage(pageName) {
+		// Fatal: the app's pages don't change while it runs, so a client
+		// that reconnects for this one only repeats the error.
 		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   "page not found",
 			Success: false,
+			Fatal:   true,
 		})
 		slog.Error("page not found", "page", pageName)
 		return

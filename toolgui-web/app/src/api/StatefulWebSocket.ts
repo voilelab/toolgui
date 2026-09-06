@@ -10,7 +10,8 @@ enum WebSocketState {
   TryConnect,
   Connected,
 
-  // TODO: Dead
+  // Dead is final: the server rejected this page for good.
+  Dead,
 }
 
 enum WebSocketAction {
@@ -59,6 +60,9 @@ export class StatefulWebSocket {
   /** Timestamp the current connection opened at, 0 until it does. */
   openAt: number
 
+  /** Set once the server has rejected this page for good. */
+  rejected: boolean
+
   /** Receive pack from connected websocket. */
   recv: (pack: any) => void
 
@@ -76,6 +80,7 @@ export class StatefulWebSocket {
     this.recv = recv
     this.reconnectMS = 0
     this.openAt = 0
+    this.rejected = false
   }
 
   init() {
@@ -99,6 +104,9 @@ export class StatefulWebSocket {
       case WebSocketState.Connected:
         this.state = state
         this.onConnect()
+        break
+      case WebSocketState.Dead:
+        this.state = state
         break
       default:
         console.error('undefined state', state)
@@ -127,7 +135,7 @@ export class StatefulWebSocket {
             return
           case WebSocketAction.Error:
           case WebSocketAction.Closed:
-            this.walkTo(WebSocketState.Ping)
+            this.walkTo(this.rejected ? WebSocketState.Dead : WebSocketState.Ping)
             return
           default:
             break
@@ -137,7 +145,7 @@ export class StatefulWebSocket {
         switch (action) {
           case WebSocketAction.Error:
           case WebSocketAction.Closed:
-            this.walkTo(WebSocketState.Ping)
+            this.walkTo(this.rejected ? WebSocketState.Dead : WebSocketState.Ping)
             return
           default:
             break
@@ -195,6 +203,12 @@ export class StatefulWebSocket {
 
     this.conn.onmessage = function (e) {
       const data = JSON.parse(e.data)
+      if (data.fatal) {
+        // Reconnecting would only ask the same question again. The pack still
+        // goes through, so the UI can show why.
+        that.rejected = true
+      }
+
       if (data.state_id) {
         that.stateID = data.state_id
         that.onStateIDChange()
