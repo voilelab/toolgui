@@ -50,6 +50,8 @@ type IframeConf struct {
 	Width string
 
 	// Height is the css height of the iframe, default is "150px".
+	// "auto" tracks the guest's own height, which needs the guest to call
+	// window.toolgui.autoHeight().
 	Height string
 
 	// ID is the unique identifier for this iframe component.

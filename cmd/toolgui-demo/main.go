@@ -490,7 +490,7 @@ func MiscPage(p *tgframe.Params) error {
 			<script>
 				const btn = document.getElementById('btn');
 				btn.addEventListener('click', (event) => {
-					window.update({clicked: true});
+					window.toolgui.update({clicked: true});
 				});
 			</script>`,
 			&tgcomp.IframeConf{
@@ -510,6 +510,27 @@ func MiscPage(p *tgframe.Params) error {
 		}
 
 		tgcomp.Text(iframeInteractiveCompCol, fmt.Sprintf("Status: %v", value.Clicked))
+	})
+
+	tgcomp.Divider(p.Main)
+
+	iframeRenderCompCol, iframeRenderCodeCol := tgcomp.EqColumn2(p.Main, "show_iframe_render")
+	tgcomp.Echo(iframeRenderCodeCol, code, func() {
+		tgcomp.IframeWithConf(
+			iframeRenderCompCol,
+			`<div id="out">waiting for render</div>
+			<script>
+				const out = document.getElementById('out');
+				window.toolgui.onRender((props, theme) => {
+					out.innerText = 'theme=' + theme + ' id=' + props.id;
+				});
+				window.toolgui.autoHeight();
+			</script>`,
+			&tgcomp.IframeConf{
+				Script: true,
+				Height: "auto",
+				ID:     "iframe_with_render",
+			})
 	})
 
 	tgcomp.Divider(p.Main)
