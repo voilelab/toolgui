@@ -12,7 +12,9 @@ It holds four parts, top to bottom:
    page func puts anything in it.
 3. The app controls:
    * Rerun: Rerun the Page Func without changing any state.
-   * Dark/Light Mode Switch: Switch the theme of the app.
+   * Dark/Light Mode Switch: Switch the theme of the app. Until it is used,
+     the app follows the browser's `prefers-color-scheme`; the choice is
+     remembered afterwards.
    * A spinner, shown while the app is running the Page Func.
 4. The toolgui version the app was built against.
 

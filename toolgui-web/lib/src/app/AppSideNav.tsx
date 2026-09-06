@@ -6,6 +6,7 @@ import { Forest } from "./Nodes";
 import { TComponent } from "../components/factory";
 import { UpdateEvent } from "./UpdateEvent";
 import { UploadFunc } from "./Upload";
+import { ThemeMode } from "../util/theme";
 
 import '@toolgui-web/lib/src/assets/css/shell.css'
 
@@ -19,8 +20,8 @@ interface AppSideNavProps {
   rerun: () => void
   update: (e: UpdateEvent) => void
   upload: UploadFunc
-  darkMode: string
-  onChange: (darkMode: string) => void
+  darkMode: ThemeMode
+  onChange: (darkMode: ThemeMode) => void
 }
 
 interface AppSideNavState {
@@ -121,9 +122,8 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <button className="button" onClick={() => { this.props.rerun() }}>
               Rerun
             </button> : ''}
-          <ThemeModeButton onChange={(darkMode) => {
-            this.props.onChange(darkMode)
-          }} />
+          <ThemeModeButton darkMode={this.props.darkMode}
+            onChange={(darkMode) => { this.props.onChange(darkMode) }} />
         </div>
 
         {this.props.appConf.show_version ?

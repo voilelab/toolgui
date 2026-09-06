@@ -21,7 +21,7 @@ import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
-import { getStoredValue } from '../util/storage';
+import { ThemeMode, applyThemeMode, initialThemeMode, storeThemeMode } from '../util/theme';
 
 // pageNameFromLocation reads the page name off the URL.
 function pageNameFromLocation(appConf: AppConf): string {
@@ -64,7 +64,7 @@ interface AppState {
   pageFound: boolean
   pageName: string
   error: Error | null
-  darkMode: string
+  darkMode: ThemeMode
 }
 
 export class App extends Component<AppProps, AppState> {
@@ -96,8 +96,18 @@ export class App extends Component<AppProps, AppState> {
       pageFound: pageFound,
       pageName: pageName,
       error: null,
-      darkMode: getStoredValue('darkMode'),
+      darkMode: initialThemeMode(),
     }
+  }
+
+  componentDidMount() {
+    applyThemeMode(this.state.darkMode)
+  }
+
+  changeThemeMode(darkMode: ThemeMode) {
+    applyThemeMode(darkMode)
+    storeThemeMode(darkMode)
+    this.setState({ darkMode: darkMode })
   }
 
   startUpdate() {
@@ -190,11 +200,7 @@ export class App extends Component<AppProps, AppState> {
           update={(e) => { this.props.update(e) }}
           upload={async (f) => await this.props.upload(f)}
           darkMode={this.state.darkMode}
-          onChange={(darkMode) => {
-            this.setState({
-              darkMode: darkMode
-            })
-          }} />
+          onChange={(darkMode) => { this.changeThemeMode(darkMode) }} />
 
         <main className="toolgui-main">
           <AppBody

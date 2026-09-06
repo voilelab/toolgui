@@ -5,6 +5,7 @@ import { MessagePageNotFound } from "./MessagePageNotFound";
 import { UpdateEvent } from "./UpdateEvent";
 import { Forest } from "./Nodes";
 import { UploadFunc } from "./Upload";
+import { ThemeMode } from "../util/theme";
 
 interface AppBodyProps {
   appConf: AppConf
@@ -12,7 +13,7 @@ interface AppBodyProps {
   forest: Forest
   update: (e: UpdateEvent) => void
   upload: UploadFunc
-  darkMode: string
+  darkMode: ThemeMode
 }
 
 // AppBody renders the page's main container. The page's sidebar container
