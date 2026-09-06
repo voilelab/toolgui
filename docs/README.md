@@ -5,6 +5,11 @@ The [mdBook](https://rust-lang.github.io/mdBook/) source for the ToolGUI book.
 Lives in this repository so an API change and its documentation land in the
 same pull request.
 
+## Layout
+
+`src/` is the book. `design/` holds design notes and surveys that decide an API
+before it exists; mdBook does not build them.
+
 ## Build
 
 ```shell
