@@ -90,7 +90,7 @@ export class App extends Component<AppProps, AppState> {
   startUpdate() {
     this.setState((prevState) => {
       const newForest = prevState.forest.swallowCopy()
-      newForest.setToRemoving()
+      newForest.beginRun()
 
       return {
         running: true,
@@ -143,7 +143,7 @@ export class App extends Component<AppProps, AppState> {
   finishUpdate(pack: any) {
     this.setState((prevState) => {
       const newForest = prevState.forest.swallowCopy()
-      newForest.removeNodeWithRemovingTag()
+      newForest.endRun(pack.success)
       var err: Error | null = null
       if (!pack.success) {
         err = {

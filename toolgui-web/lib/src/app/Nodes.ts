@@ -1,13 +1,17 @@
+// NO_RUN_ID is the run id of a node no run has claimed yet.
+const NO_RUN_ID = 0
+
 export class Node {
   props: any
   children: Node[]
-  removing: boolean
+  // The run that last sent this node. Anything older is stale at endRun.
+  runID: number
   parentID: string
 
   constructor(props: any) {
     this.props = props
     this.children = []
-    this.removing = false
+    this.runID = NO_RUN_ID
     this.parentID = ''
   }
 }
@@ -15,10 +19,12 @@ export class Node {
 export class Forest {
   nodes: { [id: string]: Node }
   rootNodeIDs: string[]
+  runID: number
 
   constructor(rootNodeIDs: string[]) {
     this.rootNodeIDs = rootNodeIDs
     this.nodes = {}
+    this.runID = NO_RUN_ID
 
     for (const id of rootNodeIDs) {
       this.nodes[id] = new Node({
@@ -31,54 +37,60 @@ export class Forest {
   swallowCopy(): Forest {
     const ret = new Forest(this.rootNodeIDs)
     ret.nodes = { ...this.nodes }
+    ret.runID = this.runID
     return ret
   }
 
-  setToRemoving() {
-    for (const nodeID in this.nodes) {
-      if (nodeID in this.rootNodeIDs) {
-        continue
-      }
+  // beginRun opens a run. Every node the run sends is stamped with the new id,
+  // so whatever still carries an older one at endRun was not re-sent.
+  beginRun() {
+    this.runID++
 
-      this.nodes[nodeID].removing = true
+    // The server never re-sends the root containers, so the run claims them
+    // here. Their survival is structural, not a special case in endRun.
+    for (const id of this.rootNodeIDs) {
+      this.nodes[id].runID = this.runID
     }
   }
 
   createNode(props: any, parentID: string) {
     const nodeID: string = props.id
+    const oldNode = this.nodes[nodeID]
 
-    if (nodeID in this.nodes && !this.nodes[nodeID].removing) {
-      console.error('Depulicated component id:', nodeID)
+    if (oldNode && oldNode.runID === this.runID) {
+      console.error('Duplicated component id:', nodeID)
       return
     }
 
-    // remove node from old parent
-    if (nodeID in this.nodes) {
-      const parentID = this.nodes[nodeID].parentID
-      const idx = this.nodes[parentID].children.findIndex(n => n.props.id === nodeID)
-      // TBD: Why we need check here?
-      if (idx != -1) {
-        this.nodes[parentID].children.splice(idx, 1)
+    // Detach from the parent of the previous run. The parent can be gone when
+    // a delete pack removed it without its children.
+    if (oldNode) {
+      const prevParent = this.nodes[oldNode.parentID]
+      if (prevParent) {
+        const idx = prevParent.children.indexOf(oldNode)
+        if (idx != -1) {
+          prevParent.children.splice(idx, 1)
+        }
       }
     }
 
     // create or modify node in node pool
-    const oldNode = this.nodes[nodeID]
     if (oldNode) {
       oldNode.props = props
-      oldNode.removing = false
     } else {
       this.nodes[nodeID] = new Node(props)
     }
 
+    this.nodes[nodeID].runID = this.runID
     this.nodes[nodeID].parentID = parentID
 
-    // find first that first removing=true and insert at that index
+    // Insert before the first sibling this run has not sent yet, so the
+    // children keep the order the page function wrote them in.
     const parentNode = this.nodes[parentID]
     var idx = 0
     for (var i = 0; i < parentNode.children.length; i++) {
       const prevNode = parentNode.children[i]
-      if (prevNode.removing) {
+      if (prevNode.runID !== this.runID) {
         break
       }
       idx = i + 1
@@ -109,22 +121,22 @@ export class Forest {
     delete this.nodes[nodeID]
   }
 
-  removeNodeWithRemovingTag() {
-    const removingID = new Set<string>()
-    for (const [key, node] of Object.entries(this.nodes)) {
-      if (node.removing) {
-        removingID.add(key)
+  // endRun closes a run and drops every node it did not send. A run that
+  // failed leaves the tree alone: the page function stopped partway through,
+  // so what it did not send is missing rather than gone.
+  endRun(success: boolean) {
+    if (!success) {
+      return
+    }
+
+    for (const [id, node] of Object.entries(this.nodes)) {
+      if (node.runID !== this.runID) {
+        delete this.nodes[id]
       }
     }
 
-    for (const id in removingID) {
-      delete this.nodes[id]
-    }
-
-    for (const [key, node] of Object.entries(this.nodes)) {
-      node.children = node.children.filter((n) => {
-        return !(removingID.has(n.props.id))
-      })
+    for (const node of Object.values(this.nodes)) {
+      node.children = node.children.filter(n => n.runID === this.runID)
     }
   }
 }
