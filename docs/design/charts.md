@@ -111,14 +111,16 @@ through untouched. Two reasons not to, for the high-level API:
   would become a breaking change for every user.
 
 So Go sends `{kind, labels, series[], stacked, ...}` and the React component
-builds the Chart.js config from it. A raw passthrough still makes sense, but
-as an explicitly experimental escape hatch (see phase 3), not as the base.
+builds the Chart.js config from it. There is no raw-config escape hatch, now
+or later (decided, see "Decisions"): the semantic props are the whole public
+surface, which is what keeps the Chart.js schema swappable.
 
 ### Go API sketch
 
 Layout components already take an id first (`Box(c, id)`, `Column(c, id, n)`),
 and constraint 5 says a chart needs a stable id to update in place rather than
-remount. So charts take an id too:
+remount. So charts take a **required** id too — unlike `Table`, which uses
+`RandID` and is recreated on every run:
 
 ```go
 package tcdata
@@ -168,6 +170,12 @@ tgcomp.LineChart(p.Main, "sales", []string{"Jan", "Feb", "Mar"},
 
 `Table` panics on a length mismatch; charts should do the same for
 `len(series[i].Values) != len(labels)`.
+
+Values are `float64` and labels are strings, deliberately. A `time.Time`
+x-axis would mean a real Chart.js time scale, which needs a date adapter
+(`chartjs-adapter-date-fns` and its dependency) in the bundle. Formatting
+timestamps into label strings in the page function covers the same charts
+without that, so integer and time-typed inputs stay out of the API.
 
 ### Wire format
 
@@ -253,9 +261,7 @@ per-series y-axis.
 **Phase 3.** Interaction — a click on a point sending an event back. This
 needs a new variant in the `UpdateEvent` union in
 `lib/src/app/UpdateEvent.ts` and a matching case on the Go side, so it is a
-protocol change, not a component change. Also the raw escape hatch,
-`ChartJS(c, id, config any)`, marked experimental like `Iframe`, for anything
-the high-level API cannot express.
+protocol change, not a component change.
 
 **Out of scope indefinitely.** Maps, 3D, and datasets large enough to need
 downsampling or streaming. Every point travels as JSON over the websocket on
@@ -277,15 +283,15 @@ that limit belongs in the docs.
   assertable, so check the canvas element and, if the aria fallback is
   enabled, its text.
 
-## Open questions
+## Decisions
 
-1. **Id in the signature.** Charts take an id for the in-place update, unlike
-   `Table`, which uses `RandID` and is recreated every run. Is the extra
-   argument acceptable, or should the id be optional with a hashed default and
-   the remount accepted?
-2. **`float64` only?** Time-series x-axes (`time.Time` labels) are the obvious
-   next request. Strings cover them today via formatting in the page function,
-   but a real time scale means pulling in a Chart.js date adapter.
-3. **How soon is the escape hatch needed?** If a raw Chart.js config lands in
-   phase 1, the high-level API can stay very small; if it never lands, the
-   high-level API will keep growing options.
+Settled before implementation:
+
+1. **The id is a required argument.** No hashed default and no remount-per-run
+   fallback, so a chart always updates in place.
+2. **`float64` values and string labels only.** No time scale and no date
+   adapter; a time axis is formatted into labels by the page function.
+3. **No raw Chart.js config, ever.** Whatever the high-level API cannot
+   express is a gap to close in the API, not to route around. The cost is
+   accepted: `ChartConf` will grow options over phases 2 and 3, and users who
+   need something genuinely out of scope still have `Iframe` + go-echarts.
