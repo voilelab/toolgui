@@ -20,9 +20,11 @@ export class Node {
 
   // reactKey is what the renderer keys this node by. A component that names
   // itself keeps that name, so its React state follows it when a conditional
-  // above it moves it; the rest are keyed by position.
+  // above it moves it. The rest are keyed by position and type: the renderer
+  // reaches every component through one TComponent, so a key that ignored the
+  // type would let React carry one component's hooks into another's.
   get reactKey(): string {
-    return this.props.id || this.key
+    return this.props.id || `${this.key}:${this.props.name}`
   }
 }
 
@@ -75,8 +77,8 @@ export class Forest {
 
     const oldNode = this.nodes[key]
 
-    // A different component type at the same position is a different node, so
-    // that the renderer remounts instead of feeding it the old one's state.
+    // A different component type at this position is a different node, so it
+    // does not inherit the old one's children.
     const node = oldNode && oldNode.props.name === props.name
       ? oldNode
       : new Node(key, props)
@@ -85,6 +87,16 @@ export class Forest {
     node.runID = this.runID
     node.parentKey = parentKey
     this.nodes[key] = node
+
+    // A node this run has not sent renders under the same key when a named
+    // component moves between positions. Two children under one key is what
+    // this is all meant to avoid, and endRun is too late, so retire it now.
+    for (const [staleKey, stale] of Object.entries(this.nodes)) {
+      if (staleKey !== key && stale.runID !== this.runID
+        && stale.reactKey === node.reactKey) {
+        this.removeNode(staleKey)
+      }
+    }
 
     // The index is the component's position among its container's children,
     // counted by the container as the page function writes it.

@@ -17,5 +17,5 @@ export function TLatex({ node }: Props) {
     });
   }, [node.props.latex]);
 
-  return <div ref={containerRef} />
+  return <div id={node.props.id || undefined} ref={containerRef} />
 }

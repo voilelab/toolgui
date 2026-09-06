@@ -173,12 +173,43 @@ describe('Forest', () => {
       expect(f.nodes[`${MAIN}/0`].reactKey).toBe('textbox_component_B')
     })
 
-    test('is the position when the component has no id', () => {
+    test('is the position and the type when the component has no id', () => {
       var f = new Forest([MAIN, SIDEBAR])
       f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('a')) })
 
       expect(f.nodes[MAIN].children.map(n => n.reactKey))
-        .toEqual([`${MAIN}/0`, `${MAIN}/1`])
+        .toEqual([`${MAIN}/0:text_component`, `${MAIN}/1:text_component`])
+    })
+
+    test('changes when the component type at a position changes', () => {
+      var f = new Forest([MAIN, SIDEBAR])
+      f = runPage(f, add => { add(MAIN, text('a')) })
+      const before = f.nodes[`${MAIN}/0`].reactKey
+
+      f = runPage(f, add => { add(MAIN, { name: 'latex_component', id: '', latex: 'a' }) })
+
+      // The renderer reaches every component through one TComponent, so a key
+      // that stayed the same would carry the old component's hooks over.
+      expect(f.nodes[`${MAIN}/0`].reactKey).not.toBe(before)
+    })
+
+    test('is never shared by two children while a run is in flight', () => {
+      var f = new Forest([MAIN, SIDEBAR])
+      f = runPage(f, add => {
+        add(MAIN, widget('textbox_component_A'))
+        add(MAIN, widget('textbox_component_B'))
+      })
+
+      // B moves up into A's slot. Until endRun the old B still sits in the
+      // slot below, and rendering two children under one key is the collision
+      // the whole scheme exists to avoid.
+      var mid = f.swallowCopy()
+      mid.beginRun()
+      mid = mid.swallowCopy()
+      mid.createNode(`${MAIN}/0`, MAIN, 0, widget('textbox_component_B'))
+
+      const keys = mid.nodes[MAIN].children.filter(Boolean).map(n => n.reactKey)
+      expect(new Set(keys).size).toBe(keys.length)
     })
   })
 })

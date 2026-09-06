@@ -9,6 +9,7 @@ import { prism, tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 export function TCode({ node, theme }: Props) {
   return (
     <SyntaxHighlighter
+      id={node.props.id || undefined}
       language={node.props.lang}
       style={theme === 'dark' ? tomorrow : prism}>
       {node.props.code}

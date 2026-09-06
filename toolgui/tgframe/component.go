@@ -5,14 +5,28 @@ import "fmt"
 // Component is the interface of a component.
 type Component interface {
 	GetID() string
+}
 
-	// GetKey returns the component's position in the page, assigned by the
-	// container that holds it.
+// keyed is what a component embedding [BaseComponent] gets for free. The
+// container stamps a component's position through it; a component that does
+// not embed BaseComponent is still a Component, it just carries no key of its
+// own and the notify pack holds its position instead.
+type keyed interface {
 	GetKey() string
 	setKey(key string)
 }
 
+// keyOf returns the position the container gave comp, or "" for a component
+// that keeps none.
+func keyOf(comp Component) string {
+	if k, ok := comp.(keyed); ok {
+		return k.GetKey()
+	}
+	return ""
+}
+
 var _ Component = &BaseComponent{}
+var _ keyed = &BaseComponent{}
 
 // BaseComponent stores the basic info of a component.
 type BaseComponent struct {

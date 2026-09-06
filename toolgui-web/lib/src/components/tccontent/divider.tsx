@@ -1,7 +1,9 @@
 import React from 'react'
 
-export function TDivider() {
+import { Props } from "../component_interface"
+
+export function TDivider({ node }: Props) {
   return (
-    <hr />
+    <hr id={node.props.id || undefined} />
   )
 }

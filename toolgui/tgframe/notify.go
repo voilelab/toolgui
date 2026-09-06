@@ -36,14 +36,14 @@ type notifyPackCreate struct {
 }
 
 // NewNotifyPackCreate creates a new notify pack for creating a component.
-func NewNotifyPackCreate(parentKey string, index int, comp Component) *notifyPackCreate {
+func NewNotifyPackCreate(parentKey string, index int, key string, comp Component) *notifyPackCreate {
 	return &notifyPackCreate{
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeCreate,
 		},
 		ParentKey: parentKey,
 		Index:     index,
-		Key:       comp.GetKey(),
+		Key:       key,
 		Component: comp,
 	}
 }
@@ -62,7 +62,7 @@ func NewNotifyPackUpdate(comp Component) *notifyPackUpdate {
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeUpdate,
 		},
-		Key:       comp.GetKey(),
+		Key:       keyOf(comp),
 		Component: comp,
 	}
 }
@@ -80,6 +80,6 @@ func NewNotifyPackDelete(comp Component) *notifyPackDelete {
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeDelete,
 		},
-		Key: comp.GetKey(),
+		Key: keyOf(comp),
 	}
 }

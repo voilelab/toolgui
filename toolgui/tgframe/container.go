@@ -42,12 +42,16 @@ func (c *Container) AddComponent(comp Component) Component {
 	idx := c.counter
 	c.counter++
 
-	comp.setKey(fmt.Sprintf("%s/%d", c.key, idx))
+	key := fmt.Sprintf("%s/%d", c.key, idx)
+	if k, ok := comp.(keyed); ok {
+		k.setKey(key)
+	}
+
 	if c.run != nil {
 		c.run.registerID(comp)
 	}
 
-	c.SendNotifyPack(NewNotifyPackCreate(c.key, idx, comp))
+	c.SendNotifyPack(NewNotifyPackCreate(c.key, idx, key, comp))
 	return comp
 }
 
@@ -68,7 +72,7 @@ func (c *Container) AddContainerTo(comp Component, suffix string, idx int) *Cont
 	inner := &Container{
 		BaseComponent: &BaseComponent{
 			Name: ContainerComponentName,
-			key:  fmt.Sprintf("%s/%d", comp.GetKey(), idx),
+			key:  fmt.Sprintf("%s/%d", keyOf(comp), idx),
 		},
 		SendNotifyPack: c.SendNotifyPack,
 		run:            c.run,
@@ -82,7 +86,7 @@ func (c *Container) AddContainerTo(comp Component, suffix string, idx int) *Cont
 		c.run.registerID(inner)
 	}
 
-	c.SendNotifyPack(NewNotifyPackCreate(comp.GetKey(), idx, inner))
+	c.SendNotifyPack(NewNotifyPackCreate(keyOf(comp), idx, inner.key, inner))
 	return inner
 }
 

@@ -13,11 +13,11 @@ export function TForm({ node, update, upload, theme }: Props) {
   }
 
   return (
-    <div id={node.props.id}>
+    <div id={node.props.id || undefined}>
       <div className="field">
         {
           node.children.map(child =>
-            <TComponent node={child}
+            <TComponent key={child.reactKey} node={child}
               update={handleUpdate}
               upload={upload}
               theme={theme} />
