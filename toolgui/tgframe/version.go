@@ -6,9 +6,9 @@ import "runtime/debug"
 // lists this module under in a dependent's binary.
 const modulePath = "github.com/voilelab/toolgui"
 
-// fallbackVersion is what Version reports when the build info carries no entry
-// for the module -- a binary built from inside this repo, where toolgui is the
-// main module rather than a dependency.
+// fallbackVersion is what Version reports when the build info carries no
+// version for the module -- `go run`, `-buildvcs=false`, or a build from a
+// source tree with no VCS metadata.
 //
 // The Release workflow rewrites this line on the commit it tags, so a released
 // tree always carries its own version. The value committed on dev is the last
@@ -18,8 +18,9 @@ const fallbackVersion = "v0.3.0"
 // Version return the version of toolgui this binary was built against.
 //
 // It reads the module version out of the build info, so a released tag is
-// reported without anything to maintain, and falls back to the version
-// recorded at release time when the build info has no entry for the module.
+// reported without anything to maintain. A build off a tag reports the
+// pseudo-version the toolchain derives from the commit. Only a build with no
+// version at all falls back to the version recorded at release time.
 func Version() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {

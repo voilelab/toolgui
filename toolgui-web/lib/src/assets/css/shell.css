@@ -44,6 +44,8 @@
 .toolgui-nav-version {
   font-size: 0.75rem;
   opacity: 0.6;
+  /* A build off a tag reports a pseudo-version, too long for the column. */
+  overflow-wrap: anywhere;
 }
 
 /* min-width:0 keeps wide children (tables, code blocks) from stretching this

@@ -22,8 +22,10 @@ On a narrow screen the column collapses behind a `Menu` button.
 
 The version line reads the module version out of the binary's build info, so an
 app that depends on a released toolgui shows that tag with nothing to configure.
-A binary built from inside the toolgui repo has no such entry, and falls back to
-the version recorded in the source at release time.
+A build off a tag shows the pseudo-version the toolchain derives from the
+commit, `v0.0.0-{date}-{revision}`. A build with no version at all -- `go run`,
+or `-buildvcs=false` -- falls back to the version recorded in the source at
+release time.
 
 Hide it with:
 
