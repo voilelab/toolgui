@@ -21,6 +21,7 @@ export const GUEST_SCRIPT = `
   var toolgui = {
     // Latest values from the host. Undefined until the first render message.
     id: undefined,
+    _heightObserver: undefined,
     props: undefined,
     theme: undefined,
 
@@ -55,19 +56,38 @@ export const GUEST_SCRIPT = `
         // Measure the body, not documentElement: documentElement is at least
         // as tall as the frame, so it would report the height the host just
         // set and never shrink. Body margins are outside its box.
+        var content = document.body.getBoundingClientRect().height
+
+        // An offscreen iframe is render-throttled and never lays out, so
+        // content measures zero however much of it there is. Reporting that
+        // would collapse the frame; leave it at its default until the frame
+        // becomes visible and the observer fires with a real measurement.
+        if (content === 0 && document.body.childElementCount > 0) {
+          return
+        }
+
         var style = window.getComputedStyle(document.body)
-        var height = document.body.getBoundingClientRect().height +
+        var height = content +
           parseFloat(style.marginTop) + parseFloat(style.marginBottom)
 
         post({ type: 'resize', height: Math.ceil(height) })
       }
 
       if (window.ResizeObserver) {
-        new ResizeObserver(report).observe(document.body)
+        // Held on toolgui so the observer is not left unreferenced.
+        toolgui._heightObserver = new ResizeObserver(report)
+        toolgui._heightObserver.observe(document.body)
       }
 
+      if (document.readyState === 'complete') {
+        report()
+        return
+      }
+
+      // Measuring mid-parse reports a height the layout has not produced yet,
+      // and an offscreen iframe is render-throttled, so nothing would correct
+      // it until it scrolls into view.
       window.addEventListener('load', report)
-      report()
     },
   }
 

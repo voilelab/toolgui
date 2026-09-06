@@ -21,7 +21,7 @@ export function TColumn({ node, update, upload, theme }: Props) {
     <div id={node.props.id} className="columns">
       {
         node.children.map(child =>
-          <div className={columnClassname}>
+          <div key={child.props.id} className={columnClassname}>
             <TComponent node={child}
               update={update}
               upload={upload}

@@ -51,11 +51,11 @@ var ProgressBar = tcmisc.ProgressBar
 // Use them with caution.
 
 // Iframe show a iframe.
-// script is used to allow the iframe to run javascript. (notice that this is not secure)
+// script is used to allow the iframe to run javascript.
 var Iframe = tcmisc.Iframe
 
 // IframeWithID create a iframe component with a user specific id.
-// script is used to allow the iframe to run javascript. (notice that this is not secure)
+// script is used to allow the iframe to run javascript.
 var IframeWithID = tcmisc.IframeWithID
 
 // IframeConf is the configuration for the Iframe component.

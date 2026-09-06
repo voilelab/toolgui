@@ -8,7 +8,7 @@ export function TBox({ node, update, upload, theme }: Props) {
     <div id={node.props.id} className="box">
       {
         node.children.map(child =>
-          <TComponent node={child}
+          <TComponent key={child.props.id} node={child}
             update={update}
             upload={upload}
             theme={theme} />

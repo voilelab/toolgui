@@ -40,6 +40,19 @@ function mountIframe(overrides = {}) {
   return { iframe, update, upload, sendAsGuest }
 }
 
+test('the guest never gets allow-same-origin, so it stays on an opaque origin', () => {
+  expect(mountIframe().iframe.getAttribute('sandbox')).toBe('allow-scripts')
+  expect(mountIframe({ script: false }).iframe.getAttribute('sandbox')).toBe('')
+})
+
+test('nothing is injected onto the guest window', () => {
+  const { iframe } = mountIframe()
+
+  for (const name of ['update', 'upload', 'props', 'theme']) {
+    expect(iframe.contentWindow[name]).toBeUndefined()
+  }
+})
+
 test('the guest helper is prepended to srcdoc so it needs no cross-origin access', () => {
   const { iframe } = mountIframe()
 

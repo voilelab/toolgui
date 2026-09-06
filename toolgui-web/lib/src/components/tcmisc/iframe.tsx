@@ -6,7 +6,10 @@ import { GUEST_SCRIPT } from './iframe_guest'
 const PROTOCOL_VERSION = 1
 
 export function TIframe({ node, update, upload, theme }: Props) {
-  const sandbox = node.props.script ? "allow-scripts allow-same-origin" : "allow-same-origin"
+  // No allow-same-origin: the guest gets an opaque origin, so it cannot reach
+  // the app's DOM, cookies or storage, and cannot shed its own sandbox.
+  // Everything it needs goes over postMessage instead.
+  const sandbox = node.props.script ? "allow-scripts" : ""
 
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
@@ -100,43 +103,6 @@ export function TIframe({ node, update, upload, theme }: Props) {
     }
   }, [postRender])
 
-  // Deprecated: the injected globals predate the postMessage transport and go
-  // away with allow-same-origin. Prefer window.toolgui.
-  const inject = useCallback(() => {
-    const contentWindow = iframeRef.current?.contentWindow
-    if (!contentWindow) {
-      return
-    }
-
-    contentWindow['props'] = node.props
-    contentWindow['update'] = (value: any) => {
-      update({ type: "iframe", id: node.props.id, value: value })
-    }
-    contentWindow['upload'] = upload
-    contentWindow['theme'] = theme
-  }, [node.props, update, upload, theme])
-
-  useEffect(() => {
-    // srcDoc loads asynchronously, so right after a html change contentWindow
-    // still points at the outgoing document. onLoad covers that case; this
-    // effect only refreshes the values when they change without a reload.
-    inject()
-
-    return () => {
-      // Re-read instead of capturing: the document may have reloaded since
-      // the injection, and a detached iframe has no contentWindow at all.
-      const contentWindow = iframeRef.current?.contentWindow
-      if (!contentWindow) {
-        return
-      }
-
-      contentWindow['props'] = null
-      contentWindow['update'] = null
-      contentWindow['upload'] = null
-      contentWindow['theme'] = null
-    }
-  }, [inject])
-
   // Without allow-scripts the helper cannot run, so there is no point shipping
   // it. The host builds srcDoc, so prepending needs no access to the guest.
   const html = node.props.html || ''
@@ -152,10 +118,8 @@ export function TIframe({ node, update, upload, theme }: Props) {
     <iframe
       ref={iframeRef}
       id={node.props.id}
-      name={node.props.id}
       sandbox={sandbox}
       srcDoc={srcDoc}
-      onLoad={inject}
       style={{
         width: node.props.width,
         height: height,
