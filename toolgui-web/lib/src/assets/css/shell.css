@@ -39,6 +39,13 @@
   padding-top: 0.75rem;
 }
 
+/* The version line sits under the controls, quiet enough not to compete with
+   them. margin-top:auto on the foot above already pushed both to the bottom. */
+.toolgui-nav-version {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
 /* min-width:0 keeps wide children (tables, code blocks) from stretching this
    flex item past the viewport instead of scrolling inside it. */
 .toolgui-main {

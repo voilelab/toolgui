@@ -58,4 +58,10 @@ describe('Nav', () => {
     cy.get('.toolgui-nav-foot').contains('Rerun').should('exist')
     cy.get('.toolgui-nav-foot .button').should('have.length.at.least', 2)
   })
+
+  it('The column shows the toolgui version', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-version').invoke('text')
+      .should('match', /^\s*toolgui v\d+\.\d+\.\d+\s*$/)
+  })
 })

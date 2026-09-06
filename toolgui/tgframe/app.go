@@ -57,6 +57,7 @@ type App struct {
 	pageFuncs map[string]RunFunc
 
 	hashPageNameMode bool
+	showVersion      bool
 }
 
 // AppConf store configs for frontend
@@ -65,6 +66,11 @@ type AppConf struct {
 	PageConfs map[string]*PageConfig `json:"page_confs"`
 
 	HashPageNameMode bool `json:"hash_page_name_mode"`
+
+	// Version is the toolgui version, and ShowVersion whether the side nav
+	// should show it.
+	Version     string `json:"version"`
+	ShowVersion bool   `json:"show_version"`
 
 	MainContainerID    string `json:"main_container_id"`
 	SidebarContainerID string `json:"sidebar_container_id"`
@@ -76,12 +82,20 @@ func NewApp() *App {
 		pageNames: make([]string, 0),
 		pageConfs: make(map[string]*PageConfig),
 		pageFuncs: make(map[string]RunFunc),
+
+		showVersion: true,
 	}
 }
 
 // SetHashPageMode set value of hash page name mode flag.
 func (app *App) SetHashPageNameMode(v bool) {
 	app.hashPageNameMode = v
+}
+
+// SetShowVersion set whether the side nav shows the toolgui version.
+// It is shown by default.
+func (app *App) SetShowVersion(v bool) {
+	app.showVersion = v
 }
 
 // AddPage add a handled page by name, title, and runFunc.
@@ -141,6 +155,9 @@ func (app *App) AppConf() *AppConf {
 		SidebarContainerID: realSidebarContainerID(),
 
 		HashPageNameMode: app.hashPageNameMode,
+
+		Version:     Version(),
+		ShowVersion: app.showVersion,
 	}
 }
 

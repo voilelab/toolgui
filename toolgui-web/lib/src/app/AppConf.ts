@@ -6,4 +6,7 @@ export interface AppConf {
   sidebar_container_id: string,
 
   hash_page_name_mode: boolean,
+
+  version: string,
+  show_version: boolean,
 }
