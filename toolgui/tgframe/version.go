@@ -2,8 +2,8 @@ package tgframe
 
 import "runtime/debug"
 
-// modulePath is the module path go.mod declares, and the key the build info
-// lists this module under in a dependent's binary.
+// modulePath is the module path go.mod declares. A dependent's build info
+// lists this module under it.
 const modulePath = "github.com/voilelab/toolgui"
 
 // fallbackVersion is what Version reports when the build info carries no
