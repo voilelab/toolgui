@@ -26,46 +26,68 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-// Drop the connection the server just accepted, as it does for a page it
-// cannot serve.
-async function closeLast() {
-  const conn = sockets[sockets.length - 1]
-  conn.onopen()
-  conn.onclose()
-  await vi.advanceTimersByTimeAsync(0)
+// The socket the state machine is on right now.
+function last() {
+  return sockets[sockets.length - 1]
+}
+
+// Let the awaits inside the state machine settle.
+function flush() {
+  return vi.advanceTimersByTimeAsync(0)
+}
+
+async function connect(ws) {
+  ws.init()
+  await flush()
+  expect(sockets).toHaveLength(1)
 }
 
 test('a connection the server drops at once retries with a growing delay', async () => {
   const ws = new StatefulWebSocket('main', () => { })
-  ws.init()
-  await vi.advanceTimersByTimeAsync(0)
-  expect(sockets).toHaveLength(1)
+  await connect(ws)
 
-  await closeLast()
+  last().onopen()
+  last().onclose()
   await vi.advanceTimersByTimeAsync(100)
   expect(sockets).toHaveLength(1)
   await vi.advanceTimersByTimeAsync(500)
   expect(sockets).toHaveLength(2)
 
   // The second drop waits twice as long.
-  await closeLast()
+  last().onopen()
+  last().onclose()
   await vi.advanceTimersByTimeAsync(600)
   expect(sockets).toHaveLength(2)
   await vi.advanceTimersByTimeAsync(500)
   expect(sockets).toHaveLength(3)
 })
 
-test('a connection that lived a while reconnects from the base delay', async () => {
+test('a connection that stayed open a while reconnects at once', async () => {
   const ws = new StatefulWebSocket('index', () => { })
-  ws.init()
-  await vi.advanceTimersByTimeAsync(0)
+  await connect(ws)
 
-  await closeLast()
-  await vi.advanceTimersByTimeAsync(600)
-  expect(sockets).toHaveLength(2)
-
+  last().onopen()
   await vi.advanceTimersByTimeAsync(10000)
-  await closeLast()
-  await vi.advanceTimersByTimeAsync(600)
+  last().onclose()
+  await flush()
+  expect(sockets).toHaveLength(2)
+})
+
+test('a socket that never opens counts as short-lived', async () => {
+  const ws = new StatefulWebSocket('index', () => { })
+  await connect(ws)
+
+  last().onopen()
+  await vi.advanceTimersByTimeAsync(10000)
+  last().onclose()
+  await flush()
+
+  // The reconnect hangs in its handshake and dies without ever opening. The
+  // wait is the base delay, not the reset the previous connection earned.
+  await vi.advanceTimersByTimeAsync(10000)
+  last().onclose()
+  await vi.advanceTimersByTimeAsync(100)
+  expect(sockets).toHaveLength(2)
+  await vi.advanceTimersByTimeAsync(500)
   expect(sockets).toHaveLength(3)
 })

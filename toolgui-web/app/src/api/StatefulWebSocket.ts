@@ -26,8 +26,8 @@ enum WebSocketAction {
 const RECONNECT_BASE_MS = 500
 const RECONNECT_MAX_MS = 30000
 
-// A connection that lived this long counts as healthy, so the next drop
-// retries from the base delay.
+// A connection that stayed open this long counts as healthy, so the next
+// drop retries from the base delay.
 const HEALTHY_CONN_MS = 5000
 
 function sleep(ms: number) {
@@ -56,8 +56,8 @@ export class StatefulWebSocket {
   /** Delay before the next reconnect, grown on each short-lived connection. */
   reconnectMS: number
 
-  /** Timestamp the current connection was opened at. */
-  connectAt: number
+  /** Timestamp the current connection opened at, 0 until it does. */
+  openAt: number
 
   /** Receive pack from connected websocket. */
   recv: (pack: any) => void
@@ -75,7 +75,7 @@ export class StatefulWebSocket {
     this.stateID = ''
     this.recv = recv
     this.reconnectMS = 0
-    this.connectAt = 0
+    this.openAt = 0
   }
 
   init() {
@@ -180,11 +180,14 @@ export class StatefulWebSocket {
   }
 
   tryConnect() {
-    this.connectAt = Date.now()
+    // The handshake is not uptime: a socket that never opens counts as
+    // short-lived.
+    this.openAt = 0
     this.conn = new WebSocket(getUpdateURI(this.pageName))
     var that = this
 
     this.conn.onopen = function () {
+      that.openAt = Date.now()
       that.conn.send(JSON.stringify({ state_id: that.stateID }))
       console.log('socket open ok')
       that.walk(WebSocketAction.OK)
@@ -204,7 +207,7 @@ export class StatefulWebSocket {
     this.conn.onclose = function () {
       that.conn = null
 
-      if (Date.now() - that.connectAt >= HEALTHY_CONN_MS) {
+      if (that.openAt !== 0 && Date.now() - that.openAt >= HEALTHY_CONN_MS) {
         that.reconnectMS = 0
       } else {
         that.reconnectMS = Math.min(
