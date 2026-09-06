@@ -1,0 +1,15 @@
+[book]
+authors = ["Mudream"]
+language = "en"
+multilingual = false
+src = "src"
+title = "ToolGUI"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/VoileLab/toolgui-doc"
+git-repository-icon = "fa-github"
+
+[output.html.fold]
+enable = true
