@@ -63,6 +63,12 @@ func main() {
 task run_demo
 ```
 
+`cmd/toolgui-todo` is a smaller example, a todo list built on the state:
+
+```shell
+task run_todo
+```
+
 ### Run E2E Test
 
 ```shell
