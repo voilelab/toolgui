@@ -73,3 +73,18 @@ app.AddPageByConfig(&tgframe.PageConfig{
 	Emoji: "🔄",
 }, Page2)
 ```
+
+## Page name in the URL
+
+By default the web executor serves each page at its own path, `/{name}`, and
+redirects `/` to the first page added.
+
+An app served from a static path — or opened from a file — cannot rely on the
+server routing those paths. `SetHashPageNameMode` moves the page name into the
+URL fragment, `/#/{name}`, so every page is served from `/`:
+
+```go
+app.SetHashPageNameMode(true)
+```
+
+With no fragment, the first page added is shown.
