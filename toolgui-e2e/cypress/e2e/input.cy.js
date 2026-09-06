@@ -22,17 +22,16 @@ describe('Input', () => {
 
   it('Fileupload input', () => {
     cy.visit('/input')
-    cy.get('input[type=file]').selectFile('cypress/fixtures/example.json', {
-      action: 'drag-drop',
-      force: true,
-    })
-    cy.contains('example.json').should('not.exist')
+    // accept only filters the file picker, so it is the whole of the limit.
+    cy.get('input[type=file]').should('have.attr', 'accept', '.jpg,.png')
 
     cy.get('input[type=file]').selectFile('cypress/fixtures/example.png', {
       action: 'drag-drop',
       force: true,
     })
-    cy.contains('example.png').should('exist')
+    cy.contains('Fileupload filename: example.png').should('exist')
+    // The bytes reach Go, not just the name.
+    cy.contains(/Fileupload bytes length: [1-9]\d*/).should('exist')
   })
 
   it('Checkbox', () => {
@@ -108,8 +107,13 @@ describe('Input', () => {
     cy.get('input[id=number_component_Number]').blur()
     cy.contains('Value: 12').should('exist')
 
+    // 123 is over the max of 20, so the input is invalid and never sent.
     cy.get('input[id=number_component_Number]').type('{backspace}23')
     cy.get('input[id=number_component_Number]').blur()
+    cy.get('input[id=number_component_Number]').should(($input) => {
+      expect($input.val()).to.eq('123')
+      expect($input[0].validity.rangeOverflow).to.eq(true)
+    })
     cy.contains('Value: 123').should('not.exist')
   })
 
