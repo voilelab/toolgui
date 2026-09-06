@@ -142,3 +142,60 @@ func TestAUserSuppliedIDMakesDuplicatedWidgetsLegal(t *testing.T) {
 		}
 	}
 }
+
+func TestComponentsWithClientStateClaimAnID(t *testing.T) {
+	_, ids, err := keysOf(t, func(p *tgframe.Params) error {
+		tgcomp.Expand(p.Main, "Details", false)
+		tgcomp.Tab2(p.Main, "one", "two")
+		tgcomp.JSON(p.Main, map[string]int{"a": 1})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	// The client keeps which tab is open, whether an expander is open and
+	// which JSON nodes are collapsed, so those components need a name of
+	// their own rather than only a position.
+	for i, id := range ids {
+		if id == "" {
+			t.Errorf("component %d claims no id, so its client state would follow its position", i)
+		}
+	}
+}
+
+func TestDuplicatedExpandIsAnError(t *testing.T) {
+	_, _, err := keysOf(t, func(p *tgframe.Params) error {
+		tgcomp.Expand(p.Main, "Details", false)
+		tgcomp.Expand(p.Main, "Details", false)
+		return nil
+	})
+
+	if !errors.Is(err, tgframe.ErrDuplicatedID) {
+		t.Fatalf("err = %v, want ErrDuplicatedID", err)
+	}
+}
+
+func TestExpandWithIDMakesDuplicatesLegal(t *testing.T) {
+	_, _, err := keysOf(t, func(p *tgframe.Params) error {
+		tgcomp.Expand(p.Main, "Details", false)
+		tgcomp.ExpandWithID(p.Main, "Details", false, "second_details")
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+}
+
+func TestTakingARootContainersIDIsAnError(t *testing.T) {
+	_, _, err := keysOf(t, func(p *tgframe.Params) error {
+		// The roots are never sent, so nothing else would collide with them
+		// unless the run claims their ids up front.
+		p.Main.AddContainer(tgframe.MainContainerID)
+		return nil
+	})
+
+	if !errors.Is(err, tgframe.ErrDuplicatedID) {
+		t.Fatalf("err = %v, want ErrDuplicatedID", err)
+	}
+}

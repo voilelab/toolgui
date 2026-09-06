@@ -192,6 +192,12 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 	newSidebar := NewContainer(SidebarContainerID, notifyFunc)
 	newSidebar.run = run
 
+	// The roots are never sent, so nothing else claims their ids. Claim them
+	// here, or a container the page adds under one of their names would take
+	// the root's id without colliding with anything.
+	run.registerID(newMain)
+	run.registerID(newSidebar)
+
 	err := pageFunc(&Params{
 		State:   state,
 		Main:    newMain,

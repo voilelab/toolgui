@@ -1,6 +1,9 @@
 package tclayout
 
 import (
+	"strings"
+
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -16,6 +19,9 @@ func newTabComponent(tabs []string) *tabComponent {
 	return &tabComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: tabComponentName,
+			// The client keeps which tab is open, so the component needs a
+			// name of its own to keep that across runs.
+			ID: tcutil.NormalID(tabComponentName, strings.Join(tabs, ",")),
 		},
 		Tabs: tabs,
 	}
@@ -23,7 +29,19 @@ func newTabComponent(tabs []string) *tabComponent {
 
 // Tab creates a new tab component
 func Tab(c *tgframe.Container, tabs []string) []*tgframe.Container {
-	comp := c.AddComponent(newTabComponent(tabs))
+	return tab(c, newTabComponent(tabs))
+}
+
+// TabWithID creates a tab component with a user specific id.
+func TabWithID(c *tgframe.Container, tabs []string, id string) []*tgframe.Container {
+	tabComp := newTabComponent(tabs)
+	tabComp.SetID(id)
+	return tab(c, tabComp)
+}
+
+func tab(c *tgframe.Container, tabComp *tabComponent) []*tgframe.Container {
+	tabs := tabComp.Tabs
+	comp := c.AddComponent(tabComp)
 
 	ret := make([]*tgframe.Container, len(tabs))
 	for i, tab := range tabs {

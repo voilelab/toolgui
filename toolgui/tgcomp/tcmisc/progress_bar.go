@@ -61,3 +61,11 @@ func ProgressBar(c *tgframe.Container, value int, label string) *progressBarComp
 	c.AddComponent(comp)
 	return comp
 }
+
+// ProgressBarWithID creates a progress bar with a user specific id.
+func ProgressBarWithID(c *tgframe.Container, value int, label string, id string) *progressBarComponent {
+	comp := newProgressBarComponent(value, label, c.SendNotifyPack)
+	comp.SetID(id)
+	c.AddComponent(comp)
+	return comp
+}
