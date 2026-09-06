@@ -99,6 +99,13 @@ the smallest library that still covers pie and scatter. `lib` already ships
 `katex`, `react-markdown` and `react-syntax-highlighter`, so it is not the
 heaviest thing in the bundle.
 
+Measured after phase 1 landed, rather than estimated: registering the line and
+bar controllers, both scales, the filler, the legend and the tooltip takes
+`app/build` from 1,193 KB to 1,375 KB minified, 400 KB to 463 KB gzipped. That
+is **+182 KB / +63 KB gzipped** — more than the 25-35 KB gzipped a
+single-chart-type build costs, because three kinds and their plugins are
+registered at once.
+
 ### The translation belongs in the frontend, not in Go
 
 The tempting shortcut is to build a Chart.js config object in Go and pass it

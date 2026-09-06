@@ -40,6 +40,7 @@
 * [Data Components](components/data/index.md)
     * [JSON](components/data/json.md)
     * [Table](components/data/table.md)
+    * [Chart](components/data/chart.md)
 
 * [Input Components](components/input/index.md)
     * [Textarea](components/input/textarea.md)

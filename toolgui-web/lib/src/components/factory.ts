@@ -26,6 +26,7 @@ import { TIframe } from "./tcmisc/iframe"
 
 import { TJson } from "./tcdata/json"
 import { TTable } from "./tcdata/table"
+import { TChart } from "./tcdata/chart"
 
 import { TProgressar } from "./tcmisc/progress_bar"
 import { TMessage } from "./tcmisc/message"
@@ -67,6 +68,7 @@ const creatorMap: { [id: string]: ((props: Props) => JSX.Element) } = {
 
   json_component: TJson,
   table_component: TTable,
+  chart_component: TChart,
 
   progress_bar_component: TProgressar,
   message_component: TMessage,

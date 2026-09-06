@@ -166,6 +166,45 @@ func DataPage(p *tgframe.Params) error {
 			[][]string{{"1", "2"}, {"3", "4"}})
 	})
 
+	tgcomp.Divider(p.Main)
+
+	lineCompCol, lineCodeCol := tgcomp.EqColumn2(p.Main, "show_line_chart")
+	tgcomp.Echo(lineCodeCol, code, func() {
+		tgcomp.LineChart(lineCompCol, "demo_line",
+			[]string{"Mon", "Tue", "Wed", "Thu", "Fri"},
+			[]tgcomp.ChartSeries{
+				{Name: "visits", Values: []float64{12, 19, 9, 24, 17}},
+				{Name: "signups", Values: []float64{3, 7, 4, 9, 6}},
+			})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	barCompCol, barCodeCol := tgcomp.EqColumn2(p.Main, "show_bar_chart")
+	tgcomp.Echo(barCodeCol, code, func() {
+		tgcomp.BarChart(barCompCol, "demo_bar",
+			[]string{"Go", "Rust", "Python"},
+			[]tgcomp.ChartSeries{
+				{Name: "stars", Values: []float64{31, 24, 47}},
+			})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	areaCompCol, areaCodeCol := tgcomp.EqColumn2(p.Main, "show_area_chart")
+	tgcomp.Echo(areaCodeCol, code, func() {
+		tgcomp.ChartWithConf(areaCompCol, "demo_area", &tgcomp.ChartConf{
+			Kind:   tgcomp.ChartKindArea,
+			Labels: []string{"Q1", "Q2", "Q3", "Q4"},
+			Series: []tgcomp.ChartSeries{
+				{Name: "cloud", Values: []float64{4, 6, 5, 9}},
+				{Name: "desktop", Values: []float64{2, 3, 4, 4}},
+			},
+			Stacked: true,
+			YLabel:  "revenue",
+		})
+	})
+
 	return nil
 }
 
