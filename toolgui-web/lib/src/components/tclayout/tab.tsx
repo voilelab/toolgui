@@ -18,7 +18,7 @@ export function TTab({ node, update, upload, theme }: Props) {
         <ul>
           {
             node.props.tabs.map((tab: string) => (
-              <li className={`${activeTab === tab ? 'is-active' : ''} is-boxed`}>
+              <li key={tab} className={`${activeTab === tab ? 'is-active' : ''} is-boxed`}>
                 <a onClick={() => setActiveTab(tab)}>{tab}</a>
               </li>
             ))
@@ -26,7 +26,8 @@ export function TTab({ node, update, upload, theme }: Props) {
         </ul>
       </div>
       <div>
-        <TComponent node={node.children[activeIndex]}
+        <TComponent key={node.children[activeIndex].reactKey}
+          node={node.children[activeIndex]}
           update={update}
           upload={upload}
           theme={theme} />

@@ -1,7 +1,6 @@
 package tccontent
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -18,7 +17,6 @@ func newCodeComponent(code string) *codeComponent {
 	return &codeComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: codeComponentName,
-			ID:   tcutil.HashedID(codeComponentName, []byte(code)),
 		},
 		Code: code,
 	}

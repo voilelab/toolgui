@@ -8,7 +8,6 @@ import (
 	"image/jpeg"
 	"image/png"
 
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -25,7 +24,6 @@ func newImageComponent(src string) *imageComponent {
 	return &imageComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: imageComponentName,
-			ID:   tcutil.HashedID(imageComponentName, []byte(src)),
 		},
 		Src: src,
 	}

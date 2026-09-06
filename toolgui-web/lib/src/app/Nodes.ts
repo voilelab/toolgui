@@ -6,18 +6,30 @@ export class Node {
   children: Node[]
   // The run that last sent this node. Anything older is stale at endRun.
   runID: number
-  parentID: string
+  // Where the node sits, "<parent key>/<index>". Identity across runs.
+  key: string
+  parentKey: string
 
-  constructor(props: any) {
+  constructor(key: string, props: any) {
     this.props = props
     this.children = []
     this.runID = NO_RUN_ID
-    this.parentID = ''
+    this.key = key
+    this.parentKey = ''
+  }
+
+  // reactKey is what the renderer keys this node by. A component that names
+  // itself keeps that name, so its React state follows it when a conditional
+  // above it moves it. The rest are keyed by position and type: the renderer
+  // reaches every component through one TComponent, so a key that ignored the
+  // type would let React carry one component's hooks into another's.
+  get reactKey(): string {
+    return this.props.id || `${this.key}:${this.props.name}`
   }
 }
 
 export class Forest {
-  nodes: { [id: string]: Node }
+  nodes: { [key: string]: Node }
   rootNodeIDs: string[]
   runID: number
 
@@ -27,7 +39,7 @@ export class Forest {
     this.runID = NO_RUN_ID
 
     for (const id of rootNodeIDs) {
-      this.nodes[id] = new Node({
+      this.nodes[id] = new Node(id, {
         name: 'container_component',
         id: id,
       })
@@ -56,72 +68,62 @@ export class Forest {
     }
   }
 
-  createNode(props: any, parentID: string) {
-    const nodeID: string = props.id
-    const oldNode = this.nodes[nodeID]
-
-    if (oldNode && oldNode.runID === this.runID) {
-      console.error('Duplicated component id:', nodeID)
+  createNode(key: string, parentKey: string, index: number, props: any) {
+    const parentNode = this.nodes[parentKey]
+    if (!parentNode) {
+      console.error('Component sent into a container that doesn\'t exist:', parentKey)
       return
     }
 
-    // Detach from the parent of the previous run. The parent can be gone when
-    // a delete pack removed it without its children.
-    if (oldNode) {
-      const prevParent = this.nodes[oldNode.parentID]
-      if (prevParent) {
-        const idx = prevParent.children.indexOf(oldNode)
-        if (idx != -1) {
-          prevParent.children.splice(idx, 1)
-        }
+    const oldNode = this.nodes[key]
+
+    // A different component type at this position is a different node, so it
+    // does not inherit the old one's children.
+    const node = oldNode && oldNode.props.name === props.name
+      ? oldNode
+      : new Node(key, props)
+
+    node.props = props
+    node.runID = this.runID
+    node.parentKey = parentKey
+    this.nodes[key] = node
+
+    // A node this run has not sent renders under the same key when a named
+    // component moves between positions. Two children under one key is what
+    // this is all meant to avoid, and endRun is too late, so retire it now.
+    for (const [staleKey, stale] of Object.entries(this.nodes)) {
+      if (staleKey !== key && stale.runID !== this.runID
+        && stale.reactKey === node.reactKey) {
+        this.removeNode(staleKey)
       }
     }
 
-    // create or modify node in node pool
-    if (oldNode) {
-      oldNode.props = props
-    } else {
-      this.nodes[nodeID] = new Node(props)
-    }
-
-    this.nodes[nodeID].runID = this.runID
-    this.nodes[nodeID].parentID = parentID
-
-    // Insert before the first sibling this run has not sent yet, so the
-    // children keep the order the page function wrote them in.
-    const parentNode = this.nodes[parentID]
-    var idx = 0
-    for (var i = 0; i < parentNode.children.length; i++) {
-      const prevNode = parentNode.children[i]
-      if (prevNode.runID !== this.runID) {
-        break
-      }
-      idx = i + 1
-    }
-    parentNode.children.splice(idx, 0, this.nodes[nodeID])
+    // The index is the component's position among its container's children,
+    // counted by the container as the page function writes it.
+    parentNode.children[index] = node
   }
 
-  updateNode(props: any) {
-    const compID: string = props.id
-
-    if (!(compID in this.nodes)) {
-      console.error('Try to update a node that doesn\'t exist:', compID)
+  updateNode(key: string, props: any) {
+    if (!(key in this.nodes)) {
+      console.error('Try to update a node that doesn\'t exist:', key)
       return
     }
 
-    this.nodes[compID].props = props
+    this.nodes[key].props = props
   }
 
-  removeNode(nodeID: string) {
-    if (!(nodeID in this.nodes)) {
-      console.error('Try to remove a node that doesn\'t exist:', nodeID)
+  removeNode(key: string) {
+    const node = this.nodes[key]
+    if (!node) {
+      console.error('Try to remove a node that doesn\'t exist:', key)
       return
     }
 
-    const parentID = this.nodes[nodeID].parentID
-    const idx = this.nodes[parentID].children.findIndex(n => n.props.id === nodeID)
-    this.nodes[parentID].children.splice(idx, 1)
-    delete this.nodes[nodeID]
+    const parentNode = this.nodes[node.parentKey]
+    if (parentNode) {
+      parentNode.children = parentNode.children.filter(n => n !== node)
+    }
+    delete this.nodes[key]
   }
 
   // endRun closes a run and drops every node it did not send. A run that
@@ -132,14 +134,15 @@ export class Forest {
       return
     }
 
-    for (const [id, node] of Object.entries(this.nodes)) {
+    for (const [key, node] of Object.entries(this.nodes)) {
       if (node.runID !== this.runID) {
-        delete this.nodes[id]
+        delete this.nodes[key]
       }
     }
 
+    // Also closes the gaps a shorter run left in the children arrays.
     for (const node of Object.values(this.nodes)) {
-      node.children = node.children.filter(n => n.runID === this.runID)
+      node.children = node.children.filter(n => n && n.runID === this.runID)
     }
   }
 }

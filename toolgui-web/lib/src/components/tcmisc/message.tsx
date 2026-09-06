@@ -10,7 +10,7 @@ export function TMessage({ node }: Props) {
   }
 
   return (
-    <article className={className}>
+    <article id={node.props.id || undefined} className={className}>
       {node.props.title ?
         <div className="message-header">
           <p>{node.props.title}</p>

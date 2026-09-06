@@ -9,7 +9,7 @@ import { Props } from '../component_interface'
 
 export function TMarkdown({ node, theme }: Props) {
   return (
-    <div className="content">
+    <div id={node.props.id || undefined} className="content">
       <Markdown children={node.props.text}
         components={{
           a(props) {

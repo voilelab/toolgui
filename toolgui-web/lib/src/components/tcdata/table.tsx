@@ -7,7 +7,7 @@ export function TTable({ node }: Props) {
   const table: string[][] = node.props.table
 
   return (
-    <div className="table-container">
+    <div id={node.props.id || undefined} className="table-container">
       <table className="table is-hoverable">
         <thead> <tr> {head.map(s => <th>{s}</th>)} </tr> </thead>
         <tbody>

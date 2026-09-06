@@ -38,6 +38,9 @@ var EqColumn5 = tclayout.EqColumn5
 // Tab create a tab component.
 var Tab = tclayout.Tab
 
+// TabWithID create a tab component with a user specific id.
+var TabWithID = tclayout.TabWithID
+
 // Tab2 create 2 tabs.
 var Tab2 = tclayout.Tab2
 
@@ -52,3 +55,6 @@ var Tab5 = tclayout.Tab5
 
 // Expand create a expandable component.
 var Expand = tclayout.Expand
+
+// ExpandWithID create a expandable component with a user specific id.
+var ExpandWithID = tclayout.ExpandWithID

@@ -19,7 +19,6 @@ func newMessageComponent(body string) *messageComponent {
 	return &messageComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: messageComponentName,
-			ID:   tcutil.NormalID(messageComponentName, body),
 		},
 		Body: body,
 	}

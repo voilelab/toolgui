@@ -1,7 +1,6 @@
 package tccontent
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -16,7 +15,6 @@ func newDividerComponent() *dividerComponent {
 	return &dividerComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: dividerComponentName,
-			ID:   tcutil.RandID(dividerComponentName),
 		},
 	}
 }

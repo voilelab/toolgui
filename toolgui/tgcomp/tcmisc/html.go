@@ -1,7 +1,6 @@
 package tcmisc
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -17,7 +16,6 @@ func newHtmlComponent(html string) *htmlComponent {
 	return &htmlComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: htmlComponentName,
-			ID:   tcutil.HashedID(htmlComponentName, []byte(html)),
 		},
 		Html: html,
 	}

@@ -18,7 +18,7 @@ var ErrPanic = errors.New("panic")
 const MainContainerID string = "container_main"
 
 func realMainContainerID() string {
-	return NewContainer(MainContainerID, nil).ID
+	return containerID(MainContainerID)
 }
 
 // SidebarContainerID is the id of sidebar container.
@@ -26,7 +26,7 @@ func realMainContainerID() string {
 const SidebarContainerID string = "container_sidebar"
 
 func realSidebarContainerID() string {
-	return NewContainer(SidebarContainerID, nil).ID
+	return containerID(SidebarContainerID)
 }
 
 type Params struct {
@@ -185,8 +185,18 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
 	}
 
+	run := newRunState()
+
 	newMain := NewContainer(MainContainerID, notifyFunc)
+	newMain.run = run
 	newSidebar := NewContainer(SidebarContainerID, notifyFunc)
+	newSidebar.run = run
+
+	// The roots are never sent, so nothing else claims their ids. Claim them
+	// here, or a container the page adds under one of their names would take
+	// the root's id without colliding with anything.
+	run.registerID(newMain)
+	run.registerID(newSidebar)
 
 	err := pageFunc(&Params{
 		State:   state,
@@ -197,7 +207,7 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 		return tgutil.Errorf("%w", err)
 	}
 
-	return nil
+	return run.err
 }
 
 // HasPage return existence of page which named `name`.

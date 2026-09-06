@@ -47,6 +47,9 @@ var MessageWithConf = tcmisc.MessageWithConf
 // ProgressBar shows a progress bar to the user.
 var ProgressBar = tcmisc.ProgressBar
 
+// ProgressBarWithID creates a progress bar with a user specific id.
+var ProgressBarWithID = tcmisc.ProgressBarWithID
+
 // Iframe and IframeWithID is experimental component, their feature is not stable.
 // Use them with caution.
 

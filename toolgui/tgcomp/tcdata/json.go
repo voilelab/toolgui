@@ -19,7 +19,9 @@ func newJSONComponent(s string) *jsonComponent {
 	return &jsonComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: jsonComponentName,
-			ID:   tcutil.HashedID(jsonComponentName, []byte(s)),
+			// The viewer keeps which nodes are collapsed, so the component
+			// needs a name of its own to keep that across runs.
+			ID: tcutil.HashedID(jsonComponentName, []byte(s)),
 		},
 		Value: s,
 	}
@@ -29,6 +31,17 @@ func newJSONComponent(s string) *jsonComponent {
 // If v is a string, it will be treated as a JSON string.
 // If v is not a string, it will be serialized to a JSON string.
 func JSON(c *tgframe.Container, v any) {
+	c.AddComponent(newJSONComponent(serializeJSON(v)))
+}
+
+// JSONWithID create a JSON viewer with a user specific id.
+func JSONWithID(c *tgframe.Container, v any, id string) {
+	comp := newJSONComponent(serializeJSON(v))
+	comp.SetID(id)
+	c.AddComponent(comp)
+}
+
+func serializeJSON(v any) string {
 	var serialized string
 
 	if res, ok := v.(string); ok {
@@ -49,6 +62,5 @@ func JSON(c *tgframe.Container, v any) {
 		serialized = string(bs)
 	}
 
-	comp := newJSONComponent(serialized)
-	c.AddComponent(comp)
+	return serialized
 }

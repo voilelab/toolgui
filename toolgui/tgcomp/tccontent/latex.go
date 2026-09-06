@@ -1,7 +1,6 @@
 package tccontent
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -17,7 +16,6 @@ func newLatexComponent(text string) *latexComponent {
 	return &latexComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: latexComponentName,
-			ID:   tcutil.NormalID(latexComponentName, text),
 		},
 		Latex: text,
 	}

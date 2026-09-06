@@ -118,7 +118,7 @@ export class App extends Component<AppProps, AppState> {
       case NOTIFY_TYPE_CREATE: {
         this.setState((prevState) => {
           const newForest = prevState.forest.swallowCopy()
-          newForest.createNode(pack.component, pack.container_id)
+          newForest.createNode(pack.key, pack.parent_key, pack.index, pack.component)
 
           return {
             forest: newForest,
@@ -129,7 +129,7 @@ export class App extends Component<AppProps, AppState> {
       case NOTIFY_TYPE_UPDATE: {
         this.setState((prevState) => {
           const newForest = prevState.forest.swallowCopy()
-          newForest.updateNode(pack.component)
+          newForest.updateNode(pack.key, pack.component)
           return {
             forest: newForest,
           }
@@ -139,7 +139,7 @@ export class App extends Component<AppProps, AppState> {
       case NOTIFY_TYPE_DELETE: {
         this.setState((prevState) => {
           const newForest = prevState.forest.swallowCopy()
-          newForest.removeNode(pack.component_id)
+          newForest.removeNode(pack.key)
 
           return {
             forest: newForest,

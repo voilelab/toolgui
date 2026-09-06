@@ -16,12 +16,12 @@ type tabComponent struct {
 }
 
 func newTabComponent(tabs []string) *tabComponent {
-	tabJoinedName := strings.Join(tabs, ",")
-
 	return &tabComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: tabComponentName,
-			ID:   tcutil.NormalID(tabComponentName, tabJoinedName),
+			// The client keeps which tab is open, so the component needs a
+			// name of its own to keep that across runs.
+			ID: tcutil.NormalID(tabComponentName, strings.Join(tabs, ",")),
 		},
 		Tabs: tabs,
 	}
@@ -29,13 +29,23 @@ func newTabComponent(tabs []string) *tabComponent {
 
 // Tab creates a new tab component
 func Tab(c *tgframe.Container, tabs []string) []*tgframe.Container {
-	comp := newTabComponent(tabs)
-	c.AddComponent(comp)
+	return tab(c, newTabComponent(tabs))
+}
+
+// TabWithID creates a tab component with a user specific id.
+func TabWithID(c *tgframe.Container, tabs []string, id string) []*tgframe.Container {
+	tabComp := newTabComponent(tabs)
+	tabComp.SetID(id)
+	return tab(c, tabComp)
+}
+
+func tab(c *tgframe.Container, tabComp *tabComponent) []*tgframe.Container {
+	tabs := tabComp.Tabs
+	comp := c.AddComponent(tabComp)
 
 	ret := make([]*tgframe.Container, len(tabs))
 	for i, tab := range tabs {
-		ret[i] = tgframe.NewContainer(comp.ID+"_"+tab, c.SendNotifyPack)
-		c.SendNotifyPack(tgframe.NewNotifyPackCreate(comp.ID, ret[i]))
+		ret[i] = c.AddContainerTo(comp, tab, i)
 	}
 
 	return ret

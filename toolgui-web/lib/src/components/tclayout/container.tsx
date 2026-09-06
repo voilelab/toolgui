@@ -5,10 +5,10 @@ import { TComponent } from "../factory"
 
 export function TContainer({ node, update, upload, theme }: Props) {
   return (
-    <div id={node.props.id}>
+    <div id={node.props.id || undefined}>
       {
         node.children.map(child =>
-          <TComponent key={child.props.id} node={child}
+          <TComponent key={child.reactKey} node={child}
             update={update}
             upload={upload}
             theme={theme} />

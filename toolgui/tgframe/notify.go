@@ -26,18 +26,25 @@ var _ NotifyPack = &notifyPackCreate{}
 
 type notifyPackCreate struct {
 	*notifyPackBase
-	ContainerID string    `json:"container_id"`
-	Component   Component `json:"component"`
+
+	// ParentKey and Index place the component in the node tree; Key is the
+	// two joined, which is the component's own key.
+	ParentKey string    `json:"parent_key"`
+	Index     int       `json:"index"`
+	Key       string    `json:"key"`
+	Component Component `json:"component"`
 }
 
 // NewNotifyPackCreate creates a new notify pack for creating a component.
-func NewNotifyPackCreate(containerID string, comp Component) *notifyPackCreate {
+func NewNotifyPackCreate(parentKey string, index int, key string, comp Component) *notifyPackCreate {
 	return &notifyPackCreate{
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeCreate,
 		},
-		ContainerID: containerID,
-		Component:   comp,
+		ParentKey: parentKey,
+		Index:     index,
+		Key:       key,
+		Component: comp,
 	}
 }
 
@@ -45,6 +52,7 @@ var _ NotifyPack = &notifyPackUpdate{}
 
 type notifyPackUpdate struct {
 	*notifyPackBase
+	Key       string    `json:"key"`
 	Component Component `json:"component"`
 }
 
@@ -54,6 +62,7 @@ func NewNotifyPackUpdate(comp Component) *notifyPackUpdate {
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeUpdate,
 		},
+		Key:       keyOf(comp),
 		Component: comp,
 	}
 }
@@ -62,15 +71,15 @@ var _ NotifyPack = &notifyPackDelete{}
 
 type notifyPackDelete struct {
 	*notifyPackBase
-	ComponentID string `json:"component_id"`
+	Key string `json:"key"`
 }
 
 // NewNotifyPackDelete creates a new notify pack for deleting a component.
-func NewNotifyPackDelete(compID string) *notifyPackDelete {
+func NewNotifyPackDelete(comp Component) *notifyPackDelete {
 	return &notifyPackDelete{
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeDelete,
 		},
-		ComponentID: compID,
+		Key: keyOf(comp),
 	}
 }
