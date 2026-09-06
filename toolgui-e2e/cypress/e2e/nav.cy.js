@@ -65,7 +65,7 @@ describe('Nav', () => {
     cy.visit('/index')
     cy.get('html').should('have.class', 'theme-light')
     cy.window().then((win) => {
-      expect(win.localStorage.getItem('darkMode')).to.be.null
+      expect(win.localStorage.getItem('theme_mode')).to.be.null
     })
   })
 

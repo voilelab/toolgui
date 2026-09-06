@@ -64,7 +64,7 @@ interface AppState {
   pageFound: boolean
   pageName: string
   error: Error | null
-  darkMode: ThemeMode
+  themeMode: ThemeMode
 }
 
 export class App extends Component<AppProps, AppState> {
@@ -96,18 +96,18 @@ export class App extends Component<AppProps, AppState> {
       pageFound: pageFound,
       pageName: pageName,
       error: null,
-      darkMode: initialThemeMode(),
+      themeMode: initialThemeMode(),
     }
   }
 
   componentDidMount() {
-    applyThemeMode(this.state.darkMode)
+    applyThemeMode(this.state.themeMode)
   }
 
-  changeThemeMode(darkMode: ThemeMode) {
-    applyThemeMode(darkMode)
-    storeThemeMode(darkMode)
-    this.setState({ darkMode: darkMode })
+  changeThemeMode(themeMode: ThemeMode) {
+    applyThemeMode(themeMode)
+    storeThemeMode(themeMode)
+    this.setState({ themeMode: themeMode })
   }
 
   startUpdate() {
@@ -199,8 +199,8 @@ export class App extends Component<AppProps, AppState> {
           rerun={() => { this.props.update({}) }}
           update={(e) => { this.props.update(e) }}
           upload={async (f) => await this.props.upload(f)}
-          darkMode={this.state.darkMode}
-          onChange={(darkMode) => { this.changeThemeMode(darkMode) }} />
+          themeMode={this.state.themeMode}
+          onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
 
         <main className="toolgui-main">
           <AppBody
@@ -209,7 +209,7 @@ export class App extends Component<AppProps, AppState> {
             forest={this.state.forest}
             update={(e) => { this.props.update(e) }}
             upload={async (f) => await this.props.upload(f)}
-            darkMode={this.state.darkMode} />
+            themeMode={this.state.themeMode} />
 
           <AppError error={this.state.error} />
         </main>

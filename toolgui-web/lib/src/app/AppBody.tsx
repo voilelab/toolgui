@@ -13,7 +13,7 @@ interface AppBodyProps {
   forest: Forest
   update: (e: UpdateEvent) => void
   upload: UploadFunc
-  darkMode: ThemeMode
+  themeMode: ThemeMode
 }
 
 // AppBody renders the page's main container. The page's sidebar container
@@ -34,7 +34,7 @@ export class AppBody extends Component<AppBodyProps> {
           <TComponent node={this.rootNode()}
             update={(e) => { this.props.update(e) }}
             upload={async (f) => await this.props.upload(f)}
-            theme={this.props.darkMode} />
+            theme={this.props.themeMode} />
           : <MessagePageNotFound />}
       </div>
     )

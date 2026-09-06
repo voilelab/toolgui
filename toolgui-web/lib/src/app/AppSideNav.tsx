@@ -20,8 +20,8 @@ interface AppSideNavProps {
   rerun: () => void
   update: (e: UpdateEvent) => void
   upload: UploadFunc
-  darkMode: ThemeMode
-  onChange: (darkMode: ThemeMode) => void
+  themeMode: ThemeMode
+  onChange: (themeMode: ThemeMode) => void
 }
 
 interface AppSideNavState {
@@ -110,7 +110,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <TComponent node={sidebarNode}
               update={(e) => { this.props.update(e) }}
               upload={async (f) => await this.props.upload(f)}
-              theme={this.props.darkMode} />
+              theme={this.props.themeMode} />
           </div> : ''}
 
         <div className="toolgui-nav-foot buttons">
@@ -122,8 +122,8 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <button className="button" onClick={() => { this.props.rerun() }}>
               Rerun
             </button> : ''}
-          <ThemeModeButton darkMode={this.props.darkMode}
-            onChange={(darkMode) => { this.props.onChange(darkMode) }} />
+          <ThemeModeButton themeMode={this.props.themeMode}
+            onChange={(themeMode) => { this.props.onChange(themeMode) }} />
         </div>
 
         {this.props.appConf.show_version ?

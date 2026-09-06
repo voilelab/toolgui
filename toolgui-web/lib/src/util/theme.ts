@@ -5,7 +5,7 @@ import { getStoredValue, setStoredValue } from './storage'
 // somewhere else than storage.
 export type ThemeMode = 'light' | 'dark'
 
-const STORAGE_KEY = 'darkMode'
+const STORAGE_KEY = 'theme_mode'
 
 // preferredThemeMode asks the browser what the visitor wants. matchMedia is
 // guarded because a webview old enough to lack it should still get a theme.

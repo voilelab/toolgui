@@ -3,15 +3,15 @@ import React, { Component } from 'react'
 import { ThemeMode } from '../util/theme'
 
 interface ThemeModeButtonProps {
-  darkMode: ThemeMode
-  onChange: (darkMode: ThemeMode) => void
+  themeMode: ThemeMode
+  onChange: (themeMode: ThemeMode) => void
 }
 
 // ThemeModeButton only reports the flip; the app owns the theme, so there is
 // one place that decides what it started as.
 export class ThemeModeButton extends Component<ThemeModeButtonProps> {
   render() {
-    const dark = this.props.darkMode === 'dark'
+    const dark = this.props.themeMode === 'dark'
 
     return (
       <button className="button"
