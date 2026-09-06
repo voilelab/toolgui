@@ -38,3 +38,29 @@ Server-Client need to handle a more complex part: multiple state for multiple us
 Hence we need a `state_id` for each state.
 
 The server part is responsible for the state pool.
+
+## Session
+
+The piece that turns an event into a page run is `tgframe.Session`.
+It holds a page name, a `State`, and one function to send packs to the client:
+
+```go
+func NewSession(app *App, pageName string, state *State, send SendPackFunc) (*Session, error)
+```
+
+That is all it needs, so it does not know what the transport is.
+An executor only feeds it events:
+
+```go
+session.HandleRawEvent(bs)
+```
+
+A `Session` is safe for concurrent use and serializes its runs: a new event
+interrupts the page func still running from the previous one, so the client
+never receives two runs interleaved. The interrupted run panics with
+`ErrUpdateInterrupt`, which the session recovers.
+
+This is why the web executor and the
+[desktop executor](../hello-world/desktop.md) share the whole app logic. They
+differ only in how packs and events travel: a websocket and a `state_id` pool on
+the web, bound methods on a single window on the desktop.

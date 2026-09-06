@@ -17,7 +17,7 @@
 
 * [State Storage](architecture/state-storage.md)
     * [App Cache](architecture/app-cache.md)
-    * [Session Cache]()
+    * [Session Cache](architecture/session-cache.md)
     * [State Cache](architecture/state-cache.md)
 
 * [Components](architecture/components.md)
