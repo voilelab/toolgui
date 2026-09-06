@@ -8,8 +8,9 @@ title = "ToolGUI"
 [output.html]
 default-theme = "light"
 preferred-dark-theme = "navy"
-git-repository-url = "https://github.com/VoileLab/toolgui-doc"
+git-repository-url = "https://github.com/voilelab/toolgui"
 git-repository-icon = "fa-github"
+edit-url-template = "https://github.com/voilelab/toolgui/edit/dev/docs/{path}"
 
 [output.html.fold]
 enable = true

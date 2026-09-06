@@ -12,6 +12,9 @@ experience to Streamlit for Python users.
 > The API for this package is still under development,
 > and may be subject to changes in the future.
 
+Documentation: <https://voilelab.github.io/toolgui/>, built from
+[`docs/`](docs/). It tracks the latest release; `docs/` on `dev` is ahead of it.
+
 ## Hello world
 
 ```go
@@ -70,7 +73,7 @@ task run_demo
 cd toolgui-e2e
 cypress e2e:chrome
 cypress e2e:firefox
-```
+```
 
 ### Desktop app
 
