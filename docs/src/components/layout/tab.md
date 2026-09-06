@@ -24,3 +24,9 @@ for _, tab := range tabs {
     tgcomp.Text(tab, "Hello World")
 }
 ```
+
+## Rendering
+
+Every tab is rendered and the inactive ones are hidden, so a tab keeps what it
+holds while you are on another one: an `Iframe` is not reloaded, a `Chart` is
+not rebuilt, and what was typed into an input is still there when you come back.
