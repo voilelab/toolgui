@@ -21,7 +21,7 @@ import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
-import { getStoredValue } from '../util/storage';
+import { ThemeMode, applyThemeMode, initialThemeMode, storeThemeMode } from '../util/theme';
 
 // pageNameFromLocation reads the page name off the URL.
 function pageNameFromLocation(appConf: AppConf): string {
@@ -64,7 +64,7 @@ interface AppState {
   pageFound: boolean
   pageName: string
   error: Error | null
-  darkMode: string
+  themeMode: ThemeMode
 }
 
 export class App extends Component<AppProps, AppState> {
@@ -96,8 +96,18 @@ export class App extends Component<AppProps, AppState> {
       pageFound: pageFound,
       pageName: pageName,
       error: null,
-      darkMode: getStoredValue('darkMode'),
+      themeMode: initialThemeMode(),
     }
+  }
+
+  componentDidMount() {
+    applyThemeMode(this.state.themeMode)
+  }
+
+  changeThemeMode(themeMode: ThemeMode) {
+    applyThemeMode(themeMode)
+    storeThemeMode(themeMode)
+    this.setState({ themeMode: themeMode })
   }
 
   startUpdate() {
@@ -189,12 +199,8 @@ export class App extends Component<AppProps, AppState> {
           rerun={() => { this.props.update({}) }}
           update={(e) => { this.props.update(e) }}
           upload={async (f) => await this.props.upload(f)}
-          darkMode={this.state.darkMode}
-          onChange={(darkMode) => {
-            this.setState({
-              darkMode: darkMode
-            })
-          }} />
+          themeMode={this.state.themeMode}
+          onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
 
         <main className="toolgui-main">
           <AppBody
@@ -203,7 +209,7 @@ export class App extends Component<AppProps, AppState> {
             forest={this.state.forest}
             update={(e) => { this.props.update(e) }}
             upload={async (f) => await this.props.upload(f)}
-            darkMode={this.state.darkMode} />
+            themeMode={this.state.themeMode} />
 
           <AppError error={this.state.error} />
         </main>

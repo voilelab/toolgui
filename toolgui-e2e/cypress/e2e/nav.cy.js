@@ -59,6 +59,25 @@ describe('Nav', () => {
     cy.get('.toolgui-nav-foot .button').should('have.length.at.least', 2)
   })
 
+  // A visitor with nothing stored still gets a theme, taken from the browser
+  // preference Cypress runs with.
+  it('A first visit lands on a real theme', () => {
+    cy.visit('/index')
+    cy.get('html').should('have.class', 'theme-light')
+    cy.window().then((win) => {
+      expect(win.localStorage.getItem('theme_mode')).to.be.null
+    })
+  })
+
+  it('The theme toggle switches the theme and remembers it', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-foot .button').last().click()
+    cy.get('html').should('have.class', 'theme-dark')
+
+    cy.reload()
+    cy.get('html').should('have.class', 'theme-dark')
+  })
+
   // A build from a tag reports it; anything else reports the pseudo-version
   // the toolchain derives from the commit, so only the shape is asserted.
   it('The column shows the toolgui version', () => {

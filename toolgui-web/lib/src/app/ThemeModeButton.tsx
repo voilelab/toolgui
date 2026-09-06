@@ -1,46 +1,23 @@
 import React, { Component } from 'react'
 
-import { getStoredValue, setStoredValue } from '../util/storage'
-
-interface ThemeModeButtonState {
-  darkMode: string
-}
+import { ThemeMode } from '../util/theme'
 
 interface ThemeModeButtonProps {
-  onChange: (darkMode: string) => void
+  themeMode: ThemeMode
+  onChange: (themeMode: ThemeMode) => void
 }
 
-export class ThemeModeButton extends Component<ThemeModeButtonProps, ThemeModeButtonState> {
-  constructor(props: ThemeModeButtonProps) {
-    super(props);
-    this.state = {
-      darkMode: getStoredValue('darkMode'),
-    }
-  }
-
-  componentDidMount() {
-    const root = document.getElementsByTagName('html')[0];
-    root.className = 'theme-' + this.state.darkMode
-  }
-
-  toggleTheme() {
-    this.setState((preState) => {
-      const newValue = preState.darkMode === 'dark' ? 'light' : 'dark'
-      const root = document.getElementsByTagName('html')[0];
-      root.className = 'theme-' + newValue
-      setStoredValue('darkMode', newValue)
-      this.props.onChange(newValue)
-      return {
-        darkMode: newValue
-      }
-    })
-  }
-
+// ThemeModeButton only reports the flip; the app owns the theme, so there is
+// one place that decides what it started as.
+export class ThemeModeButton extends Component<ThemeModeButtonProps> {
   render() {
+    const dark = this.props.themeMode === 'dark'
+
     return (
-      <button className="button" onClick={() => { this.toggleTheme() }}>
+      <button className="button"
+        onClick={() => { this.props.onChange(dark ? 'light' : 'dark') }}>
         <span className="icon">
-          {this.state.darkMode === 'dark' ?
+          {dark ?
             <i className="fas fa-moon"></i> :
             <i className="fas fa-sun"></i>}
         </span>
