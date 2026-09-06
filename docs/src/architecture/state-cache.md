@@ -6,15 +6,23 @@ This data is lost when the user navigates away from the page or refreshes it.
 ## Example of variable
 
 Here we provide a state-level TODO App example.
-It stores list of todos in the state:
+It stores the list of todos in the state, so it survives a rerun:
 
 ```go
-type TODOList struct {
-	items []string
+type TODOItem struct {
+	ID   int    `json:"id"`
+	Text string `json:"text"`
+	Done bool   `json:"done"`
 }
 
-func (t *TODOList) add(item string) {
-	t.items = append(t.items, item)
+type TODOList struct {
+	Items  []TODOItem `json:"items"`
+	LastID int        `json:"last_id"`
+}
+
+func (t *TODOList) Add(text string) {
+	t.LastID++
+	t.Items = append(t.Items, TODOItem{ID: t.LastID, Text: text})
 }
 
 func Main(p *tgframe.Params) error {
@@ -23,18 +31,36 @@ func Main(p *tgframe.Params) error {
 	todoList := p.State.Default("todoList", &TODOList{}).(*TODOList)
 
 	inp := tgcomp.Textbox(p.State, p.Main, "Add todo")
-	if tgcomp.Button(p.State, p.Main, "Add") {
-		todoList.add(inp)
+	if tgcomp.Button(p.State, p.Main, "Add") && inp != "" {
+		todoList.Add(inp)
 	}
 
-	for i, todo := range todoList.items {
-		tgcomp.TextWithID(p.Main,
-			fmt.Sprintf("%d: %s", i, todo),
-			fmt.Sprintf("todo_%d", i))
+	for i, item := range todoList.Items {
+		// The ID ties the checkbox to the item instead of to its position,
+		// so its value follows the item when the list changes.
+		todoList.Items[i].Done = tgcomp.CheckboxWithConf(p.State, p.Main, item.Text,
+			&tgcomp.CheckboxConf{
+				ID: fmt.Sprintf("todo_%d", item.ID),
+			})
 	}
 
 	return nil
 }
+```
+
+Two things the state makes easy to get wrong:
+
+* A component is sent to the client as soon as it's created, so anything that
+  changes the list has to run *before* the list renders. Removing an item after
+  the loop leaves it on screen until the next run.
+* A component's value is only known once it's rendered. Writing it back to the
+  state, as `Done` above, is what lets the next run act on it before rendering.
+
+[`cmd/toolgui-todo`](https://github.com/voilelab/toolgui/blob/dev/cmd/toolgui-todo/main.go)
+is the runnable version of this example, with removal on top of it:
+
+```shell
+task run_todo
 ```
 
 ## Example of function
