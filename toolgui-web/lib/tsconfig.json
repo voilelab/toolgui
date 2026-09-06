@@ -12,19 +12,13 @@
     ],
     "jsx": "react-jsx",
     "checkJs": false,
-    "baseUrl": ".",
     "noEmit": false,
     "emitDeclarationOnly": true,
     "declaration": true,
     "outDir": "build",
     "rootDir": "src",
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@toolgui-web/lib/src": [
-        "src"
-      ],
-    }
+    "skipLibCheck": true
   },
   "include": [
     "src",

@@ -2,17 +2,11 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "baseUrl": ".",
     "esModuleInterop": true,
     // react-scripts type-checked this package without strict mode; keep that
     // level so the Vite migration is behaviour-preserving. Turning it on is
     // follow-up work (8 strict-null errors in wsapp.tsx / StatefulWebSocket.ts).
-    "strict": false,
-    "paths": {
-      "@toolgui-web/app/src": [
-        "src"
-      ],
-    }
+    "strict": false
   },
   "include": [
     "src",
