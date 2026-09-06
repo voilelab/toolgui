@@ -1,3 +1,16 @@
+// Bundled rather than loaded from a CDN: a toolgui app has to work on a
+// machine with no route to the internet. Declared here so the browser and
+// desktop builds cannot ship different versions.
+//
+// Bulma is pinned: 1.0.4 turned the selected navbar item's text dark.
+// Imported before anything else, so shell.css and the app's own CSS win.
+//
+// fontawesome-solid.css stands in for the package's solid.css, which would
+// also pull a .ttf copy of the font into the build.
+import 'bulma/css/bulma.min.css'
+import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
+import '@toolgui-web/lib/src/assets/css/fontawesome-solid.css'
+
 import React, { Component } from 'react'
 
 import { Forest } from './Nodes'

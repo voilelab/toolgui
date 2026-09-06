@@ -1,0 +1,22 @@
+/* Font Awesome's own solid.css lists a .ttf next to the woff2, for browsers
+   that predate woff2 and cannot run this app anyway. It is 426 KB in every
+   embedded build, so the @font-face is restated here without it. The rest is
+   solid.css verbatim; update both together when Font Awesome moves. */
+:host,
+:root {
+  --fa-style-family-classic: "Font Awesome 6 Free";
+  --fa-font-solid: normal 900 1em/1 "Font Awesome 6 Free";
+}
+
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url("@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2") format("woff2");
+}
+
+.fa-solid,
+.fas {
+  font-weight: 900;
+}

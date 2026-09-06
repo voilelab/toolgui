@@ -3,6 +3,11 @@
 `lib` is the component library (Babel + `tsc --emitDeclarationOnly`).
 `app` is the Vite bundle that the Go server embeds.
 
+`lib` also owns the vendor stylesheets: Bulma and Font Awesome are imported by
+`lib/src/app/App.tsx`, so `app` and `wails` get the same versions and nothing
+is fetched from a CDN at runtime — a toolgui app has to work on a machine with
+no route to the internet.
+
 ## Generate static file for web server
 
 ```shell

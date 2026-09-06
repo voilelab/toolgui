@@ -21,10 +21,9 @@ options below.
    `ThemeModeButton`. The server never learns it. A canvas does not inherit
    CSS either, so grid, tick and default series colors have to be chosen in
    the frontend.
-4. **The desktop build cannot use a CDN.** `app/index.html` loads Bulma and
-   Font Awesome from a CDN, but `toolgui-web/wails` depends on `bulma` as an
-   npm package because the Wails binary must work offline. A chart library has
-   to be an npm dependency of `lib`.
+4. **Nothing may come from a CDN.** Both binaries have to work offline, so
+   Bulma and Font Awesome are npm dependencies of `lib` and are bundled into
+   the assets the Go binary embeds. A chart library has to be one as well.
 5. **Props are updated in place when the id is stable.** `Forest.createNode`
    reuses an existing node and replaces its props when the id already exists,
    otherwise it creates a new one. A chart that keeps its id updates without
