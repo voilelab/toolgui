@@ -484,21 +484,32 @@ func MiscPage(p *tgframe.Params) error {
 
 	iframeInteractiveCompCol, iframeInteractiveCodeCol := tgcomp.EqColumn2(p.Main, "show_iframe_interactive")
 	tgcomp.Echo(iframeInteractiveCodeCol, code, func() {
-		tgcomp.IframeWithID(
+		tgcomp.IframeWithConf(
 			iframeInteractiveCompCol,
 			`<button id="btn">Click me to update</button>
 			<script>
 				const btn = document.getElementById('btn');
 				btn.addEventListener('click', (event) => {
-					window.update({type: "click", id: "iframe_with_interactive_btn"});
+					window.update({clicked: true});
 				});
 			</script>`,
-			true,
-			"iframe_with_interactive")
+			&tgcomp.IframeConf{
+				Script: true,
+				Height: "60px",
+				ID:     "iframe_with_interactive",
+			})
 
 		tgcomp.Text(iframeInteractiveCompCol, time.Now().Format("2006-01-02 15:04:05"))
-		clickStatus := p.State.GetClickID() == "iframe_with_interactive_btn"
-		tgcomp.Text(iframeInteractiveCompCol, fmt.Sprintf("Status: %v", clickStatus))
+
+		var value struct {
+			Clicked bool `json:"clicked"`
+		}
+		err := tgcomp.IframeValue(p.State, "iframe_with_interactive", &value)
+		if err != nil {
+			return
+		}
+
+		tgcomp.Text(iframeInteractiveCompCol, fmt.Sprintf("Status: %v", value.Clicked))
 	})
 
 	tgcomp.Divider(p.Main)

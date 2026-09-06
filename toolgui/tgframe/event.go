@@ -20,6 +20,7 @@ const (
 	EventInputName  EventType = "input"
 	EventSelectName EventType = "select"
 	EventFormName   EventType = "form"
+	EventIframeName EventType = "iframe"
 )
 
 type EventStruct struct {
@@ -75,6 +76,13 @@ func ParseEvent(data []byte) (Event, error) {
 			events = append(events, parsedEvent)
 		}
 		return &EventForm{Events: events}, nil
+	case EventIframeName:
+		var eventIframe EventIframe
+		err = json.Unmarshal(data, &eventIframe)
+		if err != nil {
+			return nil, err
+		}
+		return &eventIframe, nil
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", event.Type)
 	}
@@ -128,4 +136,17 @@ func (e *EventForm) ApplyState(state *State) {
 	for _, event := range e.Events {
 		event.ApplyState(state)
 	}
+}
+
+// EventIframe is the event of an iframe component.
+// The ID is filled in by the frontend with the iframe's own id, so an iframe
+// can only write to its own state key and cannot forge events for other
+// components.
+type EventIframe struct {
+	ID    string `json:"id"`
+	Value any    `json:"value"`
+}
+
+func (e *EventIframe) ApplyState(state *State) {
+	state.Set(e.ID, e.Value)
 }

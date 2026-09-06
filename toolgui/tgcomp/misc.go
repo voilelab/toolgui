@@ -58,6 +58,15 @@ var Iframe = tcmisc.Iframe
 // script is used to allow the iframe to run javascript. (notice that this is not secure)
 var IframeWithID = tcmisc.IframeWithID
 
+// IframeConf is the configuration for the Iframe component.
+type IframeConf = tcmisc.IframeConf
+
+// IframeWithConf show a iframe with a custom configuration.
+var IframeWithConf = tcmisc.IframeWithConf
+
+// IframeValue reads the latest value an iframe sent through window.update.
+var IframeValue = tcmisc.IframeValue
+
 // Html adds a html component to the container.
 var Html = tcmisc.Html
 
