@@ -15,6 +15,8 @@ interface AppBodyProps {
   darkMode: string
 }
 
+// AppBody renders the page's main container. The page's sidebar container
+// lives in AppSideNav, sharing the left column with the page list.
 export class AppBody extends Component<AppBodyProps> {
   constructor(props: AppBodyProps) {
     super(props)
@@ -24,32 +26,14 @@ export class AppBody extends Component<AppBodyProps> {
     return this.props.forest.nodes[this.props.appConf.main_container_id]
   }
 
-  sidebarNode() {
-    return this.props.forest.nodes[this.props.appConf.sidebar_container_id]
-  }
-
   render(): ReactNode {
-    const hasSidebar = this.sidebarNode().children.length > 0
     return (
-      <div className="container" style={{ paddingTop: '60px' }}>
+      <div className="container">
         {this.props.pageFound ?
-          <section className="columns is-fullheight">
-            {hasSidebar ?
-              <aside className="column is-3">
-                <div style={{ position: 'sticky', overflow: 'auto', top: '60px' }}>
-                  <TComponent node={this.sidebarNode()}
-                    update={(e) => { this.props.update(e) }}
-                    upload={async (f) => await this.props.upload(f)}
-                    theme={this.props.darkMode} />
-                </div>
-              </aside> : ''}
-            <div className={`column ${hasSidebar ? 'is-9' : 'is-12'}`}>
-              <TComponent node={this.rootNode()}
-                update={(e) => { this.props.update(e) }}
-                upload={async (f) => await this.props.upload(f)}
-                theme={this.props.darkMode} />
-            </div>
-          </section>
+          <TComponent node={this.rootNode()}
+            update={(e) => { this.props.update(e) }}
+            upload={async (f) => await this.props.upload(f)}
+            theme={this.props.darkMode} />
           : <MessagePageNotFound />}
       </div>
     )

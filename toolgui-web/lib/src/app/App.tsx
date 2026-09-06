@@ -3,7 +3,7 @@ import React, { Component } from 'react'
 import { Forest } from './Nodes'
 import { clearState } from '../components/state'
 import { AppConf } from './AppConf';
-import { AppNavbar } from './AppNavbar';
+import { AppSideNav } from './AppSideNav';
 import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
 import { AppError, Error } from './AppError';
@@ -165,30 +165,36 @@ export class App extends Component<AppProps, AppState> {
 
   render() {
     return (
-      <div className="px-2">
-        <AppNavbar
+      <div className="toolgui-shell">
+        <AppSideNav
           appConf={this.props.appConf}
+          forest={this.state.forest}
           running={this.state.running}
           pageFound={this.state.pageFound}
           pageName={this.state.pageName}
           onNavigate={this.props.onNavigate}
           rerun={() => { this.props.update({}) }}
+          update={(e) => { this.props.update(e) }}
+          upload={async (f) => await this.props.upload(f)}
+          darkMode={this.state.darkMode}
           onChange={(darkMode) => {
             this.setState({
               darkMode: darkMode
             })
           }} />
 
-        <AppBody
-          appConf={this.props.appConf}
-          pageFound={this.state.pageFound}
-          forest={this.state.forest}
-          update={(e) => { this.props.update(e) }}
-          upload={async (f) => await this.props.upload(f)}
-          darkMode={this.state.darkMode} />
+        <main className="toolgui-main">
+          <AppBody
+            appConf={this.props.appConf}
+            pageFound={this.state.pageFound}
+            forest={this.state.forest}
+            update={(e) => { this.props.update(e) }}
+            upload={async (f) => await this.props.upload(f)}
+            darkMode={this.state.darkMode} />
 
-        <AppError error={this.state.error} />
-      </div >
+          <AppError error={this.state.error} />
+        </main>
+      </div>
     )
   }
 }
