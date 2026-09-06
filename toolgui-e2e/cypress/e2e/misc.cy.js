@@ -1,4 +1,4 @@
-describe('template spec', () => {
+describe('Misc', () => {
   it('Error handling', () => {
     cy.visit('/misc')
     cy.contains('Show error').click()
