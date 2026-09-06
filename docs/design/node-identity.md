@@ -219,11 +219,23 @@ possible:
    protocol change plus a rewrite of `Nodes.ts` and everything reading
    `forest.nodes`.
 
-Both break every id currently visible in the DOM. `toolgui-e2e` selects on ids
-like `#button_component_rerun`, and users can already pin ids with the
-`WithID` / `Conf.ID` variants, so that escape hatch survives — but the defaults
-change and that is a breaking change for anyone who wrote a selector or a
-`GetClickID` comparison against a generated id.
+Both of those *replace* the id, so both change every id currently in the DOM.
+But Streamlit does not replace anything — it adds a second identifier, and that
+third shape is available here too:
+
+3. **Add a node key beside the id.** The component keeps its content-derived
+   `id`, which stays the state key, the DOM id and the id in `UpdateEvent`. The
+   create pack gains `parent_key` and `index`, `Forest` keys its pool by the
+   path, and the React `key` moves from `child.props.id` to the node key. The
+   two identifiers exist side by side, exactly as in Streamlit.
+
+Shape 3 is the only one with no user-visible breakage, and that is a checked
+claim, not a hope: `node.props.id` reaches the DOM only from `tcinput/*` and
+from `chart.tsx`, all of which either take a user-supplied id already or are
+stateful. `toolgui-e2e` selects on `#button_component_rerun` and
+`canvas#chart_component_demo_line`; both survive untouched. What changes is the
+`NotifyPack` JSON, which is internal to toolgui's own Go and TypeScript halves
+and versioned with them.
 
 ### Widget state needs its own key, or the ordinal will move state around
 
@@ -232,12 +244,11 @@ adding one component at the top of a page shifts every widget's state down by
 one. Streamlit avoids this precisely by keeping the two identifiers separate:
 placement is the ordinal, state is `$$ID-<hash>-<key>`.
 
-So the ordinal change is not complete without deciding what `State` is keyed by.
-The cheapest version of Streamlit's split for `toolgui`: keep the current
-content-derived id as the *state* key (it is exactly a hash of the type and the
-parameters), and give the node a separate positional key for the tree. The
-duplicate check then applies to the state key only, and only for stateful
-components.
+So the ordinal change is not complete without deciding what `State` is keyed by,
+and that is what shape 3 above settles: the content-derived id keeps the state
+key job (it is already a hash of the type and the parameters), and the node gets
+a separate positional key for the tree. The duplicate check then applies to the
+state key only, and only to components that declare one.
 
 ### Duplicates should be loud
 
@@ -265,16 +276,21 @@ land together. Streamlit's shape suggests the fix:
 
 ## Open questions
 
-1. **Which of the two frontend shapes** — path-derived id string, or a real tree
-   addressed by path. The first is a much smaller diff; the second is the one
-   that removes the class of bug rather than this instance of it.
-2. **What `State` is keyed by** once ids move. Nothing else in #67 can be
-   designed until this is settled.
+1. **Which of the three frontend shapes.** Shape 3 (a node key beside the id) is
+   the recommendation: it is the one Streamlit actually implements, and the only
+   one that breaks nothing. Shape 2 is the deeper fix — a real tree — and can
+   follow later without touching the Go side again.
+2. **What `State` is keyed by.** Under shape 3 the answer falls out: the id
+   keeps that job and nothing about `State` changes. Under 1 or 2 this has to be
+   settled before anything else in #67 can be designed.
 3. **Whether `Divider` and friends keep their zero-argument form.** With an
    ordinal they get a stable identity for free and `RandID` can be deleted. With
    any other scheme, `Divider` needs an argument, which the charts survey already
    decided for `Chart` ("the id is a required argument") — worth being
    consistent one way or the other.
-4. **How much breakage is acceptable.** Every generated id in the DOM changes.
-   Cheap mitigation: keep emitting the content-derived id as a stable
-   `data-component-id` attribute for tests even after the tree key moves.
+4. **Whether the stateless components keep emitting an id at all.** Streamlit's
+   rule is that an id is optional and must be unique when present, which is what
+   makes the duplicate check safe to enforce. Adopting it means `Text`,
+   `Markdown` and friends stop generating one — invisible today, since they
+   never put it in the DOM, but it is a deliberate narrowing of what an id
+   means.
