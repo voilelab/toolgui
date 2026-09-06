@@ -7,5 +7,5 @@ It doesn't return any value to user.
 import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
-The demo page can be found here:
-[https://toolgui-demo.fly.dev/content](https://toolgui-demo.fly.dev/content)
+These components are shown on the `content` page of the demo app,
+which `task run_demo` serves at http://localhost:3000/content.

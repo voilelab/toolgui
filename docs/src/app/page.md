@@ -10,9 +10,9 @@ We can config the page's:
 In the web GUI provider, the name of a page will be used as the path of the page.
 
 2. Title: In the web GUI provider,
-the title of a page will be used as the title of the page and the text of the button on the navbar.
+the title of a page will be used as the title of the page and the text of its link in the side nav.
 
-3. Emoji: Optional. The emoji will be used as an icon on navbar and browser favicon.
+3. Emoji: Optional. The emoji will be used as an icon in the side nav and browser favicon.
 
 The config type in package is:
 

@@ -11,6 +11,7 @@ experience to Streamlit for Python users.
 > The API for this package is still under development,
 > and may be subject to changes in the future.
 
-Demo page: [https://toolgui-demo.fly.dev/](https://toolgui-demo.fly.dev/)
+The repository ships a demo app covering every component. `task run_demo`
+serves it at http://localhost:3000.
 
 ![screen-shot](screen-shot.png)

@@ -6,5 +6,5 @@ The layout components display control component layout and position.
 import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
-The demo page can be found here:
-[https://toolgui-demo.fly.dev/layout](https://toolgui-demo.fly.dev/layout)
+These components are shown on the `layout` page of the demo app,
+which `task run_demo` serves at http://localhost:3000/layout.

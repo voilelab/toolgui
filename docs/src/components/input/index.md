@@ -6,6 +6,6 @@ The input components provide UI for app-user to input their data.
 import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
-The demo page can be found here:
-[https://toolgui-demo.fly.dev/input](https://toolgui-demo.fly.dev/input)
+These components are shown on the `input` page of the demo app,
+which `task run_demo` serves at http://localhost:3000/input.
 

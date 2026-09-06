@@ -5,13 +5,14 @@
 # Hello World
 
 * [Server-Client](hello-world/server-client.md)
+* [Desktop App](hello-world/desktop.md)
 
 # Architecture
 
 * [How it works?](architecture/how-it-works.md)
 
 * [App](app/index.md)
-    * [Navbar](app/navbar.md)
+    * [Side Nav](app/sidenav.md)
     * [Page](app/page.md)
 
 * [State Storage](architecture/state-storage.md)

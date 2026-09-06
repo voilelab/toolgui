@@ -6,5 +6,5 @@ The data components display data in some special form.
 import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
-The demo page can be found here:
-[https://toolgui-demo.fly.dev/data](https://toolgui-demo.fly.dev/data)
+These components are shown on the `data` page of the demo app,
+which `task run_demo` serves at http://localhost:3000/data.
