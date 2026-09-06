@@ -258,15 +258,19 @@ wins.
 
 ## Scope
 
-**Phase 1 (this issue).** `chart_component` with line, bar and area; the Go
-API above; docs and demo. Deliberately no interaction beyond Chart.js's own
+**Phase 1 — done.** `chart_component` with line, bar and area; the Go API
+above; docs and demo. Deliberately no interaction beyond Chart.js's own
 tooltip and legend toggle.
 
-**Phase 2.** Scatter, pie and doughnut; per-axis options; horizontal bars;
-per-series y-axis.
+The two phases below are **not planned**. They are written down as the shape
+the next step would take if a need for it shows up, not as work that is
+queued.
 
-**Phase 3.** Interaction — a click on a point sending an event back. This
-needs a new variant in the `UpdateEvent` union in
+**Phase 2, if wanted.** Scatter, pie and doughnut; per-axis options;
+horizontal bars; per-series y-axis.
+
+**Phase 3, if wanted.** Interaction — a click on a point sending an event
+back. This needs a new variant in the `UpdateEvent` union in
 `lib/src/app/UpdateEvent.ts` and a matching case on the Go side, so it is a
 protocol change, not a component change.
 
@@ -275,20 +279,21 @@ downsampling or streaming. Every point travels as JSON over the websocket on
 every page run, so a few thousand points per chart is the practical ceiling —
 that limit belongs in the docs.
 
-## Files a phase 1 change touches
+## Files phase 1 touched
 
-* `toolgui/tgcomp/tcdata/chart.go` — component and constructors.
+* `toolgui/tgcomp/tcdata/chart.go` — component and constructors, plus
+  `chart_test.go` for the props, the stable id and the length-mismatch panic.
 * `toolgui/tgcomp/data.go` — re-export `LineChart`, `BarChart`, `AreaChart`,
-  `ChartWithConf`, `ChartConf`, `ChartSeries`.
+  `ChartWithConf`, `ChartConf`, `ChartSeries`, `ChartKind`.
 * `toolgui-web/lib/src/components/tcdata/chart.tsx` — `TChart`.
 * `toolgui-web/lib/src/components/factory.ts` — register `chart_component`.
-* `toolgui-web/lib/package.json` — add `chart.js`.
-* `cmd/toolgui-demo/main.go` — a row in `DataPage`.
-* `docs/src/components/data/chart.md` + `docs/src/SUMMARY.md` +
-  `docs/src/components/data/index.md`.
+* `toolgui-web/lib/package.json` + `toolgui-web/yarn.lock` — add `chart.js`.
+* `cmd/toolgui-demo/main.go` — three rows in `DataPage`.
+* `docs/src/components/data/chart.md` and `chart.png`, listed in
+  `docs/src/SUMMARY.md`.
 * `toolgui-e2e/cypress/e2e/data.cy.js` — a smoke test. Canvas content is not
-  assertable, so check the canvas element and, if the aria fallback is
-  enabled, its text.
+  assertable, so it checks that the canvas mounted, that chart.js gave it a
+  width, and that the `aria-label` names the series.
 
 ## Decisions
 
@@ -300,5 +305,6 @@ Settled before implementation:
    adapter; a time axis is formatted into labels by the page function.
 3. **No raw Chart.js config, ever.** Whatever the high-level API cannot
    express is a gap to close in the API, not to route around. The cost is
-   accepted: `ChartConf` will grow options over phases 2 and 3, and users who
-   need something genuinely out of scope still have `Iframe` + go-echarts.
+   accepted: `ChartConf` grows options whenever a later phase happens, and
+   users who need something genuinely out of scope still have `Iframe` +
+   go-echarts.
