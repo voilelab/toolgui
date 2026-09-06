@@ -109,7 +109,7 @@ export class StatefulWebSocket {
         break
       default:
         console.error('undefined state', state)
-        throw new Error('undefine state')
+        throw new Error('undefined state')
     }
   }
 
