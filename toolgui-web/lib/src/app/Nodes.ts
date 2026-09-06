@@ -35,7 +35,10 @@ export class Forest {
   }
 
   swallowCopy(): Forest {
-    const ret = new Forest(this.rootNodeIDs)
+    // Constructed with no roots on purpose: every node comes from the copy
+    // below, and App copies the forest once per incoming pack.
+    const ret = new Forest([])
+    ret.rootNodeIDs = this.rootNodeIDs
     ret.nodes = { ...this.nodes }
     ret.runID = this.runID
     return ret

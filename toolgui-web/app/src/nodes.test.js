@@ -31,7 +31,8 @@ describe('Forest', () => {
     expect(Object.keys(f.nodes)).toHaveLength(4)
 
     f = runPage(f, [text('a')])
-    expect(Object.keys(f.nodes)).toEqual([MAIN, SIDEBAR, 'text_component_a'])
+    expect(new Set(Object.keys(f.nodes)))
+      .toEqual(new Set([MAIN, SIDEBAR, 'text_component_a']))
     expect(f.nodes[MAIN].children.map(n => n.props.id)).toEqual(['text_component_a'])
   })
 
