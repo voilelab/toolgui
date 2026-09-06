@@ -11,13 +11,22 @@ export function TExpand({ node, update, upload, theme }: Props) {
   const [everExpanded, setEverExpanded] = useState(node.props.expanded)
 
   const toggle = () => {
-    setExpanded(!expanded)
+    setExpanded(expanded => !expanded)
     setEverExpanded(true)
   }
 
   return (
     <div className="card">
-      <header className="card-header" onClick={toggle}>
+      <header className="card-header"
+        // The header is the control, so it answers to the keyboard too.
+        role="button" tabIndex={0} aria-expanded={expanded}
+        onClick={toggle}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggle()
+          }
+        }}>
         <div className="card-header-icon">
           <span className="icon">
             <i className={`fas ${expanded ? 'fa-minus' : 'fa-plus'}`}></i>

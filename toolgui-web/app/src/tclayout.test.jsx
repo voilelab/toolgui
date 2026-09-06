@@ -73,6 +73,18 @@ describe('TExpand', () => {
     expect(screen.getByText('A expand!')).toBeVisible()
   })
 
+  test('opens from the keyboard', () => {
+    mountExpand(false)
+
+    const header = screen.getByRole('button', { name: /Expand/ })
+    expect(header).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.keyDown(header, { key: 'Enter' })
+
+    expect(screen.getByText('A expand!')).toBeVisible()
+    expect(header).toHaveAttribute('aria-expanded', 'true')
+  })
+
   test('keeps the contents mounted once opened', () => {
     mountExpand(true)
 
