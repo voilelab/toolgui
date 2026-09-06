@@ -4,19 +4,32 @@ const healthCheckURL = "/api/health"
 
 const fileUploadURL = "/api/files"
 
+// Reconnect backoff. Without it a server that hands out a socket and drops it
+// right away spins us in a tight loop: onclose walks straight back to Ping,
+// and a server that is up answers the health check on the first try.
+const MIN_RETRY_WAIT_MS = 200
+const MAX_RETRY_WAIT_MS = 60000
+
+// A connection that stayed open this long counts as healthy, so the drop that
+// ends it starts its retries from scratch instead of inheriting the backoff.
+const RETRY_RESET_MS = 5000
+
 enum WebSocketState {
   Initial,
   Ping,
   TryConnect,
   Connected,
 
-  // TODO: Dead
+  // Dead is the end of the line: the server reported an error a reconnect
+  // would only hit again.
+  Dead,
 }
 
 enum WebSocketAction {
   OK,
   Error,
   Closed,
+  Fatal,
 
   // TODO: support timeout check
 }
@@ -44,6 +57,12 @@ export class StatefulWebSocket {
   pageName: string
   stateID: string
 
+  /** How long to wait before the next connection attempt. */
+  retryWaitMS: number
+
+  /** When the current connection opened, 0 while there is none. */
+  connectedAt: number
+
   /** Receive pack from connected websocket. */
   recv: (pack: any) => void
 
@@ -58,6 +77,8 @@ export class StatefulWebSocket {
     this.pageName = pageName
     this.conn = null
     this.stateID = ''
+    this.retryWaitMS = 0
+    this.connectedAt = 0
     this.recv = recv
   }
 
@@ -83,9 +104,12 @@ export class StatefulWebSocket {
         this.state = state
         this.onConnect()
         break
+      case WebSocketState.Dead:
+        this.state = state
+        break
       default:
         console.error('undefined state', state)
-        throw new Error('undefine state')
+        throw new Error('undefined state')
     }
   }
 
@@ -112,6 +136,9 @@ export class StatefulWebSocket {
           case WebSocketAction.Closed:
             this.walkTo(WebSocketState.Ping)
             return
+          case WebSocketAction.Fatal:
+            this.walkTo(WebSocketState.Dead)
+            return
           default:
             break
         }
@@ -122,10 +149,16 @@ export class StatefulWebSocket {
           case WebSocketAction.Closed:
             this.walkTo(WebSocketState.Ping)
             return
+          case WebSocketAction.Fatal:
+            this.walkTo(WebSocketState.Dead)
+            return
           default:
             break
         }
         break
+      case WebSocketState.Dead:
+        // A dead socket stays dead until the page is reloaded.
+        return
     }
 
     console.error('undefine action on state', this.state, action)
@@ -133,12 +166,17 @@ export class StatefulWebSocket {
   }
 
   async ping() {
-    var waitMS = 200
-
     while (1) {
-      var resp: Response
+      if (this.retryWaitMS > 0) {
+        await sleep(this.retryWaitMS)
+      }
+
+      this.retryWaitMS = Math.min(
+        Math.max(this.retryWaitMS * 1.5, MIN_RETRY_WAIT_MS),
+        MAX_RETRY_WAIT_MS)
+
       try {
-        resp = await fetch(healthCheckURL)
+        const resp = await fetch(healthCheckURL)
         if (resp.status === 200) {
           break
         }
@@ -147,11 +185,6 @@ export class StatefulWebSocket {
       } catch (e) {
         console.error(e)
       }
-
-      await sleep(waitMS)
-
-      waitMS *= 1.5
-      waitMS = Math.min(waitMS, 60000)
     }
 
     console.log('ping ok')
@@ -163,6 +196,7 @@ export class StatefulWebSocket {
     var that = this
 
     this.conn.onopen = function () {
+      that.connectedAt = Date.now()
       that.conn.send(JSON.stringify({ state_id: that.stateID }))
       console.log('socket open ok')
       that.walk(WebSocketAction.OK)
@@ -170,6 +204,15 @@ export class StatefulWebSocket {
 
     this.conn.onmessage = function (e) {
       const data = JSON.parse(e.data)
+
+      // A fatal error is a property of the request, not of the connection:
+      // an unknown page name stays unknown. Remember it so the close it comes
+      // with ends the socket for good, and hand it on so the error still
+      // reaches the screen.
+      if (data.fatal) {
+        that.fatal()
+      }
+
       if (data.state_id) {
         that.stateID = data.state_id
         that.onStateIDChange()
@@ -181,7 +224,27 @@ export class StatefulWebSocket {
 
     this.conn.onclose = function () {
       that.conn = null
+
+      if (that.state === WebSocketState.Dead) {
+        return
+      }
+
+      const lived = that.connectedAt === 0 ? 0 : Date.now() - that.connectedAt
+      if (lived >= RETRY_RESET_MS) {
+        that.retryWaitMS = 0
+      }
+
+      that.connectedAt = 0
       that.walk(WebSocketAction.Closed)
+    }
+  }
+
+  /** Give up on the connection: stop reconnecting and close what is open. */
+  fatal() {
+    this.walk(WebSocketAction.Fatal)
+
+    if (this.conn !== null) {
+      this.conn.close()
     }
   }
 

@@ -66,6 +66,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   "page not found",
 			Success: false,
+			Fatal:   true,
 		})
 		slog.Error("page not found", "page", pageName)
 		return
@@ -108,9 +109,12 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	session, err := tgframe.NewSession(e.app, pageName, state,
 		func(pack any) error { return websocket.JSON.Send(ws, pack) })
 	if err != nil {
+		// NewSession only fails on the page name, so a retry would fail the
+		// same way.
 		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   err.Error(),
 			Success: false,
+			Fatal:   true,
 		})
 		slog.Error("new session", "error", err)
 		return
