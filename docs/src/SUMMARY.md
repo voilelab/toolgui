@@ -22,6 +22,8 @@
 
 * [Components](architecture/components.md)
 
+* [Error Handling](architecture/error-handling.md)
+
 # [Components]()
 
 * [Content Components](components/content/index.md)
