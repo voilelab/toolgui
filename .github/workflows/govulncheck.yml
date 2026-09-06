@@ -5,8 +5,10 @@ name: Govulncheck
 on:
   push:
     branches: [ "dev" ]
+    paths-ignore: [ "docs/**" ]
   pull_request:
     branches: [ "dev" ]
+    paths-ignore: [ "docs/**" ]
 
 jobs:
   vulnerability-scan:
