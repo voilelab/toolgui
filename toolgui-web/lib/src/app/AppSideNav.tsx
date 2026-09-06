@@ -125,6 +125,11 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             this.props.onChange(darkMode)
           }} />
         </div>
+
+        {this.props.appConf.show_version ?
+          <p className="toolgui-nav-version">
+            toolgui {this.props.appConf.version}
+          </p> : ''}
       </div>
     </aside>
   }

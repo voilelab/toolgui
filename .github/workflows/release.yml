@@ -53,6 +53,15 @@ jobs:
             exit 1
           fi
 
+      # tgframe.Version reads the module version out of the build info, which
+      # is empty for a binary built from inside this repo. Keep the fallback
+      # the tag it ships under.
+      - name: Stamp fallback version
+        run: |
+          f=toolgui/tgframe/version.go
+          sed -i "s|^const fallbackVersion = \".*\"$|const fallbackVersion = \"$VERSION\"|" "$f"
+          grep -q "const fallbackVersion = \"$VERSION\"" "$f"
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -95,9 +104,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add toolgui/tgframe/version.go
           # Both are gitignored on dev; -f includes them for the release only.
           git add -f toolgui-web/app/build toolgui-wails/frontend/dist
-          git commit -m "Build assets for $VERSION"
+          git commit -m "Build assets and stamp version for $VERSION"
           git tag -a "$VERSION" -m "$VERSION"
 
       - name: Push tag and main

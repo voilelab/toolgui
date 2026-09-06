@@ -58,4 +58,12 @@ describe('Nav', () => {
     cy.get('.toolgui-nav-foot').contains('Rerun').should('exist')
     cy.get('.toolgui-nav-foot .button').should('have.length.at.least', 2)
   })
+
+  // A build from a tag reports it; anything else reports the pseudo-version
+  // the toolchain derives from the commit, so only the shape is asserted.
+  it('The column shows the toolgui version', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-version').invoke('text')
+      .should('match', /^\s*toolgui v\S+\s*$/)
+  })
 })
