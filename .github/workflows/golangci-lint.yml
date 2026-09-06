@@ -3,8 +3,10 @@ name: GolangCI-Lint
 on:
   push:
     branches: [ "dev" ]
+    paths-ignore: [ "docs/**" ]
   pull_request:
     branches: [ "dev" ]
+    paths-ignore: [ "docs/**" ]
 
 jobs:
   golangci-lint:
