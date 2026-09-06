@@ -1,7 +1,6 @@
 package tcdata
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -18,7 +17,6 @@ func newTableComponent(head []string, table [][]string) *tableComponent {
 	return &tableComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: tableComponentName,
-			ID:   tcutil.RandID(tableComponentName),
 		},
 		Head:  head,
 		Table: table,

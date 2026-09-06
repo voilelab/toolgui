@@ -19,3 +19,48 @@ tgcomp.Text(box, "Text2")
 Then the **Component Tree** will be:
 
 ![component tree example](component-tree-example.png)
+
+## Identity: position and id
+
+A page function runs again from the top on every interaction and writes every
+component again. Two questions follow from that, and they have different
+answers.
+
+**Which component is this, across runs?** Its position. A container counts the
+components written into it, so the second component in the main container is
+`container_component_container_main/1` on every run, whatever it contains.
+Nothing compares content, so writing the same thing twice is fine:
+
+```go
+tgcomp.Text(p.Main, "same")
+tgcomp.Text(p.Main, "same")
+```
+
+Both render. A component that keeps its position keeps its identity, so its
+props are updated in place instead of it being torn down and rebuilt.
+
+**Where is this component's state stored?** Its id. Only components that have
+state or send events claim one, derived from their type and their label:
+`Button(s, c, "Save")` is `button_component_Save`. Components that only
+display something — `Text`, `Markdown`, `Divider` and the rest — have no id at
+all unless you give them one.
+
+An id is a name, so two components cannot share one. Two identical buttons
+have the same id and the page fails with `duplicated component id`:
+
+```go
+tgcomp.Button(p.State, p.Main, "Save")
+tgcomp.Button(p.State, p.Main, "Save")   // error
+```
+
+Give one of them its own id to tell them apart. Every component takes one,
+through a `WithID` variant or `Conf.ID`:
+
+```go
+tgcomp.Button(p.State, p.Main, "Save")
+tgcomp.ButtonWithConf(p.State, p.Main, "Save", &tgcomp.ButtonConf{ID: "save_all"})
+```
+
+An id given this way is also the element's id in the DOM, which is what to
+reach for when a test or a stylesheet needs to name one component in
+particular.

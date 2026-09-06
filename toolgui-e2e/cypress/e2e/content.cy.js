@@ -33,4 +33,13 @@ describe('Content', () => {
     cy.visit('/content')
     cy.get('mi').contains('E').should('exist')
   })
+
+  it('Identical components both render', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_duplicate')
+      .contains('written twice').should('exist')
+    cy.get('#column_component_show_duplicate')
+      .find('div').filter((i, el) => el.textContent.trim() === 'written twice')
+      .should('have.length', 2)
+  })
 })

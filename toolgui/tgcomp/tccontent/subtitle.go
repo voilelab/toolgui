@@ -1,7 +1,6 @@
 package tccontent
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -17,7 +16,6 @@ func newSubtitleComponent(text string) *subtitleComponent {
 	return &subtitleComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: subtitleComponentName,
-			ID:   tcutil.NormalID(subtitleComponentName, text),
 		},
 		Text: text,
 	}

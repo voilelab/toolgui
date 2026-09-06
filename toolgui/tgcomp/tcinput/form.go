@@ -23,11 +23,6 @@ func newFormComponent(id string) *formComponent {
 
 // Form create a form component.
 func Form(c *tgframe.Container, id string) *tgframe.Container {
-	formComp := newFormComponent(id)
-	c.AddComponent(formComp)
-
-	cont := tgframe.NewContainer(formComp.ID+"_inner", c.SendNotifyPack)
-	c.SendNotifyPack(tgframe.NewNotifyPackCreate(formComp.ID, cont))
-
-	return cont
+	formComp := c.AddComponent(newFormComponent(id))
+	return c.AddContainerTo(formComp, "inner", 0)
 }

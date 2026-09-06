@@ -5,45 +5,83 @@ import { Forest } from '@toolgui-web/lib/src/app/Nodes'
 const MAIN = 'container_component_main'
 const SIDEBAR = 'container_component_sidebar'
 
-// runPage replays one page run the way App does: a copy per pack, beginRun
-// before the creates, endRun after them.
-function runPage(forest, comps, success = true) {
+// runPage replays one page run: a forest copy per pack the way App does, and
+// keys handed out by a per-container counter the way Container does.
+function runPage(forest, build, success = true) {
   var f = forest.swallowCopy()
   f.beginRun()
 
-  for (const comp of comps) {
+  const counters = {}
+  const add = (parentKey, props) => {
+    const index = counters[parentKey] ?? 0
+    counters[parentKey] = index + 1
+    const key = `${parentKey}/${index}`
+
     f = f.swallowCopy()
-    f.createNode(comp, comp.parent ?? MAIN)
+    f.createNode(key, parentKey, index, props)
+    return key
   }
+
+  build(add)
 
   f = f.swallowCopy()
   f.endRun(success)
   return f
 }
 
-const text = (t) => ({ name: 'text_component', id: `text_component_${t}`, text: t })
+const text = (t) => ({ name: 'text_component', id: '', text: t })
+const box = (id) => ({ name: 'container_component', id })
+const widget = (id) => ({ name: 'textbox_component', id })
+
+const shown = (f, key = MAIN) => f.nodes[key].children.map(n => n.props.text ?? n.props.id)
 
 describe('Forest', () => {
+  test('renders every copy of an identical component', () => {
+    var f = new Forest([MAIN, SIDEBAR])
+
+    f = runPage(f, add => {
+      add(MAIN, text('duplicate me'))
+      add(MAIN, text('duplicate me'))
+    })
+
+    expect(shown(f)).toEqual(['duplicate me', 'duplicate me'])
+  })
+
   test('drops the nodes a run did not send', () => {
     var f = new Forest([MAIN, SIDEBAR])
 
-    f = runPage(f, [text('a'), text('b')])
+    f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('b')) })
     expect(Object.keys(f.nodes)).toHaveLength(4)
 
-    f = runPage(f, [text('a')])
+    f = runPage(f, add => { add(MAIN, text('a')) })
     expect(new Set(Object.keys(f.nodes)))
-      .toEqual(new Set([MAIN, SIDEBAR, 'text_component_a']))
-    expect(f.nodes[MAIN].children.map(n => n.props.id)).toEqual(['text_component_a'])
+      .toEqual(new Set([MAIN, SIDEBAR, `${MAIN}/0`]))
+    expect(shown(f)).toEqual(['a'])
   })
 
-  test('does not grow when every run sends a fresh id', () => {
+  test('keeps the order when a conditional drops a component in the middle', () => {
     var f = new Forest([MAIN, SIDEBAR])
 
-    // A divider's id is random per run, so each run replaces the previous one.
+    f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('b')); add(MAIN, text('c')) })
+    expect(shown(f)).toEqual(['a', 'b', 'c'])
+
+    f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('c')) })
+    expect(shown(f)).toEqual(['a', 'c'])
+
+    f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('b')); add(MAIN, text('c')) })
+    expect(shown(f)).toEqual(['a', 'b', 'c'])
+  })
+
+  test('does not grow across reruns', () => {
+    var f = new Forest([MAIN, SIDEBAR])
+
     for (var run = 0; run < 5; run++) {
-      f = runPage(f, [{ name: 'divider_component', id: `divider_component_${run}` }])
-      expect(Object.keys(f.nodes)).toHaveLength(3)
-      expect(f.nodes[MAIN].children).toHaveLength(1)
+      f = runPage(f, add => {
+        add(MAIN, { name: 'divider_component', id: '' })
+        add(MAIN, { name: 'divider_component', id: '' })
+      })
+      expect(Object.keys(f.nodes)).toHaveLength(4)
+      expect(f.nodes[MAIN].children).toHaveLength(2)
     }
   })
 
@@ -51,45 +89,96 @@ describe('Forest', () => {
     var f = new Forest([MAIN, SIDEBAR])
 
     for (var run = 0; run < 3; run++) {
-      f = runPage(f, [text('a')])
+      f = runPage(f, add => { add(MAIN, text('a')) })
       expect(f.nodes[MAIN]).toBeDefined()
       expect(f.nodes[SIDEBAR]).toBeDefined()
     }
   })
 
-  test('updates a node in place when its id is stable', () => {
+  test('updates a node in place when it stays in the same place', () => {
     var f = new Forest([MAIN, SIDEBAR])
 
-    f = runPage(f, [{ name: 'progress_bar_component', id: 'p', value: 1 }])
-    const first = f.nodes['p']
+    f = runPage(f, add => { add(MAIN, { name: 'progress_bar_component', id: '', value: 1 }) })
+    const first = f.nodes[`${MAIN}/0`]
 
-    f = runPage(f, [{ name: 'progress_bar_component', id: 'p', value: 2 }])
-    expect(f.nodes['p']).toBe(first)
-    expect(f.nodes['p'].props.value).toBe(2)
+    f = runPage(f, add => { add(MAIN, { name: 'progress_bar_component', id: '', value: 2 }) })
+    expect(f.nodes[`${MAIN}/0`]).toBe(first)
+    expect(f.nodes[`${MAIN}/0`].props.value).toBe(2)
+  })
+
+  test('replaces the node when the component type changes under it', () => {
+    var f = new Forest([MAIN, SIDEBAR])
+
+    f = runPage(f, add => { add(MAIN, text('a')) })
+    const first = f.nodes[`${MAIN}/0`]
+
+    f = runPage(f, add => { add(MAIN, { name: 'markdown_component', id: '', text: 'a' }) })
+    expect(f.nodes[`${MAIN}/0`]).not.toBe(first)
   })
 
   test('keeps the page a failed run left behind', () => {
     var f = new Forest([MAIN, SIDEBAR])
 
-    f = runPage(f, [text('a'), text('b')])
+    f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('b')) })
     // The page function panicked after the first component.
-    f = runPage(f, [text('a')], false)
+    f = runPage(f, add => { add(MAIN, text('a')) }, false)
 
-    expect(f.nodes[MAIN].children.map(n => n.props.id))
-      .toEqual(['text_component_a', 'text_component_b'])
+    expect(shown(f)).toEqual(['a', 'b'])
   })
 
   test('nests children under their own container', () => {
     var f = new Forest([MAIN, SIDEBAR])
-    const box = { name: 'box_component', id: 'box' }
-    const inner = { name: 'text_component', id: 'inner', text: 'x', parent: 'box' }
 
-    f = runPage(f, [box, inner])
-    expect(f.nodes[MAIN].children.map(n => n.props.id)).toEqual(['box'])
-    expect(f.nodes['box'].children.map(n => n.props.id)).toEqual(['inner'])
+    f = runPage(f, add => {
+      const inner = add(MAIN, box('container_component_box_inner'))
+      add(inner, text('x'))
+    })
+    expect(shown(f)).toEqual(['container_component_box_inner'])
+    expect(shown(f, `${MAIN}/0`)).toEqual(['x'])
 
-    f = runPage(f, [box])
-    expect(f.nodes['inner']).toBeUndefined()
-    expect(f.nodes['box'].children).toHaveLength(0)
+    f = runPage(f, add => { add(MAIN, box('container_component_box_inner')) })
+    expect(f.nodes[`${MAIN}/0/0`]).toBeUndefined()
+    expect(f.nodes[`${MAIN}/0`].children).toHaveLength(0)
+  })
+
+  test('removes a node the server deletes', () => {
+    var f = new Forest([MAIN, SIDEBAR])
+
+    f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('b')) })
+    f = f.swallowCopy()
+    f.removeNode(`${MAIN}/0`)
+
+    expect(shown(f)).toEqual(['b'])
+    expect(f.nodes[`${MAIN}/0`]).toBeUndefined()
+  })
+
+  describe('reactKey', () => {
+    test('is the id when the component has one', () => {
+      var f = new Forest([MAIN, SIDEBAR])
+      f = runPage(f, add => { add(MAIN, widget('textbox_component_Name')) })
+      expect(f.nodes[`${MAIN}/0`].reactKey).toBe('textbox_component_Name')
+    })
+
+    test('follows a widget that a conditional moves', () => {
+      var f = new Forest([MAIN, SIDEBAR])
+
+      f = runPage(f, add => {
+        add(MAIN, widget('textbox_component_A'))
+        add(MAIN, widget('textbox_component_B'))
+      })
+      f = runPage(f, add => { add(MAIN, widget('textbox_component_B')) })
+
+      // B moved from index 1 to index 0, but keeps the key it renders under,
+      // so React does not hand it the state of the widget that was there.
+      expect(f.nodes[`${MAIN}/0`].reactKey).toBe('textbox_component_B')
+    })
+
+    test('is the position when the component has no id', () => {
+      var f = new Forest([MAIN, SIDEBAR])
+      f = runPage(f, add => { add(MAIN, text('a')); add(MAIN, text('a')) })
+
+      expect(f.nodes[MAIN].children.map(n => n.reactKey))
+        .toEqual([`${MAIN}/0`, `${MAIN}/1`])
+    })
   })
 })

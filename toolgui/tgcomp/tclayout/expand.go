@@ -1,7 +1,6 @@
 package tclayout
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -20,7 +19,6 @@ func newExpandComponent(title string, expanded bool) *expandComponent {
 	comp := &expandComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: expandComponentName,
-			ID:   tcutil.NormalID(expandComponentName, title),
 		},
 
 		Title:    title,
@@ -31,10 +29,6 @@ func newExpandComponent(title string, expanded bool) *expandComponent {
 
 // Expand create a expandable component.
 func Expand(c *tgframe.Container, title string, expanded bool) *tgframe.Container {
-	comp := newExpandComponent(title, expanded)
-	c.AddComponent(comp)
-
-	cont := tgframe.NewContainer(comp.ID+"_inner", c.SendNotifyPack)
-	c.SendNotifyPack(tgframe.NewNotifyPackCreate(comp.ID, cont))
-	return cont
+	comp := c.AddComponent(newExpandComponent(title, expanded))
+	return c.AddContainerTo(comp, "inner", 0)
 }

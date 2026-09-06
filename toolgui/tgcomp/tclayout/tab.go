@@ -1,9 +1,6 @@
 package tclayout
 
 import (
-	"strings"
-
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -16,12 +13,9 @@ type tabComponent struct {
 }
 
 func newTabComponent(tabs []string) *tabComponent {
-	tabJoinedName := strings.Join(tabs, ",")
-
 	return &tabComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: tabComponentName,
-			ID:   tcutil.NormalID(tabComponentName, tabJoinedName),
 		},
 		Tabs: tabs,
 	}
@@ -29,13 +23,11 @@ func newTabComponent(tabs []string) *tabComponent {
 
 // Tab creates a new tab component
 func Tab(c *tgframe.Container, tabs []string) []*tgframe.Container {
-	comp := newTabComponent(tabs)
-	c.AddComponent(comp)
+	comp := c.AddComponent(newTabComponent(tabs))
 
 	ret := make([]*tgframe.Container, len(tabs))
 	for i, tab := range tabs {
-		ret[i] = tgframe.NewContainer(comp.ID+"_"+tab, c.SendNotifyPack)
-		c.SendNotifyPack(tgframe.NewNotifyPackCreate(comp.ID, ret[i]))
+		ret[i] = c.AddContainerTo(comp, tab, i)
 	}
 
 	return ret

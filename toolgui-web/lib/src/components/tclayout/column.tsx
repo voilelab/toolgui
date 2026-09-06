@@ -18,10 +18,10 @@ export function TColumn({ node, update, upload, theme }: Props) {
     columnClassname += ' ' + eqClass[node.children.length]
   }
   return (
-    <div id={node.props.id} className="columns">
+    <div id={node.props.id || undefined} className="columns">
       {
         node.children.map(child =>
-          <div key={child.props.id} className={columnClassname}>
+          <div key={child.reactKey} className={columnClassname}>
             <TComponent node={child}
               update={update}
               upload={upload}

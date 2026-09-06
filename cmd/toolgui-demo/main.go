@@ -133,6 +133,16 @@ func ContentPage(p *tgframe.Params) error {
 		tgcomp.Latex(latexCompCol, "E = mc^2")
 	})
 
+	tgcomp.Divider(p.Main)
+
+	// Components are placed by position, so writing the same thing twice
+	// shows it twice.
+	dupCompCol, dupCodeCol := tgcomp.EqColumn2(p.Main, "show_duplicate")
+	tgcomp.Echo(dupCodeCol, code, func() {
+		tgcomp.Text(dupCompCol, "written twice")
+		tgcomp.Text(dupCompCol, "written twice")
+	})
+
 	return nil
 }
 

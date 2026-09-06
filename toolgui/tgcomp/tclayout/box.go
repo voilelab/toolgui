@@ -23,11 +23,6 @@ func newBoxComponent(id string) *boxComponent {
 
 // Box create a box container.
 func Box(c *tgframe.Container, id string) *tgframe.Container {
-	boxComp := newBoxComponent(id)
-	c.AddComponent(boxComp)
-
-	cont := tgframe.NewContainer(boxComp.ID+"_inner", c.SendNotifyPack)
-	c.SendNotifyPack(tgframe.NewNotifyPackCreate(boxComp.ID, cont))
-
-	return cont
+	boxComp := c.AddComponent(newBoxComponent(id))
+	return c.AddContainerTo(boxComp, "inner", 0)
 }

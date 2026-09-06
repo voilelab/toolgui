@@ -1,7 +1,6 @@
 package tccontent
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -18,7 +17,6 @@ func newLinkComponent(text, url string) *linkComponent {
 	return &linkComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: linkComponentName,
-			ID:   tcutil.NormalID(linkComponentName, text),
 		},
 		Text: text,
 		URL:  url,

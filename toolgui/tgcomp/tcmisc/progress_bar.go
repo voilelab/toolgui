@@ -1,7 +1,6 @@
 package tcmisc
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -20,7 +19,6 @@ func newProgressBarComponent(value int, label string, sendNotifyPack tgframe.Sen
 	return &progressBarComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: progressBarComponentName,
-			ID:   tcutil.HashedID(progressBarComponentName, []byte(label)),
 		},
 		Value: value,
 		Label: label,
@@ -43,7 +41,7 @@ func (p *progressBarComponent) SetLabel(label string) {
 
 // Remove removes the progress bar component.
 func (p *progressBarComponent) Remove() {
-	p.SendNotifyPack(tgframe.NewNotifyPackDelete(p.ID))
+	p.SendNotifyPack(tgframe.NewNotifyPackDelete(p))
 }
 
 // ProgressBar creates a new progress bar component.

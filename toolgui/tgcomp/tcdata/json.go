@@ -3,7 +3,6 @@ package tcdata
 import (
 	"encoding/json"
 
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -19,7 +18,6 @@ func newJSONComponent(s string) *jsonComponent {
 	return &jsonComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: jsonComponentName,
-			ID:   tcutil.HashedID(jsonComponentName, []byte(s)),
 		},
 		Value: s,
 	}

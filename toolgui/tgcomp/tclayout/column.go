@@ -30,13 +30,11 @@ func Column(c *tgframe.Container, id string, n uint) []*tgframe.Container {
 		panic("number of columns should > 0")
 	}
 
-	colsComp := newColumnComponent(id)
-	c.AddComponent(colsComp)
+	colsComp := c.AddComponent(newColumnComponent(id))
 
 	cols := make([]*tgframe.Container, n)
 	for i := range n {
-		cols[i] = tgframe.NewContainer(fmt.Sprintf("%s_%d", colsComp.ID, i), c.SendNotifyPack)
-		c.SendNotifyPack(tgframe.NewNotifyPackCreate(colsComp.ID, cols[i]))
+		cols[i] = c.AddContainerTo(colsComp, fmt.Sprint(i), int(i))
 	}
 
 	return cols
@@ -66,14 +64,13 @@ func EqColumn(c *tgframe.Container, id string, n uint) []*tgframe.Container {
 		panic("number of columns should be 1, 2, 3, 4, 5")
 	}
 
-	colsComp := newColumnComponent(id)
-	colsComp.Equal = true
-	c.AddComponent(colsComp)
+	comp := newColumnComponent(id)
+	comp.Equal = true
+	colsComp := c.AddComponent(comp)
 
 	cols := make([]*tgframe.Container, n)
 	for i := range n {
-		cols[i] = tgframe.NewContainer(fmt.Sprintf("%s_%d", colsComp.ID, i), c.SendNotifyPack)
-		c.SendNotifyPack(tgframe.NewNotifyPackCreate(colsComp.ID, cols[i]))
+		cols[i] = c.AddContainerTo(colsComp, fmt.Sprint(i), int(i))
 	}
 
 	return cols

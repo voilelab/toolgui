@@ -10,27 +10,80 @@ type Container struct {
 	*BaseComponent
 
 	SendNotifyPack SendNotifyPackFunc `json:"-"`
+
+	// counter is the index the next component added here gets. Containers are
+	// rebuilt on every run, so it starts at 0 each time and a component keeps
+	// its index as long as the page function writes it in the same place.
+	counter int
+
+	// run is shared by every container of a run. Nil outside a run.
+	run *runState
 }
 
 func NewContainer(id string, notifyComp SendNotifyPackFunc) *Container {
 	return &Container{
 		BaseComponent: &BaseComponent{
 			Name: ContainerComponentName,
-			ID:   fmt.Sprintf("%s_%s", ContainerComponentName, id),
+			ID:   containerID(id),
+
+			// A root container is never sent, so nothing assigns it a key.
+			// Its own id is the root of every key below it.
+			key: containerID(id),
 		},
 		SendNotifyPack: notifyComp,
 	}
 }
 
+func containerID(id string) string {
+	return fmt.Sprintf("%s_%s", ContainerComponentName, id)
+}
+
 func (c *Container) AddComponent(comp Component) Component {
-	c.SendNotifyPack(NewNotifyPackCreate(c.ID, comp))
+	idx := c.counter
+	c.counter++
+
+	comp.setKey(fmt.Sprintf("%s/%d", c.key, idx))
+	if c.run != nil {
+		c.run.registerID(comp)
+	}
+
+	c.SendNotifyPack(NewNotifyPackCreate(c.key, idx, comp))
 	return comp
 }
 
 func (c *Container) AddContainer(id string) *Container {
 	newContainer := NewContainer(id, c.SendNotifyPack)
-	c.SendNotifyPack(NewNotifyPackCreate(c.ID, newContainer))
+	newContainer.run = c.run
+	c.AddComponent(newContainer)
 	return newContainer
+}
+
+// AddContainerTo creates the idx-th container inside comp, a component this
+// container has already added. Layout components use it for the containers
+// they own, so that those containers sit under the component in the node tree.
+//
+// The container is given an id derived from comp's, or none when comp has
+// none: a component that does not claim an identity does not hand one out.
+func (c *Container) AddContainerTo(comp Component, suffix string, idx int) *Container {
+	inner := &Container{
+		BaseComponent: &BaseComponent{
+			Name: ContainerComponentName,
+			key:  fmt.Sprintf("%s/%d", comp.GetKey(), idx),
+		},
+		SendNotifyPack: c.SendNotifyPack,
+		run:            c.run,
+	}
+
+	if comp.GetID() != "" {
+		inner.ID = comp.GetID() + "_" + suffix
+	}
+
+	if c.run != nil {
+		c.run.registerID(inner)
+	}
+
+	c.SendNotifyPack(NewNotifyPackCreate(comp.GetKey(), idx, inner))
+	return inner
 }
 
 // With is a helper function to add a component to the container.

@@ -1,7 +1,6 @@
 package tccontent
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -17,7 +16,6 @@ func newMarkdownComponent(text string) *markdownComponent {
 	return &markdownComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: markdownComponentName,
-			ID:   tcutil.HashedID(markdownComponentName, []byte(text)),
 		},
 		Markdown: text,
 	}
