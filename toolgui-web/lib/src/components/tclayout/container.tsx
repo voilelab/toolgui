@@ -8,7 +8,7 @@ export function TContainer({ node, update, upload, theme }: Props) {
     <div id={node.props.id}>
       {
         node.children.map(child =>
-          <TComponent node={child}
+          <TComponent key={child.props.id} node={child}
             update={update}
             upload={upload}
             theme={theme} />

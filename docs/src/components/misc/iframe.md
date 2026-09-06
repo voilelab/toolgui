@@ -4,12 +4,9 @@ Iframe is used to show a html in a iframe.
 
 > Warning: This component is experimental 🧪 and may not work as expected.
 
-> **Security warning**: an iframe created with `script` enabled is **not**
-> isolated from the app. It runs with `allow-scripts allow-same-origin`, which
-> means the html shares the app's origin and can reach the parent page, its
-> DOM and its storage. Only pass html you trust as much as your own app code.
-> A redesign is tracked in
-> [issue #30](https://github.com/voilelab/toolgui/issues/30).
+The iframe is sandboxed on an opaque origin, so the html cannot reach the app's
+page, its DOM, its cookies or its storage. It talks to the app only through
+`window.toolgui`, and can only write to its own state.
 
 ## API
 
@@ -22,7 +19,7 @@ func IframeValue(s *tgframe.State, id string, out any) error
 
 * `c` is the container to add the iframe to.
 * `html` is the html to show in the iframe.
-* `script` is used to allow the iframe to run javascript. (notice that this is not secure)
+* `script` is used to allow the iframe to run javascript.
 * `id` is the user specific id.
 
 `IframeConf`:
@@ -31,11 +28,11 @@ func IframeValue(s *tgframe.State, id string, out any) error
 | -------- | ------------------------------------------------- | --------- |
 | `Script` | Allow the iframe to run javascript.               | `false`   |
 | `Width`  | CSS width of the iframe.                          | `100%`    |
-| `Height` | CSS height of the iframe.                         | `150px`   |
+| `Height` | CSS height of the iframe, or `auto`.              | `150px`   |
 | `ID`     | The user specific id.                             | hashed id |
 
 `IframeValue` unmarshals the latest value the iframe sent through
-`window.update` into `out`. The `id` is the one passed to `IframeWithID` or
+`window.toolgui.update` into `out`. The `id` is the one passed to `IframeWithID` or
 `IframeConf.ID`, so an interactive iframe needs an explicit id — the default id
 is derived from a hash of the html.
 
@@ -80,21 +77,21 @@ tgcomp.IframeWithConf(p.Main, "<h1>Hello World</h1>", &tgcomp.IframeConf{
 
 ### Interactive
 
-Show a button that sends a value back to the server.
+`window.toolgui` is available inside every iframe that has `Script` enabled. It
+talks to the app over `postMessage`, which is what lets the iframe stay on an
+opaque origin.
 
-In the iframe, there are four values injected on `window`:
-
-* `window.update(value)` - function. Send an arbitrary JSON value back to the
-  server. It is stored in the state under the **iframe's own id** — the iframe
-  cannot write to another component's state.
-* `window.upload(file)` - function. Upload a `File` to the server. Returns a
+* `window.toolgui.update(value)` - send an arbitrary JSON value back to the
+  server. It is stored in the state under the **iframe's own id** — the app
+  fills the id in, so an iframe cannot write to another component's state.
+* `window.toolgui.upload(file)` - upload a `File`. Returns a
   `Promise<{ok: boolean, error?: string}>`.
-* `window.theme` - current theme.
-* `window.props` - props of the iframe component.
-
-They are injected once the iframe document has loaded, and re-injected on every
-reload, so a script that runs while the document is parsing should not touch
-them at top level.
+* `window.toolgui.onRender(fn)` - run `fn(props, theme)` on every render, and
+  once immediately if a render already arrived.
+* `window.toolgui.autoHeight()` - report the document height to the app. Pair
+  it with `Height: "auto"`.
+* `window.toolgui.props` / `.theme` / `.id` - the latest values from the app.
+  Undefined until the first render.
 
 ```go
 tgcomp.IframeWithConf(
@@ -103,7 +100,7 @@ tgcomp.IframeWithConf(
 	<script>
 		const btn = document.getElementById('btn');
 		btn.addEventListener('click', (event) => {
-			window.update({clicked: true});
+			window.toolgui.update({clicked: true});
 		});
 	</script>`,
 	&tgcomp.IframeConf{
@@ -121,4 +118,37 @@ if err != nil {
 }
 
 tgcomp.Text(p.Main, fmt.Sprintf("Status: %v", value.Clicked))
+```
+
+### Reacting to reruns, and auto height
+
+`onRender` fires on the first render and again whenever the props or the theme
+change, so an iframe can update itself without being reloaded.
+
+`autoHeight` reports the guest's own height as it changes; with `Height: "auto"`
+the app resizes the iframe to match.
+
+Two caveats. It measures the body, so a guest whose body is sized off the
+viewport (`height: 100%`) will feed its own height back and should set a fixed
+`Height` instead. And because the iframe is isolated it is a separate rendering
+context, which the browser throttles while it is scrolled out of view: an
+offscreen iframe stays at the default height and takes its real one as it
+becomes visible.
+
+```go
+tgcomp.IframeWithConf(
+	p.Main,
+	`<div id="out">waiting for render</div>
+	<script>
+		const out = document.getElementById('out');
+		window.toolgui.onRender((props, theme) => {
+			out.innerText = 'theme=' + theme;
+		});
+		window.toolgui.autoHeight();
+	</script>`,
+	&tgcomp.IframeConf{
+		Script: true,
+		Height: "auto",
+		ID:     "iframe_with_render",
+	})
 ```

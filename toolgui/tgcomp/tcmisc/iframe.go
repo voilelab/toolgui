@@ -40,16 +40,17 @@ func newIframeComponent(html string, script bool) *iframeComponent {
 
 // IframeConf is the configuration for the Iframe component.
 type IframeConf struct {
-	// Script allows the iframe to run javascript.
-	//
-	// Warning: an iframe with Script enabled is NOT isolated from the app.
-	// Only pass html you trust as much as your own app code.
+	// Script allows the iframe to run javascript. The iframe runs on an
+	// opaque origin either way, so it cannot reach the app; it talks to it
+	// through window.toolgui.
 	Script bool
 
 	// Width is the css width of the iframe, default is "100%".
 	Width string
 
 	// Height is the css height of the iframe, default is "150px".
+	// "auto" tracks the guest's own height, which needs the guest to call
+	// window.toolgui.autoHeight().
 	Height string
 
 	// ID is the unique identifier for this iframe component.
@@ -57,13 +58,13 @@ type IframeConf struct {
 }
 
 // Iframe show a html.
-// script is used to allow the iframe to run javascript. (notice that this is not secure)
+// script is used to allow the iframe to run javascript.
 func Iframe(c *tgframe.Container, html string, script bool) {
 	IframeWithConf(c, html, &IframeConf{Script: script})
 }
 
 // IframeWithID create a html component with a user specific id.
-// script is used to allow the iframe to run javascript. (notice that this is not secure)
+// script is used to allow the iframe to run javascript.
 func IframeWithID(c *tgframe.Container, html string, script bool, id string) {
 	IframeWithConf(c, html, &IframeConf{Script: script, ID: id})
 }

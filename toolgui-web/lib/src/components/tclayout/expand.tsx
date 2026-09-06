@@ -20,7 +20,7 @@ export function TExpand({ node, update, upload, theme }: Props) {
           <div className="content">
             {
               node.children.map(child =>
-                <TComponent node={child}
+                <TComponent key={child.props.id} node={child}
                   update={update}
                   upload={upload}
                   theme={theme} />
