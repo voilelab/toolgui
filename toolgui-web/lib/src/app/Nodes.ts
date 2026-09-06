@@ -36,8 +36,6 @@ export class Forest {
     this.nodes = {}
     this.runID = NO_RUN_ID
 
-    // The root containers are the roots of every key below them, so their key
-    // is their own id, which is what the server derives its keys from too.
     for (const id of rootNodeIDs) {
       this.nodes[id] = new Node(id, {
         name: 'container_component',
