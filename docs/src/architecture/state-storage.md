@@ -48,7 +48,7 @@ before the component runs is what gives it an initial value:
 
 ```go
 func Main(p *tgframe.Params) error {
-	if _, ok := p.State.Get[float64]("number_component_Age"); !ok {
+	if p.State.GetFloat("number_component_Age") == nil {
 		p.State.Set("number_component_Age", 30)
 	}
 
@@ -57,7 +57,9 @@ func Main(p *tgframe.Params) error {
 }
 ```
 
-The guard matters: `Set` on every run overwrites what the user just typed.
+The guard matters: `Set` on every run overwrites what the user just typed. Use
+the getter that matches the stored value — `GetFloat` for a numeric key, since
+`Get[float64]` would miss a default the page itself wrote as an `int`.
 
 The key is `<component name>_<label>`, unless the component was given an
 explicit `ID` in its conf, in which case the key is that id verbatim. `Radio`

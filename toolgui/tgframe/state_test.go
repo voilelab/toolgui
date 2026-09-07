@@ -1,6 +1,9 @@
 package tgframe
 
-import "testing"
+import (
+	"math"
+	"testing"
+)
 
 const testStateKey = "number_component_Age"
 
@@ -127,6 +130,41 @@ func TestGettersOnRightType(t *testing.T) {
 	// component does when its T is integral.
 	if got := state.GetInt("f"); got == nil || *got != 1 {
 		t.Errorf("GetInt = %v, want 1", got)
+	}
+}
+
+// TestGetIntUnrepresentable pins the numbers an int cannot hold. Go leaves
+// the conversion unspecified for these, so the getter reports them as absent
+// rather than handing back whatever the hardware produced.
+func TestGetIntUnrepresentable(t *testing.T) {
+	cases := []struct {
+		name string
+		val  any
+	}{
+		{"NaN", math.NaN()},
+		{"+Inf", math.Inf(1)},
+		{"-Inf", math.Inf(-1)},
+		{"past MaxInt", -float64(math.MinInt)},
+		{"past MinInt", float64(math.MinInt) * 2},
+		{"uint64 past MaxInt", uint64(math.MaxInt64) + 1},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			state := NewState()
+			state.Set(testStateKey, c.val)
+
+			if got := state.GetInt(testStateKey); got != nil {
+				t.Errorf("GetInt = %v, want nil", *got)
+			}
+		})
+	}
+
+	// The edges themselves still read: only past them is out.
+	state := NewState()
+	state.Set(testStateKey, float64(math.MinInt))
+	if got := state.GetInt(testStateKey); got == nil || *got != math.MinInt {
+		t.Errorf("GetInt = %v, want MinInt", got)
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"maps"
+	"math"
 	"runtime"
 	"sync"
 
@@ -234,12 +235,22 @@ func (s *State) GetFloat(key string) *float64 {
 // GetInt gets the value of a key and returns it as an int, truncating a
 // fractional value. Like [State.GetFloat] it reads any numeric type, and
 // returns nil when the key is unset or holds a non-numeric value.
+//
+// A number an int cannot hold — a NaN, an infinity, or one past the int
+// range, all of which convert to an unspecified value rather than failing —
+// is nil too, so what comes back is always the number that was stored.
 func (s *State) GetInt(key string) *int {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
 	f, ok := toNumber(s.values[key])
 	if !ok {
+		return nil
+	}
+
+	// The bounds are written as float64 on purpose: math.MaxInt has no exact
+	// float64, so comparing against it would let 2^63 itself through.
+	if math.IsNaN(f) || f < float64(math.MinInt) || f >= -float64(math.MinInt) {
 		return nil
 	}
 
