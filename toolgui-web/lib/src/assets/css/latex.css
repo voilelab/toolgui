@@ -1,3 +1,10 @@
-[aria-hidden="true"] {
+/* KaTeX draws the formula twice: MathML for assistive tech, and an HTML
+   fallback it marks aria-hidden. We show the MathML, so the fallback goes.
+   
+   Scoped to the component: unscoped, this hid every aria-hidden element in
+   the app, and a decorative icon is exactly what that attribute is for —
+   Mantine's ticked checkbox and its datetime submit button both came out
+   blank. */
+.toolgui-latex [aria-hidden="true"] {
     display: none;
 }

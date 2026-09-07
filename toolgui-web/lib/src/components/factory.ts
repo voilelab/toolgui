@@ -1,3 +1,4 @@
+import type React from "react"
 import { TTextbox } from "./tcinput/textbox"
 import { TCheckbox } from "./tcinput/checkbox"
 import { TButton } from "./tcinput/button"
@@ -38,7 +39,7 @@ import { TTab } from "./tclayout/tab"
 import { TLatex } from "./tccontent/latex"
 import { TExpand } from "./tclayout/expand"
 
-const creatorMap: { [id: string]: ((props: Props) => JSX.Element) } = {
+const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   textbox_component: TTextbox,
   checkbox_component: TCheckbox,
   button_component: TButton,
