@@ -134,15 +134,15 @@ func TestGet(t *testing.T) {
 	state := NewState()
 	state.Set("s", "abc")
 
-	if got, ok := Get[string](state, "s"); !ok || got != "abc" {
+	if got, ok := state.Get[string]("s"); !ok || got != "abc" {
 		t.Errorf("Get[string] = %v, %v, want abc, true", got, ok)
 	}
 	// Get is a plain type assertion: unlike GetFloat it does not read one
 	// numeric type as another.
-	if got, ok := Get[float64](state, "s"); ok || got != 0 {
+	if got, ok := state.Get[float64]("s"); ok || got != 0 {
 		t.Errorf("Get[float64] = %v, %v, want 0, false", got, ok)
 	}
-	if got, ok := Get[string](state, "missing"); ok || got != "" {
+	if got, ok := state.Get[string]("missing"); ok || got != "" {
 		t.Errorf("Get[string] = %q, %v, want \"\", false", got, ok)
 	}
 }

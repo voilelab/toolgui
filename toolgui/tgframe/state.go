@@ -168,9 +168,8 @@ func toNumber(val any) (float64, bool) {
 // when the key holds nothing, or holds a value of another type — reading a
 // key the user filled in by hand never panics.
 //
-// It is a function rather than a method because Go methods cannot take type
-// parameters.
-func Get[T any](s *State, key string) (T, bool) {
+//	name, ok := p.State.Get[string]("name")
+func (s *State) Get[T any](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
@@ -187,6 +186,9 @@ func Get[T any](s *State, key string) (T, bool) {
 //
 // A key holding some other type is overwritten rather than reported: the
 // alternative is handing back a pointer whose writes go nowhere.
+//
+// It is a function rather than a method, unlike [State.Get], only because
+// [State.Default] already has the name.
 func Default[T any](s *State, key string, v T) *T {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()

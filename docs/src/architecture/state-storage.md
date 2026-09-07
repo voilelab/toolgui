@@ -19,10 +19,10 @@ Why cache at all:
 `p.State` holds `any`, so every getter has to answer what happens when the
 value is not the type asked for. None of them panic: `GetString`, `GetFloat`
 and `GetInt` return `nil`, `GetBool` returns `false`, and the generic
-`tgframe.Get[T]` returns the zero value and `false`.
+`State.Get[T]` returns the zero value and `false`.
 
 ```go
-name, ok := tgframe.Get[string](p.State, "name")
+name, ok := p.State.Get[string]("name")
 ```
 
 `tgframe.Default[T]` is the same idea for a value the page mutates. It stores
@@ -48,7 +48,7 @@ before the component runs is what gives it an initial value:
 
 ```go
 func Main(p *tgframe.Params) error {
-	if _, ok := tgframe.Get[float64](p.State, "number_component_Age"); !ok {
+	if _, ok := p.State.Get[float64]("number_component_Age"); !ok {
 		p.State.Set("number_component_Age", 30)
 	}
 
