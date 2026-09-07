@@ -17,5 +17,6 @@ export function TLatex({ node }: Props) {
     });
   }, [node.props.latex]);
 
-  return <div id={node.props.id || undefined} ref={containerRef} />
+  return <div className="toolgui-latex"
+    id={node.props.id || undefined} ref={containerRef} />
 }
