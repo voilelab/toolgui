@@ -21,15 +21,16 @@ func newMarkdownComponent(text string) *markdownComponent {
 	}
 }
 
-// Markdown render markdown to html.
-func Markdown(c *tgframe.Container, markdown string) {
-	comp := newMarkdownComponent(markdown)
-	c.AddComponent(comp)
+// MarkdownConf is the configuration for the Markdown component.
+type MarkdownConf struct {
+	tgframe.Base
 }
 
-// Markdown create a markdown-rendering part with a user-specific id.
-func MarkdownWithID(c *tgframe.Container, markdown string, id string) {
+// Markdown render markdown to html.
+func Markdown(c *tgframe.Container, markdown string, conf ...*MarkdownConf) {
+	cf := tgframe.OneConf("Markdown", conf)
+
 	comp := newMarkdownComponent(markdown)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

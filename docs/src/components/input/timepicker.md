@@ -7,26 +7,32 @@ Timepicker create a timepicker and return its selected time.
 ```go
 type Time struct {
 	Hour int
-	Minute int
+	Min  int
 }
 
-func Timepicker(s *tgframe.State, c *tgframe.Container, label string) *Time
+func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *Time
 ```
 
-* `s` is State.
 * `c` is Parent container.
 * `label` is the label for timepicker.
+* `conf` is an optional configuration, at most one.
 * Return the selected time. nil if no time is selected.
+
+```go
+// TimepickerConf is the configuration for the Timepicker component.
+type TimepickerConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 
 ```go
-timeValue := tgcomp.Timepicker(p.State, p.Main, "Timepicker")
+timeValue := tgcomp.Timepicker(p.Main, "Timepicker")
 if timeValue != nil {
-	text := fmt.Sprintf("Value: %02d:%02d", timeValue.Hour, timeValue.Minute)
-	tgcomp.TextWithID(p.Main, text, "timepicker_result")
+	text := fmt.Sprintf("Value: %02d:%02d", timeValue.Hour, timeValue.Min)
+	tgcomp.Text(p.Main, text, &tgcomp.TextConf{ID: "timepicker_result"})
 }
 ```
 
 ![timepicker component](timepicker.png)
-

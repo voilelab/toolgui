@@ -9,21 +9,28 @@ The user need to click the submit button to trigger the script execution.
 ### Interface
 
 ```go
-func Form(c *tgframe.Container, id string) *tgframe.Container
+func Form(c *tgframe.Container, conf ...*FormConf) *tgframe.Container
 ```
 
 ### Parameters
 
 * `c` is Parent container.
-* `id` is the ID of the form.
+* `conf` is an optional configuration, at most one.
+
+```go
+// FormConf is the configuration for the Form component.
+type FormConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 
 ```go
 var a, b *float64
-tgcomp.Form(formCompCol, "form").With(func(c *tgframe.Container) {
-	a = tgcomp.NumberFloat64(p.State, c, "a")
-	b = tgcomp.NumberFloat64(p.State, c, "b")
+tgcomp.Form(formCompCol).With(func(c *tgframe.Container) {
+	a = tgcomp.Number[float64](c, "a")
+	b = tgcomp.Number[float64](c, "b")
 })
 
 if a != nil && b != nil {

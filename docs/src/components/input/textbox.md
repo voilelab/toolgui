@@ -7,20 +7,20 @@ Textbox create a textbox and return its value.
 ### Interface
 
 ```go
-func Textbox(s *tgframe.State, c *tgframe.Container, label string) string
-func TextboxWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *TextboxConf) string
+func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string
 ```
 
 ### Parameters
 
-* `s` is State.
 * `c` is Parent container.
 * `label` is the label for textbox.
-* `conf` is the configuration of the textbox.
+* `conf` is an optional configuration, at most one.
 
 ```go
 // TextboxConf is the configuration for the Textbox component
 type TextboxConf struct {
+	tgframe.Base // ID
+
 	// Placeholder text to display in the textbox.
 	Placeholder string
 
@@ -39,17 +39,15 @@ type TextboxConf struct {
 
 	// Color defines the color of the textbox
 	Color tcutil.Color
-
-	// ID is the unique identifier for this textbox component
-	ID string
 }
 ```
 
 ## Example
 
 ```go
-textboxValue := tgcomp.Textbox(p.State, p.Main, "Textbox")
-tgcomp.TextWithID(p.Main, "Value: "+textboxValue, "textbox_result")
+textboxValue := tgcomp.Textbox(p.Main, "Textbox")
+tgcomp.Text(p.Main, "Value: "+textboxValue,
+	&tgcomp.TextConf{ID: "textbox_result"})
 ```
 
 ![textbox component](textbox.png)

@@ -21,15 +21,16 @@ func newLatexComponent(text string) *latexComponent {
 	}
 }
 
-// Text show a text.
-func Latex(c *tgframe.Container, text string) {
-	comp := newLatexComponent(text)
-	c.AddComponent(comp)
+// LatexConf is the configuration for the Latex component.
+type LatexConf struct {
+	tgframe.Base
 }
 
-// TextWithID create a text component with a user specific id.
-func LatexWithID(c *tgframe.Container, text string, id string) {
+// Latex renders text as LaTeX.
+func Latex(c *tgframe.Container, text string, conf ...*LatexConf) {
+	cf := tgframe.OneConf("Latex", conf)
+
 	comp := newLatexComponent(text)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

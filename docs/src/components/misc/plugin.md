@@ -17,26 +17,27 @@ storage, and the `window.toolgui` bridge for everything it does need.
 func (app *tgframe.App) AddPluginAssets(name string, fsys fs.FS) error
 func tgframe.PluginAssetURL(name, file string) string
 
-func Plugin(c *tgframe.Container, id, src string, props any)
-func PluginWithConf(c *tgframe.Container, id, src string, conf *PluginConf)
+func Plugin(c *tgframe.Container, src string, conf ...*PluginConf)
 func PluginValue(s *tgframe.State, id string, out any) error
 ```
 
 * `c` is the container to add the plugin to.
-* `id` names the plugin's state: the key `PluginValue` reads, and the id the
-  frontend stamps on every value the plugin sends. A plugin with an empty id
-  renders, but cannot send anything back.
 * `src` is the url of the plugin script.
-* `props` is handed to the plugin as its props, marshalled to json.
+* `conf` is an optional configuration, at most one.
 
 `PluginConf`:
 
 | Field    | Description                                          | Default  |
 | -------- | ---------------------------------------------------- | -------- |
+| `ID`     | Names the plugin's state, from the embedded `tgframe.Base`. | none |
 | `Props`  | Props handed to the plugin.                          | `nil`    |
 | `Style`  | Url of a stylesheet to load in the frame.            | none     |
 | `Width`  | CSS width of the frame.                              | `100%`   |
 | `Height` | CSS height of the frame, or `auto`.                  | `150px`  |
+
+`ID` is the key `PluginValue` reads, and the id the frontend stamps on every
+value the plugin sends. A plugin with no id renders, but cannot send anything
+back.
 
 ## Shipping a plugin
 
@@ -112,9 +113,10 @@ var value struct {
 // Nothing is selected until the plugin sends its first value.
 _ = tgcomp.PluginValue(p.State, "color_picker", &value)
 
-tgcomp.PluginWithConf(p.Main, "color_picker",
+tgcomp.Plugin(p.Main,
 	tgframe.PluginAssetURL("colorpicker", "colorpicker.js"),
 	&tgcomp.PluginConf{
+		ID:    "color_picker",
 		Style: tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
 		Props: map[string]any{
 			"colors":   []string{"#ff3860", "#ffdd57", "#23d160"},

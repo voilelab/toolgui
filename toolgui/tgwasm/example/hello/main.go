@@ -36,7 +36,7 @@ func Index(p *tgframe.Params) error {
 func Echo(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Echo")
 
-	text := tgcomp.Textarea(p.State, p.Main, "Say something")
+	text := tgcomp.Textarea(p.Main, "Say something")
 	tgcomp.Text(p.Main, strings.ToUpper(text))
 
 	return nil
@@ -47,7 +47,7 @@ func Echo(p *tgframe.Params) error {
 func Upload(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Count a file")
 
-	file := tcinput.Fileupload(p.State, p.Main, "Pick a text file", "")
+	file := tcinput.Fileupload(p.Main, "Pick a text file", "")
 	if file == nil {
 		return nil
 	}

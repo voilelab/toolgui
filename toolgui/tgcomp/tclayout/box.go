@@ -1,7 +1,6 @@
 package tclayout
 
 import (
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -12,17 +11,28 @@ type boxComponent struct {
 	*tgframe.BaseComponent
 }
 
-func newBoxComponent(id string) *boxComponent {
+func newBoxComponent() *boxComponent {
 	return &boxComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: boxComponentName,
-			ID:   tcutil.NormalID(boxComponentName, id),
 		},
 	}
 }
 
+// BoxConf is the configuration for the Box component. The container a box
+// hands out derives its id from the box's; give none and it carries none, and
+// the components inside are still placed by position.
+type BoxConf struct {
+	tgframe.Base
+}
+
 // Box create a box container.
-func Box(c *tgframe.Container, id string) *tgframe.Container {
-	boxComp := c.AddComponent(newBoxComponent(id))
+func Box(c *tgframe.Container, conf ...*BoxConf) *tgframe.Container {
+	cf := tgframe.OneConf("Box", conf)
+
+	comp := newBoxComponent()
+	tgframe.SetConfID(comp, cf)
+
+	boxComp := c.AddComponent(comp)
 	return c.AddContainerTo(boxComp, "inner", 0)
 }

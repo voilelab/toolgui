@@ -76,7 +76,7 @@ func Main(p *tgframe.Params) error {
 	for i, item := range todoList.Items {
 		// Checkbox returns its own value, and it's written back to the state
 		// so the next run knows which items are done before rendering them.
-		todoList.Items[i].Done = tgcomp.CheckboxWithConf(p.State, col1, item.Text,
+		todoList.Items[i].Done = tgcomp.Checkbox(col1, item.Text,
 			&tgcomp.CheckboxConf{
 				ID: fmt.Sprintf("todo_%d", item.ID),
 			})

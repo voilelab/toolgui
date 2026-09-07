@@ -1,5 +1,7 @@
 package tgframe
 
+import "fmt"
+
 // Base is embedded in every component's Conf, and is what gives all of them an
 // id without each one declaring the field. Go 1.27 lets a promoted field be a
 // key in a composite literal, so the embed does not show up at the call site:
@@ -34,13 +36,15 @@ type Conf interface {
 //
 // More than one is a mistake in the caller rather than a value to resolve:
 // there is no sensible way to merge two confs for the same component, so this
-// panics instead of picking one.
+// panics instead of picking one. component names the component in that panic,
+// so the caller is told which of the calls on the line is the wrong one.
 func OneConf[T any, PC interface {
 	*T
 	Conf
-}](conf []PC) PC {
+}](component string, conf []PC) PC {
 	if len(conf) > 1 {
-		panic("toolgui: a component takes at most one conf")
+		panic(fmt.Sprintf(
+			"toolgui: %s takes at most one conf, got %d", component, len(conf)))
 	}
 
 	if len(conf) == 0 || conf[0] == nil {

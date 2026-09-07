@@ -19,14 +19,16 @@ func newDividerComponent() *dividerComponent {
 	}
 }
 
-// Divider create a horizontal line.
-func Divider(c *tgframe.Container) {
-	c.AddComponent(newDividerComponent())
+// DividerConf is the configuration for the Divider component.
+type DividerConf struct {
+	tgframe.Base
 }
 
-// DividerWithID create a horizontal line with ID.
-func DividerWithID(c *tgframe.Container, id string) {
+// Divider create a horizontal line.
+func Divider(c *tgframe.Container, conf ...*DividerConf) {
+	cf := tgframe.OneConf("Divider", conf)
+
 	comp := newDividerComponent()
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

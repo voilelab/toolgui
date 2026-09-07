@@ -8,8 +8,10 @@ import (
 
 func TestPluginProps(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		Plugin(c, "my_plugin", "/plugin/gauge/gauge.js",
-			map[string]any{"value": 42})
+		Plugin(c, "/plugin/gauge/gauge.js", &PluginConf{
+			ID:    "my_plugin",
+			Props: map[string]any{"value": 42},
+		})
 	})
 
 	if props["src"] != "/plugin/gauge/gauge.js" {
@@ -38,9 +40,10 @@ func TestPluginProps(t *testing.T) {
 	}
 }
 
-func TestPluginWithConf(t *testing.T) {
+func TestPluginConfDrivesTheProps(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		PluginWithConf(c, "my_plugin", "/plugin/gauge/gauge.js", &PluginConf{
+		Plugin(c, "/plugin/gauge/gauge.js", &PluginConf{
+			ID:     "my_plugin",
 			Style:  "/plugin/gauge/gauge.css",
 			Width:  "300px",
 			Height: "auto",
@@ -64,7 +67,7 @@ func TestPluginWithConf(t *testing.T) {
 // can be read back.
 func TestPluginWithoutID(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		Plugin(c, "", "/plugin/gauge/gauge.js", nil)
+		Plugin(c, "/plugin/gauge/gauge.js")
 	})
 
 	if props["id"] != "" {
@@ -76,7 +79,7 @@ func TestPluginWithoutID(t *testing.T) {
 // on the event, not the bare user id.
 func TestPluginValueRoundTrip(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		Plugin(c, "my_plugin", "/plugin/gauge/gauge.js", nil)
+		Plugin(c, "/plugin/gauge/gauge.js", &PluginConf{ID: "my_plugin"})
 	})
 
 	event := &tgframe.EventCustom{

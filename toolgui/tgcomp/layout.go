@@ -5,10 +5,13 @@ import "github.com/voilelab/toolgui/toolgui/tgcomp/tclayout"
 // Box create a box container.
 var Box = tclayout.Box
 
+// BoxConf is the configuration for the Box component.
+type BoxConf = tclayout.BoxConf
+
 // Column create N columns.
 var Column = tclayout.Column
 
-// Column create 1 column.
+// Column1 create 1 column.
 var Column1 = tclayout.Column1
 
 // Column2 create 2 columns.
@@ -17,7 +20,7 @@ var Column2 = tclayout.Column2
 // Column3 create 3 columns.
 var Column3 = tclayout.Column3
 
-// ColumnConf store optional conf for the column components.
+// ColumnConf is the configuration for the column components.
 type ColumnConf = tclayout.ColumnConf
 
 // EqColumn create N columns with same width.
@@ -41,9 +44,6 @@ var EqColumn5 = tclayout.EqColumn5
 // Tab create a tab component.
 var Tab = tclayout.Tab
 
-// TabWithID create a tab component with a user specific id.
-var TabWithID = tclayout.TabWithID
-
 // Tab2 create 2 tabs.
 var Tab2 = tclayout.Tab2
 
@@ -56,8 +56,11 @@ var Tab4 = tclayout.Tab4
 // Tab5 create 5 tabs.
 var Tab5 = tclayout.Tab5
 
+// TabConf is the configuration for the tab components.
+type TabConf = tclayout.TabConf
+
 // Expand create a expandable component.
 var Expand = tclayout.Expand
 
-// ExpandWithID create a expandable component with a user specific id.
-var ExpandWithID = tclayout.ExpandWithID
+// ExpandConf is the configuration for the Expand component.
+type ExpandConf = tclayout.ExpandConf

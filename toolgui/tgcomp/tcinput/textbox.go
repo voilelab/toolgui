@@ -55,7 +55,7 @@ type TextboxConf struct {
 
 // Textbox create a textbox and return its value.
 func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Textbox", conf)
 
 	comp := newTextboxComponent(label)
 	comp.Placeholder = cf.Placeholder

@@ -28,45 +28,34 @@ func newTextareaComponent(label string) *textareaComponent {
 
 // TextareaConf is the configuration for a textarea.
 type TextareaConf struct {
+	tgframe.Base
+
 	// Height is the height of the textarea. default value is 3.
-	Height int `json:"height"`
+	Height int
 
 	// Default is the default value of the textarea.
-	Default string `json:"default"`
+	Default string
 
 	// Color defines the color of the textarea
 	Color tcutil.Color
-
-	// ID is the unique identifier for this textarea component
-	ID string
 }
 
 // Textarea create a textarea and return its value.
-func Textarea(s *tgframe.State, c *tgframe.Container, label string) string {
-	return TextareaWithConf(s, c, label, nil)
-}
-
-// TextareaWithConf create a textarea and return its value.
-func TextareaWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *TextareaConf) string {
-	if conf == nil {
-		conf = &TextareaConf{}
-	}
+func Textarea(c *tgframe.Container, label string, conf ...*TextareaConf) string {
+	cf := tgframe.OneConf("Textarea", conf)
 
 	comp := newTextareaComponent(label)
-	comp.Height = conf.Height
+	comp.Height = cf.Height
 	if comp.Height == 0 {
 		comp.Height = 3
 	}
 
-	comp.Default = conf.Default
-	comp.Color = conf.Color
-
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+	comp.Default = cf.Default
+	comp.Color = cf.Color
+	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
-	val := s.GetString(comp.ID)
+	val := c.State.GetString(comp.ID)
 	if val == nil {
 		return comp.Default
 	}

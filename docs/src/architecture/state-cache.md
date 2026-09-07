@@ -30,15 +30,15 @@ func Main(p *tgframe.Params) error {
 
 	todoList := p.State.Default("todoList", TODOList{})
 
-	inp := tgcomp.Textbox(p.State, p.Main, "Add todo")
-	if tgcomp.Button(p.State, p.Main, "Add") && inp != "" {
+	inp := tgcomp.Textbox(p.Main, "Add todo")
+	if tgcomp.Button(p.Main, "Add") && inp != "" {
 		todoList.Add(inp)
 	}
 
 	for i, item := range todoList.Items {
 		// The ID ties the checkbox to the item instead of to its position,
 		// so its value follows the item when the list changes.
-		todoList.Items[i].Done = tgcomp.CheckboxWithConf(p.State, p.Main, item.Text,
+		todoList.Items[i].Done = tgcomp.Checkbox(p.Main, item.Text,
 			&tgcomp.CheckboxConf{
 				ID: fmt.Sprintf("todo_%d", item.ID),
 			})
@@ -109,7 +109,7 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 }
 
 func FuncCachePage(p *tgframe.Params) error {
-	cbzfile := tgcomp.Fileupload(p.State, p.Sidebar, "CBZ File", "application/x-cbz")
+	cbzfile := tgcomp.Fileupload(p.Sidebar, "CBZ File", "application/x-cbz")
 
 	if cbzfile == nil {
 		return nil
