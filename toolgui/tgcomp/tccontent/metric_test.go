@@ -56,6 +56,23 @@ func TestMetricProps(t *testing.T) {
 	}
 }
 
+// A delta of only spaces is no delta: it reaches the client empty, so it is
+// not drawn as a blank line where a change would be.
+func TestMetricBlankDelta(t *testing.T) {
+	props := addMetric(t, func(c *tgframe.Container) {
+		Metric(c, "Revenue", "12.4M", &MetricConf{Delta: "  "})
+	})
+
+	if props["delta"] != "" {
+		t.Errorf("delta = %q, want empty", props["delta"])
+	}
+
+	if props["direction"] != "" || props["tone"] != "" {
+		t.Errorf("direction, tone = %q, %q, want both empty",
+			props["direction"], props["tone"])
+	}
+}
+
 // The delta's direction is read off its sign, and its tone off the direction
 // and whether the metric is one where growing is the bad news.
 func TestMetricDeltaDirection(t *testing.T) {
@@ -71,7 +88,6 @@ func TestMetricDeltaDirection(t *testing.T) {
 		{"+8%", true, "up", "negative"},
 		{"-8%", true, "down", "positive"},
 		{"", false, "", ""},
-		{"  ", false, "", ""},
 	}
 
 	for _, c := range cases {

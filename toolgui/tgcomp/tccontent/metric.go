@@ -50,22 +50,26 @@ type MetricConf struct {
 func Metric(c *tgframe.Container, label, value string, conf ...*MetricConf) {
 	cf := tgframe.OneConf(conf)
 
+	// Trimmed once here, so that what the client shows and what the tone was
+	// read off are the same string: a delta of only spaces is no delta.
+	delta := strings.TrimSpace(cf.Delta)
+
 	comp := newMetricComponent(label, value)
-	comp.Delta = cf.Delta
-	comp.Direction, comp.Tone = deltaDirection(cf.Delta, cf.DeltaColorInverse)
+	comp.Delta = delta
+	comp.Direction, comp.Tone = deltaDirection(delta, cf.DeltaColorInverse)
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }
 
-// deltaDirection reads which way a delta points and whether that is the good
-// news. An empty delta points nowhere, and is shown without an arrow or a
-// color.
+// deltaDirection reads which way an already trimmed delta points and whether
+// that is the good news. An empty delta points nowhere, and is shown without
+// an arrow or a color.
 func deltaDirection(delta string, inverse bool) (direction, tone string) {
-	if strings.TrimSpace(delta) == "" {
+	if delta == "" {
 		return "", ""
 	}
 
-	down := strings.HasPrefix(strings.TrimSpace(delta), "-")
+	down := strings.HasPrefix(delta, "-")
 	if down {
 		direction = "down"
 	} else {
