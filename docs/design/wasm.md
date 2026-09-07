@@ -168,6 +168,49 @@ Serving notes worth documenting: `application/wasm` so
 its name, and `SetHashPageNameMode(true)` unless the host can rewrite unknown
 paths to `index.html`.
 
+## How a user builds it
+
+Two entry points around one page function, split by build tag. Both halves
+compile today — `go build ./...` picks the server one, `GOOS=js GOARCH=wasm`
+picks the other:
+
+```go
+// page.go — no build tag, shared.
+func newApp() *tgframe.App { ... }
+
+// main_server.go
+//go:build !(js && wasm)
+func main() { tgexec.NewWebExecutor(newApp()).StartService(":3000") }
+
+// main_wasm.go
+//go:build js && wasm
+func main() { tgwasm.NewExecutor(newApp()).Run() }
+```
+
+With phase 1 only, the rest is by hand:
+
+```shell
+GOOS=js GOARCH=wasm go build -o dist/app.wasm ./cmd/myapp
+cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/   # must match the toolchain
+cp -r "$TOOLGUI/toolgui-web/wasm/build/"* dist/     # index.html + static/
+python3 -m http.server -d dist                      # or any static host
+```
+
+Phase 2 is that script, minus the parts a user should not have to know:
+
+```shell
+go get github.com/voilelab/toolgui
+go tool toolgui-wasm build ./cmd/myapp -o dist
+```
+
+It runs the same `go build`, takes `wasm_exec.js` from the caller's `GOROOT`,
+writes the frontend it embeds, and leaves a `dist/` a static host serves as is
+— including from a Pages workflow, which is then three lines: set up Go, run
+the CLI, upload `dist/`.
+
+Calling `SetHashPageNameMode(true)` is the one thing the app itself has to do,
+unless the host can rewrite unknown paths to `index.html`.
+
 ## What the browser takes away
 
 Things the docs would have to state plainly:
