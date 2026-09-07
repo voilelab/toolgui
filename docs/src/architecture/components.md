@@ -18,7 +18,14 @@ tgcomp.Text(box, "Text2")
 
 Then the **Component Tree** will be:
 
-![component tree example](component-tree-example.png)
+```mermaid
+graph TD
+    Main --> Text1[Text]
+    Main --> Button
+    Main --> Box
+    Box --> Text2[Text]
+    Box --> Text3[Text]
+```
 
 ## Identity: position and id
 
