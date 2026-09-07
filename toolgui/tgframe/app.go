@@ -212,9 +212,9 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 
 	run := newRunState()
 
-	newMain := NewContainer(MainContainerID, notifyFunc)
+	newMain := NewContainer(MainContainerID, state, notifyFunc)
 	newMain.run = run
-	newSidebar := NewContainer(SidebarContainerID, notifyFunc)
+	newSidebar := NewContainer(SidebarContainerID, state, notifyFunc)
 	newSidebar.run = run
 
 	// The roots are never sent, so nothing else claims their ids. Claim them

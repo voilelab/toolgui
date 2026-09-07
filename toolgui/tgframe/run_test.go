@@ -110,11 +110,9 @@ func TestNestedContainersKeyUnderTheirComponent(t *testing.T) {
 }
 
 func TestDuplicatedWidgetIDIsAnError(t *testing.T) {
-	state := tgframe.NewState()
-
 	_, _, err := keysOf(t, func(p *tgframe.Params) error {
-		tgcomp.Button(state, p.Main, "ok")
-		tgcomp.Button(state, p.Main, "ok")
+		tgcomp.Button(p.Main, "ok")
+		tgcomp.Button(p.Main, "ok")
 		return nil
 	})
 
@@ -124,11 +122,9 @@ func TestDuplicatedWidgetIDIsAnError(t *testing.T) {
 }
 
 func TestAUserSuppliedIDMakesDuplicatedWidgetsLegal(t *testing.T) {
-	state := tgframe.NewState()
-
 	_, ids, err := keysOf(t, func(p *tgframe.Params) error {
-		tgcomp.Button(state, p.Main, "ok")
-		tgcomp.ButtonWithConf(state, p.Main, "ok", &tgcomp.ButtonConf{ID: "second"})
+		tgcomp.Button(p.Main, "ok")
+		tgcomp.Button(p.Main, "ok", &tgcomp.ButtonConf{ID: "second"})
 		return nil
 	})
 	if err != nil {

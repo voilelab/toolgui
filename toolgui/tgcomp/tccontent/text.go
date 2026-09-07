@@ -21,15 +21,16 @@ func newTextComponent(text string) *textComponent {
 	}
 }
 
-// Text show a text.
-func Text(c *tgframe.Container, text string) {
-	comp := newTextComponent(text)
-	c.AddComponent(comp)
+// TextConf is the configuration for the Text component.
+type TextConf struct {
+	tgframe.Base
 }
 
-// TextWithID create a text component with a user specific id.
-func TextWithID(c *tgframe.Container, text string, id string) {
+// Text show a text.
+func Text(c *tgframe.Container, text string, conf ...*TextConf) {
+	cf := tgframe.OneConf(conf)
+
 	comp := newTextComponent(text)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

@@ -31,6 +31,8 @@ func newTextboxComponent(label string) *textboxComponent {
 
 // TextboxConf is the configuration for the Textbox component
 type TextboxConf struct {
+	tgframe.Base
+
 	// Placeholder text to display in the textbox.
 	Placeholder string
 
@@ -49,35 +51,23 @@ type TextboxConf struct {
 
 	// Color defines the color of the textbox
 	Color tcutil.Color
-
-	// ID is the unique identifier for this textbox component
-	ID string
 }
 
 // Textbox create a textbox and return its value.
-func Textbox(s *tgframe.State, c *tgframe.Container, label string) string {
-	return TextboxWithConf(s, c, label, nil)
-}
-
-// TextboxWithConf create a textbox and return its value.
-func TextboxWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *TextboxConf) string {
-	if conf == nil {
-		conf = &TextboxConf{}
-	}
+func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
+	cf := tgframe.OneConf(conf)
 
 	comp := newTextboxComponent(label)
-	comp.Placeholder = conf.Placeholder
-	comp.MaxLength = conf.MaxLength
-	comp.Password = conf.Password
-	comp.Disabled = conf.Disabled
-	comp.Color = conf.Color
-	comp.Default = conf.Default
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+	comp.Placeholder = cf.Placeholder
+	comp.MaxLength = cf.MaxLength
+	comp.Password = cf.Password
+	comp.Disabled = cf.Disabled
+	comp.Color = cf.Color
+	comp.Default = cf.Default
+	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
-	val := s.GetString(comp.ID)
+	val := c.State.GetString(comp.ID)
 	if val == nil {
 		return comp.Default
 	}
