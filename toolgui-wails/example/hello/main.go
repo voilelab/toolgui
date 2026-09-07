@@ -14,14 +14,14 @@ import (
 )
 
 func Main(p *tgframe.Params) error {
-	name := tgcomp.Textbox(p.State, p.Sidebar, "What's your name?")
+	name := tgcomp.Textbox(p.Sidebar, "What's your name?", nil)
 	if name != "" {
-		tgcomp.Text(p.Sidebar, "Hi "+name+"~")
+		tgcomp.Text(p.Sidebar, "Hi "+name+"~", nil)
 	}
 
-	tgcomp.Text(p.Main, "hello ")
-	if tgcomp.Button(p.State, p.Main, "keep going") {
-		tgcomp.Text(p.Main, "world")
+	tgcomp.Text(p.Main, "hello ", nil)
+	if tgcomp.Button(p.Main, "keep going", nil) {
+		tgcomp.Text(p.Main, "world", nil)
 	}
 
 	return nil

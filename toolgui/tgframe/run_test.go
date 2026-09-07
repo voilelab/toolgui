@@ -48,8 +48,8 @@ func keysOf(t *testing.T, page tgframe.RunFunc) ([]string, []string, error) {
 
 func TestIdenticalComponentsGetTheirOwnKey(t *testing.T) {
 	keys, ids, err := keysOf(t, func(p *tgframe.Params) error {
-		tgcomp.Text(p.Main, "duplicate me")
-		tgcomp.Text(p.Main, "duplicate me")
+		tgcomp.Text(p.Main, "duplicate me", nil)
+		tgcomp.Text(p.Main, "duplicate me", nil)
 		tgcomp.Markdown(p.Main, "**dup markdown**")
 		tgcomp.Divider(p.Main)
 		tgcomp.Divider(p.Main)
@@ -81,10 +81,10 @@ func TestIdenticalComponentsGetTheirOwnKey(t *testing.T) {
 
 func TestNestedContainersKeyUnderTheirComponent(t *testing.T) {
 	keys, _, err := keysOf(t, func(p *tgframe.Params) error {
-		tgcomp.Text(p.Main, "before")
+		tgcomp.Text(p.Main, "before", nil)
 		left, right := tgcomp.Column2(p.Main, "cols")
-		tgcomp.Text(left, "in left")
-		tgcomp.Text(right, "in right")
+		tgcomp.Text(left, "in left", nil)
+		tgcomp.Text(right, "in right", nil)
 		return nil
 	})
 	if err != nil {
@@ -110,11 +110,9 @@ func TestNestedContainersKeyUnderTheirComponent(t *testing.T) {
 }
 
 func TestDuplicatedWidgetIDIsAnError(t *testing.T) {
-	state := tgframe.NewState()
-
 	_, _, err := keysOf(t, func(p *tgframe.Params) error {
-		tgcomp.Button(state, p.Main, "ok")
-		tgcomp.Button(state, p.Main, "ok")
+		tgcomp.Button(p.Main, "ok", nil)
+		tgcomp.Button(p.Main, "ok", nil)
 		return nil
 	})
 
@@ -124,11 +122,9 @@ func TestDuplicatedWidgetIDIsAnError(t *testing.T) {
 }
 
 func TestAUserSuppliedIDMakesDuplicatedWidgetsLegal(t *testing.T) {
-	state := tgframe.NewState()
-
 	_, ids, err := keysOf(t, func(p *tgframe.Params) error {
-		tgcomp.Button(state, p.Main, "ok")
-		tgcomp.ButtonWithConf(state, p.Main, "ok", &tgcomp.ButtonConf{ID: "second"})
+		tgcomp.Button(p.Main, "ok", nil)
+		tgcomp.Button(p.Main, "ok", &tgcomp.ButtonConf{ID: "second"})
 		return nil
 	})
 	if err != nil {

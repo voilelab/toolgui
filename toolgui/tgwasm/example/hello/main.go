@@ -17,27 +17,27 @@ import (
 )
 
 func Index(p *tgframe.Params) error {
-	name := tgcomp.Textbox(p.State, p.Sidebar, "What's your name?")
+	name := tgcomp.Textbox(p.Sidebar, "What's your name?", nil)
 	if name != "" {
-		tgcomp.Text(p.Sidebar, "Hi "+name+"~")
+		tgcomp.Text(p.Sidebar, "Hi "+name+"~", nil)
 	}
 
-	tgcomp.Title(p.Main, "Hello, WebAssembly")
+	tgcomp.Title(p.Main, "Hello, WebAssembly", nil)
 	tgcomp.Text(p.Main, "This page function is Go, compiled to wasm and run "+
-		"by your browser. There is no server behind it.")
+		"by your browser. There is no server behind it.", nil)
 
-	if tgcomp.Button(p.State, p.Main, "keep going") {
-		tgcomp.Text(p.Main, "world")
+	if tgcomp.Button(p.Main, "keep going", nil) {
+		tgcomp.Text(p.Main, "world", nil)
 	}
 
 	return nil
 }
 
 func Echo(p *tgframe.Params) error {
-	tgcomp.Title(p.Main, "Echo")
+	tgcomp.Title(p.Main, "Echo", nil)
 
 	text := tgcomp.Textarea(p.State, p.Main, "Say something")
-	tgcomp.Text(p.Main, strings.ToUpper(text))
+	tgcomp.Text(p.Main, strings.ToUpper(text), nil)
 
 	return nil
 }
@@ -45,7 +45,7 @@ func Echo(p *tgframe.Params) error {
 // Upload shows the browser-local data story: the file is read by the page
 // function without ever leaving the tab.
 func Upload(p *tgframe.Params) error {
-	tgcomp.Title(p.Main, "Count a file")
+	tgcomp.Title(p.Main, "Count a file", nil)
 
 	file := tcinput.Fileupload(p.State, p.Main, "Pick a text file", "")
 	if file == nil {
@@ -76,7 +76,7 @@ func Upload(p *tgframe.Params) error {
 	}
 
 	tgcomp.Text(p.Main, fmt.Sprintf("%s: %d lines, %d bytes",
-		file.Name, lines, file.Size))
+		file.Name, lines, file.Size), nil)
 
 	return nil
 }

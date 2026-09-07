@@ -13,7 +13,7 @@ func addChart(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 	t.Helper()
 
 	var packs []tgframe.NotifyPack
-	container := tgframe.NewContainer("test", func(pack tgframe.NotifyPack) {
+	container := tgframe.NewContainer("test", tgframe.NewState(), func(pack tgframe.NotifyPack) {
 		packs = append(packs, pack)
 	})
 

@@ -37,13 +37,8 @@ type ButtonConf struct {
 	ID string
 }
 
-// Button create a button and return true if it's clicked.
-func Button(s *tgframe.State, c *tgframe.Container, label string) bool {
-	return ButtonWithConf(s, c, label, nil)
-}
-
-// ButtonWithConf create a button and return true if it's clicked.
-func ButtonWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *ButtonConf) bool {
+// Button create a button and return true if it's clicked. conf may be nil.
+func Button(c *tgframe.Container, label string, conf *ButtonConf) bool {
 	if conf == nil {
 		conf = &ButtonConf{}
 	}
@@ -57,5 +52,5 @@ func ButtonWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *
 	}
 
 	c.AddComponent(comp)
-	return s.GetClickID() == comp.ID
+	return c.State.GetClickID() == comp.ID
 }

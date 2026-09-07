@@ -54,13 +54,8 @@ type TextboxConf struct {
 	ID string
 }
 
-// Textbox create a textbox and return its value.
-func Textbox(s *tgframe.State, c *tgframe.Container, label string) string {
-	return TextboxWithConf(s, c, label, nil)
-}
-
-// TextboxWithConf create a textbox and return its value.
-func TextboxWithConf(s *tgframe.State, c *tgframe.Container, label string, conf *TextboxConf) string {
+// Textbox create a textbox and return its value. conf may be nil.
+func Textbox(c *tgframe.Container, label string, conf *TextboxConf) string {
 	if conf == nil {
 		conf = &TextboxConf{}
 	}
@@ -77,7 +72,7 @@ func TextboxWithConf(s *tgframe.State, c *tgframe.Container, label string, conf 
 	}
 
 	c.AddComponent(comp)
-	val := s.GetString(comp.ID)
+	val := c.State.GetString(comp.ID)
 	if val == nil {
 		return comp.Default
 	}

@@ -49,14 +49,14 @@ var SubtitleWithID = tccontent.SubtitleWithID
 // Text show a text.
 var Text = tccontent.Text
 
-// TextWithID create a text component with a user specific id.
-var TextWithID = tccontent.TextWithID
+// TextConf is the configuration for the Text component.
+type TextConf = tccontent.TextConf
 
 // Title show a title.
 var Title = tccontent.Title
 
-// TitleWithID create a title component with a user specific id.
-var TitleWithID = tccontent.TitleWithID
+// TitleConf is the configuration for the Title component.
+type TitleConf = tccontent.TitleConf
 
 // Latex create a latex component.
 var Latex = tccontent.Latex

@@ -17,6 +17,9 @@ var Column2 = tclayout.Column2
 // Column3 create 3 columns.
 var Column3 = tclayout.Column3
 
+// ColumnConf store optional conf for the column components.
+type ColumnConf = tclayout.ColumnConf
+
 // EqColumn create N columns with same width.
 var EqColumn = tclayout.EqColumn
 

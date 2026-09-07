@@ -11,6 +11,12 @@ type Container struct {
 
 	SendNotifyPack SendNotifyPackFunc `json:"-"`
 
+	// State is the session state of the run this container belongs to. Every
+	// container of a run carries the same one, so a component reads and writes
+	// state through the container it is added to instead of being handed a
+	// State of its own. Nil outside a run.
+	State *State `json:"-"`
+
 	// counter is the index the next component added here gets. Containers are
 	// rebuilt on every run, so it starts at 0 each time and a component keeps
 	// its index as long as the page function writes it in the same place.
@@ -20,7 +26,7 @@ type Container struct {
 	run *runState
 }
 
-func NewContainer(id string, notifyComp SendNotifyPackFunc) *Container {
+func NewContainer(id string, state *State, notifyComp SendNotifyPackFunc) *Container {
 	return &Container{
 		BaseComponent: &BaseComponent{
 			Name: ContainerComponentName,
@@ -31,6 +37,7 @@ func NewContainer(id string, notifyComp SendNotifyPackFunc) *Container {
 			key: containerID(id),
 		},
 		SendNotifyPack: notifyComp,
+		State:          state,
 	}
 }
 
@@ -56,7 +63,7 @@ func (c *Container) AddComponent(comp Component) Component {
 }
 
 func (c *Container) AddContainer(id string) *Container {
-	newContainer := NewContainer(id, c.SendNotifyPack)
+	newContainer := NewContainer(id, c.State, c.SendNotifyPack)
 	newContainer.run = c.run
 	c.AddComponent(newContainer)
 	return newContainer
@@ -75,6 +82,7 @@ func (c *Container) AddContainerTo(comp Component, suffix string, idx int) *Cont
 			key:  fmt.Sprintf("%s/%d", keyOf(comp), idx),
 		},
 		SendNotifyPack: c.SendNotifyPack,
+		State:          c.State,
 		run:            c.run,
 	}
 

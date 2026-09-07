@@ -25,12 +25,22 @@ func newSelectComponent(label string, items []string) *selectComponent {
 	}
 }
 
+// SelectConf is the configuration for the Select component.
+type SelectConf struct {
+	// ID is the unique identifier for this select component.
+	ID string
+}
+
 // Select create a select dropdown list and return its selected value.
-// 0-indexed, return nil if no item is selected.
-func Select(s *tgframe.State, c *tgframe.Container, label string, items []string) *int {
+// 0-indexed, return nil if no item is selected. conf may be nil.
+func Select(c *tgframe.Container, label string, items []string, conf *SelectConf) *int {
 	comp := newSelectComponent(label, items)
+	if conf != nil && conf.ID != "" {
+		comp.SetID(conf.ID)
+	}
+
 	c.AddComponent(comp)
-	idx := s.GetInt(comp.ID)
+	idx := c.State.GetInt(comp.ID)
 	if idx == nil {
 		return nil
 	}

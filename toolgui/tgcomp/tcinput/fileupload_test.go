@@ -11,7 +11,7 @@ import (
 const testFileuploadID = "fileupload_component_File"
 
 func newFileuploadContainer() *tgframe.Container {
-	return tgframe.NewContainer("test", func(pack tgframe.NotifyPack) {})
+	return tgframe.NewContainer("test", tgframe.NewState(), func(pack tgframe.NotifyPack) {})
 }
 
 func TestFileuploadWithoutPick(t *testing.T) {

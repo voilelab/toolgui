@@ -7,10 +7,24 @@ import (
 
 var _ tgframe.Component = &numberComponent[float64]{}
 var _ tgframe.Component = &numberComponent[int64]{}
+var _ tgframe.Component = &numberComponent[int]{}
 
 var numberComponentName = "number_component"
 
-type numberComponent[T float64 | int64] struct {
+// Numeric is the value type a [Number] can hold. The tildes let a user's own
+// named type be one, so a page can keep its domain type all the way in.
+type Numeric interface {
+	~int | ~int64 | ~float64
+}
+
+// isIntegral reports whether T counts in whole numbers. It is written as
+// arithmetic rather than a type switch because a named type's dynamic type is
+// itself, not the type it is defined from, so a switch would miss it.
+func isIntegral[T Numeric]() bool {
+	return T(1)/T(2) == T(0)
+}
+
+type numberComponent[T Numeric] struct {
 	*tgframe.BaseComponent
 
 	Label       string       `json:"label"`
@@ -23,7 +37,7 @@ type numberComponent[T float64 | int64] struct {
 	Disabled    bool         `json:"disabled"`
 }
 
-func newNumberComponent[T float64 | int64](label string) *numberComponent[T] {
+func newNumberComponent[T Numeric](label string) *numberComponent[T] {
 	return &numberComponent[T]{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: numberComponentName,
@@ -34,7 +48,7 @@ func newNumberComponent[T float64 | int64](label string) *numberComponent[T] {
 }
 
 // NumberConf is the configuration for a number component.
-type NumberConf[T float64 | int64] struct {
+type NumberConf[T Numeric] struct {
 	// Default is the default value of the number component.
 	Default *T
 
@@ -80,11 +94,8 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 	return c
 }
 
-func Number[T float64 | int64](s *tgframe.State, c *tgframe.Container, label string) *T {
-	return NumberWithConf[T](s, c, label, nil)
-}
-
-func NumberWithConf[T float64 | int64](s *tgframe.State, c *tgframe.Container, label string, conf *NumberConf[T]) *T {
+// Number create a number input and return its value. conf may be nil.
+func Number[T Numeric](c *tgframe.Container, label string, conf *NumberConf[T]) *T {
 	if conf == nil {
 		conf = &NumberConf[T]{}
 	}
@@ -102,18 +113,19 @@ func NumberWithConf[T float64 | int64](s *tgframe.State, c *tgframe.Container, l
 		comp.SetID(conf.ID)
 	}
 
-	// special case for int64
-	switch any(T(0)).(type) {
-	case int64:
-		if conf.Step != nil && *conf.Step == T(0) {
-			v := T(1)
-			conf.Step = &v
-		}
+	// An integral input cannot step by 0, so an explicit zero step means 1.
+	// Written into the component rather than back into conf: the caller owns
+	// conf and may well reuse it across runs.
+	if isIntegral[T]() && comp.Step != nil && *comp.Step == T(0) {
+		v := T(1)
+		comp.Step = &v
 	}
 
 	c.AddComponent(comp)
 
-	val := s.GetFloat(comp.ID)
+	// The client sends every number back as a JSON number, so the state holds
+	// a float64 whatever T is; T(*val) truncates it back for an integral T.
+	val := c.State.GetFloat(comp.ID)
 	if val == nil {
 		return conf.Default
 	}

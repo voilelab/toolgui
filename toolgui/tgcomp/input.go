@@ -2,6 +2,7 @@ package tgcomp
 
 import (
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 // Button create a button and return true if it's clicked.
@@ -9,9 +10,6 @@ var Button = tcinput.Button
 
 // ButtonConf store optional conf for Button
 type ButtonConf = tcinput.ButtonConf
-
-// ButtonWithConf create a button and return true if it's clicked.
-var ButtonWithConf = tcinput.ButtonWithConf
 
 // DownloadButton create a download button component.
 var DownloadButton = tcinput.DownloadButton
@@ -48,6 +46,9 @@ var Radio = tcinput.Radio
 // Select create a select dropdown list and return its selected value.
 var Select = tcinput.Select
 
+// SelectConf store optional conf for Select
+type SelectConf = tcinput.SelectConf
+
 // Textarea create a textarea and return its value.
 var Textarea = tcinput.Textarea
 
@@ -63,20 +64,21 @@ var Textbox = tcinput.Textbox
 // TextboxConf store optional conf for Textbox
 type TextboxConf = tcinput.TextboxConf
 
-// TextboxWithConf create a textbox and return its value.
-var TextboxWithConf = tcinput.TextboxWithConf
+// Numeric is the value type a [Number] can hold.
+type Numeric = tcinput.Numeric
+
+// NumberConf store optional conf for Number
+type NumberConf[T tcinput.Numeric] = tcinput.NumberConf[T]
 
 // Number create a number input and return its value.
-var NumberFloat64 = tcinput.Number[float64]
+//
+// A generic function cannot be forwarded by a var, so this is a wrapper rather
+// than an alias like its neighbours.
+func Number[T tcinput.Numeric](
+	c *tgframe.Container, label string, conf *NumberConf[T]) *T {
 
-// NumberInt64 create a number input and return its value.
-var NumberInt64 = tcinput.Number[int64]
-
-// NumberWithConf create a number input and return its value.
-var NumberWithConfFloat64 = tcinput.NumberWithConf[float64]
-
-// NumberWithConfInt64 create a number input and return its value.
-var NumberWithConfInt64 = tcinput.NumberWithConf[int64]
+	return tcinput.Number[T](c, label, conf)
+}
 
 // Form create a form component.
 var Form = tcinput.Form
