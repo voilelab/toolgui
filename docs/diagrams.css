@@ -1,0 +1,8 @@
+/* The hand-drawn SVG diagrams are black ink on a transparent background, the
+   same as Excalidraw exports them. Dark themes get the inversion Excalidraw's
+   own dark export applies, so one file serves every theme. */
+.navy img[src$=".svg"],
+.coal img[src$=".svg"],
+.ayu img[src$=".svg"] {
+  filter: invert(93%) hue-rotate(180deg);
+}
