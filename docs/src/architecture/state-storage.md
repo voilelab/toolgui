@@ -25,12 +25,12 @@ and `GetInt` return `nil`, `GetBool` returns `false`, and the generic
 name, ok := p.State.Get[string]("name")
 ```
 
-`tgframe.Default[T]` is the same idea for a value the page mutates. It stores
+`State.Default[T]` is the same idea for a value the page mutates. It stores
 the default the first time round and hands back a pointer, so what the page
 writes through it is what the next run reads:
 
 ```go
-todoList := tgframe.Default(p.State, "todoList", TODOList{})
+todoList := p.State.Default("todoList", TODOList{})
 todoList.Add("buy milk")
 ```
 
@@ -44,7 +44,7 @@ still not a number: `Set(key, "30")` reads back as `nil`.
 ## Setting an input's initial value
 
 An input reads its value from the state under its own id, so writing that key
-before the component runs is what gives it an initial value:
+before the component runs is what the page reads back from it:
 
 ```go
 func Main(p *tgframe.Params) error {
@@ -52,7 +52,7 @@ func Main(p *tgframe.Params) error {
 		p.State.Set("number_component_Age", 30)
 	}
 
-	age := tgcomp.Number[int64](p.Main, "Age")
+	age := tgcomp.Number[int64](p.Main, "Age") // 30, before anyone types
 	...
 }
 ```
@@ -60,6 +60,20 @@ func Main(p *tgframe.Params) error {
 The guard matters: `Set` on every run overwrites what the user just typed. Use
 the getter that matches the stored value — `GetFloat` for a numeric key, since
 `Get[float64]` would miss a default the page itself wrote as an `int`.
+
+What `Set` does not do is fill in the field on screen. The state lives on the
+server and is never sent to the client; the widget starts from the component's
+own `Conf.Default`, and the browser only learns a value once someone enters
+one. So a page that only writes the key reads 30 while showing an empty box.
+To have both, write the key and set the conf:
+
+```go
+p.State.Set("number_component_Age", 30)
+age := tgcomp.Number(p.Main, "Age", (&tgcomp.NumberConf[int64]{}).SetDefault(30))
+```
+
+Only `Textbox`, `Number` and `Checkbox` have such a conf today, so `Select`
+and `Radio` can be given a value the page reads but not one it shows.
 
 The key is `<component name>_<label>`, unless the component was given an
 explicit `ID` in its conf, in which case the key is that id verbatim. `Radio`

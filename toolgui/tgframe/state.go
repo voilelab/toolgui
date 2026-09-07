@@ -76,35 +76,6 @@ func (s *State) Set(key string, v any) {
 	s.values[key] = v
 }
 
-// Default sets the value of a key if the key is not set.
-// If the key is set, it returns the value.
-// If the key is not set, it sets the value and returns the value.
-// The v should be a pointer.
-// Example:
-// ```go
-//
-//	type TODOList struct {
-//		Items []string `json:"items"`
-//	}
-//
-//	todoList := state.Default("todoList", &TODOList{}).(*TODOList)
-//
-// ```
-//
-// The cast is on the caller, and panics when the key holds another type.
-// Prefer [Default], which does the same without one.
-func (s *State) Default(key string, v any) any {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
-
-	_, ok := s.values[key]
-	if !ok {
-		s.values[key] = v
-	}
-
-	return s.values[key]
-}
-
 // GetObject gets the value of a key and unmarshals it to the out object.
 func (s *State) GetObject(key string, out any) error {
 	s.rwLock.RLock()
@@ -182,15 +153,12 @@ func (s *State) Get[T any](key string) (T, bool) {
 // when the key holds nothing of that type. The state keeps the pointer, so
 // what the caller writes through it is what the next run reads back:
 //
-//	todoList := tgframe.Default(p.State, "todoList", TODOList{})
+//	todoList := p.State.Default("todoList", TODOList{})
 //	todoList.Items = append(todoList.Items, item)
 //
 // A key holding some other type is overwritten rather than reported: the
 // alternative is handing back a pointer whose writes go nowhere.
-//
-// It is a function rather than a method, unlike [State.Get], only because
-// [State.Default] already has the name.
-func Default[T any](s *State, key string, v T) *T {
+func (s *State) Default[T any](key string, v T) *T {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
 

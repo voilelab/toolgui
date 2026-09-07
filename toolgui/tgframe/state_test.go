@@ -192,7 +192,7 @@ type testTODOList struct {
 func TestDefault(t *testing.T) {
 	state := NewState()
 
-	list := Default(state, "todoList", testTODOList{})
+	list := state.Default("todoList", testTODOList{})
 	if len(list.Items) != 0 {
 		t.Fatalf("Items = %v, want empty", list.Items)
 	}
@@ -200,7 +200,7 @@ func TestDefault(t *testing.T) {
 	list.Items = append(list.Items, "buy milk")
 
 	// The state keeps the pointer, so the next run reads the write back.
-	again := Default(state, "todoList", testTODOList{})
+	again := state.Default("todoList", testTODOList{})
 	if len(again.Items) != 1 || again.Items[0] != "buy milk" {
 		t.Errorf("Items = %v, want [buy milk]", again.Items)
 	}
@@ -210,7 +210,7 @@ func TestDefaultOnWrongType(t *testing.T) {
 	state := NewState()
 	state.Set("todoList", "not a list")
 
-	list := Default(state, "todoList", testTODOList{Items: []string{"a"}})
+	list := state.Default("todoList", testTODOList{Items: []string{"a"}})
 	if len(list.Items) != 1 || list.Items[0] != "a" {
 		t.Errorf("Items = %v, want [a]", list.Items)
 	}

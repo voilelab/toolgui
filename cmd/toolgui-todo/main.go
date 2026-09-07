@@ -55,7 +55,7 @@ func (t *TODOList) DoneTexts() []string {
 func Main(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Example for Todo App / State")
 
-	todoList := p.State.Default("todoList", &TODOList{}).(*TODOList)
+	todoList := p.State.Default("todoList", TODOList{})
 
 	col1, col2 := tgcomp.EqColumn2(p.Main, &tgcomp.ColumnConf{ID: "divided"})
 
