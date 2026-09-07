@@ -2,6 +2,7 @@ package tgexec
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"strings"
@@ -18,7 +19,7 @@ import (
 
 // TODO: Let it be configurable
 
-// MaxUploadSize limit the size of file uploading form.
+// MaxUploadSize limit the size of a file upload request.
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
 // ErrUpdateInterrupt is raise at panic when current state is going to interrupt
@@ -155,30 +156,69 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := req.ParseMultipartForm(MaxUploadSize)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("Parse form", "error", err)
+	// The file is stored under the component that asked for it, so two
+	// fileuploads offered a file of the same name keep their own.
+	componentID := req.Header.Get("COMPONENT_ID")
+	if componentID == "" {
+		http.Error(w, "Component ID is missing", http.StatusBadRequest)
 		return
 	}
 
-	file, handler, err := req.FormFile("file")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("Get formfile", "error", err)
-		return
-	}
-	defer file.Close()
+	req.Body = http.MaxBytesReader(w, req.Body, MaxUploadSize)
 
-	bs, err := io.ReadAll(file)
+	// MultipartReader hands over the parts as they arrive. ParseMultipartForm
+	// would buffer the whole upload first.
+	reader, err := req.MultipartReader()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("Open file", "error", err)
+		http.Error(w, "Not a multipart upload", http.StatusBadRequest)
+		slog.Error("Multipart reader", "error", err)
 		return
 	}
 
-	// TODO: Remove old file
-	state.SetFile(handler.Filename, bs)
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		if part.FormName() != "file" {
+			part.Close()
+			continue
+		}
+
+		// The part is copied straight to disk, so what the server holds is a
+		// copy buffer rather than the upload.
+		_, err = state.WriteFile(componentID, part.FileName(), part)
+		part.Close()
+
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		return
+	}
+
+	http.Error(w, "Upload has no file part", http.StatusBadRequest)
+}
+
+// writeUploadError answers a failed upload, telling a request that was too
+// big apart from one the server couldn't store.
+func writeUploadError(w http.ResponseWriter, err error) {
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		http.Error(w, "Upload is too large", http.StatusRequestEntityTooLarge)
+		slog.Error("Upload too large", "limit", maxBytesErr.Limit)
+		return
+	}
+
+	http.Error(w, "Store upload failed", http.StatusInternalServerError)
+	slog.Error("Store upload", "error", err)
 }
 
 func (e *WebExecutor) handlePage(resp http.ResponseWriter, req *http.Request) {

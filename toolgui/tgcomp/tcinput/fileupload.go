@@ -3,6 +3,7 @@ package tcinput
 import (
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &fileuploadComponent{}
@@ -26,12 +27,34 @@ func newFileuploadComponent(label, accept string) *fileuploadComponent {
 }
 
 // FileObject is the object that is returned when a file is uploaded.
+//
+// The content stays on disk. Read it with [FileObject.Open] to work through a
+// stream, or [FileObject.Bytes] to take it whole.
 type FileObject struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 	Size int    `json:"size"`
 
-	Bytes []byte `json:"_"`
+	file *tgframe.File
+}
+
+// Open return a reader over the uploaded content. The caller closes it.
+func (f *FileObject) Open() (tgframe.FileReader, error) {
+	if f.file == nil {
+		return nil, tgutil.NewError("file object has no content")
+	}
+
+	return f.file.Open()
+}
+
+// Bytes read the whole upload into memory. Prefer [FileObject.Open] for
+// anything that can work on a stream: a file only has to fit on disk.
+func (f *FileObject) Bytes() ([]byte, error) {
+	if f.file == nil {
+		return nil, tgutil.NewError("file object has no content")
+	}
+
+	return f.file.Bytes()
 }
 
 // Fileupload create a fileupload and return its selected file.
@@ -50,7 +73,17 @@ func Fileupload(s *tgframe.State, c *tgframe.Container, label, accept string) *F
 		return nil
 	}
 
-	fileObj.Bytes = s.GetFile(fileObj.Name)
+	// The content is stored under the component, so a second fileupload that
+	// takes a file of the same name doesn't take this one's content with it.
+	fileObj.file = s.GetFile(comp.ID)
+	if fileObj.file == nil {
+		// The pick reached the state but the upload didn't.
+		return nil
+	}
+
+	// Size arrives from the browser. What was stored is what a reader will
+	// actually get, so that's what the page is told.
+	fileObj.Size = int(fileObj.file.Size())
 
 	return fileObj
 }

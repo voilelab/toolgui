@@ -109,7 +109,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <hr />
             <TComponent node={sidebarNode}
               update={(e) => { this.props.update(e) }}
-              upload={async (f) => await this.props.upload(f)}
+              upload={async (f, id) => await this.props.upload(f, id)}
               theme={this.props.themeMode} />
           </div> : ''}
 

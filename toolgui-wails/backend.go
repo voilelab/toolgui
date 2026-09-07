@@ -1,6 +1,7 @@
 package tgwails
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -112,9 +113,14 @@ func (t *ToolGUI) Update(eventJSON string) error {
 	return nil
 }
 
-// UploadFile store a base64 encoded file in the session state. It's the
-// desktop counterpart of POST /api/files.
-func (t *ToolGUI) UploadFile(name string, dataBase64 string) error {
+// UploadFileChunk store one base64 encoded chunk of a file in the session
+// state, under the component that asked for it. It's the desktop counterpart
+// of POST /api/files.
+//
+// The bridge carries strings, so a file crosses it in pieces: first starts
+// the file over, the chunks after it are appended. A whole file in one call
+// would sit in memory three times over, as a blob, as base64 and as bytes.
+func (t *ToolGUI) UploadFileChunk(componentID, name, dataBase64 string, first bool) error {
 	t.lock.Lock()
 	state := t.state
 	t.lock.Unlock()
@@ -128,7 +134,16 @@ func (t *ToolGUI) UploadFile(name string, dataBase64 string) error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	state.SetFile(name, bs)
+	if first {
+		_, err = state.WriteFile(componentID, name, bytes.NewReader(bs))
+	} else {
+		_, err = state.AppendFile(componentID, bytes.NewReader(bs))
+	}
+
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
 	return nil
 }
 
@@ -163,5 +178,9 @@ func (t *ToolGUI) closeSession() {
 
 	t.session.Close()
 	t.session = nil
+
+	// The state owns the files uploaded to it, and nothing else can reach
+	// them once the session is gone.
+	t.state.Destroy()
 	t.state = nil
 }

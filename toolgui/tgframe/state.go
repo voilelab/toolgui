@@ -1,8 +1,14 @@
 package tgframe
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log/slog"
 	"maps"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 
@@ -12,8 +18,16 @@ import (
 // State is the state of a user's session.
 type State struct {
 	values    map[string]any
-	files     map[string][]byte
+	files     map[string]*File
 	funcCache map[string]map[string]any
+
+	// fileDir holds the uploaded files. It's made on the first upload, so a
+	// state that never sees one leaves nothing behind.
+	fileDir string
+
+	// fileSeq names the files in fileDir. Naming them after the upload would
+	// mean trusting a name the browser chose.
+	fileSeq int
 
 	clickID string
 
@@ -24,16 +38,30 @@ type State struct {
 func NewState() *State {
 	return &State{
 		values:    make(map[string]any),
-		files:     make(map[string][]byte),
+		files:     make(map[string]*File),
 		funcCache: make(map[string]map[string]any),
 	}
 }
 
 // Destroy release the resource.
 func (s *State) Destroy() {
+	s.rwLock.Lock()
+	dir := s.fileDir
+	s.fileDir = ""
+	s.files = make(map[string]*File)
+	s.rwLock.Unlock()
+
+	if dir == "" {
+		return
+	}
+
+	if err := os.RemoveAll(dir); err != nil {
+		slog.Error("remove state files", "dir", dir, "error", err)
+	}
 }
 
-// Clone do a swallow copy on [State].
+// Clone do a swallow copy on [State]. The copy shares the uploaded files, so
+// only one of the two may be destroyed.
 func (s *State) Clone() *State {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -41,6 +69,8 @@ func (s *State) Clone() *State {
 		values:    maps.Clone(s.values),
 		files:     maps.Clone(s.files),
 		funcCache: maps.Clone(s.funcCache),
+		fileDir:   s.fileDir,
+		fileSeq:   s.fileSeq,
 		clickID:   s.clickID,
 	}
 }
@@ -172,19 +202,82 @@ func (s *State) GetBool(key string) bool {
 	return val.(bool)
 }
 
-// SetFile sets the value of a key to a file.
-func (s *State) SetFile(key string, bs []byte) {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
+// WriteFile stores what r yields as the file under key, replacing whatever
+// was there. The content is streamed to disk, so the upload never has to fit
+// in memory.
+func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
+	path, err := s.newFilePath()
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
 
-	s.files[key] = bs
+	file := &File{name: name, path: path}
+	if err := file.write(r, false); err != nil {
+		os.Remove(path)
+		return nil, tgutil.Errorf("%w", err)
+	}
+
+	s.rwLock.Lock()
+	old := s.files[key]
+	s.files[key] = file
+	s.rwLock.Unlock()
+
+	// The file the key held is unreachable now, and a session that uploads
+	// all day shouldn't fill the disk with them.
+	if old != nil {
+		if err := os.Remove(old.path); err != nil {
+			slog.Error("remove replaced file", "path", old.path, "error", err)
+		}
+	}
+
+	return file, nil
 }
 
-func (s *State) GetFile(key string) []byte {
+// AppendFile appends what r yields to the file under key. It lets a transport
+// that can only carry a chunk at a time build a file up with [State.WriteFile]
+// for the first chunk and this for the rest.
+func (s *State) AppendFile(key string, r io.Reader) (*File, error) {
+	file := s.GetFile(key)
+	if file == nil {
+		return nil, tgutil.NewError("no file to append to")
+	}
+
+	if err := file.write(r, true); err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
+
+	return file, nil
+}
+
+// SetFile stores bs as the file under key.
+func (s *State) SetFile(key, name string, bs []byte) (*File, error) {
+	return s.WriteFile(key, name, bytes.NewReader(bs))
+}
+
+// GetFile returns the file stored under key, nil when there is none.
+func (s *State) GetFile(key string) *File {
+	s.rwLock.RLock()
+	defer s.rwLock.RUnlock()
+
+	return s.files[key]
+}
+
+// newFilePath reserves a path in the state's own directory.
+func (s *State) newFilePath() (string, error) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
 
-	return s.files[key]
+	if s.fileDir == "" {
+		dir, err := os.MkdirTemp("", "toolgui-state-")
+		if err != nil {
+			return "", tgutil.Errorf("%w", err)
+		}
+
+		s.fileDir = dir
+	}
+
+	s.fileSeq++
+	return filepath.Join(s.fileDir, fmt.Sprintf("%d", s.fileSeq)), nil
 }
 
 // SetFuncCache sets the value of a key in the function cache.
