@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	toolguiweb "github.com/voilelab/toolgui/toolgui-web"
+	wasmweb "github.com/voilelab/toolgui/toolgui-web/wasm"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -84,7 +84,7 @@ func build(out, pkg string) error {
 
 // writeFrontend unpack the embedded browser frontend into out.
 func writeFrontend(out string) error {
-	return fs.WalkDir(toolguiweb.GetWasmDir(), ".", func(name string, entry fs.DirEntry, err error) error {
+	return fs.WalkDir(wasmweb.GetAssets(), ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -94,7 +94,7 @@ func writeFrontend(out string) error {
 			return os.MkdirAll(target, 0o755)
 		}
 
-		bs, err := fs.ReadFile(toolguiweb.GetWasmDir(), name)
+		bs, err := fs.ReadFile(wasmweb.GetAssets(), name)
 		if err != nil {
 			return err
 		}

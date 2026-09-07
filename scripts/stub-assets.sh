@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Create placeholder web assets so `go build` works without a yarn build.
-# toolgui-web/web.go and toolgui-wails/assets.go embed build output that is
-# gitignored.
+# toolgui-web/web.go, toolgui-web/wasm/assets.go and toolgui-wails/assets.go
+# embed build output that is gitignored.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
