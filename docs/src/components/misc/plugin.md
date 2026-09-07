@@ -65,8 +65,10 @@ func main() {
 }
 ```
 
-Both executors serve them, so a plugin works the same in the browser and in a
-desktop window.
+The web and desktop executors both serve them, so a plugin works the same over
+http and in a desktop window. The wasm build is the exception: it ships as
+static files with no executor behind them, so nothing answers the plugin's url
+there.
 
 ## Writing a plugin
 
@@ -158,3 +160,7 @@ tgcomp.Text(p.Main, "Selected: "+value.Color)
 The frame is the tradeoff. A plugin gets none of the app's css or theme beyond
 what `onRender` hands it, it cannot contain other toolgui components, and each
 one is a document of its own.
+
+The other limit is where the app runs: a plugin is loaded over a url, so it
+needs an executor serving one. That rules out the wasm build, which is a
+directory of static files.

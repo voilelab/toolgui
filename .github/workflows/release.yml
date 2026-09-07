@@ -1,8 +1,8 @@
 name: Release
 
 # Builds the web assets, commits them on top of dev, tags, and publishes.
-# `go get` resolves tags, so the tagged commit is what must carry app/build and
-# toolgui-wails/frontend/dist.
+# `go get` resolves tags, so the tagged commit is what must carry app/build,
+# toolgui-wails/frontend/dist and toolgui-web/wasm/build.
 # main is a CI-owned mirror of the latest release commit.
 
 on:
@@ -84,6 +84,8 @@ jobs:
           yarn workspace @toolgui-web/app build
           yarn workspace @toolgui-web/wails typecheck
           yarn workspace @toolgui-web/wails build
+          yarn workspace @toolgui-web/wasm typecheck
+          yarn workspace @toolgui-web/wasm build
 
       - name: Verify assets exist
         run: |
@@ -92,6 +94,8 @@ jobs:
           # toolgui-wails/assets.go embeds this, so a tag without it breaks
           # `go get` for the desktop module.
           test -s toolgui-wails/frontend/dist/index.html
+          # cmd/toolgui-wasm embeds this, and Pages builds the demo from it.
+          test -s toolgui-web/wasm/build/index.html
 
       # Compile against the real assets, not the CI stub.
       - name: Build and test
@@ -105,8 +109,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add toolgui/tgframe/version.go
-          # Both are gitignored on dev; -f includes them for the release only.
-          git add -f toolgui-web/app/build toolgui-wails/frontend/dist
+          # All three are gitignored on dev; -f includes them for the release
+          # only.
+          git add -f toolgui-web/app/build toolgui-wails/frontend/dist \
+            toolgui-web/wasm/build
           git commit -m "Build assets and stamp version for $VERSION"
           git tag -a "$VERSION" -m "$VERSION"
 
