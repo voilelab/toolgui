@@ -45,3 +45,20 @@ func GetRootAssets() map[string][]byte {
 	}
 	return files
 }
+
+// The browser build, which cmd/toolgui-wasm writes next to a user's app.wasm.
+// It is a directory of files rather than one inlined bundle, and nothing
+// serves it: a wasm app is static files on any host.
+//
+//go:embed all:wasm/build
+var wasmDir embed.FS
+
+// GetWasmDir return the browser frontend as a file system rooted at its
+// index.html. Build it with `task asset_wasm`.
+func GetWasmDir() fs.FS {
+	fsys, err := fs.Sub(wasmDir, path.Join("wasm", "build"))
+	if err != nil {
+		panic(err)
+	}
+	return fsys
+}

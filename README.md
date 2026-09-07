@@ -94,11 +94,14 @@ task run_wails_hello
 ### Browser app (WebAssembly)
 
 `toolgui/tgwasm` runs the same app in the browser, compiled to `js/wasm`, with
-no server behind it. The build is four static files. See
+no server behind it. `cmd/toolgui-wasm` builds the static site around it, and
+the component demo is [published from
+it](https://voilelab.github.io/toolgui/demo/). See
 [toolgui/tgwasm/README.md](toolgui/tgwasm/README.md).
 
 ```shell
-task run_wasm_hello
+task run_wasm_hello   # the small example
+task run_wasm_demo    # the component demo, in the browser
 ```
 
 ### Build without the web assets
