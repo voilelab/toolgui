@@ -100,7 +100,12 @@ func (e *Executor) Run() error {
 		DisableResize:    e.conf.DisableResize,
 		Frameless:        e.conf.Frameless,
 
-		AssetServer: &assetserver.Options{Assets: Assets},
+		// Handler catches what the embedded frontend does not have, which is
+		// where plugin assets land.
+		AssetServer: &assetserver.Options{
+			Assets:  Assets,
+			Handler: tgframe.PluginAssetHandler(e.app),
+		},
 
 		OnStartup:  backend.start,
 		OnShutdown: backend.shutdown,

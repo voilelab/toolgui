@@ -1,9 +1,12 @@
 package tgexec
 
 import (
+	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 
@@ -90,5 +93,49 @@ func TestUpdateKnownPageIsNotFatal(t *testing.T) {
 
 	if pack.StateID == "" {
 		t.Error("StateID is empty, want a new one")
+	}
+}
+
+// A plugin's files are served under the prefix its urls are built from, next
+// to the app's own routes.
+func TestMuxServesPluginAssets(t *testing.T) {
+	app := tgframe.NewApp()
+	app.AddPage("index", "Index", func(p *tgframe.Params) error { return nil })
+
+	err := app.AddPluginAssets("gauge", fstest.MapFS{
+		"gauge.js": &fstest.MapFile{Data: []byte("window.toolgui.update(1)")},
+	})
+	if err != nil {
+		t.Fatalf("AddPluginAssets: %v", err)
+	}
+
+	e := NewWebExecutor(app)
+	t.Cleanup(e.Destroy)
+
+	mux, err := e.Mux()
+	if err != nil {
+		t.Fatalf("Mux: %v", err)
+	}
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Get(srv.URL + tgframe.PluginAssetURL("gauge", "gauge.js"))
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+
+	if string(body) != "window.toolgui.update(1)" {
+		t.Errorf("body = %q", body)
 	}
 }

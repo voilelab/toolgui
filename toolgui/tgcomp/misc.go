@@ -75,3 +75,17 @@ var Html = tcmisc.Html
 
 // HtmlWithID adds a html component to the container with a specific id.
 var HtmlWithID = tcmisc.HtmlWithID
+
+// Plugin runs a script in a sandboxed frame and hands it props. The script is
+// served from the app, see [tgframe.App.AddPluginAssets].
+var Plugin = tcmisc.Plugin
+
+// PluginConf is the configuration for the Plugin component.
+type PluginConf = tcmisc.PluginConf
+
+// PluginWithConf runs a plugin with a custom configuration.
+var PluginWithConf = tcmisc.PluginWithConf
+
+// PluginValue reads the latest value a plugin sent through
+// window.toolgui.update.
+var PluginValue = tcmisc.PluginValue

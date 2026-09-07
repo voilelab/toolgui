@@ -245,6 +245,8 @@ func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 
 	mux.Handle("GET /static/", http.FileServerFS(toolguiweb.GetStaticDir()))
 
+	mux.Handle("GET "+tgframe.PluginAssetPrefix, tgframe.PluginAssetHandler(e.app))
+
 	return mux, nil
 }
 

@@ -4,10 +4,11 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/md5"
-	_ "embed"
+	"embed"
 	"errors"
 	"fmt"
 	"image/jpeg"
+	"io/fs"
 	"log"
 	"log/slog"
 	"strings"
@@ -22,6 +23,14 @@ import (
 
 //go:embed main.go
 var code string
+
+// The demo plugin ships as the files it is made of, served under
+// /plugin/colorpicker/.
+//
+//go:embed plugins/colorpicker
+var colorPickerAssets embed.FS
+
+var pickerColors = []string{"#ff3860", "#ffdd57", "#23d160", "#3273dc", "#b86bff"}
 
 const readme = `
 # [ToolGUI](https://github.com/voilelab/toolgui)
@@ -446,6 +455,40 @@ func InputPage(p *tgframe.Params) error {
 	return nil
 }
 
+func PluginPage(p *tgframe.Params) error {
+	tgcomp.Title(p.Main, "Plugin")
+	tgcomp.Text(p.Main,
+		"A plugin is a script the app serves, running in a sandboxed frame.")
+
+	tgcomp.Divider(p.Main)
+
+	pluginCompCol, pluginCodeCol := tgcomp.EqColumn2(p.Main, "show_plugin")
+	tgcomp.Echo(pluginCodeCol, code, func() {
+		var value struct {
+			Color string `json:"color"`
+		}
+
+		// Nothing is selected until the plugin sends its first value, which
+		// is not an error to read.
+		_ = tgcomp.PluginValue(p.State, "color_picker", &value)
+
+		tgcomp.PluginWithConf(pluginCompCol, "color_picker",
+			tgframe.PluginAssetURL("colorpicker", "colorpicker.js"),
+			&tgcomp.PluginConf{
+				Style: tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
+				Props: map[string]any{
+					"colors":   pickerColors,
+					"selected": value.Color,
+				},
+				Height: "auto",
+			})
+
+		tgcomp.Text(pluginCompCol, "Selected: "+value.Color)
+	})
+
+	return nil
+}
+
 func MiscPage(p *tgframe.Params) error {
 	headerCompCol, headerCodeCol := tgcomp.EqColumn2(p.Main, "header_of_rows")
 	tgcomp.Subtitle(headerCompCol, "Component")
@@ -645,14 +688,23 @@ func main() {
 	app.AddPage("input", "Input", InputPage)
 	app.AddPage("layout", "Layout", LayoutPage)
 	app.AddPage("misc", "Misc", MiscPage)
+	app.AddPage("plugin", "Plugin", PluginPage)
 	app.AddPage("sidebar", "Sidebar", SidebarPage)
 	app.AddPage("function_cache", "Function Cache", FuncCachePage)
 	app.AddPage("code", "Source Code", SourceCodePage)
 
+	colorPicker, err := fs.Sub(colorPickerAssets, "plugins/colorpicker")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := app.AddPluginAssets("colorpicker", colorPicker); err != nil {
+		log.Fatal(err)
+	}
+
 	e := tgexec.NewWebExecutor(app)
 	log.Println("Starting service...")
-	err := e.StartService(":3000")
-	if err != nil {
+	if err := e.StartService(":3000"); err != nil {
 		log.Println(err)
 	}
 }

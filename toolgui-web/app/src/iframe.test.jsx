@@ -91,7 +91,7 @@ test('an update is stamped with the iframe own id, not one the guest chose', () 
   sendAsGuest({ toolgui: 1, type: 'update', id: 'button_component_admin', value: { clicked: true } })
 
   expect(update).toHaveBeenCalledWith({
-    type: 'iframe',
+    type: 'custom',
     id: PROPS.id,
     value: { clicked: true },
   })

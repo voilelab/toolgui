@@ -20,6 +20,15 @@ const (
 	EventInputName  EventType = "input"
 	EventSelectName EventType = "select"
 	EventFormName   EventType = "form"
+
+	// EventCustomName is what a component that renders itself sends its value
+	// back with. The frontend fills the id in with the component's own id, so
+	// such a component can only write to its own state.
+	EventCustomName EventType = "custom"
+
+	// EventIframeName is the name the custom event was introduced under.
+	//
+	// Deprecated: use [EventCustomName].
 	EventIframeName EventType = "iframe"
 )
 
@@ -76,13 +85,13 @@ func ParseEvent(data []byte) (Event, error) {
 			events = append(events, parsedEvent)
 		}
 		return &EventForm{Events: events}, nil
-	case EventIframeName:
-		var eventIframe EventIframe
-		err = json.Unmarshal(data, &eventIframe)
+	case EventCustomName, EventIframeName:
+		var eventCustom EventCustom
+		err = json.Unmarshal(data, &eventCustom)
 		if err != nil {
 			return nil, err
 		}
-		return &eventIframe, nil
+		return &eventCustom, nil
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", event.Type)
 	}
@@ -138,15 +147,20 @@ func (e *EventForm) ApplyState(state *State) {
 	}
 }
 
-// EventIframe is the event of an iframe component.
-// The ID is filled in by the frontend with the iframe's own id, so an iframe
-// can only write to its own state key and cannot forge events for other
-// components.
-type EventIframe struct {
+// EventCustom carries an arbitrary value from a component that renders
+// itself, such as an iframe or a plugin. The ID is filled in by the frontend
+// with the component's own id, so the component can only write to its own
+// state key and cannot forge events for other components.
+type EventCustom struct {
 	ID    string `json:"id"`
 	Value any    `json:"value"`
 }
 
-func (e *EventIframe) ApplyState(state *State) {
+func (e *EventCustom) ApplyState(state *State) {
 	state.Set(e.ID, e.Value)
 }
+
+// EventIframe is the name [EventCustom] was introduced under.
+//
+// Deprecated: use [EventCustom].
+type EventIframe = EventCustom

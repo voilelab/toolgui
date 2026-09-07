@@ -2,6 +2,7 @@ package tgframe
 
 import (
 	"errors"
+	"io/fs"
 	"log"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -56,6 +57,9 @@ type App struct {
 	pageConfs map[string]*PageConfig
 	pageFuncs map[string]RunFunc
 
+	// pluginAssets are the file sets served under [PluginAssetPrefix], by name.
+	pluginAssets map[string]fs.FS
+
 	hashPageNameMode bool
 	showVersion      bool
 }
@@ -82,6 +86,8 @@ func NewApp() *App {
 		pageNames: make([]string, 0),
 		pageConfs: make(map[string]*PageConfig),
 		pageFuncs: make(map[string]RunFunc),
+
+		pluginAssets: make(map[string]fs.FS),
 
 		showVersion: true,
 	}

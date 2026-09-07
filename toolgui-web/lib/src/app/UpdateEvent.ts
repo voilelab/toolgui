@@ -15,10 +15,11 @@ export interface SelectEvent {
   value: number
 }
 
-// IframeEvent carries an arbitrary value from inside an iframe component.
-// The id is set by the host to the iframe's own id.
-export interface IframeEvent {
-  type: "iframe"
+// CustomUpdateEvent carries an arbitrary value from a component that renders
+// itself, an iframe or a plugin. The id is set by the host to the component's
+// own id, so such a component can only write to its own state.
+export interface CustomUpdateEvent {
+  type: "custom"
   id: string
   value: any
 }
@@ -28,4 +29,4 @@ export interface FormEvent {
   events: UpdateEvent[]
 }
 
-export type UpdateEvent = ClickEvent | InputEvent | SelectEvent | IframeEvent | FormEvent
+export type UpdateEvent = ClickEvent | InputEvent | SelectEvent | CustomUpdateEvent | FormEvent

@@ -137,7 +137,29 @@ func Gauge(s *tgframe.State, c *tgframe.Container, id string, value float64) flo
 An interactive iframe needs an explicit `ID`: without one its id is a hash of
 the HTML, which is not something a caller can name.
 
-The tradeoffs are the frame's. The guest cannot reach the app's DOM, cookies
-or storage, which is the point, but it also gets none of the app's CSS or
-theme beyond what `onRender` hands it, it cannot contain other toolgui
-components, and each instance is a document of its own.
+[`Plugin`](../components/misc/plugin.md) is the same frame with the guest
+shipped as files instead of a string. Register the files on the app and name
+them by url:
+
+```go
+//go:embed plugins/gauge
+var gaugeAssets embed.FS
+
+assets, _ := fs.Sub(gaugeAssets, "plugins/gauge")
+app.AddPluginAssets("gauge", assets)
+```
+
+```go
+tgcomp.Plugin(c, id, tgframe.PluginAssetURL("gauge", "gauge.js"), props)
+```
+
+The props are whatever you hand it, marshalled to json and delivered to
+`onRender`; the value the plugin sends back is read with `PluginValue`. Reach
+for it over `Iframe` as soon as the guest is more than a few lines: it is a
+javascript file with an editor and a linter around it, rather than a string
+in a Go file.
+
+The tradeoffs are the frame's, either way. The guest cannot reach the app's
+DOM, cookies or storage, which is the point, but it also gets none of the
+app's CSS or theme beyond what `onRender` hands it, it cannot contain other
+toolgui components, and each instance is a document of its own.
