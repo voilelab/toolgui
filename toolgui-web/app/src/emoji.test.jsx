@@ -9,6 +9,7 @@ import { TTitle } from '@toolgui-web/lib/src/components/tccontent/title'
 import { TSubtitle } from '@toolgui-web/lib/src/components/tccontent/subtitle'
 import { TLink } from '@toolgui-web/lib/src/components/tccontent/link'
 import { TCode } from '@toolgui-web/lib/src/components/tccontent/code'
+import { TMarkdown } from '@toolgui-web/lib/src/components/tccontent/markdown'
 
 function node(key, props) {
   return new Node(key, props)
@@ -96,5 +97,46 @@ describe('content components', () => {
       name: 'code_component', id: '', code: 'print(":tada:")', lang: 'python',
     })} {...RENDER_PROPS} />)
     expect(screen.getByText(/:tada:/)).toBeInTheDocument()
+  })
+})
+
+describe('TMarkdown', () => {
+  const markdown = (text) => render(
+    <TMarkdown node={node('main/0', { name: 'markdown_component', id: '', text })}
+      {...RENDER_PROPS} />
+  )
+
+  test('expands in prose', () => {
+    markdown('ship it :tada:')
+    expect(screen.getByText('ship it 🎉')).toBeInTheDocument()
+  })
+
+  test('expands inside a heading and a list item', () => {
+    markdown('# :rocket: Launch\n\n* first :100:')
+    expect(screen.getByRole('heading', { name: '🚀 Launch' })).toBeInTheDocument()
+    expect(screen.getByRole('listitem')).toHaveTextContent('first 💯')
+  })
+
+  test('keeps a shortcode in a code span literal', () => {
+    const { container } = markdown('write `:tada:` for it')
+    expect(container.querySelector('code').textContent).toBe(':tada:')
+  })
+
+  test('keeps a shortcode in a fenced block literal', () => {
+    const { container } = markdown('```\nprint(":tada:")\n```')
+    expect(container.textContent).toContain(':tada:')
+    expect(container.textContent).not.toContain('🎉')
+  })
+
+  test('keeps a shortcode in an indented block literal', () => {
+    const { container } = markdown('    print(":tada:")')
+    expect(container.querySelector('code').textContent).toContain(':tada:')
+  })
+
+  test('leaves a link url alone but expands its text', () => {
+    const { container } = markdown('[:star: here](https://example.com/:star:)')
+    const link = container.querySelector('a')
+    expect(link.textContent).toBe('⭐ here')
+    expect(link).toHaveAttribute('href', 'https://example.com/:star:')
   })
 })
