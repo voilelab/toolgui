@@ -34,13 +34,14 @@ toolgui has no tags yet, so there is no released version to require instead.
 | --- | --- |
 | `GET /api/app` | `window.go.tgwails.ToolGUI.AppConf()` |
 | update websocket | `Update(eventJSON)` + the `toolgui:pack` event |
-| `POST /api/files` | `UploadFileChunk(componentID, name, base64, first)` |
+| `POST /api/files` | `UploadFileStart` + `UploadFileChunk` + `UploadFileFinish` |
 | a page load | `Start(pageName)` |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both
 transports share a wire format. An upload is the exception: bound methods take
-strings, so a file crosses in chunks rather than as one base64 blob, and the
-state writes them to disk as they land. Packs go out on a single event name so
+strings, so a file crosses in chunks rather than as one base64 blob. The state
+writes them to disk as they land, and the component sees the file only once
+the last chunk is in. Packs go out on a single event name so
 create/update/delete/result keep the order the page produced them in.
 
 Wails serves the frontend from its own origin, so the asset server could carry

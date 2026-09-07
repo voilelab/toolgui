@@ -3,12 +3,8 @@ package tgframe
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
-	"log/slog"
 	"maps"
-	"os"
-	"path/filepath"
 	"runtime"
 	"sync"
 
@@ -18,16 +14,12 @@ import (
 // State is the state of a user's session.
 type State struct {
 	values    map[string]any
-	files     map[string]*File
 	funcCache map[string]map[string]any
 
-	// fileDir holds the uploaded files. It's made on the first upload, so a
-	// state that never sees one leaves nothing behind.
-	fileDir string
-
-	// fileSeq names the files in fileDir. Naming them after the upload would
-	// mean trusting a name the browser chose.
-	fileSeq int
+	// files is shared with the states cloned from this one, so no two of them
+	// can hand out the same path. Its directory is made on the first upload,
+	// so a state that never sees one leaves nothing behind.
+	files *fileStore
 
 	clickID string
 
@@ -38,26 +30,14 @@ type State struct {
 func NewState() *State {
 	return &State{
 		values:    make(map[string]any),
-		files:     make(map[string]*File),
+		files:     newFileStore(),
 		funcCache: make(map[string]map[string]any),
 	}
 }
 
 // Destroy release the resource.
 func (s *State) Destroy() {
-	s.rwLock.Lock()
-	dir := s.fileDir
-	s.fileDir = ""
-	s.files = make(map[string]*File)
-	s.rwLock.Unlock()
-
-	if dir == "" {
-		return
-	}
-
-	if err := os.RemoveAll(dir); err != nil {
-		slog.Error("remove state files", "dir", dir, "error", err)
-	}
+	s.files.destroy()
 }
 
 // Clone do a swallow copy on [State]. The copy shares the uploaded files, so
@@ -67,10 +47,8 @@ func (s *State) Clone() *State {
 	defer s.rwLock.RUnlock()
 	return &State{
 		values:    maps.Clone(s.values),
-		files:     maps.Clone(s.files),
+		files:     s.files,
 		funcCache: maps.Clone(s.funcCache),
-		fileDir:   s.fileDir,
-		fileSeq:   s.fileSeq,
 		clickID:   s.clickID,
 	}
 }
@@ -206,47 +184,37 @@ func (s *State) GetBool(key string) bool {
 // was there. The content is streamed to disk, so the upload never has to fit
 // in memory.
 func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
-	path, err := s.newFilePath()
+	file, err := s.NewFile(name)
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
 
-	file := &File{name: name, path: path}
 	if err := file.write(r, false); err != nil {
-		os.Remove(path)
+		file.remove()
 		return nil, tgutil.Errorf("%w", err)
 	}
 
-	s.rwLock.Lock()
-	old := s.files[key]
-	s.files[key] = file
-	s.rwLock.Unlock()
+	s.PutFile(key, file)
+	return file, nil
+}
 
-	// The file the key held is unreachable now, and a session that uploads
-	// all day shouldn't fill the disk with them.
-	if old != nil {
-		if err := os.Remove(old.path); err != nil {
-			slog.Error("remove replaced file", "path", old.path, "error", err)
-		}
+// NewFile makes an empty file of the state's own, under no key. A transport
+// that receives an upload in pieces fills one of these with [File.Append] and
+// hands it to [State.PutFile] when the last piece lands, so a page never
+// reads a file that is still arriving, and two uploads racing for the same
+// key can't be spliced together.
+func (s *State) NewFile(name string) (*File, error) {
+	file, err := s.files.newFile(name)
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
 	}
 
 	return file, nil
 }
 
-// AppendFile appends what r yields to the file under key. It lets a transport
-// that can only carry a chunk at a time build a file up with [State.WriteFile]
-// for the first chunk and this for the rest.
-func (s *State) AppendFile(key string, r io.Reader) (*File, error) {
-	file := s.GetFile(key)
-	if file == nil {
-		return nil, tgutil.NewError("no file to append to")
-	}
-
-	if err := file.write(r, true); err != nil {
-		return nil, tgutil.Errorf("%w", err)
-	}
-
-	return file, nil
+// PutFile stores file under key, dropping whatever the key held.
+func (s *State) PutFile(key string, file *File) {
+	s.files.put(key, file)
 }
 
 // SetFile stores bs as the file under key.
@@ -256,28 +224,7 @@ func (s *State) SetFile(key, name string, bs []byte) (*File, error) {
 
 // GetFile returns the file stored under key, nil when there is none.
 func (s *State) GetFile(key string) *File {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
-
-	return s.files[key]
-}
-
-// newFilePath reserves a path in the state's own directory.
-func (s *State) newFilePath() (string, error) {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
-
-	if s.fileDir == "" {
-		dir, err := os.MkdirTemp("", "toolgui-state-")
-		if err != nil {
-			return "", tgutil.Errorf("%w", err)
-		}
-
-		s.fileDir = dir
-	}
-
-	s.fileSeq++
-	return filepath.Join(s.fileDir, fmt.Sprintf("%d", s.fileSeq)), nil
+	return s.files.get(key)
 }
 
 // SetFuncCache sets the value of a key in the function cache.

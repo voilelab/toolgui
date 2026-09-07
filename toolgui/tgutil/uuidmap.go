@@ -81,6 +81,9 @@ func (ss *uuidmap[T]) cleanup() {
 		}
 	}
 	for _, id := range ids {
+		// An expired entry is as gone as a deleted one, so it gets the same
+		// destructor: whatever it holds outside memory is nobody's otherwise.
+		ss.destructor(ss.data[id].value)
 		delete(ss.data, id)
 	}
 }

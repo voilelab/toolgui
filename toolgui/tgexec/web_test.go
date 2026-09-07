@@ -373,3 +373,107 @@ func waitFile(t *testing.T, files chan string) string {
 		return ""
 	}
 }
+
+// TestUploadOverMaxSize checks the cap covers the request, not just the file
+// part: a small file followed by a huge field is still refused.
+func TestUploadOverMaxSize(t *testing.T) {
+	srv, e := newTestServer(t)
+	e.maxUploadSize = 512
+
+	stateID := newUploadState(t, srv)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	part, err := writer.CreateFormFile("file", "a.txt")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+
+	if _, err := part.Write([]byte("small")); err != nil {
+		t.Fatalf("write part: %v", err)
+	}
+
+	if err := writer.WriteField("trailing", strings.Repeat("x", 1024)); err != nil {
+		t.Fatalf("write field: %v", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/files", &body)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("STATE_ID", stateID)
+	req.Header.Set("COMPONENT_ID", "comp")
+
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("StatusCode = %d, want 413", resp.StatusCode)
+	}
+}
+
+// TestUploadWithTrailingField checks a body that carries more than the file
+// still succeeds once it fits the cap.
+func TestUploadWithTrailingField(t *testing.T) {
+	srv, e := newTestServer(t)
+	stateID := newUploadState(t, srv)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+
+	part, err := writer.CreateFormFile("file", "a.txt")
+	if err != nil {
+		t.Fatalf("create form file: %v", err)
+	}
+
+	if _, err := part.Write([]byte("hello file")); err != nil {
+		t.Fatalf("write part: %v", err)
+	}
+
+	if err := writer.WriteField("trailing", "x"); err != nil {
+		t.Fatalf("write field: %v", err)
+	}
+
+	if err := writer.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/files", &body)
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("STATE_ID", stateID)
+	req.Header.Set("COMPONENT_ID", "comp")
+
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("StatusCode = %d, want 200", resp.StatusCode)
+	}
+
+	state, _ := e.stateMap.Get(stateID)
+	bs, err := state.GetFile("comp").Bytes()
+	if err != nil {
+		t.Fatalf("Bytes: %v", err)
+	}
+
+	if string(bs) != "hello file" {
+		t.Errorf("Bytes = %q, want hello file", bs)
+	}
+}

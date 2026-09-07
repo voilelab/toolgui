@@ -74,24 +74,36 @@ func TestStateWriteFileReplaces(t *testing.T) {
 	}
 }
 
-func TestStateAppendFile(t *testing.T) {
+// TestStateNewFilePutFile checks a file being filled a chunk at a time is
+// invisible under its key until it's handed over.
+func TestStateNewFilePutFile(t *testing.T) {
 	s := NewState()
 	defer s.Destroy()
 
-	if _, err := s.WriteFile("comp", "a.txt", strings.NewReader("hello")); err != nil {
-		t.Fatalf("WriteFile: %v", err)
+	file, err := s.NewFile("a.txt")
+	if err != nil {
+		t.Fatalf("NewFile: %v", err)
 	}
 
-	file, err := s.AppendFile("comp", strings.NewReader(" file"))
-	if err != nil {
-		t.Fatalf("AppendFile: %v", err)
+	if err := file.Append(strings.NewReader("hello")); err != nil {
+		t.Fatalf("Append: %v", err)
 	}
+
+	if s.GetFile("comp") != nil {
+		t.Error("expect no file under the key before PutFile")
+	}
+
+	if err := file.Append(strings.NewReader(" file")); err != nil {
+		t.Fatalf("Append: %v", err)
+	}
+
+	s.PutFile("comp", file)
 
 	if file.Size() != 10 {
 		t.Errorf("Size = %d, want 10", file.Size())
 	}
 
-	bs, err := file.Bytes()
+	bs, err := s.GetFile("comp").Bytes()
 	if err != nil {
 		t.Fatalf("Bytes: %v", err)
 	}
@@ -101,12 +113,67 @@ func TestStateAppendFile(t *testing.T) {
 	}
 }
 
-func TestStateAppendFileWithoutWrite(t *testing.T) {
+// TestStateNewFileIsSeparate checks two files opened at once get their own
+// content, which is what keeps two uploads racing for one key apart.
+func TestStateNewFileIsSeparate(t *testing.T) {
 	s := NewState()
 	defer s.Destroy()
 
-	if _, err := s.AppendFile("comp", strings.NewReader("x")); err == nil {
-		t.Error("expect an error appending to a file that was never written")
+	first, err := s.NewFile("first.txt")
+	if err != nil {
+		t.Fatalf("NewFile: %v", err)
+	}
+
+	second, err := s.NewFile("second.txt")
+	if err != nil {
+		t.Fatalf("NewFile: %v", err)
+	}
+
+	if err := first.Append(strings.NewReader("one")); err != nil {
+		t.Fatalf("Append: %v", err)
+	}
+
+	if err := second.Append(strings.NewReader("two")); err != nil {
+		t.Fatalf("Append: %v", err)
+	}
+
+	bs, err := first.Bytes()
+	if err != nil {
+		t.Fatalf("Bytes: %v", err)
+	}
+
+	if string(bs) != "one" {
+		t.Errorf("Bytes = %q, want one", bs)
+	}
+}
+
+// TestStateCloneSharesFiles checks a clone and its original hand out separate
+// paths, so neither can overwrite what the other stored.
+func TestStateCloneSharesFiles(t *testing.T) {
+	s := NewState()
+	defer s.Destroy()
+
+	if _, err := s.WriteFile("comp", "a.txt", strings.NewReader("original")); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	clone := s.Clone()
+	if _, err := clone.WriteFile("other", "b.txt", strings.NewReader("clone")); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	bs, err := s.GetFile("comp").Bytes()
+	if err != nil {
+		t.Fatalf("Bytes: %v", err)
+	}
+
+	if string(bs) != "original" {
+		t.Errorf("Bytes = %q, want original", bs)
+	}
+
+	// The store is shared, so what one writes the other reads.
+	if clone.GetFile("comp") == nil {
+		t.Error("expect the clone to see the original's file")
 	}
 }
 
@@ -173,8 +240,8 @@ func TestStateDestroyWithoutFiles(t *testing.T) {
 	s := NewState()
 	s.Destroy()
 
-	if s.fileDir != "" {
-		t.Errorf("fileDir = %q, want empty", s.fileDir)
+	if s.files.dir != "" {
+		t.Errorf("file dir = %q, want empty", s.files.dir)
 	}
 }
 

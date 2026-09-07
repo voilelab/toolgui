@@ -17,8 +17,6 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-// TODO: Let it be configurable
-
 // MaxUploadSize limit the size of a file upload request.
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
@@ -36,6 +34,9 @@ type WebExecutor struct {
 
 	stateMap tgutil.UUIDMap[tgframe.State]
 
+	// TODO: Let it be configurable
+	maxUploadSize int64
+
 	app *tgframe.App
 }
 
@@ -51,6 +52,8 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 		stateMap: tgutil.NewUUIDMap(
 			tgframe.NewState, func(t *tgframe.State) { t.Destroy() },
 			5*time.Minute),
+
+		maxUploadSize: MaxUploadSize,
 
 		app: app,
 	}
@@ -164,7 +167,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	req.Body = http.MaxBytesReader(w, req.Body, MaxUploadSize)
+	req.Body = http.MaxBytesReader(w, req.Body, e.maxUploadSize)
 
 	// MultipartReader hands over the parts as they arrive. ParseMultipartForm
 	// would buffer the whole upload first.
@@ -174,6 +177,8 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		slog.Error("Multipart reader", "error", err)
 		return
 	}
+
+	stored := false
 
 	for {
 		part, err := reader.NextPart()
@@ -186,8 +191,17 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		if part.FormName() != "file" {
+		if part.FormName() != "file" || stored {
+			// Read past what isn't the file: stopping at the file would leave
+			// the size cap covering only the part of the body read so far.
+			_, err = io.Copy(io.Discard, part)
 			part.Close()
+
+			if err != nil {
+				writeUploadError(w, err)
+				return
+			}
+
 			continue
 		}
 
@@ -201,10 +215,12 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		return
+		stored = true
 	}
 
-	http.Error(w, "Upload has no file part", http.StatusBadRequest)
+	if !stored {
+		http.Error(w, "Upload has no file part", http.StatusBadRequest)
+	}
 }
 
 // writeUploadError answers a failed upload, telling a request that was too

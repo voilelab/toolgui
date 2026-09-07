@@ -7,8 +7,9 @@ interface Backend {
   AppConf(): Promise<string>
   Start(pageName: string): Promise<void>
   Update(eventJSON: string): Promise<void>
-  UploadFileChunk(componentID: string, name: string, dataBase64: string,
-    first: boolean): Promise<void>
+  UploadFileStart(name: string): Promise<string>
+  UploadFileChunk(uploadID: string, dataBase64: string): Promise<void>
+  UploadFileFinish(componentID: string, uploadID: string): Promise<void>
 }
 
 // WailsRuntime is the slice of window.runtime this adapter uses.
@@ -50,13 +51,17 @@ const CHUNK_SIZE = 4 * 1024 * 1024
 // on the Go side all at once.
 export async function uploadFile(file: File, componentID: string): Promise<UploadResult> {
   try {
-    // An empty file still needs one call, to create it.
-    for (let offset = 0; offset === 0 || offset < file.size; offset += CHUNK_SIZE) {
+    // The component gets the file only once every chunk has landed, so a
+    // second pick while this one is still going replaces it rather than
+    // being spliced into it.
+    const uploadID = await backend().UploadFileStart(file.name)
+
+    for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
       const chunk = file.slice(offset, offset + CHUNK_SIZE)
-      await backend().UploadFileChunk(componentID, file.name,
-        await toBase64(chunk), offset === 0)
+      await backend().UploadFileChunk(uploadID, await toBase64(chunk))
     }
 
+    await backend().UploadFileFinish(componentID, uploadID)
     return { ok: true }
   } catch (e) {
     return { ok: false, error: String(e) }
