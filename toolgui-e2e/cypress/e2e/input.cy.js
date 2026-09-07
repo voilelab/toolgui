@@ -52,12 +52,20 @@ describe('Input', () => {
     cy.visit('/input')
     // Mantine's Select is a combobox over a listbox, not a native <select>:
     // open the dropdown, then click the option.
+    //
+    // The option clicks turn scrolling off. Cypress scrolls what it is about
+    // to click to the top of the viewport, and the option sits in a portal
+    // below the input — scrolling it up carries the input off screen, at
+    // which point Mantine hides the dropdown as detached from it. The
+    // dropdown opens in view already, so there is nothing to scroll to.
+    const noScroll = { scrollBehavior: false }
+
     cy.get('input[id=select_component_Select]').click()
-    cy.get('[role=option]').contains('Value1').click()
+    cy.get('[role=option]').contains('Value1').click(noScroll)
     cy.contains('Value: Value1').should('exist')
 
     cy.get('input[id=select_component_Select]').click()
-    cy.get('[role=option]').contains('Value2').click()
+    cy.get('[role=option]').contains('Value2').click(noScroll)
     cy.contains('Value: Value2').should('exist')
   })
 
@@ -101,9 +109,13 @@ describe('Input', () => {
   it('Datetimepicker', () => {
     cy.visit('/input')
 
-    // Mantine's DateTimePicker is a calendar popover, so the day is clicked
-    // rather than typed and the calendar opens on the current month. Dates
-    // are therefore taken from this month instead of a fixed year.
+    // Mantine's DateTimePicker is a calendar popover, not a typeable
+    // input[type=datetime-local]. Everything inside the popover is clicked
+    // with scrolling off, for the reason given in the Select case above.
+    const noScroll = { scrollBehavior: false }
+
+    // The calendar opens on the current month, so the dates come from this
+    // month rather than a fixed year.
     const dayOfThisMonth = (day) => {
       const date = new Date()
       date.setDate(day)
@@ -122,22 +134,31 @@ describe('Input', () => {
         `-${pad(date.getDate())} ${time}`
     }
 
-    const pick = (date, hours, minutes) => {
+    const openAndPickDay = (date) => {
       cy.get('button[id=datepicker_component_Datetimepicker]').click()
-      cy.get(`button[aria-label="${dayLabel(date)}"]`).click()
-      // The hours and minutes spin inputs, then the popover's submit tick.
-      cy.get('[role=spinbutton]').eq(0).clear().type(hours)
-      cy.get('[role=spinbutton]').eq(1).clear().type(minutes)
-      cy.get('.mantine-DateTimePicker-submitButton').click()
+      cy.get(`button[aria-label="${dayLabel(date)}"]`).click(noScroll)
     }
 
+    const submit = () => {
+      cy.get('.mantine-DateTimePicker-submitButton').click(noScroll)
+    }
+
+    // The time goes in once, while the hour and minute fields are still
+    // empty: they hold a digit buffer that typing over a value it was given
+    // rather than typed does not overwrite predictably.
     const first = dayOfThisMonth(1)
-    pick(first, '20', '34')
+    openAndPickDay(first)
+    cy.get('[role=spinbutton]').eq(0).type('20', noScroll)
+    cy.get('[role=spinbutton]').eq(1).type('34', noScroll)
+    submit()
     cy.contains(expected(first, '20:34')).should('exist')
 
+    // A second value round-trips too. Only the date moves; the time it keeps
+    // is what makes that visible without retyping it.
     const second = dayOfThisMonth(2)
-    pick(second, '11', '34')
-    cy.contains(expected(second, '11:34')).should('exist')
+    openAndPickDay(second)
+    submit()
+    cy.contains(expected(second, '20:34')).should('exist')
   })
 
   it('Number', () => {
