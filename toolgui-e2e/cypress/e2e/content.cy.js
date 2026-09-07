@@ -64,11 +64,13 @@ describe('Content', () => {
       .contains('Shipped').should('exist')
   })
 
+  // The assertion is on the anchor itself: Mantine wraps the label in a span,
+  // which is what contains() would hand back.
   it('Link Button works', () => {
     cy.visit('/content')
-    cy.get('#column_component_show_link_button_0')
-      .find('a').contains('Link Button')
+    cy.get('#column_component_show_link_button_0 a')
       .should('have.attr', 'href', 'https://www.example.com/')
+      .and('contain', 'Link Button')
   })
 
   it('Latex works', () => {
