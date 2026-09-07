@@ -14,6 +14,8 @@ import {
   Tooltip,
 } from "chart.js"
 
+import { Box } from "@mantine/core"
+
 import { Props } from "../component_interface"
 
 // Register only what the supported kinds need. chart.js/auto would pull in
@@ -42,10 +44,9 @@ const chromes: { [theme: string]: { grid: string, tick: string, surface: string 
 // is drawn bare and the markers only show on hover.
 const maxPointLabels = 30
 
-// resolveTheme reports the theme the page is actually painted in. The theme
-// prop is only set once the viewer has used the toggle, while Bulma also
-// follows prefers-color-scheme, so the painted background is the better
-// source and it doubles as the surface color.
+// resolveTheme reports the theme the page is actually painted in. The painted
+// background is read rather than trusted from the prop because it doubles as
+// the surface color the markers are ringed in.
 function resolveTheme(theme: string): { theme: string, surface: string } {
   const painted = paintedBackground()
   if (painted) {
@@ -57,8 +58,8 @@ function resolveTheme(theme: string): { theme: string, surface: string } {
 }
 
 // paintedBackground returns the page background as an rgb() string, or ''
-// when nothing painted one (a test renderer, an unstyled page). Bulma paints
-// the html element, so that is what has to be read; body stays transparent.
+// when nothing painted one (a test renderer, an unstyled page). Either the
+// html element or the body may be the one carrying it.
 function paintedBackground(): string {
   if (typeof window === 'undefined') {
     return ''
@@ -279,10 +280,10 @@ export function TChart({ node, theme }: Props) {
   }, [])
 
   return (
-    <div className="block" style={{ height: node.props.height, position: 'relative' }}>
+    <Box mb="md" style={{ height: node.props.height, position: 'relative' }}>
       <canvas ref={canvasRef} id={node.props.id} role="img"
         aria-label={chartLabel(node.props)} />
-    </div>
+    </Box>
   )
 }
 

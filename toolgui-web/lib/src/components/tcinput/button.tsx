@@ -11,8 +11,8 @@ export function TButton({ node, update }: Props) {
     <Button
       id={node.props.id}
       color={color}
-      // A colourless button is neutral, the way Bulma's plain button is;
-      // Mantine would otherwise fill it with the primary colour.
+      // A colourless button stays neutral; Mantine would otherwise fill it
+      // with the primary colour.
       variant={color ? 'filled' : 'default'}
       disabled={node.props.disabled}
       // The id comes from the node, not the event: Mantine wraps the label in

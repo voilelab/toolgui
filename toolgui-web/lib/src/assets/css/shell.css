@@ -39,11 +39,9 @@
   padding-top: 0.75rem;
 }
 
-/* The version line sits under the controls, quiet enough not to compete with
-   them. margin-top:auto on the foot above already pushed both to the bottom. */
+/* The version line sits under the controls. margin-top:auto on the foot above
+   already pushed both to the bottom. */
 .toolgui-nav-version {
-  font-size: 0.75rem;
-  opacity: 0.6;
   /* A build off a tag reports a pseudo-version, too long for the column. */
   overflow-wrap: anywhere;
 }

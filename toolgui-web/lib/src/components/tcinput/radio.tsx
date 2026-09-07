@@ -1,29 +1,31 @@
 import React from "react";
+import { Radio, Stack } from "@mantine/core"
 
 import { stateValues } from "../state"
 import { Props } from "../component_interface"
 
 export function TRadio({ node, update }: Props) {
   const items: string[] = node.props.items
+  const selected = stateValues[node.props.id]
+
   return (
-    <div className="control">
-      {
-        items.map((x, idx) =>
-          <label className="radio" key={idx}>
-            <input type="radio" name={node.props.id} value={idx}
-              onChange={(event) => {
-                stateValues[node.props.id] = Number(event.target.value)
-                update({
-                  type: "select",
-                  id: node.props.id,
-                  value: Number(event.target.value),
-                })
-              }}
-              checked={stateValues[node.props.id] === idx} />
-            {x}
-          </label>
-        )
-      }
-    </div>
+    <Radio.Group
+      id={node.props.id}
+      value={selected === undefined ? null : String(selected)}
+      mb="md"
+      onChange={(value) => {
+        stateValues[node.props.id] = Number(value)
+        update({
+          type: "select",
+          id: node.props.id,
+          value: Number(value),
+        })
+      }}>
+      <Stack gap="xs">
+        {items.map((x, idx) =>
+          <Radio key={idx} value={String(idx)} label={x} />
+        )}
+      </Stack>
+    </Radio.Group>
   )
 }

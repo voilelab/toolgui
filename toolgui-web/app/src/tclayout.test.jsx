@@ -1,5 +1,7 @@
 import React from 'react'
-import { cleanup, render, screen, fireEvent } from '@testing-library/react'
+import { cleanup, screen, fireEvent, waitFor } from '@testing-library/react'
+
+import { render } from './render'
 import { afterEach, expect, test, describe, vi } from 'vitest'
 
 import { Node } from '@toolgui-web/lib/src/app/Nodes'
@@ -63,35 +65,39 @@ describe('TExpand', () => {
       {...RENDER_PROPS} />
   )
 
-  test('does not build the contents until the first open', () => {
+  // The panel is animated, so it is shown a frame after the click.
+  test('does not build the contents until the first open', async () => {
     mountExpand(false)
 
     expect(screen.queryByText('A expand!')).toBeNull()
 
     fireEvent.click(screen.getByText('Expand'))
 
-    expect(screen.getByText('A expand!')).toBeVisible()
+    await waitFor(() => expect(screen.getByText('A expand!')).toBeVisible())
   })
 
-  test('opens from the keyboard', () => {
+  // The control is a real button, so the keyboard reaches it without the
+  // component handling keys itself.
+  test('the header is a button that reports its state', async () => {
     mountExpand(false)
 
     const header = screen.getByRole('button', { name: /Expand/ })
+    expect(header.tagName).toBe('BUTTON')
     expect(header).toHaveAttribute('aria-expanded', 'false')
 
-    fireEvent.keyDown(header, { key: 'Enter' })
+    fireEvent.click(header)
 
-    expect(screen.getByText('A expand!')).toBeVisible()
+    await waitFor(() => expect(screen.getByText('A expand!')).toBeVisible())
     expect(header).toHaveAttribute('aria-expanded', 'true')
   })
 
-  test('keeps the contents mounted once opened', () => {
+  test('keeps the contents mounted once opened', async () => {
     mountExpand(true)
 
     const content = screen.getByText('A expand!')
 
     fireEvent.click(screen.getByText('Expand'))
-    expect(screen.getByText('A expand!')).not.toBeVisible()
+    await waitFor(() => expect(screen.getByText('A expand!')).not.toBeVisible())
 
     fireEvent.click(screen.getByText('Expand'))
     expect(screen.getByText('A expand!')).toBe(content)

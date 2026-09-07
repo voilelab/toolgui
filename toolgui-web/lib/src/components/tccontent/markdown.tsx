@@ -1,6 +1,7 @@
 import React from 'react'
 
 import Markdown from 'react-markdown'
+import { Typography } from '@mantine/core'
 
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { prism, tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -10,7 +11,7 @@ import { remarkEmoji } from '../../util/remark_emoji'
 
 export function TMarkdown({ node, theme }: Props) {
   return (
-    <div id={node.props.id || undefined} className="content">
+    <Typography id={node.props.id || undefined}>
       <Markdown children={node.props.text}
         remarkPlugins={[remarkEmoji]}
         components={{
@@ -48,6 +49,6 @@ export function TMarkdown({ node, theme }: Props) {
           }
         }}
       />
-    </div>
+    </Typography>
   )
 }

@@ -1,24 +1,18 @@
 import React from "react"
+import { Alert } from "@mantine/core"
 
 import { Props } from "../component_interface";
+import { mantineColor } from "../../util/color";
 
 export function TMessage({ node }: Props) {
-  var className = 'message'
-
-  if (node.props.color) {
-    className += ' is-' + node.props.color
-  }
-
   return (
-    <article id={node.props.id || undefined} className={className}>
-      {node.props.title ?
-        <div className="message-header">
-          <p>{node.props.title}</p>
-        </div> : ''}
-      <div className="message-body">
-        {node.props.body}
-      </div>
-    </article>
+    <Alert id={node.props.id || undefined}
+      // A colourless message stays neutral, the way it always was; Mantine
+      // would otherwise paint it in the primary colour.
+      color={mantineColor(node.props.color) || 'gray'}
+      title={node.props.title || undefined}
+      mb="md">
+      {node.props.body}
+    </Alert>
   )
 }
-

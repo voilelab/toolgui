@@ -1,13 +1,15 @@
-.pseudolink {
+/* Scoped to the component: the pre rule here used to be global, so it
+   reached every pre in the app. */
+.toolgui-json .pseudolink {
   cursor: pointer;
 }
 
-.pseudolink:hover {
+.toolgui-json .pseudolink:hover {
   text-decoration: underline;
   cursor: pointer;
 }
 
-pre {
+.toolgui-json pre {
   font-family: Consolas, Monaco, "Andale Mono", "Ubuntu Mono", monospace;
   font-size: 1em;
   text-align: left;

@@ -25,8 +25,9 @@ describe('Input', () => {
     // accept only filters the file picker, so it is the whole of the limit.
     cy.get('input[type=file]').should('have.attr', 'accept', '.jpg,.png')
 
+    // Mantine keeps the file input hidden behind its own control, so the
+    // file is handed to the input itself.
     cy.get('input[type=file]').selectFile('cypress/fixtures/example.png', {
-      action: 'drag-drop',
       force: true,
     })
     cy.contains('Fileupload filename: example.png').should('exist')
@@ -168,12 +169,14 @@ describe('Input', () => {
     cy.contains('Value: 12').should('exist')
 
     // 123 is over the max of 20, so the input is invalid and never sent.
+    // Mantine's NumberInput is a text input that reports the range itself,
+    // so the mark to check is the one it puts on the field.
     cy.get('input[id=number_component_Number]').type('{backspace}23')
     cy.get('input[id=number_component_Number]').blur()
-    cy.get('input[id=number_component_Number]').should(($input) => {
-      expect($input.val()).to.eq('123')
-      expect($input[0].validity.rangeOverflow).to.eq(true)
-    })
+    cy.get('input[id=number_component_Number]')
+      .should('have.value', '123')
+      .and('have.attr', 'aria-invalid', 'true')
+    cy.contains('Value out of range').should('exist')
     cy.contains('Value: 123').should('not.exist')
   })
 

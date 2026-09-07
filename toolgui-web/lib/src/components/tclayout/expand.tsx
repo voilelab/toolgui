@@ -1,7 +1,10 @@
 import React, { useState } from "react"
+import { Accordion } from "@mantine/core"
 
 import { Props } from "../component_interface"
 import { TComponent } from "../factory"
+
+const ITEM = 'expand'
 
 export function TExpand({ node, update, upload, theme }: Props) {
   const [expanded, setExpanded] = useState(node.props.expanded)
@@ -10,44 +13,27 @@ export function TExpand({ node, update, upload, theme }: Props) {
   // was opened does not throw away what it holds.
   const [everExpanded, setEverExpanded] = useState(node.props.expanded)
 
-  const toggle = () => {
-    setExpanded(expanded => !expanded)
-    setEverExpanded(true)
-  }
-
   return (
-    <div className="card">
-      <header className="card-header"
-        // The header is the control, so it answers to the keyboard too.
-        role="button" tabIndex={0} aria-expanded={expanded}
-        onClick={toggle}
-        onKeyDown={event => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            toggle()
-          }
-        }}>
-        <div className="card-header-icon">
-          <span className="icon">
-            <i className={`fas ${expanded ? 'fa-minus' : 'fa-plus'}`}></i>
-          </span>
-        </div>
-        <p className="card-header-title">{node.props.title}</p>
-      </header>
-      {everExpanded &&
-        <div className="card-content" hidden={!expanded}>
-          <div className="content">
-            {
-              node.children.map(child =>
-                <TComponent key={child.reactKey} node={child}
-                  update={update}
-                  upload={upload}
-                  theme={theme} />
-              )
-            }
-          </div>
-        </div>
-      }
-    </div>
+    <Accordion variant="contained" chevronPosition="left"
+      value={expanded ? ITEM : null}
+      onChange={(value) => {
+        setExpanded(value === ITEM)
+        if (value === ITEM) {
+          setEverExpanded(true)
+        }
+      }}>
+      <Accordion.Item value={ITEM}>
+        <Accordion.Control>{node.props.title}</Accordion.Control>
+        <Accordion.Panel keepMountedMode="display-none">
+          {everExpanded &&
+            node.children.map(child =>
+              <TComponent key={child.reactKey} node={child}
+                update={update}
+                upload={upload}
+                theme={theme} />
+            )}
+        </Accordion.Panel>
+      </Accordion.Item>
+    </Accordion>
   )
 }
