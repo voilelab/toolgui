@@ -73,4 +73,5 @@
     * [Message](components/misc/message.md)
     * [Progress Bar](components/misc/progress_bar.md)
     * [🧪 Iframe](components/misc/iframe.md)
+    * [🧪 Plugin](components/misc/plugin.md)
     * [Html](components/misc/html.md)

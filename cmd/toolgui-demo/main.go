@@ -3,11 +3,12 @@ package main
 import (
 	"archive/zip"
 	"crypto/md5"
-	_ "embed"
+	"embed"
 	"errors"
 	"fmt"
 	"image/jpeg"
 	"io"
+	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
@@ -20,6 +21,14 @@ import (
 
 //go:embed main.go
 var code string
+
+// The demo plugin ships as the files it is made of, served under
+// /plugin/colorpicker/.
+//
+//go:embed plugins/colorpicker
+var colorPickerAssets embed.FS
+
+var pickerColors = []string{"#ff3860", "#ffdd57", "#23d160", "#3273dc", "#b86bff"}
 
 const readme = `
 # [ToolGUI](https://github.com/voilelab/toolgui)
@@ -462,6 +471,40 @@ func InputPage(p *tgframe.Params) error {
 	return nil
 }
 
+func PluginPage(p *tgframe.Params) error {
+	tgcomp.Title(p.Main, "Plugin")
+	tgcomp.Text(p.Main,
+		"A plugin is a script the app serves, running in a sandboxed frame.")
+
+	tgcomp.Divider(p.Main)
+
+	pluginCompCol, pluginCodeCol := tgcomp.EqColumn2(p.Main, "show_plugin")
+	tgcomp.Echo(pluginCodeCol, code, func() {
+		var value struct {
+			Color string `json:"color"`
+		}
+
+		// Nothing is selected until the plugin sends its first value, which
+		// is not an error to read.
+		_ = tgcomp.PluginValue(p.State, "color_picker", &value)
+
+		tgcomp.PluginWithConf(pluginCompCol, "color_picker",
+			tgframe.PluginAssetURL("colorpicker", "colorpicker.js"),
+			&tgcomp.PluginConf{
+				Style: tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
+				Props: map[string]any{
+					"colors":   pickerColors,
+					"selected": value.Color,
+				},
+				Height: "auto",
+			})
+
+		tgcomp.Text(pluginCompCol, "Selected: "+value.Color)
+	})
+
+	return nil
+}
+
 func MiscPage(p *tgframe.Params) error {
 	headerCompCol, headerCodeCol := tgcomp.EqColumn2(p.Main, "header_of_rows")
 	tgcomp.Subtitle(headerCompCol, "Component")
@@ -685,4 +728,21 @@ func newApp() *tgframe.App {
 	app.AddPage("code", "Source Code", SourceCodePage)
 
 	return app
+}
+
+// addPluginDemo adds the plugin page and the files its plugin is made of.
+// It's the server build's to call: a plugin is loaded over a url, and the
+// browser build has no executor serving one.
+func addPluginDemo(app *tgframe.App) error {
+	assets, err := fs.Sub(colorPickerAssets, "plugins/colorpicker")
+	if err != nil {
+		return err
+	}
+
+	if err := app.AddPluginAssets("colorpicker", assets); err != nil {
+		return err
+	}
+
+	app.AddPage("plugin", "Plugin", PluginPage)
+	return nil
 }

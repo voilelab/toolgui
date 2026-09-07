@@ -87,7 +87,7 @@ func TestIframeValueRoundTrip(t *testing.T) {
 	})
 
 	// What the frontend sends back: the iframe's own component id.
-	event := &tgframe.EventIframe{
+	event := &tgframe.EventCustom{
 		ID:    props["id"].(string),
 		Value: map[string]any{"clicked": true},
 	}

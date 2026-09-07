@@ -2,7 +2,9 @@ package tgframe
 
 import (
 	"errors"
+	"io/fs"
 	"log"
+	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
@@ -58,6 +60,12 @@ type App struct {
 
 	title string
 
+	// pluginAssets are the file sets served under [PluginAssetPrefix], by name.
+	// A set is looked up per request, so the lock is what lets one be
+	// registered while the app is already serving.
+	pluginAssets map[string]fs.FS
+	pluginLock   sync.RWMutex
+
 	hashPageNameMode bool
 	showVersion      bool
 }
@@ -87,6 +95,8 @@ func NewApp() *App {
 		pageNames: make([]string, 0),
 		pageConfs: make(map[string]*PageConfig),
 		pageFuncs: make(map[string]RunFunc),
+
+		pluginAssets: make(map[string]fs.FS),
 
 		showVersion: true,
 	}

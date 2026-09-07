@@ -9,7 +9,13 @@ import (
 )
 
 func main() {
-	e := tgexec.NewWebExecutor(newApp())
+	app := newApp()
+
+	if err := addPluginDemo(app); err != nil {
+		log.Fatal(err)
+	}
+
+	e := tgexec.NewWebExecutor(app)
 
 	// What a browser reads when the demo is installed to a home screen. It is
 	// a WebExecutor setting, so the browser build does without it.

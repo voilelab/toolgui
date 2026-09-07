@@ -31,6 +31,7 @@ import { TChart } from "./tcdata/chart"
 import { TProgressar } from "./tcmisc/progress_bar"
 import { TMessage } from "./tcmisc/message"
 import { THtml } from "./tcmisc/html"
+import { TPlugin } from "./tcmisc/plugin"
 
 import { Props } from "./component_interface"
 import { TTab } from "./tclayout/tab"
@@ -74,6 +75,7 @@ const creatorMap: { [id: string]: ((props: Props) => JSX.Element) } = {
   message_component: TMessage,
   iframe_component: TIframe,
   html_component: THtml,
+  plugin_component: TPlugin,
 }
 
 

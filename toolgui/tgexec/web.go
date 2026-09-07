@@ -400,6 +400,8 @@ func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 	mux.Handle("GET /assets/", http.StripPrefix("/assets/",
 		http.HandlerFunc(e.handleAsset)))
 
+	mux.Handle("GET "+tgframe.PluginAssetPrefix, tgframe.PluginAssetHandler(e.app))
+
 	return mux, nil
 }
 

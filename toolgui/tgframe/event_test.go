@@ -49,3 +49,46 @@ func TestParseEventIframeDoesNotSetClickID(t *testing.T) {
 		t.Errorf("ClickID = %q, want empty", state.GetClickID())
 	}
 }
+
+func TestParseEventCustom(t *testing.T) {
+	event, err := ParseEvent([]byte(`{"type":"custom","id":"my_plugin","value":{"clicked":true}}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	customEvent, ok := event.(*EventCustom)
+	if !ok {
+		t.Fatalf("got %T, want *EventCustom", event)
+	}
+
+	if customEvent.ID != "my_plugin" {
+		t.Errorf("ID = %q, want %q", customEvent.ID, "my_plugin")
+	}
+
+	state := NewState()
+	customEvent.ApplyState(state)
+
+	var out struct {
+		Clicked bool `json:"clicked"`
+	}
+	if err := state.GetObject("my_plugin", &out); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+
+	if !out.Clicked {
+		t.Error("clicked = false, want true")
+	}
+}
+
+// A frontend built before the event was renamed still sends "iframe", and an
+// app it talks to has to keep understanding it.
+func TestParseEventIframeIsTheCustomEvent(t *testing.T) {
+	event, err := ParseEvent([]byte(`{"type":"iframe","id":"my_iframe","value":1}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	if _, ok := event.(*EventCustom); !ok {
+		t.Fatalf("got %T, want *EventCustom", event)
+	}
+}
