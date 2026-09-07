@@ -9,8 +9,6 @@ same pull request.
 
 `src/` is the book.
 
-`design/` holds design surveys and notes. They are not part of the book.
-
 ## Build
 
 ```shell

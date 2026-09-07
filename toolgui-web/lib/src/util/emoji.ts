@@ -7,8 +7,7 @@ const shortcodes: Record<string, string | string[]> = shortcodesData
 // emojibase keys by hexcode ("1F600", "1F1E6-1F1E8") and holds either one
 // shortcode or several, so the lookup a renderer wants has to be inverted out
 // of it. The github preset is the one people have muscle memory for, from
-// GitHub and Slack; see docs/design/emoji-shortcode.md for why not the wider
-// sets.
+// GitHub and Slack, and a quarter the size of the wider emojibase set.
 const table: Record<string, string> = Object.create(null)
 for (const [hexcode, value] of Object.entries(shortcodes)) {
   const emoji = String.fromCodePoint(
