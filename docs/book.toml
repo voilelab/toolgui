@@ -11,6 +11,12 @@ preferred-dark-theme = "navy"
 git-repository-url = "https://github.com/voilelab/toolgui"
 git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/voilelab/toolgui/edit/dev/docs/{path}"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [output.html.fold]
 enable = true
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
