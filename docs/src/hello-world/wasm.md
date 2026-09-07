@@ -111,6 +111,9 @@ while leaves the UI responsive.
 * No timezone database unless the app imports `time/tzdata`.
 * Uploaded files are held in memory.
 * The binary is public, like any other static asset. No secrets in it.
+* `SetManifest` and `SetAssets` are `WebExecutor` settings, so the browser
+  build does without them. A static site can carry a `manifest.json` and its
+  own files next to `index.html` instead.
 
 ## Hosting notes
 

@@ -639,6 +639,11 @@ func FuncCachePage(p *tgframe.Params) error {
 // pages are the same either way, only the executor differs.
 func newApp() *tgframe.App {
 	app := tgframe.NewApp()
+
+	// The title trails the page title in the browser tab, and names the app
+	// in the manifest main_server.go sets unless that gives its own name.
+	app.SetTitle("ToolGUI Demo")
+
 	app.AddPage("index", "Index", MainPage)
 	app.AddPage("content", "Content", ContentPage)
 	app.AddPage("data", "Data", DataPage)

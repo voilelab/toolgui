@@ -10,6 +10,19 @@ import (
 
 func main() {
 	e := tgexec.NewWebExecutor(newApp())
+
+	// What a browser reads when the demo is installed to a home screen. It is
+	// a WebExecutor setting, so the browser build does without it.
+	e.SetManifest(&tgexec.Manifest{
+		Name:            "ToolGUI Demo",
+		ShortName:       "ToolGUI",
+		Description:     "A demo of the components ToolGUI provides.",
+		StartURL:        ".",
+		Display:         "standalone",
+		ThemeColor:      "#000000",
+		BackgroundColor: "#ffffff",
+	})
+
 	log.Println("Starting service...")
 
 	err := e.StartService(":3000")
