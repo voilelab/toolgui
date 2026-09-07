@@ -36,6 +36,8 @@ type WebExecutor struct {
 	stateMap tgutil.UUIDMap[tgframe.State]
 
 	app *tgframe.App
+
+	manifest *Manifest
 }
 
 type stateIDPack struct {
@@ -52,7 +54,25 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 			5*time.Minute),
 
 		app: app,
+
+		manifest: DefaultManifest(),
 	}
+}
+
+// SetManifest set the web app manifest served at /manifest.json. A nil
+// manifest restores [DefaultManifest].
+//
+//	e.SetManifest(&tgexec.Manifest{
+//		Name:      "My Tool",
+//		ShortName: "My Tool",
+//		Display:   "standalone",
+//	})
+func (e *WebExecutor) SetManifest(manifest *Manifest) {
+	if manifest == nil {
+		manifest = DefaultManifest()
+	}
+
+	e.manifest = manifest
 }
 
 // Destory release all resource.
@@ -207,6 +227,18 @@ func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte(toolguiweb.IndexBody))
 }
 
+func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request) {
+	bs, err := json.Marshal(e.manifest)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+		slog.Error("marshal manifest", "error", err)
+		return
+	}
+
+	resp.Header().Set("Content-Type", "application/manifest+json")
+	resp.Write(bs)
+}
+
 func (e *WebExecutor) handleHealth(resp http.ResponseWriter, req *http.Request) {
 	resp.WriteHeader(http.StatusOK)
 }
@@ -227,6 +259,10 @@ func (e *WebExecutor) handleAppConf(resp http.ResponseWriter, req *http.Request)
 //	http.ListenAndServe(":8080", mux)
 func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 	mux := http.NewServeMux()
+
+	// More specific than the page patterns below, so it wins over them.
+	mux.HandleFunc("GET /manifest.json", e.handleManifest)
+
 	if e.app.AppConf().HashPageNameMode {
 		mux.HandleFunc("GET /{name}", e.handleAssets)
 		mux.HandleFunc("GET /", e.handleIndex)

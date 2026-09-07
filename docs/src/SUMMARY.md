@@ -14,6 +14,7 @@
 * [App](app/index.md)
     * [Side Nav](app/sidenav.md)
     * [Page](app/page.md)
+    * [Web Manifest](app/manifest.md)
 
 * [State Storage](architecture/state-storage.md)
     * [App Cache](architecture/app-cache.md)
