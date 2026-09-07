@@ -115,6 +115,37 @@ func ContentPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	captionCompCol, captionCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_caption"})
+	tgcomp.Echo(captionCodeCol, code, func() {
+		tgcomp.Caption(captionCompCol, "Caption")
+	})
+
+	tgcomp.Divider(p.Main)
+
+	// The second metric is a cost, where growing is the bad news, so its
+	// delta is colored the other way round.
+	metricCompCol, metricCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_metric"})
+	tgcomp.Echo(metricCodeCol, code, func() {
+		tgcomp.Metric(metricCompCol, "Revenue", "12.4M",
+			&tgcomp.MetricConf{Delta: "+12%"})
+		tgcomp.Metric(metricCompCol, "Cloud spend", "$3.1k",
+			&tgcomp.MetricConf{Delta: "+8%", DeltaColorInverse: true})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	badgeCompCol, badgeCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_badge"})
+	tgcomp.Echo(badgeCodeCol, code, func() {
+		tgcomp.Badge(badgeCompCol, "Badge")
+		tgcomp.Badge(badgeCompCol, "Shipped",
+			&tgcomp.BadgeConf{Color: tcutil.ColorSuccess})
+	})
+
+	tgcomp.Divider(p.Main)
+
 	imageCompCol, imageCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_image"})
 	tgcomp.Echo(imageCodeCol, code, func() {
@@ -138,6 +169,15 @@ func ContentPage(p *tgframe.Params) error {
 		p.Main, &tgcomp.ColumnConf{ID: "show_link"})
 	tgcomp.Echo(linkCodeCol, code, func() {
 		tgcomp.Link(linkCompCol, "Link", "https://www.example.com/")
+	})
+
+	tgcomp.Divider(p.Main)
+
+	linkButtonCompCol, linkButtonCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_link_button"})
+	tgcomp.Echo(linkButtonCodeCol, code, func() {
+		tgcomp.LinkButton(linkButtonCompCol, "Link Button",
+			"https://www.example.com/")
 	})
 
 	tgcomp.Divider(p.Main)
@@ -228,6 +268,20 @@ func DataPage(p *tgframe.Params) error {
 			[]string{"Go", "Rust", "Python"},
 			[]tgcomp.ChartSeries{
 				{Name: "stars", Values: []float64{31, 24, 47}},
+			})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	scatterCompCol, scatterCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_scatter_chart"})
+	tgcomp.Echo(scatterCodeCol, code, func() {
+		tgcomp.ScatterChart(scatterCompCol, "demo_scatter",
+			[]tgcomp.ChartSeries{
+				{Name: "runs", Points: []tgcomp.ChartPoint{
+					{X: 1, Y: 3}, {X: 2, Y: 5}, {X: 3, Y: 4},
+					{X: 4, Y: 8}, {X: 5, Y: 6},
+				}},
 			})
 	})
 

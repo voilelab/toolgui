@@ -10,6 +10,18 @@ import (
 // ones do.
 type Base = tgframe.Base
 
+// Badge show a short label, for a status or a tag next to other content.
+var Badge = tccontent.Badge
+
+// BadgeConf is the configuration for the Badge component.
+type BadgeConf = tccontent.BadgeConf
+
+// Caption show a small dimmed text, for a note next to what it explains.
+var Caption = tccontent.Caption
+
+// CaptionConf is the configuration for the Caption component.
+type CaptionConf = tccontent.CaptionConf
+
 // Code create a code block with syntax highlight.
 var Code = tccontent.Code
 
@@ -40,11 +52,23 @@ var Link = tccontent.Link
 // LinkWithID create a link component with a user specific id.
 var LinkWithID = tccontent.LinkWithID
 
+// LinkButton create a link that is drawn as a button.
+var LinkButton = tccontent.LinkButton
+
+// LinkButtonConf is the configuration for the LinkButton component.
+type LinkButtonConf = tccontent.LinkButtonConf
+
 // Markdown render markdown to html.
 var Markdown = tccontent.Markdown
 
 // Markdown create a markdown-rendering part with a user-specific id.
 var MarkdownWithID = tccontent.MarkdownWithID
+
+// Metric show a labelled value, with an optional delta under it.
+var Metric = tccontent.Metric
+
+// MetricConf is the configuration for the Metric component.
+type MetricConf = tccontent.MetricConf
 
 // Subtitle create a subtitle.
 var Subtitle = tccontent.Subtitle

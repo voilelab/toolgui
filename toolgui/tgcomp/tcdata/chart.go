@@ -26,6 +26,9 @@ const (
 
 	// ChartKindArea draws one line per series, filled to the axis.
 	ChartKindArea
+
+	// ChartKindScatter draws one marker per point, on two value axes.
+	ChartKindScatter
 )
 
 // String returns the kind as it is named on the wire.
@@ -37,9 +40,17 @@ func (k ChartKind) String() string {
 		return "bar"
 	case ChartKindArea:
 		return "area"
+	case ChartKindScatter:
+		return "scatter"
 	}
 
 	panic(fmt.Sprintf("unsupported chart kind: %d", int(k)))
+}
+
+// ChartPoint is one point of a scatter chart, on the two value axes.
+type ChartPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // ChartSeries is one named series of a chart.
@@ -47,8 +58,14 @@ type ChartSeries struct {
 	// Name labels the series in the legend and the tooltip.
 	Name string `json:"name"`
 
-	// Values holds one value per label, in the same order.
+	// Values holds one value per label, in the same order. Every kind but
+	// ChartKindScatter is drawn from it.
 	Values []float64 `json:"values"`
+
+	// Points holds the {x, y} points of a ChartKindScatter series, which has
+	// no labels to line its values up with. Omitted from the wire for the
+	// other kinds, so their packs are unchanged.
+	Points []ChartPoint `json:"points,omitempty"`
 
 	// Color overrides the theme palette. Any CSS color.
 	Color string `json:"color"`
@@ -59,10 +76,12 @@ type ChartConf struct {
 	// Kind is the shape the chart is drawn in, default is ChartKindLine.
 	Kind ChartKind
 
-	// Labels are the x axis categories.
+	// Labels are the x axis categories. A scatter chart has none: its x axis
+	// is a value axis.
 	Labels []string
 
-	// Series are the series to draw. Every series needs one value per label.
+	// Series are the series to draw. Every series needs one value per label,
+	// or, for ChartKindScatter, its points instead.
 	Series []ChartSeries
 
 	// Stacked stacks the series on top of each other instead of drawing
@@ -144,6 +163,18 @@ func AreaChart(c *tgframe.Container, id string, labels []string, series []ChartS
 	})
 }
 
+// ScatterChart create a scatter chart, one marker per point. It takes points
+// rather than labels and values: both of a scatter chart's axes are value
+// axes, so a point carries its own x.
+// The id has to be unique in the page, and stable across runs so that the
+// chart is updated in place instead of redrawn.
+func ScatterChart(c *tgframe.Container, id string, series []ChartSeries) {
+	ChartWithConf(c, id, &ChartConf{
+		Kind:   ChartKindScatter,
+		Series: series,
+	})
+}
+
 // ChartWithConf create a chart with a custom configuration.
 func ChartWithConf(c *tgframe.Container, id string, conf *ChartConf) {
 	if conf == nil {
@@ -151,6 +182,21 @@ func ChartWithConf(c *tgframe.Container, id string, conf *ChartConf) {
 	}
 
 	for _, series := range conf.Series {
+		if conf.Kind == ChartKindScatter {
+			if len(series.Values) != 0 {
+				panic(fmt.Sprintf(
+					"series %q of a scatter chart is drawn from points, not values",
+					series.Name))
+			}
+			continue
+		}
+
+		if len(series.Points) != 0 {
+			panic(fmt.Sprintf(
+				"series %q holds points, which only a scatter chart draws",
+				series.Name))
+		}
+
 		if len(series.Values) != len(conf.Labels) {
 			panic(fmt.Sprintf(
 				"len of values of series %q should equal to len of labels",

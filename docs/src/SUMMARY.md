@@ -33,11 +33,15 @@
     * [Title](components/content/title.md)
     * [Subtitle](components/content/subtitle.md)
     * [Text](components/content/text.md)
+    * [Caption](components/content/caption.md)
+    * [Metric](components/content/metric.md)
+    * [Badge](components/content/badge.md)
     * [Image](components/content/image.md)
     * [Code](components/content/code.md)
     * [Markdown](components/content/markdown.md)
     * [Divider](components/content/divider.md)
     * [Link](components/content/link.md)
+    * [Link Button](components/content/link_button.md)
     * [Latex](components/content/latex.md)
     * [Emoji Shortcodes](components/content/emoji.md)
 
@@ -45,6 +49,7 @@
     * [JSON](components/data/json.md)
     * [Table](components/data/table.md)
     * [Chart](components/data/chart.md)
+    * [Scatter Chart](components/data/scatter_chart.md)
 
 * [Input Components](components/input/index.md)
     * [Textarea](components/input/textarea.md)

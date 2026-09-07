@@ -30,4 +30,15 @@ describe('Data', () => {
     cy.get('canvas#chart_component_demo_bar').should('exist')
     cy.get('canvas#chart_component_demo_area').should('exist')
   })
+
+  it('Scatter chart test', () => {
+    cy.visit('/data')
+
+    cy.get('canvas#chart_component_demo_scatter')
+      .should('have.attr', 'aria-label', 'scatter chart of runs')
+
+    cy.get('canvas#chart_component_demo_scatter').should(($canvas) => {
+      expect($canvas[0].width).to.be.greaterThan(0)
+    })
+  })
 })

@@ -31,6 +31,46 @@ describe('Content', () => {
     cy.get('a').contains('Link').should('exist')
   })
 
+  it('Caption works', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_caption_0')
+      .contains('Caption').should('exist')
+  })
+
+  // The tone says which color the delta is drawn in, and the arrow says the
+  // same thing without relying on color.
+  it('Metric works', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_metric_0').within(() => {
+      cy.contains('Revenue').should('exist')
+      cy.contains('12.4M').should('exist')
+      cy.get('[data-tone]').should('have.length', 2)
+
+      cy.get('[data-tone]').first()
+        .should('have.attr', 'data-direction', 'up')
+        .and('have.attr', 'data-tone', 'positive')
+        .and('contain', '\u2191 +12%')
+
+      // Same direction, opposite tone: on a cost, growing is the bad news.
+      cy.get('[data-tone]').last()
+        .should('have.attr', 'data-direction', 'up')
+        .and('have.attr', 'data-tone', 'negative')
+    })
+  })
+
+  it('Badge works', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_badge_0')
+      .contains('Shipped').should('exist')
+  })
+
+  it('Link Button works', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_link_button_0')
+      .find('a').contains('Link Button')
+      .should('have.attr', 'href', 'https://www.example.com/')
+  })
+
   it('Latex works', () => {
     cy.visit('/content')
     cy.get('mi').contains('E').should('exist')

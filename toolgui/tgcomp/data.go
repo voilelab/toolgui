@@ -23,7 +23,13 @@ const (
 
 	// ChartKindArea draws one line per series, filled to the axis.
 	ChartKindArea = tcdata.ChartKindArea
+
+	// ChartKindScatter draws one marker per point, on two value axes.
+	ChartKindScatter = tcdata.ChartKindScatter
 )
+
+// ChartPoint is one point of a scatter chart, on the two value axes.
+type ChartPoint = tcdata.ChartPoint
 
 // ChartSeries is one named series of a chart.
 type ChartSeries = tcdata.ChartSeries
@@ -39,6 +45,9 @@ var BarChart = tcdata.BarChart
 
 // AreaChart create an area chart, one filled line per series.
 var AreaChart = tcdata.AreaChart
+
+// ScatterChart create a scatter chart, one marker per point.
+var ScatterChart = tcdata.ScatterChart
 
 // ChartWithConf create a chart with a custom configuration.
 var ChartWithConf = tcdata.ChartWithConf
