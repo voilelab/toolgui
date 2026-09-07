@@ -128,38 +128,59 @@ describe('Input', () => {
       day: 'numeric', month: 'long', year: 'numeric',
     })
 
-    // What the demo prints back, e.g. '2026-09-01 20:34'.
-    const expected = (date, time) => {
+    // What the picker shows, and what the demo prints back after it,
+    // e.g. '2026-09-01 20:34'.
+    const shown = (date, time) => {
       const pad = (n) => String(n).padStart(2, '0')
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}` +
         `-${pad(date.getDate())} ${time}`
     }
 
-    const openAndPickDay = (date) => {
-      cy.get('button[id=datepicker_component_Datetimepicker]').click()
+    const picker = () => cy.get('button[id=datepicker_component_Datetimepicker]')
+    const hours = () => cy.get('[role=spinbutton]').eq(0)
+    const minutes = () => cy.get('[role=spinbutton]').eq(1)
+
+    // Picking a day fills in the date and leaves the time to the fields
+    // below, so the button reads back where the picker stands. Waiting for it
+    // keeps the rest off a picker that has not taken the pick: with no date
+    // of its own, Mantine dates the time from today, and the value comes back
+    // right time, wrong day.
+    const openAndPickDay = (date, time) => {
+      picker().click()
       cy.get(`button[aria-label="${dayLabel(date)}"]`).click(noScroll)
+      picker().should('have.text', shown(date, time))
+    }
+
+    // The hour and minute fields hold a digit buffer, and picking a day fills
+    // them with 00. Typing onto the end of that reads as '002', which Mantine
+    // takes for a finished hour and answers by moving on to the minutes, so
+    // the second digit lands in the wrong field and the hour stays 02.
+    // Selecting first means each field sees only what is typed.
+    const typeTime = (field, digits) => {
+      field().type(`{selectall}${digits}`, noScroll)
+      field().should('have.value', digits)
     }
 
     const submit = () => {
       cy.get('.mantine-DateTimePicker-submitButton').click(noScroll)
     }
 
-    // The time goes in once, while the hour and minute fields are still
-    // empty: they hold a digit buffer that typing over a value it was given
-    // rather than typed does not overwrite predictably.
     const first = dayOfThisMonth(1)
-    openAndPickDay(first)
-    cy.get('[role=spinbutton]').eq(0).type('20', noScroll)
-    cy.get('[role=spinbutton]').eq(1).type('34', noScroll)
+    openAndPickDay(first, '00:00')
+    typeTime(hours, '20')
+    typeTime(minutes, '34')
     submit()
-    cy.contains(expected(first, '20:34')).should('exist')
+    // 'Value: ' is the demo printing the value back from Go. Without it the
+    // picker's own button carries the same text, and the case passes on the
+    // browser alone.
+    cy.contains(`Value: ${shown(first, '20:34')}`).should('exist')
 
     // A second value round-trips too. Only the date moves; the time it keeps
     // is what makes that visible without retyping it.
     const second = dayOfThisMonth(2)
-    openAndPickDay(second)
+    openAndPickDay(second, '20:34')
     submit()
-    cy.contains(expected(second, '20:34')).should('exist')
+    cy.contains(`Value: ${shown(second, '20:34')}`).should('exist')
   })
 
   it('Number', () => {
