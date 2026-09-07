@@ -99,12 +99,8 @@ func (s *State) GetObject(key string, out any) error {
 	return nil
 }
 
-// toNumber reads val as a float64, whichever numeric type it was stored as.
-// A value can reach the state by two routes: the frontend sends every number
-// as JSON, so it lands as a float64, while user code writing a default with
-// [State.Set] writes whatever Go type it had at hand. Both have to read back
-// the same. A string is not a number here — it is a mistake in the caller,
-// not a format to parse.
+// toNumber reads any numeric type as a float64, so a default written from Go
+// reads back like the float64 the frontend's JSON lands. A string is not one.
 func toNumber(val any) (float64, bool) {
 	switch v := val.(type) {
 	case float64:
@@ -136,11 +132,8 @@ func toNumber(val any) (float64, bool) {
 	}
 }
 
-// Get returns the value stored under key as a T. The second result is false
-// when the key holds nothing, or holds a value of another type — reading a
-// key the user filled in by hand never panics.
-//
-//	name, ok := p.State.Get[string]("name")
+// Get returns the value under key as a T, false when it is missing or another
+// type. Reading a key the user filled in by hand never panics.
 func (s *State) Get[T any](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -149,15 +142,9 @@ func (s *State) Get[T any](key string) (T, bool) {
 	return v, ok
 }
 
-// Default returns a pointer to the T stored under key, storing v there first
-// when the key holds nothing of that type. The state keeps the pointer, so
-// what the caller writes through it is what the next run reads back:
-//
-//	todoList := p.State.Default("todoList", TODOList{})
-//	todoList.Items = append(todoList.Items, item)
-//
-// A key holding some other type is overwritten rather than reported: the
-// alternative is handing back a pointer whose writes go nowhere.
+// Default returns a pointer to the T under key, storing v there first when the
+// key holds nothing of that type. The state keeps the pointer, so writes
+// through it survive the rerun; a key holding another type is overwritten.
 func (s *State) Default[T any](key string, v T) *T {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
@@ -170,8 +157,7 @@ func (s *State) Default[T any](key string, v T) *T {
 	return &v
 }
 
-// GetString gets the value of a key and returns it as a string.
-// It returns nil when the key is unset or holds something other than a string.
+// GetString reads a string, nil when the key holds none.
 func (s *State) GetString(key string) *string {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -184,10 +170,7 @@ func (s *State) GetString(key string) *string {
 	return &ss
 }
 
-// GetFloat gets the value of a key and returns it as a float64. Any numeric
-// type is read, so a default written as Set(key, 30) reads back the same as
-// the 30.0 the frontend would have sent. It returns nil when the key is unset
-// or holds a non-numeric value.
+// GetFloat reads any numeric type as a float64, nil when there is none.
 func (s *State) GetFloat(key string) *float64 {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -200,13 +183,7 @@ func (s *State) GetFloat(key string) *float64 {
 	return &f
 }
 
-// GetInt gets the value of a key and returns it as an int, truncating a
-// fractional value. Like [State.GetFloat] it reads any numeric type, and
-// returns nil when the key is unset or holds a non-numeric value.
-//
-// A number an int cannot hold — a NaN, an infinity, or one past the int
-// range, all of which convert to an unspecified value rather than failing —
-// is nil too, so what comes back is always the number that was stored.
+// GetInt is [State.GetFloat] truncated to an int, nil when an int cannot hold it.
 func (s *State) GetInt(key string) *int {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -216,8 +193,8 @@ func (s *State) GetInt(key string) *int {
 		return nil
 	}
 
-	// The bounds are written as float64 on purpose: math.MaxInt has no exact
-	// float64, so comparing against it would let 2^63 itself through.
+	// Bounds as float64: math.MaxInt has no exact one, so comparing against it
+	// would let 2^63 through.
 	if math.IsNaN(f) || f < float64(math.MinInt) || f >= -float64(math.MinInt) {
 		return nil
 	}
@@ -226,8 +203,7 @@ func (s *State) GetInt(key string) *int {
 	return &i
 }
 
-// GetBool gets the value of a key and returns it as a bool.
-// It returns false when the key is unset or holds something other than a bool.
+// GetBool reads a bool, false when the key holds none.
 func (s *State) GetBool(key string) bool {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
