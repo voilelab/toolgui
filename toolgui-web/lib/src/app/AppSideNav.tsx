@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { Burger, Button, Divider, Group, Loader, NavLink, Text } from "@mantine/core";
 
 import { ThemeModeButton } from './ThemeModeButton';
 import { AppConf } from "./AppConf";
@@ -76,59 +77,55 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     const hasSidebar = sidebarNode.children.length > 0
 
     return <aside className="toolgui-nav">
-      <button className="button is-ghost toolgui-nav-burger"
+      <Burger className="toolgui-nav-burger"
         aria-label="menu"
-        aria-expanded={this.state.open}
-        onClick={() => { this.setState((prev) => ({ open: !prev.open })) }}>
-        <span className="icon">
-          <i className="fas fa-bars"></i>
-        </span>
-        <span>Menu</span>
-      </button>
+        opened={this.state.open}
+        onClick={() => { this.setState((prev) => ({ open: !prev.open })) }} />
 
       <div className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
-        <nav className="menu" aria-label="main navigation">
-          <ul className="menu-list">
-            {
-              this.props.appConf.page_names.map(name =>
-                <li key={name}>
-                  <a className={name === this.props.pageName ? 'is-active' : ''}
-                    href={this.pageHref(name)}
-                    onClick={(e) => { e.preventDefault(); this.jumpToPage(name) }}>
+        <nav className="toolgui-nav-list" aria-label="main navigation">
+          {
+            this.props.appConf.page_names.map(name => {
+              const active = name === this.props.pageName
+              return (
+                <NavLink key={name}
+                  component="a"
+                  href={this.pageHref(name)}
+                  active={active}
+                  variant="filled"
+                  aria-current={active ? 'page' : undefined}
+                  label={<>
                     {emojize(this.props.appConf.page_confs[name].emoji || '')}
                     {this.props.appConf.page_confs[name].title}
-                  </a>
-                </li>
+                  </>}
+                  onClick={(e) => { e.preventDefault(); this.jumpToPage(name) }} />
               )
-            }
-          </ul>
+            })
+          }
         </nav>
 
         {hasSidebar ?
           <div>
-            <hr />
+            <Divider my="sm" />
             <TComponent node={sidebarNode}
               update={(e) => { this.props.update(e) }}
               upload={async (f, id) => await this.props.upload(f, id)}
               theme={this.props.themeMode} />
           </div> : ''}
 
-        <div className="toolgui-nav-foot buttons">
-          {this.props.running ?
-            <span className="icon">
-              <i className="fas fa-spinner fa-pulse"></i>
-            </span> : ''}
+        <Group className="toolgui-nav-foot" gap="xs">
+          {this.props.running ? <Loader size="sm" /> : ''}
           {this.props.pageFound ?
-            <button className="button" onClick={() => { this.props.rerun() }}>
+            <Button variant="default" onClick={() => { this.props.rerun() }}>
               Rerun
-            </button> : ''}
+            </Button> : ''}
           <ThemeModeButton />
-        </div>
+        </Group>
 
         {this.props.appConf.show_version ?
-          <p className="toolgui-nav-version">
+          <Text className="toolgui-nav-version" size="xs" c="dimmed">
             toolgui {this.props.appConf.version}
-          </p> : ''}
+          </Text> : ''}
       </div>
     </aside>
   }

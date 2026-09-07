@@ -1,4 +1,5 @@
 import React from "react"
+import { Button } from "@mantine/core"
 
 import { Props } from "../component_interface"
 import { TComponent } from "../factory"
@@ -14,29 +15,23 @@ export function TForm({ node, update, upload, theme }: Props) {
 
   return (
     <div id={node.props.id || undefined}>
-      <div className="field">
-        {
-          node.children.map(child =>
-            <TComponent key={child.reactKey} node={child}
-              update={handleUpdate}
-              upload={upload}
-              theme={theme} />
-          )
-        }
-      </div>
+      {
+        node.children.map(child =>
+          <TComponent key={child.reactKey} node={child}
+            update={handleUpdate}
+            upload={upload}
+            theme={theme} />
+        )
+      }
 
-      <div className="field">
-        <p className="control">
-          <button onClick={() => {
-            update({
-              type: "form",
-              events: collectEvent,
-            })
+      <Button variant="default" onClick={() => {
+        update({
+          type: "form",
+          events: collectEvent,
+        })
 
-            collectEvent.splice(0, collectEvent.length)
-          }} className="button">Submit</button>
-        </p>
-      </div>
+        collectEvent.splice(0, collectEvent.length)
+      }}>Submit</Button>
     </div>
   )
 }

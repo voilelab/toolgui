@@ -1,4 +1,5 @@
 import React, { Component, ReactNode } from "react";
+import { Alert } from "@mantine/core";
 
 export interface Error {
   msg: string
@@ -15,12 +16,10 @@ export class AppError extends Component<AppErrorProps> {
     }
 
     return (
-      <div className="container" style={{ paddingTop: '10px' }}>
-        <article className="message is-danger">
-          <div className="message-body">
-            {this.props.error.msg}
-          </div>
-        </article>
+      <div className="toolgui-page" style={{ paddingTop: '10px' }}>
+        <Alert color="red">
+          {this.props.error.msg}
+        </Alert>
       </div>
     )
   }

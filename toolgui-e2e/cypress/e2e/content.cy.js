@@ -19,9 +19,11 @@ describe('Content', () => {
     cy.get('img').should('have.attr', 'src', 'https://http.cat/100')
   })
 
+  // Mantine's Divider is a div with the separator role, the accessible
+  // equivalent of the hr this used to render.
   it('Divider works', () => {
     cy.visit('/content')
-    cy.get('hr').should('exist')
+    cy.get('[role=separator]').should('exist')
   })
 
   it('Link works', () => {

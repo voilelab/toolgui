@@ -48,10 +48,3 @@ export const themeModeManager: MantineColorSchemeManager = {
 
   clear: () => { clearStoredValue(STORAGE_KEY) },
 }
-
-// applyBulmaTheme puts the theme on <html>, where Bulma's dark scheme picks
-// it up. The app's own CSS reads Mantine's variables instead, so this goes
-// away with Bulma.
-export function applyBulmaTheme(mode: ThemeMode) {
-  document.documentElement.className = 'theme-' + mode
-}

@@ -1,5 +1,7 @@
 import React from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
+
+import { render } from './render'
 import { afterEach, expect, test, describe, vi } from 'vitest'
 
 import { Node } from '@toolgui-web/lib/src/app/Nodes'

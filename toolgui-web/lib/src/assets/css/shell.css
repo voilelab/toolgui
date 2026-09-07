@@ -39,13 +39,18 @@
   padding-top: 0.75rem;
 }
 
-/* The version line sits under the controls, quiet enough not to compete with
-   them. margin-top:auto on the foot above already pushed both to the bottom. */
+/* The version line sits under the controls. margin-top:auto on the foot above
+   already pushed both to the bottom. */
 .toolgui-nav-version {
-  font-size: 0.75rem;
-  opacity: 0.6;
   /* A build off a tag reports a pseudo-version, too long for the column. */
   overflow-wrap: anywhere;
+}
+
+/* A page stops widening past this and stays centred, so lines do not run the
+   full width of a large screen. */
+.toolgui-page {
+  max-width: 1344px;
+  margin-inline: auto;
 }
 
 /* min-width:0 keeps wide children (tables, code blocks) from stretching this

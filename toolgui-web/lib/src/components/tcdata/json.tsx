@@ -1,4 +1,5 @@
 import React, { useState } from "react"
+import { Box } from "@mantine/core"
 
 import { Props } from "../component_interface"
 
@@ -7,11 +8,11 @@ import '@toolgui-web/lib/src/assets/css/json.css'
 
 export function TJson({ node, theme }: Props) {
   return (
-    <div id={node.props.id || undefined} className="block">
+    <Box id={node.props.id || undefined} className="toolgui-json" mb="md">
       <pre>
         <JsonValue val={JSON.parse(node.props.value)} pad={0} theme={theme} />
       </pre>
-    </div>
+    </Box>
   )
 }
 

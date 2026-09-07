@@ -1,5 +1,6 @@
 import React from 'react'
-import { useComputedColorScheme, useMantineColorScheme } from '@mantine/core'
+import { ActionIcon, useComputedColorScheme, useMantineColorScheme } from '@mantine/core'
+import { IconMoon, IconSun } from '@tabler/icons-react'
 
 // ThemeModeButton flips Mantine's color scheme, which the rest of the app
 // follows.
@@ -10,13 +11,10 @@ export function ThemeModeButton() {
   }) === 'dark'
 
   return (
-    <button className="button"
+    <ActionIcon variant="default" size="lg"
+      aria-label={dark ? 'Switch to the light theme' : 'Switch to the dark theme'}
       onClick={() => { setColorScheme(dark ? 'light' : 'dark') }}>
-      <span className="icon">
-        {dark ?
-          <i className="fas fa-moon"></i> :
-          <i className="fas fa-sun"></i>}
-      </span>
-    </button>
+      {dark ? <IconMoon size={18} /> : <IconSun size={18} />}
+    </ActionIcon>
   )
 }

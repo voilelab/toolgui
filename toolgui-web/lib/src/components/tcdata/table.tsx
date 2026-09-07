@@ -1,4 +1,5 @@
 import React from "react"
+import { Table } from "@mantine/core"
 
 import { Props } from "../component_interface"
 
@@ -6,14 +7,25 @@ export function TTable({ node }: Props) {
   const head: string[] = node.props.head
   const table: string[][] = node.props.table
 
+  // minWidth 0: the table is never forced wider than the page, it only
+  // scrolls when its own content overflows.
   return (
-    <div id={node.props.id || undefined} className="table-container">
-      <table className="table is-hoverable">
-        <thead> <tr> {head.map(s => <th>{s}</th>)} </tr> </thead>
-        <tbody>
-          {table.map(row => <tr>{row.map(v => <td>{v}</td>)}</tr>)}
-        </tbody>
-      </table>
-    </div>
+    <Table.ScrollContainer id={node.props.id || undefined}
+      minWidth={0} type="native">
+      <Table highlightOnHover>
+        <Table.Thead>
+          <Table.Tr>
+            {head.map((s, i) => <Table.Th key={i}>{s}</Table.Th>)}
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          {table.map((row, i) =>
+            <Table.Tr key={i}>
+              {row.map((v, j) => <Table.Td key={j}>{v}</Table.Td>)}
+            </Table.Tr>
+          )}
+        </Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
   )
 }

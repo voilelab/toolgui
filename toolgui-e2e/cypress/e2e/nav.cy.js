@@ -1,23 +1,23 @@
 describe('Nav', () => {
   it('Left column lists pages and marks the current one', () => {
     cy.visit('/index')
-    cy.get('.toolgui-nav .menu-list').contains('Index')
-      .should('have.class', 'is-active')
-    cy.get('.toolgui-nav .menu-list').contains('Layout')
-      .should('not.have.class', 'is-active')
+    cy.get('.toolgui-nav-list a[href="/index"]')
+      .should('have.attr', 'aria-current', 'page')
+    cy.get('.toolgui-nav-list a[href="/layout"]')
+      .should('not.have.attr', 'aria-current')
   })
 
   it('Clicking a page navigates', () => {
     cy.visit('/index')
-    cy.get('.toolgui-nav .menu-list').contains('Layout').click()
+    cy.get('.toolgui-nav-list a[href="/layout"]').click()
     cy.location('pathname').should('eq', '/layout')
-    cy.get('.toolgui-nav .menu-list').contains('Layout')
-      .should('have.class', 'is-active')
+    cy.get('.toolgui-nav-list a[href="/layout"]')
+      .should('have.attr', 'aria-current', 'page')
   })
 
   it('Page links are real links', () => {
     cy.visit('/index')
-    cy.get('.toolgui-nav .menu-list').contains('Layout')
+    cy.get('.toolgui-nav-list a').contains('Layout').closest('a')
       .should('have.attr', 'href', '/layout')
       .focus().should('have.focus')
   })
@@ -29,7 +29,7 @@ describe('Nav', () => {
 
     cy.get('.toolgui-nav').should('not.have.attr', 'role')
     cy.get('nav[aria-label="main navigation"]').within(() => {
-      cy.get('.menu-list').should('exist')
+      cy.get('a[href="/index"]').should('exist')
       cy.contains('Sidebar is here').should('not.exist')
       cy.contains('Rerun').should('not.exist')
     })
@@ -56,14 +56,15 @@ describe('Nav', () => {
   it('Rerun and theme controls stay reachable', () => {
     cy.visit('/index')
     cy.get('.toolgui-nav-foot').contains('Rerun').should('exist')
-    cy.get('.toolgui-nav-foot .button').should('have.length.at.least', 2)
+    cy.get('.toolgui-nav-foot button').should('have.length.at.least', 2)
   })
 
   // A visitor with nothing stored still gets a theme, taken from the browser
-  // preference Cypress runs with.
+  // preference Cypress runs with. Mantine holds the theme, so the attribute
+  // it stamps on <html> is what says which one is on.
   it('A first visit lands on a real theme', () => {
     cy.visit('/index')
-    cy.get('html').should('have.class', 'theme-light')
+    cy.get('html').should('have.attr', 'data-mantine-color-scheme', 'light')
     cy.window().then((win) => {
       expect(win.localStorage.getItem('theme_mode')).to.be.null
     })
@@ -71,11 +72,11 @@ describe('Nav', () => {
 
   it('The theme toggle switches the theme and remembers it', () => {
     cy.visit('/index')
-    cy.get('.toolgui-nav-foot .button').last().click()
-    cy.get('html').should('have.class', 'theme-dark')
+    cy.get('.toolgui-nav-foot button').last().click()
+    cy.get('html').should('have.attr', 'data-mantine-color-scheme', 'dark')
 
     cy.reload()
-    cy.get('html').should('have.class', 'theme-dark')
+    cy.get('html').should('have.attr', 'data-mantine-color-scheme', 'dark')
   })
 
   // A build from a tag reports it; anything else reports the pseudo-version

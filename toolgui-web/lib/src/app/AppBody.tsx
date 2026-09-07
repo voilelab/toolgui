@@ -29,7 +29,7 @@ export class AppBody extends Component<AppBodyProps> {
 
   render(): ReactNode {
     return (
-      <div className="container">
+      <div className="toolgui-page">
         {this.props.pageFound ?
           <TComponent node={this.rootNode()}
             update={(e) => { this.props.update(e) }}

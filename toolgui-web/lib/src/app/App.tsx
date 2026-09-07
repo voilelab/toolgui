@@ -2,20 +2,11 @@
 // machine with no route to the internet. Declared here so the browser and
 // desktop builds cannot ship different versions.
 //
-// Bulma is pinned: 1.0.4 turned the selected navbar item's text dark.
-// Imported before anything else, so shell.css and the app's own CSS win.
-//
-// Bulma and Mantine coexist while the components move over one batch at a
-// time. Mantine comes second so its layer wins where the two collide.
-//
-// fontawesome-solid.css stands in for the package's solid.css, which would
-// also pull a .ttf copy of the font into the build.
-import 'bulma/css/bulma.min.css'
+// Mantine first, then the app's own tokens and stylesheets, which read
+// Mantine's variables and win where the two meet.
 import '@mantine/core/styles.css'
 import '@mantine/dates/styles.css'
 import '@toolgui-web/lib/src/assets/css/theme.css'
-import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
-import '@toolgui-web/lib/src/assets/css/fontawesome-solid.css'
 
 import React, { Component } from 'react'
 import { MantineProvider } from '@mantine/core'
