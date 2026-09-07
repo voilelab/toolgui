@@ -72,12 +72,12 @@ p.State.Set("number_component_Age", 30)
 age := tgcomp.Number(p.Main, "Age", (&tgcomp.NumberConf[int64]{}).SetDefault(30))
 ```
 
-Only `Textbox`, `Number` and `Checkbox` have such a conf today, so `Select`
-and `Radio` can be given a value the page reads but not one it shows.
+Every component takes a conf, but only `Textbox`, `Number` and `Checkbox`
+have a `Default` in theirs today, so `Select` and `Radio` can be given a value
+the page reads but not one it shows.
 
 The key is `<component name>_<label>`, unless the component was given an
-explicit `ID` in its conf, in which case the key is that id verbatim. `Radio`
-and the pickers take no conf, so their key is always the derived one.
+explicit `ID` in its conf, in which case the key is that id verbatim.
 
 | Component | Key | Stored value |
 | --- | --- | --- |

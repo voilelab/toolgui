@@ -42,7 +42,7 @@ func TestSetAsInitialValue(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set("radio_component_Fruit", 1)
 
-		got := tcinput.Radio(state, defaultContainer(state), "Fruit",
+		got := tcinput.Radio(defaultContainer(state), "Fruit",
 			[]string{"apple", "banana"})
 		if got == nil || *got != 1 {
 			t.Fatalf("Radio = %v, want 1", got)
@@ -62,7 +62,7 @@ func TestSetAsInitialValue(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set("checkbox_component_Agree", true)
 
-		if got := tcinput.Checkbox(state, defaultContainer(state), "Agree"); !got {
+		if got := tcinput.Checkbox(defaultContainer(state), "Agree"); !got {
 			t.Fatalf("Checkbox = %v, want true", got)
 		}
 	})
