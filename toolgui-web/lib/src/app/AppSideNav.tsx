@@ -22,7 +22,6 @@ interface AppSideNavProps {
   update: (e: UpdateEvent) => void
   upload: UploadFunc
   themeMode: ThemeMode
-  onChange: (themeMode: ThemeMode) => void
 }
 
 interface AppSideNavState {
@@ -123,8 +122,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <button className="button" onClick={() => { this.props.rerun() }}>
               Rerun
             </button> : ''}
-          <ThemeModeButton themeMode={this.props.themeMode}
-            onChange={(themeMode) => { this.props.onChange(themeMode) }} />
+          <ThemeModeButton />
         </div>
 
         {this.props.appConf.show_version ?

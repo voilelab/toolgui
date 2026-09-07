@@ -18,3 +18,11 @@ export function setStoredValue(key: string, value: string) {
     // No storage here, so the setting just does not stick.
   }
 }
+
+export function clearStoredValue(key: string) {
+  try {
+    window.localStorage.removeItem(key)
+  } catch (e) {
+    // No storage here, so there was nothing stored to clear.
+  }
+}

@@ -39,13 +39,13 @@ tasks:
     cmds:
       - task: asset_lib
       - task: asset_app
-      - go run ./cmd/toolgui-demo/main.go
+      - go run ./cmd/toolgui-demo
 
   run_todo:
     cmds:
       - task: asset_lib
       - task: asset_app
-      - go run ./cmd/toolgui-todo/main.go
+      - go run ./cmd/toolgui-todo
 
   # The wails CLI builds the frontend and the app, and supplies the build tags
   # and macOS frameworks a desktop build needs. Needs the webview deps, see
