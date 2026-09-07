@@ -2,6 +2,8 @@
 
 Title component display a title.
 
+The text supports [emoji shortcodes](emoji.md): `:tada:` renders as 🎉.
+
 ## API
 
 ```go

@@ -189,14 +189,17 @@ so in the docs.
    `toolgui-e2e` asserting `:tada:` renders as 🎉 in `Text` and stays literal
    in `Code`.
 
-Steps 1–3 are the useful half and are independently shippable; step 4 is
-where the care is.
+**Status: all five shipped.** The table carries 1913 shortcodes and costs the
+app bundle 45 KB raw / 16 KB gzipped, measured by building it with and
+without the change. Step 4 landed as `util/remark_emoji.ts`, a visit of
+`text` nodes, which is what keeps code spans and fences literal. The
+user-facing documentation is `docs/src/components/content/emoji.md`.
 
-**Status.** Steps 1–3 are implemented. The table carries 1913 shortcodes and
-costs the app bundle 45 KB raw / 16 KB gzipped, measured by building it with
-and without the change. Steps 4 and 5 — markdown, and the user-facing docs
-and e2e case — are still open, and until step 4 lands `tgcomp.Markdown` does
-not expand shortcodes at all.
+Two things the work changed here. The digit guard in the edge cases above is
+gone: the github preset has all-digit names, so it would have dropped
+`:100:`. And this survey called for checking a generated table into the
+repository, which measured the same as inverting at load and so bought
+nothing.
 
 If instead we want the Go side to own this, option C (`tgutil.Emojize`) is
 the honest version of it — automatic Go-side expansion cannot get markdown

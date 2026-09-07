@@ -37,6 +37,7 @@
     * [Divider](components/content/divider.md)
     * [Link](components/content/link.md)
     * [Latex](components/content/latex.md)
+    * [Emoji Shortcodes](components/content/emoji.md)
 
 * [Data Components](components/data/index.md)
     * [JSON](components/data/json.md)

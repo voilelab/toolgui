@@ -34,6 +34,21 @@ describe('Content', () => {
     cy.get('mi').contains('E').should('exist')
   })
 
+  // The right column echoes the source, which holds the shortcode as
+  // written, so both assertions scope to the left column, the rendered one.
+  it('Emoji shortcodes expand in text', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_emoji_0')
+      .contains('Shipped it \u{1F389}').should('exist')
+  })
+
+  it('Emoji shortcodes stay literal in markdown code', () => {
+    cy.visit('/content')
+    cy.get('#column_component_show_emoji_0')
+      .find('code').should('have.length', 1)
+      .and('have.text', ':tada:')
+  })
+
   it('Identical components both render', () => {
     cy.visit('/content')
     cy.get('#column_component_show_duplicate')

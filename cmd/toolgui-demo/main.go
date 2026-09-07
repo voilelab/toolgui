@@ -135,6 +135,16 @@ func ContentPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	// A shortcode expands wherever text is decoration, and stays literal
+	// wherever it is the thing being shown.
+	emojiCompCol, emojiCodeCol := tgcomp.EqColumn2(p.Main, "show_emoji")
+	tgcomp.Echo(emojiCodeCol, code, func() {
+		tgcomp.Text(emojiCompCol, "Shipped it :tada:")
+		tgcomp.Markdown(emojiCompCol, "A `:tada:` in code stays as written.")
+	})
+
+	tgcomp.Divider(p.Main)
+
 	// Components are placed by position, so writing the same thing twice
 	// shows it twice.
 	dupCompCol, dupCodeCol := tgcomp.EqColumn2(p.Main, "show_duplicate")
