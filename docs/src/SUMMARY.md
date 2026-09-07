@@ -6,6 +6,7 @@
 
 * [Server-Client](hello-world/server-client.md)
 * [Desktop App](hello-world/desktop.md)
+* [Browser App (WebAssembly)](hello-world/wasm.md)
 
 # Architecture
 
