@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"testing/fstest"
 
@@ -108,7 +109,11 @@ func TestAssetsAreServed(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read asset body: %v", err)
+	}
+
 	if string(body) != "PNG" {
 		t.Errorf("body = %q, want %q", body, "PNG")
 	}
@@ -138,4 +143,52 @@ func TestAssetsUnsetIsNotFound(t *testing.T) {
 	if resp.StatusCode != http.StatusNotFound {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
 	}
+}
+
+// The setters promise the app can call them whenever, so a call that lands
+// while requests are in flight must not race the handlers reading them.
+// Meaningful under -race.
+func TestSetManifestAndAssetsAreConcurrencySafe(t *testing.T) {
+	srv, e := newTestServer(t)
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		for i := range 50 {
+			if i%2 == 0 {
+				e.SetManifest(&Manifest{Name: "My Tool"})
+				e.SetAssets(fstest.MapFS{"icon.png": {Data: []byte("PNG")}})
+			} else {
+				e.SetManifest(nil)
+				e.SetAssets(nil)
+			}
+		}
+	}()
+
+	for _, path := range []string{"/manifest.json", "/assets/icon.png"} {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for range 50 {
+				resp, err := http.Get(srv.URL + path)
+				if err != nil {
+					t.Errorf("get %s: %v", path, err)
+					return
+				}
+
+				if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+					t.Errorf("read %s: %v", path, err)
+				}
+
+				resp.Body.Close()
+			}
+		}()
+	}
+
+	wg.Wait()
 }

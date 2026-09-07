@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"net/http"
@@ -38,6 +39,10 @@ type WebExecutor struct {
 
 	app *tgframe.App
 
+	// confMu guards manifest and assets, which the app may set at any time,
+	// including while handlers are already serving requests.
+	confMu sync.RWMutex
+
 	// manifest is nil until the app sets one, and nil serves the default.
 	manifest *Manifest
 
@@ -62,7 +67,7 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 	}
 }
 
-// defaultManifest return the manifest served when the app sets none. The app
+// defaultManifest returns the manifest served when the app sets none. The app
 // title names it, so an app that sets a title doesn't repeat it here.
 func (e *WebExecutor) defaultManifest() *Manifest {
 	manifest := DefaultManifest()
@@ -75,7 +80,7 @@ func (e *WebExecutor) defaultManifest() *Manifest {
 	return manifest
 }
 
-// SetManifest set the web app manifest served at /manifest.json. A nil
+// SetManifest sets the web app manifest served at /manifest.json. A nil
 // manifest goes back to the default, which [tgframe.App.SetTitle] names.
 //
 //	e.SetManifest(&tgexec.Manifest{
@@ -84,10 +89,13 @@ func (e *WebExecutor) defaultManifest() *Manifest {
 //		Display:   "standalone",
 //	})
 func (e *WebExecutor) SetManifest(manifest *Manifest) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
 	e.manifest = manifest
 }
 
-// SetAssets serve the files at the root of fsys under /assets/, so an app can
+// SetAssets serves the files at the root of fsys under /assets/, so an app can
 // hand the browser files of its own: a manifest icon, an image a page links
 // to. A nil fsys serves none.
 //
@@ -98,6 +106,9 @@ func (e *WebExecutor) SetManifest(manifest *Manifest) {
 //	sub, _ := fs.Sub(assets, "assets")
 //	e.SetAssets(sub)
 func (e *WebExecutor) SetAssets(fsys fs.FS) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
 	e.assets = fsys
 }
 
@@ -249,15 +260,19 @@ func (e *WebExecutor) handleAssets(resp http.ResponseWriter, req *http.Request) 
 	resp.Write(body)
 }
 
-// handleAsset serve a file the app gave [WebExecutor.SetAssets]. Reading the
+// handleAsset serves a file the app gave [WebExecutor.SetAssets]. Reading the
 // fs per request, rather than at mux time, frees the app to set it whenever.
 func (e *WebExecutor) handleAsset(resp http.ResponseWriter, req *http.Request) {
-	if e.assets == nil {
+	e.confMu.RLock()
+	assets := e.assets
+	e.confMu.RUnlock()
+
+	if assets == nil {
 		http.NotFound(resp, req)
 		return
 	}
 
-	http.FileServerFS(e.assets).ServeHTTP(resp, req)
+	http.FileServerFS(assets).ServeHTTP(resp, req)
 }
 
 func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
@@ -265,7 +280,10 @@ func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request) {
+	e.confMu.RLock()
 	manifest := e.manifest
+	e.confMu.RUnlock()
+
 	if manifest == nil {
 		manifest = e.defaultManifest()
 	}
