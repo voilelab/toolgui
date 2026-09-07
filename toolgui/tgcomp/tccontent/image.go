@@ -39,29 +39,21 @@ const (
 
 // ImageConf is the configuration for the Image component
 type ImageConf struct {
+	tgframe.Base
+
 	// Width is the width of the image (e.g. "100px", "50%")
 	Width string
 
 	// Format is the format of the image, default is "png"
 	Format ImageFormat
-
-	// ID is the unique identifier for this image component
-	ID string
 }
 
 // Image show an image.
-func Image(c *tgframe.Container, img any) {
-	ImageWithConf(c, img, nil)
-}
-
-// ImageWithConf show an image with a custom configuration.
-func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf) {
-	if conf == nil {
-		conf = &ImageConf{}
-	}
+func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
+	cf := tgframe.OneConf("Image", conf)
 
 	formatStr := ""
-	switch conf.Format {
+	switch cf.Format {
 	case ImageFormatPNG:
 		formatStr = "png"
 	case ImageFormatJPEG:
@@ -79,7 +71,7 @@ func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf) {
 			formatStr, base64.StdEncoding.EncodeToString(v))
 	case image.Image:
 		var imageBuf bytes.Buffer
-		switch conf.Format {
+		switch cf.Format {
 		case ImageFormatPNG:
 			err := png.Encode(&imageBuf, v)
 			if err != nil {
@@ -93,7 +85,7 @@ func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf) {
 			}
 			formatStr = "jpeg"
 		default:
-			err := fmt.Errorf("unsupported image format: %v", conf.Format)
+			err := fmt.Errorf("unsupported image format: %v", cf.Format)
 			panic(err)
 		}
 		bs := imageBuf.Bytes()
@@ -106,13 +98,11 @@ func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf) {
 
 	comp := newImageComponent(uri)
 
-	if conf.Width != "" {
-		comp.Width = conf.Width
+	if cf.Width != "" {
+		comp.Width = cf.Width
 	}
 
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
 }

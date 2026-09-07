@@ -38,7 +38,7 @@ type ButtonConf struct {
 
 // Button create a button and return true if it's clicked.
 func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Button", conf)
 
 	comp := newButtonComponent(label)
 	comp.Color = cf.Color

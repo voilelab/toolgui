@@ -1,6 +1,7 @@
 package tgframe_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
@@ -35,14 +36,25 @@ func TestVariadicConfAcceptsNoneOrOne(t *testing.T) {
 
 // TestTwoConfsPanic pins the rule that replaces a merge: two confs for one
 // component have no meaning, so passing two is a caller bug, not a value to
-// resolve.
+// resolve. The panic names the component, so a line calling several of them
+// says which one is wrong.
 func TestTwoConfsPanic(t *testing.T) {
 	defer func() {
 		r := recover()
 		if r == nil {
 			t.Fatal("no panic")
 		}
-		t.Logf("panicked with: %v", r)
+
+		msg, ok := r.(string)
+		if !ok {
+			t.Fatalf("panicked with %T, want a string", r)
+		}
+
+		if !strings.Contains(msg, "Button") {
+			t.Errorf("panic %q does not name the component", msg)
+		}
+
+		t.Logf("panicked with: %v", msg)
 	}()
 
 	_, _, _ = keysOf(t, func(p *tgframe.Params) error {

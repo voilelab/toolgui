@@ -21,14 +21,16 @@ func newSubtitleComponent(text string) *subtitleComponent {
 	}
 }
 
-// Subtitle create a subtitle.
-func Subtitle(c *tgframe.Container, text string) {
-	c.AddComponent(newSubtitleComponent(text))
+// SubtitleConf is the configuration for the Subtitle component.
+type SubtitleConf struct {
+	tgframe.Base
 }
 
-// SubtitleWithID create a subtitle component with a user specific id.
-func SubtitleWithID(c *tgframe.Container, text string, id string) {
+// Subtitle create a subtitle.
+func Subtitle(c *tgframe.Container, text string, conf ...*SubtitleConf) {
+	cf := tgframe.OneConf("Subtitle", conf)
+
 	comp := newSubtitleComponent(text)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

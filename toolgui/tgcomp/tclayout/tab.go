@@ -27,20 +27,18 @@ func newTabComponent(tabs []string) *tabComponent {
 	}
 }
 
+// TabConf is the configuration for the Tab components.
+type TabConf struct {
+	tgframe.Base
+}
+
 // Tab creates a new tab component
-func Tab(c *tgframe.Container, tabs []string) []*tgframe.Container {
-	return tab(c, newTabComponent(tabs))
-}
+func Tab(c *tgframe.Container, tabs []string, conf ...*TabConf) []*tgframe.Container {
+	cf := tgframe.OneConf("Tab", conf)
 
-// TabWithID creates a tab component with a user specific id.
-func TabWithID(c *tgframe.Container, tabs []string, id string) []*tgframe.Container {
 	tabComp := newTabComponent(tabs)
-	tabComp.SetID(id)
-	return tab(c, tabComp)
-}
+	tgframe.SetConfID(tabComp, cf)
 
-func tab(c *tgframe.Container, tabComp *tabComponent) []*tgframe.Container {
-	tabs := tabComp.Tabs
 	comp := c.AddComponent(tabComp)
 
 	ret := make([]*tgframe.Container, len(tabs))
@@ -52,25 +50,34 @@ func tab(c *tgframe.Container, tabComp *tabComponent) []*tgframe.Container {
 }
 
 // Tab2 create 2 tabs.
-func Tab2(c *tgframe.Container, tab1, tab2 string) (*tgframe.Container, *tgframe.Container) {
-	retTabs := Tab(c, []string{tab1, tab2})
+func Tab2(c *tgframe.Container, tab1, tab2 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container) {
+
+	retTabs := Tab(c, []string{tab1, tab2}, conf...)
 	return retTabs[0], retTabs[1]
 }
 
 // Tab3 create 3 tabs.
-func Tab3(c *tgframe.Container, tab1, tab2, tab3 string) (*tgframe.Container, *tgframe.Container, *tgframe.Container) {
-	retTabs := Tab(c, []string{tab1, tab2, tab3})
+func Tab3(c *tgframe.Container, tab1, tab2, tab3 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
+
+	retTabs := Tab(c, []string{tab1, tab2, tab3}, conf...)
 	return retTabs[0], retTabs[1], retTabs[2]
 }
 
 // Tab4 create 4 tabs.
-func Tab4(c *tgframe.Container, tab1, tab2, tab3, tab4 string) (*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container) {
-	retTabs := Tab(c, []string{tab1, tab2, tab3, tab4})
+func Tab4(c *tgframe.Container, tab1, tab2, tab3, tab4 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container) {
+
+	retTabs := Tab(c, []string{tab1, tab2, tab3, tab4}, conf...)
 	return retTabs[0], retTabs[1], retTabs[2], retTabs[3]
 }
 
 // Tab5 create 5 tabs.
-func Tab5(c *tgframe.Container, tab1, tab2, tab3, tab4, tab5 string) (*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container) {
-	retTabs := Tab(c, []string{tab1, tab2, tab3, tab4, tab5})
+func Tab5(c *tgframe.Container, tab1, tab2, tab3, tab4, tab5 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container,
+	*tgframe.Container) {
+
+	retTabs := Tab(c, []string{tab1, tab2, tab3, tab4, tab5}, conf...)
 	return retTabs[0], retTabs[1], retTabs[2], retTabs[3], retTabs[4]
 }

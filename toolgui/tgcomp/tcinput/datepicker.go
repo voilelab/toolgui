@@ -44,13 +44,21 @@ func (d *Date) String() string {
 	return fmt.Sprintf("%04d-%02d-%02d", d.Year, d.Month, d.Day)
 }
 
+// DatepickerConf is the configuration for the Datepicker component.
+type DatepickerConf struct {
+	tgframe.Base
+}
+
 // Datepicker create a datepicker and return its selected date.
 // Return nil if no date is selected.
-func Datepicker(s *tgframe.State, c *tgframe.Container, label string) *Date {
+func Datepicker(c *tgframe.Container, label string, conf ...*DatepickerConf) *Date {
+	cf := tgframe.OneConf("Datepicker", conf)
+
 	comp := newDatepickerComponent(label, "date")
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
-	dateStr := s.GetString(comp.ID)
+	dateStr := c.State.GetString(comp.ID)
 	if dateStr == nil {
 		return nil
 	}
@@ -80,13 +88,21 @@ func (t *Time) String() string {
 	return fmt.Sprintf("%02d:%02d", t.Hour, t.Min)
 }
 
+// TimepickerConf is the configuration for the Timepicker component.
+type TimepickerConf struct {
+	tgframe.Base
+}
+
 // Timepicker create a timepicker and return its selected time.
 // Return nil if no time is selected.
-func Timepicker(s *tgframe.State, c *tgframe.Container, label string) *Time {
+func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *Time {
+	cf := tgframe.OneConf("Timepicker", conf)
+
 	comp := newDatepickerComponent(label, "time")
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
-	timeStr := s.GetString(comp.ID)
+	timeStr := c.State.GetString(comp.ID)
 	if timeStr == nil {
 		return nil
 	}
@@ -102,13 +118,21 @@ func Timepicker(s *tgframe.State, c *tgframe.Container, label string) *Time {
 	}
 }
 
+// DatetimepickerConf is the configuration for the Datetimepicker component.
+type DatetimepickerConf struct {
+	tgframe.Base
+}
+
 // Datetimepicker create a datetimepicker and return its selected datetime.
 // Return nil if no datetime is selected.
-func Datetimepicker(s *tgframe.State, c *tgframe.Container, label string) *time.Time {
+func Datetimepicker(c *tgframe.Container, label string, conf ...*DatetimepickerConf) *time.Time {
+	cf := tgframe.OneConf("Datetimepicker", conf)
+
 	comp := newDatepickerComponent(label, "datetime-local")
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
-	datetimeStr := s.GetString(comp.ID)
+	datetimeStr := c.State.GetString(comp.ID)
 	if datetimeStr == nil {
 		return nil
 	}

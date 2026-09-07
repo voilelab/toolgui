@@ -40,6 +40,8 @@ func newIframeComponent(html string, script bool) *iframeComponent {
 
 // IframeConf is the configuration for the Iframe component.
 type IframeConf struct {
+	tgframe.Base
+
 	// Script allows the iframe to run javascript. The iframe runs on an
 	// opaque origin either way, so it cannot reach the app; it talks to it
 	// through window.toolgui.
@@ -52,49 +54,30 @@ type IframeConf struct {
 	// "auto" tracks the guest's own height, which needs the guest to call
 	// window.toolgui.autoHeight().
 	Height string
-
-	// ID is the unique identifier for this iframe component.
-	ID string
 }
 
 // Iframe show a html.
-// script is used to allow the iframe to run javascript.
-func Iframe(c *tgframe.Container, html string, script bool) {
-	IframeWithConf(c, html, &IframeConf{Script: script})
-}
+func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
+	cf := tgframe.OneConf("Iframe", conf)
 
-// IframeWithID create a html component with a user specific id.
-// script is used to allow the iframe to run javascript.
-func IframeWithID(c *tgframe.Container, html string, script bool, id string) {
-	IframeWithConf(c, html, &IframeConf{Script: script, ID: id})
-}
+	comp := newIframeComponent(html, cf.Script)
 
-// IframeWithConf show a html with a custom configuration.
-func IframeWithConf(c *tgframe.Container, html string, conf *IframeConf) {
-	if conf == nil {
-		conf = &IframeConf{}
+	if cf.Width != "" {
+		comp.Width = cf.Width
 	}
 
-	comp := newIframeComponent(html, conf.Script)
-
-	if conf.Width != "" {
-		comp.Width = conf.Width
+	if cf.Height != "" {
+		comp.Height = cf.Height
 	}
 
-	if conf.Height != "" {
-		comp.Height = conf.Height
-	}
-
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
 }
 
 // IframeValue unmarshals the latest value the iframe with the given id sent
-// through window.update into out. The id is the one passed to IframeWithID or
-// IframeConf.ID.
+// through window.update into out. The id is the one passed as
+// [IframeConf.ID].
 //
 // The frontend keys the value by the iframe's own component id, so an iframe
 // can only write to its own state.

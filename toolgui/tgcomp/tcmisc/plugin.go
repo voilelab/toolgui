@@ -25,8 +25,8 @@ type pluginComponent struct {
 	Height string `json:"height"`
 }
 
-func newPluginComponent(id, src string) *pluginComponent {
-	comp := &pluginComponent{
+func newPluginComponent(src string) *pluginComponent {
+	return &pluginComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: pluginComponentName,
 		},
@@ -34,16 +34,12 @@ func newPluginComponent(id, src string) *pluginComponent {
 		Width:  defaultPluginWidth,
 		Height: defaultPluginHeight,
 	}
-
-	if id != "" {
-		comp.SetID(id)
-	}
-
-	return comp
 }
 
 // PluginConf is the configuration for the Plugin component.
 type PluginConf struct {
+	tgframe.Base
+
 	// Props is handed to the plugin as its props, marshalled to json. The
 	// plugin reads it through window.toolgui.onRender.
 	Props any
@@ -69,36 +65,32 @@ type PluginConf struct {
 // cookies or its storage; it talks to the app through window.toolgui, the same
 // bridge [Iframe] gives its html.
 //
-// The id names the plugin's state: it is the key [PluginValue] reads and the
-// id the frontend stamps on every value the plugin sends. A plugin with an
-// empty id renders, but cannot send anything back.
-func Plugin(c *tgframe.Container, id, src string, props any) {
-	PluginWithConf(c, id, src, &PluginConf{Props: props})
-}
+// [PluginConf.ID] names the plugin's state: it is the key [PluginValue] reads
+// and the id the frontend stamps on every value the plugin sends. A plugin
+// with no id renders, but cannot send anything back.
+func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
+	cf := tgframe.OneConf("Plugin", conf)
 
-// PluginWithConf runs a plugin with a custom configuration.
-func PluginWithConf(c *tgframe.Container, id, src string, conf *PluginConf) {
-	if conf == nil {
-		conf = &PluginConf{}
+	comp := newPluginComponent(src)
+	comp.Props = cf.Props
+	comp.Style = cf.Style
+
+	if cf.Width != "" {
+		comp.Width = cf.Width
 	}
 
-	comp := newPluginComponent(id, src)
-	comp.Props = conf.Props
-	comp.Style = conf.Style
-
-	if conf.Width != "" {
-		comp.Width = conf.Width
+	if cf.Height != "" {
+		comp.Height = cf.Height
 	}
 
-	if conf.Height != "" {
-		comp.Height = conf.Height
-	}
+	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
 }
 
 // PluginValue unmarshals the latest value the plugin with the given id sent
-// through window.toolgui.update into out. The id is the one passed to [Plugin].
+// through window.toolgui.update into out. The id is the one passed as
+// [PluginConf.ID].
 //
 // The frontend keys the value by the plugin's own component id, so a plugin
 // can only write to its own state.

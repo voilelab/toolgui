@@ -294,7 +294,7 @@ func TestUploadReachesFileupload(t *testing.T) {
 
 	app := tgframe.NewApp()
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
-		fileObj := tcinput.Fileupload(p.State, p.Main, "File", "")
+		fileObj := tcinput.Fileupload(p.Main, "File", "")
 		if fileObj == nil {
 			files <- ""
 			return nil
