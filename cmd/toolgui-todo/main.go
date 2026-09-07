@@ -53,23 +53,23 @@ func (t *TODOList) DoneTexts() []string {
 }
 
 func Main(p *tgframe.Params) error {
-	tgcomp.Title(p.Main, "Example for Todo App / State", nil)
+	tgcomp.Title(p.Main, "Example for Todo App / State")
 
 	todoList := p.State.Default("todoList", &TODOList{}).(*TODOList)
 
 	col1, col2 := tgcomp.EqColumn2(p.Main, &tgcomp.ColumnConf{ID: "divided"})
 
-	tgcomp.Text(col1, "App", nil)
+	tgcomp.Text(col1, "App")
 
-	inp := tgcomp.Textbox(col1, "Add todo", nil)
-	if tgcomp.Button(col1, "Add", nil) && inp != "" {
+	inp := tgcomp.Textbox(col1, "Add todo")
+	if tgcomp.Button(col1, "Add") && inp != "" {
 		todoList.Add(inp)
 	}
 
 	// Both mutations happen before the list renders. A component is sent to
 	// the client as soon as it's created, so a removed item would stay on
 	// screen until the next run if we removed it after the loop.
-	if tgcomp.Button(col1, "Remove done", nil) {
+	if tgcomp.Button(col1, "Remove done") {
 		todoList.RemoveDone()
 	}
 
@@ -82,7 +82,7 @@ func Main(p *tgframe.Params) error {
 			})
 	}
 
-	tgcomp.Text(col2, "Selected State", nil)
+	tgcomp.Text(col2, "Selected State")
 	tgcomp.JSON(col2, todoList.DoneTexts())
 
 	return nil

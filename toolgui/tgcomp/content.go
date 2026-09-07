@@ -2,7 +2,13 @@ package tgcomp
 
 import (
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tccontent"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
+
+// Base is embedded in every component conf, and is where a conf's ID comes
+// from. A third-party component's conf embeds it the same way the built-in
+// ones do.
+type Base = tgframe.Base
 
 // Code create a code block with syntax highlight.
 var Code = tccontent.Code

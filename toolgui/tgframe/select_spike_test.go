@@ -17,8 +17,8 @@ func TestTwoSelectsWithTheSameLabelNeedAnID(t *testing.T) {
 
 	t.Run("neither has an id", func(t *testing.T) {
 		_, _, err := keysOf(t, func(p *tgframe.Params) error {
-			tgcomp.Select(p.Main, "Pick", items, nil)
-			tgcomp.Select(p.Main, "Pick", items, nil)
+			tgcomp.Select(p.Main, "Pick", items)
+			tgcomp.Select(p.Main, "Pick", items)
 			return nil
 		})
 
@@ -29,7 +29,7 @@ func TestTwoSelectsWithTheSameLabelNeedAnID(t *testing.T) {
 
 	t.Run("the second has an id", func(t *testing.T) {
 		_, ids, err := keysOf(t, func(p *tgframe.Params) error {
-			tgcomp.Select(p.Main, "Pick", items, nil)
+			tgcomp.Select(p.Main, "Pick", items)
 			tgcomp.Select(p.Main, "Pick", items, &tgcomp.SelectConf{ID: "second"})
 			return nil
 		})
@@ -58,7 +58,7 @@ func TestSelectReadsTheStateUnderItsOwnID(t *testing.T) {
 	app := tgframe.NewApp()
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
 		items := []string{"a", "b"}
-		tgcomp.Select(p.Main, "Pick", items, nil)
+		tgcomp.Select(p.Main, "Pick", items)
 		got = tgcomp.Select(p.Main, "Pick", items, &tgcomp.SelectConf{ID: "second"})
 		return nil
 	})

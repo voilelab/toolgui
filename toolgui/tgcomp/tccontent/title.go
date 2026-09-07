@@ -23,16 +23,14 @@ func newTitleComponent(text string) *titleComponent {
 
 // TitleConf is the configuration for the Title component.
 type TitleConf struct {
-	// ID is the unique identifier for this title component.
-	ID string
+	tgframe.Base
 }
 
-// Title show a title. conf may be nil.
-func Title(c *tgframe.Container, text string, conf *TitleConf) {
-	comp := newTitleComponent(text)
-	if conf != nil && conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+// Title show a title.
+func Title(c *tgframe.Container, text string, conf ...*TitleConf) {
+	cf := tgframe.OneConf(conf)
 
+	comp := newTitleComponent(text)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

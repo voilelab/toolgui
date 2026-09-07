@@ -47,8 +47,11 @@ func newNumberComponent[T Numeric](label string) *numberComponent[T] {
 	}
 }
 
-// NumberConf is the configuration for a number component.
+// NumberConf is the configuration for a number component. A generic conf
+// embeds Base like any other.
 type NumberConf[T Numeric] struct {
+	tgframe.Base
+
 	// Default is the default value of the number component.
 	Default *T
 
@@ -69,9 +72,6 @@ type NumberConf[T Numeric] struct {
 
 	// Disabled is the disabled state of the number component.
 	Disabled bool
-
-	// ID is the ID of the number component.
-	ID string
 }
 
 func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T] {
@@ -94,24 +94,19 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 	return c
 }
 
-// Number create a number input and return its value. conf may be nil.
-func Number[T Numeric](c *tgframe.Container, label string, conf *NumberConf[T]) *T {
-	if conf == nil {
-		conf = &NumberConf[T]{}
-	}
+// Number create a number input and return its value.
+func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
+	cf := tgframe.OneConf(conf)
 
 	comp := newNumberComponent[T](label)
-	comp.Placeholder = conf.Placeholder
-	comp.Color = conf.Color
-	comp.Default = conf.Default
-	comp.Min = conf.Min
-	comp.Max = conf.Max
-	comp.Step = conf.Step
-	comp.Disabled = conf.Disabled
-
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+	comp.Placeholder = cf.Placeholder
+	comp.Color = cf.Color
+	comp.Default = cf.Default
+	comp.Min = cf.Min
+	comp.Max = cf.Max
+	comp.Step = cf.Step
+	comp.Disabled = cf.Disabled
+	tgframe.SetConfID(comp, cf)
 
 	// An integral input cannot step by 0, so an explicit zero step means 1.
 	// Written into the component rather than back into conf: the caller owns
@@ -127,7 +122,7 @@ func Number[T Numeric](c *tgframe.Container, label string, conf *NumberConf[T]) 
 	// a float64 whatever T is; T(*val) truncates it back for an integral T.
 	val := c.State.GetFloat(comp.ID)
 	if val == nil {
-		return conf.Default
+		return cf.Default
 	}
 
 	v := T(*val)

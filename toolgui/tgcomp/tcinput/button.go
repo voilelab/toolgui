@@ -27,29 +27,23 @@ func newButtonComponent(label string) *buttonComponent {
 
 // ButtonConf is the configuration for the Button component
 type ButtonConf struct {
+	tgframe.Base
+
 	// Color defines the color of the button
 	Color tcutil.Color
 
 	// Disabled indicates whether the button should be initially disabled
 	Disabled bool
-
-	// ID is the unique identifier for this button component
-	ID string
 }
 
-// Button create a button and return true if it's clicked. conf may be nil.
-func Button(c *tgframe.Container, label string, conf *ButtonConf) bool {
-	if conf == nil {
-		conf = &ButtonConf{}
-	}
+// Button create a button and return true if it's clicked.
+func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
+	cf := tgframe.OneConf(conf)
 
 	comp := newButtonComponent(label)
-	comp.Color = conf.Color
-	comp.Disabled = conf.Disabled
-
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
+	comp.Color = cf.Color
+	comp.Disabled = cf.Disabled
+	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID

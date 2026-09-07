@@ -29,7 +29,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 2.5)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[float64](spikeContainer(state, &packs), "n", nil)
+		got := tcinput.Number[float64](spikeContainer(state, &packs), "n")
 		if got == nil || *got != 2.5 {
 			t.Fatalf("got %v, want 2.5", got)
 		}
@@ -39,7 +39,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[int64](spikeContainer(state, &packs), "n", nil)
+		got := tcinput.Number[int64](spikeContainer(state, &packs), "n")
 		if got == nil || *got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
@@ -50,7 +50,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[int](spikeContainer(state, &packs), "n", nil)
+		got := tcinput.Number[int](spikeContainer(state, &packs), "n")
 		if got == nil || *got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
@@ -60,7 +60,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 4.0)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[Rating](spikeContainer(state, &packs), "n", nil)
+		got := tcinput.Number[Rating](spikeContainer(state, &packs), "n")
 		if got == nil || *got != Rating(4) {
 			t.Fatalf("got %v, want Rating(4)", got)
 		}
@@ -75,7 +75,7 @@ func TestNumberTruncatesTowardsTheIntegralType(t *testing.T) {
 	state.Set("number_component_n", 2.9)
 
 	var packs []tgframe.NotifyPack
-	got := tcinput.Number[int](spikeContainer(state, &packs), "n", nil)
+	got := tcinput.Number[int](spikeContainer(state, &packs), "n")
 	if got == nil || *got != 2 {
 		t.Fatalf("got %v, want 2", got)
 	}
@@ -141,5 +141,50 @@ func TestNumberDoesNotWriteBackToTheCallersConf(t *testing.T) {
 
 	if *conf.Step != 0 {
 		t.Errorf("conf.Step = %v, want 0", *conf.Step)
+	}
+}
+
+// TestNumberInfersTFromExplicitInstantiation is the acceptance condition the
+// variadic conf put at risk: with no conf argument there is nothing for
+// inference to work from, so T has to come from the explicit instantiation
+// alone. It does — a type parameter list is never inferred from a variadic
+// that was not passed.
+func TestNumberInfersTFromExplicitInstantiation(t *testing.T) {
+	state := tgframe.NewState()
+	state.Set("number_component_n", 3.0)
+
+	var packs []tgframe.NotifyPack
+	c := spikeContainer(state, &packs)
+
+	// No conf, T from the instantiation.
+	if got := tcinput.Number[int](c, "n"); got == nil || *got != 3 {
+		t.Errorf("Number[int] = %v, want 3", got)
+	}
+	if got := tcinput.Number[Rating](c, "n"); got == nil || *got != Rating(3) {
+		t.Errorf("Number[Rating] = %v, want Rating(3)", got)
+	}
+
+	// And with a conf, T can instead be inferred from the conf alone.
+	got := tcinput.Number(c, "n", &tcinput.NumberConf[int64]{})
+	if got == nil || *got != 3 {
+		t.Errorf("Number(conf) = %v, want 3", got)
+	}
+}
+
+// TestNumberConfEmbedsBase checks a generic conf embeds Base like any other,
+// and that the flat literal reaches it.
+func TestNumberConfEmbedsBase(t *testing.T) {
+	conf := &tcinput.NumberConf[int]{ID: "count"}
+	if conf.Base.ID != "count" {
+		t.Fatalf("Base.ID = %q, want %q", conf.Base.ID, "count")
+	}
+
+	state := tgframe.NewState()
+	state.Set("number_component_count", 5.0)
+
+	var packs []tgframe.NotifyPack
+	got := tcinput.Number(spikeContainer(state, &packs), "n", conf)
+	if got == nil || *got != 5 {
+		t.Fatalf("got %v, want 5 read under the conf's id", got)
 	}
 }

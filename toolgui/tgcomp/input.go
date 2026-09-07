@@ -75,9 +75,9 @@ type NumberConf[T tcinput.Numeric] = tcinput.NumberConf[T]
 // A generic function cannot be forwarded by a var, so this is a wrapper rather
 // than an alias like its neighbours.
 func Number[T tcinput.Numeric](
-	c *tgframe.Container, label string, conf *NumberConf[T]) *T {
+	c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
 
-	return tcinput.Number[T](c, label, conf)
+	return tcinput.Number[T](c, label, conf...)
 }
 
 // Form create a form component.
