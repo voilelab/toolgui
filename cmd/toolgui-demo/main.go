@@ -658,13 +658,9 @@ func main() {
 
 	// What a browser reads when the demo is installed to a home screen.
 	e.SetManifest(&tgexec.Manifest{
-		Name:        "ToolGUI Demo",
-		ShortName:   "ToolGUI",
-		Description: "A demo of the components ToolGUI provides.",
-		Icons: []tgexec.ManifestIcon{
-			{Src: "logo192.png", Type: "image/png", Sizes: "192x192"},
-			{Src: "logo512.png", Type: "image/png", Sizes: "512x512"},
-		},
+		Name:            "ToolGUI Demo",
+		ShortName:       "ToolGUI",
+		Description:     "A demo of the components ToolGUI provides.",
 		StartURL:        ".",
 		Display:         "standalone",
 		ThemeColor:      "#000000",

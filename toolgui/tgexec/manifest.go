@@ -52,13 +52,11 @@ type Manifest struct {
 // DefaultManifest return the base of the manifest served when the app sets
 // none. The app title, when it has one, names that manifest.
 func DefaultManifest() *Manifest {
+	// No icons: toolgui has no icon to hand out, and an app's own belongs to
+	// the app.
 	return &Manifest{
-		Name:      "ToolGUI App",
-		ShortName: "ToolGUI App",
-		Icons: []ManifestIcon{
-			{Src: "logo192.png", Type: "image/png", Sizes: "192x192"},
-			{Src: "logo512.png", Type: "image/png", Sizes: "512x512"},
-		},
+		Name:            "ToolGUI App",
+		ShortName:       "ToolGUI App",
 		StartURL:        ".",
 		Display:         "standalone",
 		ThemeColor:      "#000000",

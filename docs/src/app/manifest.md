@@ -19,9 +19,12 @@ e.SetManifest(&tgexec.Manifest{
 e.StartService(":3001")
 ```
 
-Empty fields are left out of the served json, so the manifest holds only what
-the app sets. `SetManifest(nil)` goes back to the default, which an app that
-never calls it serves too: `tgexec.DefaultManifest()`, named after the
+toolgui ships no icon of its own, so an app that wants one serves the file and
+points `Icons` at it. Empty fields are left out of the served json, so the
+manifest holds only what the app sets.
+
+`SetManifest(nil)` goes back to the default, which an app that never calls it
+serves too: `tgexec.DefaultManifest()`, named after the
 [app title](index.md#title) when it has one.
 
 ## Other members

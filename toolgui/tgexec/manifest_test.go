@@ -46,9 +46,9 @@ func TestManifestDefault(t *testing.T) {
 		t.Errorf("display = %v, want %q", members["display"], "standalone")
 	}
 
-	icons, _ := members["icons"].([]any)
-	if len(icons) != 2 {
-		t.Errorf("icons = %v, want 2 entries", members["icons"])
+	// toolgui ships no icon, so the default advertises none.
+	if _, ok := members["icons"]; ok {
+		t.Errorf("icons = %v, want it left out", members["icons"])
 	}
 }
 
