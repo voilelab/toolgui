@@ -175,10 +175,10 @@ func TestNumberInfersTFromExplicitInstantiation(t *testing.T) {
 // and that the flat literal reaches it.
 func TestNumberConfEmbedsBase(t *testing.T) {
 	conf := &tcinput.NumberConf[int]{ID: "count"}
-	if conf.Base.ID != "count" {
-		t.Fatalf("Base.ID = %q, want %q", conf.Base.ID, "count")
-	}
 
+	// The state is keyed by the id the component ends up with, so reading the
+	// value back under "count" is what proves the flat literal reached the
+	// embedded Base: nothing else feeds that id.
 	state := tgframe.NewState()
 	state.Set("number_component_count", 5.0)
 

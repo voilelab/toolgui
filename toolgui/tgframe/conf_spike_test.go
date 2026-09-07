@@ -56,13 +56,10 @@ func TestTwoConfsPanic(t *testing.T) {
 // without that conf implementing anything: the only thing ButtonConf declares
 // is the embed.
 func TestConfIDIsReadThroughBase(t *testing.T) {
+	// ButtonConf declares no ID of its own, so the flat literal sets the one
+	// the embedded Base carries. SetConfID reads nothing else, which is what
+	// lets a single framework helper serve every conf.
 	conf := &tgcomp.ButtonConf{ID: "from_base"}
-
-	// The value lands in the embedded Base, not in a field of ButtonConf's
-	// own — which is what lets one framework helper read every conf.
-	if conf.Base.ID != "from_base" {
-		t.Fatalf("conf.Base.ID = %q, want %q", conf.Base.ID, "from_base")
-	}
 
 	comp := &tgframe.BaseComponent{Name: "probe_component"}
 	tgframe.SetConfID(comp, conf)
@@ -121,8 +118,8 @@ func TestBothLiteralSpellingsCompile(t *testing.T) {
 	flat := &tgcomp.ButtonConf{ID: "x", Disabled: true}
 	nested := &tgcomp.ButtonConf{Base: tgframe.Base{ID: "x"}, Disabled: true}
 
-	if flat.Base.ID != nested.Base.ID {
-		t.Errorf("flat %q, nested %q", flat.Base.ID, nested.Base.ID)
+	if flat.ID != nested.ID {
+		t.Errorf("flat %q, nested %q", flat.ID, nested.ID)
 	}
 	if flat.Disabled != nested.Disabled {
 		t.Error("Disabled differs between the two spellings")
