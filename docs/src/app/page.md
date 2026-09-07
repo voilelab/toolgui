@@ -13,6 +13,7 @@ In the web GUI provider, the name of a page will be used as the path of the page
 the title of a page will be used as the title of the page and the text of its link in the side nav.
 
 3. Emoji: Optional. The emoji will be used as an icon in the side nav and browser favicon.
+An [emoji shortcode](../components/content/emoji.md) works here too.
 
 The config type in package is:
 

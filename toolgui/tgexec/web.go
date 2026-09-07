@@ -2,10 +2,12 @@ package tgexec
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"net/http"
@@ -17,9 +19,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-// TODO: Let it be configurable
-
-// MaxUploadSize limit the size of file uploading form.
+// MaxUploadSize limit the size of a file upload request.
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
 // ErrUpdateInterrupt is raise at panic when current state is going to interrupt
@@ -36,7 +36,14 @@ type WebExecutor struct {
 
 	stateMap tgutil.UUIDMap[tgframe.State]
 
+	// TODO: Let it be configurable
+	maxUploadSize int64
+
 	app *tgframe.App
+
+	// confMu guards manifest and assets, which the app may set at any time,
+	// including while handlers are already serving requests.
+	confMu sync.RWMutex
 
 	// manifest is nil until the app sets one, and nil serves the default.
 	manifest *Manifest
@@ -58,11 +65,13 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 			tgframe.NewState, func(t *tgframe.State) { t.Destroy() },
 			5*time.Minute),
 
+		maxUploadSize: MaxUploadSize,
+
 		app: app,
 	}
 }
 
-// defaultManifest return the manifest served when the app sets none. The app
+// defaultManifest returns the manifest served when the app sets none. The app
 // title names it, so an app that sets a title doesn't repeat it here.
 func (e *WebExecutor) defaultManifest() *Manifest {
 	manifest := DefaultManifest()
@@ -75,7 +84,7 @@ func (e *WebExecutor) defaultManifest() *Manifest {
 	return manifest
 }
 
-// SetManifest set the web app manifest served at /manifest.json. A nil
+// SetManifest sets the web app manifest served at /manifest.json. A nil
 // manifest goes back to the default, which [tgframe.App.SetTitle] names.
 //
 //	e.SetManifest(&tgexec.Manifest{
@@ -84,10 +93,13 @@ func (e *WebExecutor) defaultManifest() *Manifest {
 //		Display:   "standalone",
 //	})
 func (e *WebExecutor) SetManifest(manifest *Manifest) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
 	e.manifest = manifest
 }
 
-// SetAssets serve the files at the root of fsys under /assets/, so an app can
+// SetAssets serves the files at the root of fsys under /assets/, so an app can
 // hand the browser files of its own: a manifest icon, an image a page links
 // to. A nil fsys serves none.
 //
@@ -98,6 +110,9 @@ func (e *WebExecutor) SetManifest(manifest *Manifest) {
 //	sub, _ := fs.Sub(assets, "assets")
 //	e.SetAssets(sub)
 func (e *WebExecutor) SetAssets(fsys fs.FS) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
 	e.assets = fsys
 }
 
@@ -201,30 +216,82 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	err := req.ParseMultipartForm(MaxUploadSize)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("Parse form", "error", err)
+	// The file is stored under the component that asked for it, so two
+	// fileuploads offered a file of the same name keep their own.
+	componentID := req.Header.Get("COMPONENT_ID")
+	if componentID == "" {
+		http.Error(w, "Component ID is missing", http.StatusBadRequest)
 		return
 	}
 
-	file, handler, err := req.FormFile("file")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("Get formfile", "error", err)
-		return
-	}
-	defer file.Close()
+	req.Body = http.MaxBytesReader(w, req.Body, e.maxUploadSize)
 
-	bs, err := io.ReadAll(file)
+	// MultipartReader hands over the parts as they arrive. ParseMultipartForm
+	// would buffer the whole upload first.
+	reader, err := req.MultipartReader()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		slog.Error("Open file", "error", err)
+		http.Error(w, "Not a multipart upload", http.StatusBadRequest)
+		slog.Error("Multipart reader", "error", err)
 		return
 	}
 
-	// TODO: Remove old file
-	state.SetFile(handler.Filename, bs)
+	stored := false
+
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		if part.FormName() != "file" || stored {
+			// Read past what isn't the file: stopping at the file would leave
+			// the size cap covering only the part of the body read so far.
+			_, err = io.Copy(io.Discard, part)
+			part.Close()
+
+			if err != nil {
+				writeUploadError(w, err)
+				return
+			}
+
+			continue
+		}
+
+		// The part is copied straight to disk, so what the server holds is a
+		// copy buffer rather than the upload.
+		_, err = state.WriteFile(componentID, part.FileName(), part)
+		part.Close()
+
+		if err != nil {
+			writeUploadError(w, err)
+			return
+		}
+
+		stored = true
+	}
+
+	if !stored {
+		http.Error(w, "Upload has no file part", http.StatusBadRequest)
+	}
+}
+
+// writeUploadError answers a failed upload, telling a request that was too
+// big apart from one the server couldn't store.
+func writeUploadError(w http.ResponseWriter, err error) {
+	var maxBytesErr *http.MaxBytesError
+	if errors.As(err, &maxBytesErr) {
+		http.Error(w, "Upload is too large", http.StatusRequestEntityTooLarge)
+		slog.Error("Upload too large", "limit", maxBytesErr.Limit)
+		return
+	}
+
+	http.Error(w, "Store upload failed", http.StatusInternalServerError)
+	slog.Error("Store upload", "error", err)
 }
 
 func (e *WebExecutor) handlePage(resp http.ResponseWriter, req *http.Request) {
@@ -249,15 +316,19 @@ func (e *WebExecutor) handleAssets(resp http.ResponseWriter, req *http.Request) 
 	resp.Write(body)
 }
 
-// handleAsset serve a file the app gave [WebExecutor.SetAssets]. Reading the
+// handleAsset serves a file the app gave [WebExecutor.SetAssets]. Reading the
 // fs per request, rather than at mux time, frees the app to set it whenever.
 func (e *WebExecutor) handleAsset(resp http.ResponseWriter, req *http.Request) {
-	if e.assets == nil {
+	e.confMu.RLock()
+	assets := e.assets
+	e.confMu.RUnlock()
+
+	if assets == nil {
 		http.NotFound(resp, req)
 		return
 	}
 
-	http.FileServerFS(e.assets).ServeHTTP(resp, req)
+	http.FileServerFS(assets).ServeHTTP(resp, req)
 }
 
 func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
@@ -265,7 +336,10 @@ func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request) {
+	e.confMu.RLock()
 	manifest := e.manifest
+	e.confMu.RUnlock()
+
 	if manifest == nil {
 		manifest = e.defaultManifest()
 	}

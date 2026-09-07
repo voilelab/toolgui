@@ -1,7 +1,9 @@
 package tgframe
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"maps"
 	"runtime"
 	"sync"
@@ -12,8 +14,12 @@ import (
 // State is the state of a user's session.
 type State struct {
 	values    map[string]any
-	files     map[string][]byte
 	funcCache map[string]map[string]any
+
+	// files is shared with the states cloned from this one, so no two of them
+	// can hand out the same path. Its directory is made on the first upload,
+	// so a state that never sees one leaves nothing behind.
+	files *fileStore
 
 	clickID string
 
@@ -24,22 +30,24 @@ type State struct {
 func NewState() *State {
 	return &State{
 		values:    make(map[string]any),
-		files:     make(map[string][]byte),
+		files:     newFileStore(),
 		funcCache: make(map[string]map[string]any),
 	}
 }
 
 // Destroy release the resource.
 func (s *State) Destroy() {
+	s.files.destroy()
 }
 
-// Clone do a swallow copy on [State].
+// Clone do a swallow copy on [State]. The copy shares the uploaded files, so
+// only one of the two may be destroyed.
 func (s *State) Clone() *State {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 	return &State{
 		values:    maps.Clone(s.values),
-		files:     maps.Clone(s.files),
+		files:     s.files,
 		funcCache: maps.Clone(s.funcCache),
 		clickID:   s.clickID,
 	}
@@ -172,19 +180,51 @@ func (s *State) GetBool(key string) bool {
 	return val.(bool)
 }
 
-// SetFile sets the value of a key to a file.
-func (s *State) SetFile(key string, bs []byte) {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
+// WriteFile stores what r yields as the file under key, replacing whatever
+// was there. The content is streamed to disk, so the upload never has to fit
+// in memory.
+func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
+	file, err := s.NewFile(name)
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
 
-	s.files[key] = bs
+	if err := file.write(r, false); err != nil {
+		file.body.remove()
+		return nil, tgutil.Errorf("%w", err)
+	}
+
+	s.PutFile(key, file)
+	return file, nil
 }
 
-func (s *State) GetFile(key string) []byte {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
+// NewFile makes an empty file of the state's own, under no key. A transport
+// that receives an upload in pieces fills one of these with [File.Append] and
+// hands it to [State.PutFile] when the last piece lands, so a page never
+// reads a file that is still arriving, and two uploads racing for the same
+// key can't be spliced together.
+func (s *State) NewFile(name string) (*File, error) {
+	file, err := s.files.newFile(name)
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
 
-	return s.files[key]
+	return file, nil
+}
+
+// PutFile stores file under key, dropping whatever the key held.
+func (s *State) PutFile(key string, file *File) {
+	s.files.put(key, file)
+}
+
+// SetFile stores bs as the file under key.
+func (s *State) SetFile(key, name string, bs []byte) (*File, error) {
+	return s.WriteFile(key, name, bytes.NewReader(bs))
+}
+
+// GetFile returns the file stored under key, nil when there is none.
+func (s *State) GetFile(key string) *File {
+	return s.files.get(key)
 }
 
 // SetFuncCache sets the value of a key in the function cache.

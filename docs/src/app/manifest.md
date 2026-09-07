@@ -60,6 +60,10 @@ func main() {
 The files at the root of the fs are what `/assets/` shows, so `os.DirFS` works
 the same way. Without a `SetAssets` call, `/assets/` holds nothing.
 
+Both setters read their value per request, and both are safe to call while the
+server is already serving, so an app can swap its manifest or its files at any
+point in its own run.
+
 ## Other members
 
 `Extra` carries the manifest members the struct doesn't name, and a key there

@@ -2,6 +2,8 @@
 
 Link component display a link.
 
+The link text supports [emoji shortcodes](emoji.md), the url does not.
+
 ## API
 
 ```go

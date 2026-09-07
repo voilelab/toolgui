@@ -6,11 +6,13 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { prism, tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 import { Props } from '../component_interface'
+import { remarkEmoji } from '../../util/remark_emoji'
 
 export function TMarkdown({ node, theme }: Props) {
   return (
     <div id={node.props.id || undefined} className="content">
       <Markdown children={node.props.text}
+        remarkPlugins={[remarkEmoji]}
         components={{
           a(props) {
             const { children, className, node, ...rest } = props

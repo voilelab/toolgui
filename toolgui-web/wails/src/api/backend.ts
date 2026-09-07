@@ -7,7 +7,9 @@ interface Backend {
   AppConf(): Promise<string>
   Start(pageName: string): Promise<void>
   Update(eventJSON: string): Promise<void>
-  UploadFile(name: string, dataBase64: string): Promise<void>
+  UploadFileStart(name: string): Promise<string>
+  UploadFileChunk(uploadID: string, dataBase64: string): Promise<void>
+  UploadFileFinish(componentID: string, uploadID: string): Promise<void>
 }
 
 // WailsRuntime is the slice of window.runtime this adapter uses.
@@ -40,10 +42,26 @@ export function sendEvent(event: UpdateEvent): Promise<void> {
   return backend().Update(JSON.stringify(event))
 }
 
-// uploadFile is the desktop counterpart of POST /api/files.
-export async function uploadFile(file: File): Promise<UploadResult> {
+// CHUNK_SIZE is how much of a file crosses the bridge at a time. Bindings
+// take strings, so each chunk costs its own size again as base64.
+const CHUNK_SIZE = 4 * 1024 * 1024
+
+// uploadFile is the desktop counterpart of POST /api/files. It sends the file
+// in chunks: reading it whole would hold it as a blob, as base64 and as bytes
+// on the Go side all at once.
+export async function uploadFile(file: File, componentID: string): Promise<UploadResult> {
   try {
-    await backend().UploadFile(file.name, await toBase64(file))
+    // The component gets the file only once every chunk has landed, so a
+    // second pick while this one is still going replaces it rather than
+    // being spliced into it.
+    const uploadID = await backend().UploadFileStart(file.name)
+
+    for (let offset = 0; offset < file.size; offset += CHUNK_SIZE) {
+      const chunk = file.slice(offset, offset + CHUNK_SIZE)
+      await backend().UploadFileChunk(uploadID, await toBase64(chunk))
+    }
+
+    await backend().UploadFileFinish(componentID, uploadID)
     return { ok: true }
   } catch (e) {
     return { ok: false, error: String(e) }
@@ -51,7 +69,7 @@ export async function uploadFile(file: File): Promise<UploadResult> {
 }
 
 // toBase64 drops the "data:<type>;base64," prefix FileReader adds.
-function toBase64(file: File): Promise<string> {
+function toBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = () => {

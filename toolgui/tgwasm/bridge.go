@@ -133,24 +133,33 @@ func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
 	return nil
 }
 
-// jsUploadFile store a base64 encoded file in the session state. It's the
-// browser counterpart of POST /api/files. It answers with an error message, or
-// an empty string on success, because the page waits for it.
+// jsUploadFile store a base64 encoded file in the session state, under the
+// component that asked for it. It's the browser counterpart of POST /api/files.
+// It answers with an error message, or an empty string on success, because the
+// page waits for it.
+//
+// Unlike the other transports it takes the file in one call: the page has
+// already made the whole thing a base64 string to get it here, and there is
+// no filesystem in the tab to stream it to.
 func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
+	// The lock is held across the write: a start on another goroutine must
+	// not replace the state this is storing into.
 	b.lock.Lock()
-	state := b.state
-	b.lock.Unlock()
+	defer b.lock.Unlock()
 
-	if state == nil || len(args) < 2 {
+	if b.state == nil || len(args) < 3 {
 		return ErrNoSession.Error()
 	}
 
-	bs, err := base64.StdEncoding.DecodeString(args[1].String())
+	bs, err := base64.StdEncoding.DecodeString(args[2].String())
 	if err != nil {
 		return err.Error()
 	}
 
-	state.SetFile(args[0].String(), bs)
+	if _, err := b.state.SetFile(args[0].String(), args[1].String(), bs); err != nil {
+		return err.Error()
+	}
+
 	return ""
 }
 

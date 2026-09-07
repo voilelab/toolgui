@@ -86,9 +86,10 @@ export class Backend {
   }
 
   // uploadFile is the browser counterpart of POST /api/files.
-  async uploadFile(file: File): Promise<UploadResult> {
+  async uploadFile(file: File, componentID: string): Promise<UploadResult> {
     try {
-      const error = await this.call('uploadFile', file.name, await toBase64(file))
+      const error = await this.call('uploadFile', componentID, file.name,
+        await toBase64(file))
       return error ? { ok: false, error } : { ok: true }
     } catch (e) {
       return { ok: false, error: String(e) }

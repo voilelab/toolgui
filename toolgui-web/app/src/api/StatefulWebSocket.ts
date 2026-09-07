@@ -256,7 +256,9 @@ export class StatefulWebSocket {
     this.conn.send(JSON.stringify(pack))
   }
 
-  async uploadFile(file: File): Promise<UploadResult> {
+  // fetch streams a FormData body straight off disk, so the file is never
+  // held in memory here. The server copies it to disk the same way.
+  async uploadFile(file: File, componentID: string): Promise<UploadResult> {
     if (this.stateID === '') {
       return { ok: false, error: 'state id is not prepared' }
     }
@@ -267,7 +269,7 @@ export class StatefulWebSocket {
     const resp = await fetch(fileUploadURL, {
       method: 'POST',
       body: formData,
-      headers: { STATE_ID: this.stateID },
+      headers: { STATE_ID: this.stateID, COMPONENT_ID: componentID },
     })
 
     if (!resp.ok) {

@@ -12,7 +12,7 @@ interface Bridge {
   onPack(callback: (packJSON: string) => void): void
   start(pageName: string): void
   update(eventJSON: string): void
-  uploadFile(name: string, dataBase64: string): string
+  uploadFile(componentID: string, name: string, dataBase64: string): string
 }
 
 // The worker globals the dom lib does not describe.

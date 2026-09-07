@@ -5,7 +5,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
@@ -50,8 +52,31 @@ func Upload(p *tgframe.Params) error {
 		return nil
 	}
 
+	fp, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+
+	// Counting through the reader is what the other transports do off disk;
+	// in the tab it reads the bytes the upload already put in memory.
+	lines := 1
+	buf := make([]byte, 32*1024)
+	for {
+		n, err := fp.Read(buf)
+		lines += bytes.Count(buf[:n], []byte("\n"))
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
 	tgcomp.Text(p.Main, fmt.Sprintf("%s: %d lines, %d bytes",
-		file.Name, strings.Count(string(file.Bytes), "\n")+1, file.Size))
+		file.Name, lines, file.Size))
 
 	return nil
 }

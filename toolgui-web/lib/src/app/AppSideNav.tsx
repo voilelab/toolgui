@@ -7,6 +7,7 @@ import { TComponent } from "../components/factory";
 import { UpdateEvent } from "./UpdateEvent";
 import { UploadFunc } from "./Upload";
 import { ThemeMode } from "../util/theme";
+import { emojize } from "../util/emoji";
 
 import '@toolgui-web/lib/src/assets/css/shell.css'
 
@@ -95,7 +96,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
                   <a className={name === this.props.pageName ? 'is-active' : ''}
                     href={this.pageHref(name)}
                     onClick={(e) => { e.preventDefault(); this.jumpToPage(name) }}>
-                    {this.props.appConf.page_confs[name].emoji}
+                    {emojize(this.props.appConf.page_confs[name].emoji || '')}
                     {this.props.appConf.page_confs[name].title}
                   </a>
                 </li>
@@ -109,7 +110,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <hr />
             <TComponent node={sidebarNode}
               update={(e) => { this.props.update(e) }}
-              upload={async (f) => await this.props.upload(f)}
+              upload={async (f, id) => await this.props.upload(f, id)}
               theme={this.props.themeMode} />
           </div> : ''}
 

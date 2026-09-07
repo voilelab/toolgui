@@ -19,6 +19,7 @@ import { AppConf } from './AppConf';
 import { AppSideNav } from './AppSideNav';
 import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
+import { emojize } from '../util/emoji';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
 import { ThemeMode, applyThemeMode, initialThemeMode, storeThemeMode } from '../util/theme';
@@ -93,7 +94,7 @@ export class App extends Component<AppProps, AppState> {
     if (curconf) {
       document.title = documentTitle(props.appConf, curconf.title)
       if (curconf.emoji) {
-        setIcon(curconf.emoji)
+        setIcon(emojize(curconf.emoji))
       }
     } else {
       document.title = documentTitle(props.appConf, 'Page not found')
@@ -212,7 +213,7 @@ export class App extends Component<AppProps, AppState> {
           onNavigate={this.props.onNavigate}
           rerun={() => { this.props.update({}) }}
           update={(e) => { this.props.update(e) }}
-          upload={async (f) => await this.props.upload(f)}
+          upload={async (f, id) => await this.props.upload(f, id)}
           themeMode={this.state.themeMode}
           onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
 
@@ -222,7 +223,7 @@ export class App extends Component<AppProps, AppState> {
             pageFound={this.state.pageFound}
             forest={this.state.forest}
             update={(e) => { this.props.update(e) }}
-            upload={async (f) => await this.props.upload(f)}
+            upload={async (f, id) => await this.props.upload(f, id)}
             themeMode={this.state.themeMode} />
 
           <AppError error={this.state.error} />
