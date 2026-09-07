@@ -74,7 +74,7 @@ export class WailsApp extends Component<{}, WailsAppState> {
         update={(event: UpdateEvent) => {
           sendEvent(event).catch((e) => { console.error(e) })
         }}
-        upload={(file) => uploadFile(file)} />
+        upload={(file, id) => uploadFile(file, id)} />
     )
   }
 }

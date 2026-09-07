@@ -71,7 +71,20 @@ Here we provide a state-level cache for a function.
 // getFiles unarchive cbz file and return list of file names,
 // since unarchive is time-consuming, we use state-level cache to store the result
 func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
-	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, md5.Sum(f.Bytes))
+	// The upload stays on disk, so both the key and the archive are read
+	// through a stream instead of a copy of the file.
+	fp, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer fp.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, fp); err != nil {
+		return nil, err
+	}
+
+	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
 
 	v := p.State.GetFuncCache(key)
 	if v != nil {
@@ -79,9 +92,7 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 		return v.([]string), nil
 	}
 
-	buf := bytes.NewReader(f.Bytes)
-
-	cbzFp, err := zip.NewReader(buf, buf.Size())
+	cbzFp, err := zip.NewReader(fp, int64(f.Size))
 	if err != nil {
 		// don't store nil to cache
 		return nil, err

@@ -213,7 +213,7 @@ export class App extends Component<AppProps, AppState> {
           onNavigate={this.props.onNavigate}
           rerun={() => { this.props.update({}) }}
           update={(e) => { this.props.update(e) }}
-          upload={async (f) => await this.props.upload(f)}
+          upload={async (f, id) => await this.props.upload(f, id)}
           themeMode={this.state.themeMode}
           onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
 
@@ -223,7 +223,7 @@ export class App extends Component<AppProps, AppState> {
             pageFound={this.state.pageFound}
             forest={this.state.forest}
             update={(e) => { this.props.update(e) }}
-            upload={async (f) => await this.props.upload(f)}
+            upload={async (f, id) => await this.props.upload(f, id)}
             themeMode={this.state.themeMode} />
 
           <AppError error={this.state.error} />

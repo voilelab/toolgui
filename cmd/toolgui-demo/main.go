@@ -2,12 +2,12 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
 	"crypto/md5"
 	_ "embed"
 	"errors"
 	"fmt"
 	"image/jpeg"
+	"io"
 	"log"
 	"log/slog"
 	"strings"
@@ -310,9 +310,17 @@ func InputPage(p *tgframe.Params) error {
 
 		tgcomp.Text(fileuploadCompCol, "Fileupload filename: "+fileObj.Name)
 		tgcomp.Text(fileuploadCompCol,
-			fmt.Sprintf("Fileupload bytes length: %d", len(fileObj.Bytes)))
+			fmt.Sprintf("Fileupload bytes length: %d", fileObj.Size))
 		if strings.HasSuffix(fileObj.Name, ".jpg") {
-			img, err := jpeg.Decode(bytes.NewReader(fileObj.Bytes))
+			// Decoding reads the upload off disk, so the image never has to
+			// be held twice.
+			fp, err := fileObj.Open()
+			if err != nil {
+				return
+			}
+			defer fp.Close()
+
+			img, err := jpeg.Decode(fp)
 			if err == nil {
 				tgcomp.Image(fileuploadCompCol, img)
 			}
@@ -604,7 +612,20 @@ func MiscPage(p *tgframe.Params) error {
 }
 
 func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
-	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, md5.Sum(f.Bytes))
+	fp, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer fp.Close()
+
+	// The key covers the content, and hashing it through a stream keeps the
+	// file off the heap.
+	hash := md5.New()
+	if _, err := io.Copy(hash, fp); err != nil {
+		return nil, err
+	}
+
+	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
 
 	v := p.State.GetFuncCache(key)
 	if v != nil {
@@ -612,9 +633,8 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 		return v.([]string), nil
 	}
 
-	buf := bytes.NewReader(f.Bytes)
-
-	cbzFp, err := zip.NewReader(buf, buf.Size())
+	// zip reads at an offset, which it can do straight against the file.
+	cbzFp, err := zip.NewReader(fp, int64(f.Size))
 	if err != nil {
 		return nil, err
 	}

@@ -1,10 +1,12 @@
 package tgwails
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
 	"sync"
+	"uuid"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -18,6 +20,10 @@ const PackEventName = "toolgui:pack"
 
 // ErrNoSession is returned when the frontend acts before calling Start.
 var ErrNoSession = tgutil.NewError("no session, call Start first")
+
+// ErrNoUpload is returned for an upload id the session doesn't know, which is
+// what a chunk sent after the session was replaced looks like.
+var ErrNoUpload = tgutil.NewError("no such upload")
 
 // ToolGUI is the struct Wails binds. Its exported methods reach the frontend
 // as window.go.tgwails.ToolGUI.<Method>, each returning a promise.
@@ -36,11 +42,16 @@ type ToolGUI struct {
 	lock    sync.Mutex
 	session *tgframe.Session
 	state   *tgframe.State
+
+	// uploads are the files still arriving, by upload id. The lock guards
+	// them too: a chunk that lands while the session is being replaced must
+	// not write to the state that is going away.
+	uploads map[string]*tgframe.File
 }
 
 // NewToolGUI return the bound struct serving app.
 func NewToolGUI(app *tgframe.App) *ToolGUI {
-	return &ToolGUI{app: app}
+	return &ToolGUI{app: app, uploads: make(map[string]*tgframe.File)}
 }
 
 // start is wired to [options.App.OnStartup] rather than being a bound method,
@@ -88,6 +99,7 @@ func (t *ToolGUI) Start(pageName string) error {
 
 	t.state = state
 	t.session = session
+	t.uploads = make(map[string]*tgframe.File)
 
 	t.lock.Unlock()
 
@@ -112,23 +124,70 @@ func (t *ToolGUI) Update(eventJSON string) error {
 	return nil
 }
 
-// UploadFile store a base64 encoded file in the session state. It's the
-// desktop counterpart of POST /api/files.
-func (t *ToolGUI) UploadFile(name string, dataBase64 string) error {
+// UploadFileStart opens a file for an upload and returns the id the chunks
+// after it carry. It's the desktop half of POST /api/files, which the bridge
+// can't do in one call: it takes strings, so a whole file would sit in memory
+// as a blob, as base64 and as bytes at once.
+func (t *ToolGUI) UploadFileStart(name string) (string, error) {
 	t.lock.Lock()
-	state := t.state
-	t.lock.Unlock()
+	defer t.lock.Unlock()
 
-	if state == nil {
-		return ErrNoSession
+	if t.state == nil {
+		return "", ErrNoSession
 	}
 
+	file, err := t.state.NewFile(name)
+	if err != nil {
+		return "", tgutil.Errorf("%w", err)
+	}
+
+	uploadID := uuid.New().String()
+	t.uploads[uploadID] = file
+
+	return uploadID, nil
+}
+
+// UploadFileChunk appends one base64 encoded chunk to the upload.
+func (t *ToolGUI) UploadFileChunk(uploadID, dataBase64 string) error {
 	bs, err := base64.StdEncoding.DecodeString(dataBase64)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
-	state.SetFile(name, bs)
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	file, ok := t.uploads[uploadID]
+	if !ok {
+		return ErrNoUpload
+	}
+
+	if err := file.Append(bytes.NewReader(bs)); err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	return nil
+}
+
+// UploadFileFinish hands the finished upload to the component that asked for
+// it. Until then the page doesn't see it, so a second pick on the same
+// component replaces the first rather than being spliced into it.
+func (t *ToolGUI) UploadFileFinish(componentID, uploadID string) error {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	if t.state == nil {
+		return ErrNoSession
+	}
+
+	file, ok := t.uploads[uploadID]
+	if !ok {
+		return ErrNoUpload
+	}
+
+	delete(t.uploads, uploadID)
+	t.state.PutFile(componentID, file)
+
 	return nil
 }
 
@@ -163,5 +222,10 @@ func (t *ToolGUI) closeSession() {
 
 	t.session.Close()
 	t.session = nil
+
+	// The state owns the files uploaded to it, the ones still arriving
+	// included, and nothing else can reach them once the session is gone.
+	t.state.Destroy()
 	t.state = nil
+	t.uploads = make(map[string]*tgframe.File)
 }
