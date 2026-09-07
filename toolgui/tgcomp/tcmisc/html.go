@@ -26,7 +26,7 @@ type HtmlConf struct {
 	tgframe.Base
 }
 
-// Html adds a html component to the container.
+// Html adds an HTML component to the container.
 func Html(c *tgframe.Container, html string, conf ...*HtmlConf) {
 	cf := tgframe.OneConf("Html", conf)
 

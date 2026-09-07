@@ -50,7 +50,7 @@ type ProgressBarConf = tcmisc.ProgressBarConf
 // Iframe is an experimental component, its feature is not stable.
 // Use it with caution.
 //
-// Iframe show a iframe. IframeConf.Script allows the iframe to run javascript.
+// Iframe shows an iframe. IframeConf.Script allows it to run JavaScript.
 var Iframe = tcmisc.Iframe
 
 // IframeConf is the configuration for the Iframe component.
@@ -59,7 +59,7 @@ type IframeConf = tcmisc.IframeConf
 // IframeValue reads the latest value an iframe sent through window.update.
 var IframeValue = tcmisc.IframeValue
 
-// Html adds a html component to the container.
+// Html adds an HTML component to the container.
 var Html = tcmisc.Html
 
 // HtmlConf is the configuration for the Html component.

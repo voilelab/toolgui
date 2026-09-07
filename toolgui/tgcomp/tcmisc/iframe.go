@@ -56,7 +56,7 @@ type IframeConf struct {
 	Height string
 }
 
-// Iframe show a html.
+// Iframe shows HTML in a sandboxed iframe.
 func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 	cf := tgframe.OneConf("Iframe", conf)
 

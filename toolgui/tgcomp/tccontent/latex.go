@@ -26,7 +26,7 @@ type LatexConf struct {
 	tgframe.Base
 }
 
-// Latex render text as latex.
+// Latex renders text as LaTeX.
 func Latex(c *tgframe.Container, text string, conf ...*LatexConf) {
 	cf := tgframe.OneConf("Latex", conf)
 
