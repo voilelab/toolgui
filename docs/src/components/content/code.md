@@ -5,24 +5,22 @@
 ### Interface
 
 ```go
-func Code(c *tgframe.Container, code string)
-func CodeWithConf(c *tgframe.Container, code string, conf *CodeConf)
+func Code(c *tgframe.Container, code string, conf ...*CodeConf)
 ```
 
 ### Parameters
 
 * `c`: Parent container.
 * `code`: Code to display.
-* `conf`: Configuration for the code component.
+* `conf`: Optional configuration, at most one.
 
 ```go
 // CodeConf provide extra config for Code Component.
 type CodeConf struct {
+	tgframe.Base // ID
+
 	// Language is language of code block, leave empty to use `go`
 	Language string
-
-	// ID is id of the component
-	ID string
 }
 ```
 
@@ -33,9 +31,9 @@ tgcomp.Code(c, "package main\n\nfunc main() {\n\tprintln(\"Hello, World!\")")
 ```
 
 ```go
-tgcomp.CodeWithConf(c, "package main\n\nfunc main() {\n\tprintln(\"Hello, World!\")",
+tgcomp.Code(c, "print('Hello, World!')",
     &tgcomp.CodeConf{
-        Language: "go",
+        Language: "python",
         ID:       "mycode",
     })
 ```

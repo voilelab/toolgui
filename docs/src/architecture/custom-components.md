@@ -10,9 +10,16 @@ Most of what people call a custom component is a fixed arrangement of
 components that already exist. That is a function taking a container:
 
 ```go
+// MetricConf is the configuration for Metric.
+type MetricConf struct {
+	tgframe.Base
+}
+
 // Metric shows a label with the value under it.
-func Metric(c *tgframe.Container, label string, value float64) {
-	box := tgcomp.Box(c, "metric_"+label)
+func Metric(c *tgframe.Container, label string, value float64, conf ...*MetricConf) {
+	cf := tgframe.OneConf("Metric", conf)
+
+	box := tgcomp.Box(c, &tgcomp.BoxConf{Base: cf.Base})
 	tgcomp.Text(box, label)
 	tgcomp.Title(box, strconv.FormatFloat(value, 'f', 2, 64))
 }
@@ -21,44 +28,67 @@ func Metric(c *tgframe.Container, label string, value float64) {
 Nothing registers it and nothing knows it exists: by the time the run
 reaches the frontend it is a box with two components in it.
 
+**Write it in the shape the built-ins have.** Container first, then the data,
+then a variadic conf embedding `tgframe.Base`. That is not decoration: the
+embed is what gives your conf an `ID`, `tgframe.OneConf` is the shared helper
+that turns "none, or one" into a conf you can read without a nil check, and
+`tgframe.SetConfID` is what puts the conf's id on a component. A third-party
+component that does this is configured exactly like a built-in one, and the
+caller does not have to learn which is which.
+
+```go
+tgcomp.Text(p.Main, "Revenue")
+Metric(p.Main, "Revenue", 12.5, &MetricConf{ID: "revenue"})
+```
+
 Two things to watch for.
 
 **Ids have to stay unique.** Everything stateful inside your function claims
 an id, and two calls on one page claim it twice, which fails the run with
-`duplicated component id`. Take the id as an argument and pass it down, the
-way the built-in components do with `Conf.ID`:
-
-```go
-func Metric(c *tgframe.Container, id, label string, value float64) {
-	box := tgcomp.Box(c, id)
-	// ...
-}
-```
-
-Components that hold no state — `Text`, `Title`, `Markdown` — have no id
-unless you give them one, so a display-only function needs no id argument at
-all.
+`duplicated component id`. Pass the conf's id down to whatever inside needs
+one, as `Metric` passes `cf.Base` to the box. Components that hold no state —
+`Text`, `Title`, `Markdown` — have no id unless you give them one, so a
+display-only function may never need to.
 
 **Reading a value back** works the way input components work: the state is
-keyed by id, so read it and return it.
+keyed by id, so read it and return it. The shape does not change for a
+component that returns something:
 
 ```go
+// CounterConf is the configuration for Counter.
+type CounterConf struct {
+	tgframe.Base
+}
+
 // Counter shows a number and a button that adds one to it.
-func Counter(s *tgframe.State, c *tgframe.Container, id string) int {
+func Counter(c *tgframe.Container, conf ...*CounterConf) int {
+	cf := tgframe.OneConf("Counter", conf)
+
+	id := cf.ID
+	if id == "" {
+		id = "counter"
+	}
+
 	count := 0
-	if v := s.GetInt(id); v != nil {
+	if v := c.State.GetInt(id); v != nil {
 		count = *v
 	}
 
-	if tgcomp.ButtonWithConf(s, c, "+1", &tgcomp.ButtonConf{ID: id + "_button"}) {
+	if tgcomp.Button(c, "+1", &tgcomp.ButtonConf{ID: id + "_button"}) {
 		count++
-		s.Set(id, count)
+		c.State.Set(id, count)
 	}
 
 	tgcomp.Text(c, strconv.Itoa(count))
 	return count
 }
 ```
+
+A conf must not declare a field named `ID` of its own: the flat literal would
+bind to that one, leave `Base.ID` empty, and nothing would report it.
+
+`&MetricConf{ID: "revenue"}` needs the calling file at Go 1.27; see
+[Components](components.md#go-version) for the fallback below that.
 
 ## A component struct
 
@@ -115,18 +145,25 @@ Wrap it, and the iframe becomes an implementation detail your callers never
 see:
 
 ```go
+// GaugeConf is the configuration for Gauge.
+type GaugeConf struct {
+	tgframe.Base
+}
+
 // Gauge draws a dial, and reports the value the user leaves it on.
-func Gauge(s *tgframe.State, c *tgframe.Container, id string, value float64) float64 {
-	tgcomp.IframeWithConf(c, gaugeHTML, &tgcomp.IframeConf{
+func Gauge(c *tgframe.Container, value float64, conf ...*GaugeConf) float64 {
+	cf := tgframe.OneConf("Gauge", conf)
+
+	tgcomp.Iframe(c, gaugeHTML, &tgcomp.IframeConf{
+		Base:   cf.Base,
 		Script: true,
 		Height: "auto",
-		ID:     id,
 	})
 
 	var out struct {
 		Value float64 `json:"value"`
 	}
-	if err := tgcomp.IframeValue(s, id, &out); err != nil {
+	if err := tgcomp.IframeValue(c.State, cf.ID, &out); err != nil {
 		return value
 	}
 
@@ -150,7 +187,8 @@ app.AddPluginAssets("gauge", assets)
 ```
 
 ```go
-tgcomp.Plugin(c, id, tgframe.PluginAssetURL("gauge", "gauge.js"), props)
+tgcomp.Plugin(c, tgframe.PluginAssetURL("gauge", "gauge.js"),
+	&tgcomp.PluginConf{ID: id, Props: props})
 ```
 
 The props are whatever you hand it, marshalled to json and delivered to

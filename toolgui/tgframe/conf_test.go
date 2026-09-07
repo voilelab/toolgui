@@ -137,3 +137,40 @@ func TestBothLiteralSpellingsCompile(t *testing.T) {
 		t.Error("Disabled differs between the two spellings")
 	}
 }
+
+// widgetConf is a third-party component's conf: it lives outside tgframe and
+// tgcomp, and declares nothing but the embed. It is what the custom-components
+// doc tells people to write.
+type widgetConf struct {
+	tgframe.Base
+
+	Label string
+}
+
+// widget is the shape every built-in component has, written by someone who
+// does not own the framework.
+func widget(c *tgframe.Container, conf ...*widgetConf) string {
+	cf := tgframe.OneConf("widget", conf)
+
+	comp := &tgframe.BaseComponent{Name: "widget_component"}
+	tgframe.SetConfID(comp, cf)
+	c.AddComponent(comp)
+
+	return comp.ID
+}
+
+// TestAThirdPartyConfGetsTheSameMechanism checks the promoted base() method is
+// what satisfies tgframe.Conf, so a conf outside the framework's own packages
+// reaches OneConf and SetConfID with nothing but the embed. Nothing else in
+// the tree proves this: every other conf is declared next to its component.
+func TestAThirdPartyConfGetsTheSameMechanism(t *testing.T) {
+	c := tgframe.NewContainer("test", tgframe.NewState(), func(tgframe.NotifyPack) {})
+
+	if got := widget(c); got != "" {
+		t.Errorf("id = %q, want none when the conf carries none", got)
+	}
+
+	if got := widget(c, &widgetConf{ID: "left", Label: "x"}); got != "widget_component_left" {
+		t.Errorf("id = %q, want widget_component_left", got)
+	}
+}

@@ -7,8 +7,7 @@ Image component display an image.
 ### Interface
 
 ```go
-func Image(c *tgframe.Container, img any)
-func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf)
+func Image(c *tgframe.Container, img any, conf ...*ImageConf)
 ```
 
 ### Parameters
@@ -21,19 +20,18 @@ func ImageWithConf(c *tgframe.Container, img any, conf *ImageConf)
     * example:
       * url: `https://http.cat/100`
       * base64 uri: `data:image/png;base64,...`
-* `conf` is the configuration of the image.
+* `conf` is an optional configuration, at most one.
 
 ```go
 // ImageConf is the configuration for the Image component
 type ImageConf struct {
+	tgframe.Base // ID
+
 	// Width is the width of the image (e.g. "100px", "50%")
 	Width string
 
 	// Format is the format of the image, default is "png"
 	Format ImageFormat
-
-	// ID is the unique identifier for this image component
-	ID string
 }
 ```
 
@@ -41,6 +39,10 @@ type ImageConf struct {
 
 ```go
 tgcomp.Image(p.Main, "https://http.cat/100")
+```
+
+```go
+tgcomp.Image(p.Main, "https://http.cat/100", &tgcomp.ImageConf{Width: "200px"})
 ```
 
 ![image component](image.png)

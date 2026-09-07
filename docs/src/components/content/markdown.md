@@ -8,15 +8,21 @@ fenced block stays as written.
 ### Interface
 
 ```go
-func Markdown(c *tgframe.Container, markdown string)
-func MarkdownWithID(c *tgframe.Container, markdown string, id string)
+func Markdown(c *tgframe.Container, markdown string, conf ...*MarkdownConf)
 ```
 
 ### Parameters
 
 * `c`: Parent container.
 * `markdown`: Markdown content to display.
-* `id`: Unique component ID.
+* `conf`: Optional configuration, at most one.
+
+```go
+// MarkdownConf is the configuration for the Markdown component.
+type MarkdownConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 
@@ -25,5 +31,5 @@ tgcomp.Markdown(c, "* Hello, World!")
 ```
 
 ```go
-tgcomp.MarkdownWithID(c, "* Hello, World!", "my-markdown")
+tgcomp.Markdown(c, "* Hello, World!", &tgcomp.MarkdownConf{ID: "my_markdown"})
 ```

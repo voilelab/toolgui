@@ -7,14 +7,20 @@ The link text supports [emoji shortcodes](emoji.md), the url does not.
 ## API
 
 ```go
-func Link(c *tgframe.Container, text, url string)
-func LinkWithID(c *tgframe.Container, text, url, id string)
+func Link(c *tgframe.Container, text, url string, conf ...*LinkConf)
 ```
 
 * `c` is Parent container.
 * `text` is the link text.
 * `url` is the link url.
-* `id` is a user specific element id.
+* `conf` is an optional configuration, at most one.
+
+```go
+// LinkConf is the configuration for the Link component.
+type LinkConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 

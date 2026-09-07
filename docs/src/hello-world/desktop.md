@@ -40,13 +40,13 @@ show the state round trip working in a window:
 
 ```go
 func Main(p *tgframe.Params) error {
-	name := tgcomp.Textbox(p.State, p.Sidebar, "What's your name?")
+	name := tgcomp.Textbox(p.Sidebar, "What's your name?")
 	if name != "" {
 		tgcomp.Text(p.Sidebar, "Hi "+name+"~")
 	}
 
 	tgcomp.Text(p.Main, "hello ")
-	if tgcomp.Button(p.State, p.Main, "keep going") {
+	if tgcomp.Button(p.Main, "keep going") {
 		tgcomp.Text(p.Main, "world")
 	}
 

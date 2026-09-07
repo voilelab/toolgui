@@ -7,33 +7,31 @@ Message is a component that displays a message.
 ### Interface
 
 ```go
-func Message(c *tgframe.Container, text string)
-func MessageInfo(c *tgframe.Container, text string)
-func MessageSuccess(c *tgframe.Container, text string)
-func MessageWarning(c *tgframe.Container, text string)
-func MessageDanger(c *tgframe.Container, text string)
-
-func MessageWithConf(c *tgframe.Container, text string, conf *MessageConf)
+func Message(c *tgframe.Container, text string, conf ...*MessageConf)
+func MessageInfo(c *tgframe.Container, text string, conf ...*MessageConf)
+func MessageSuccess(c *tgframe.Container, text string, conf ...*MessageConf)
+func MessageWarning(c *tgframe.Container, text string, conf ...*MessageConf)
+func MessageDanger(c *tgframe.Container, text string, conf ...*MessageConf)
 ```
 
 ### Parameters
 
 * `c`: Parent container.
 * `text`: Text to display.
-* `conf`: Configuration for the message component.
+* `conf`: Optional configuration, at most one.
 
-* `Message[Info|Success|Warning|Danger]`: Create a message with a specific color.
+`Message[Info|Success|Warning|Danger]` set `Color` themselves and ignore what
+the conf says; `Message` follows the conf.
 
 ```go
 type MessageConf struct {
+	tgframe.Base // ID
+
 	// Title is the title of the message. Optional.
 	Title string
 
 	// Color is the color of the message. Default is tcutil.ColorNull.
 	Color tcutil.Color
-
-	// ID is the unique identifier of the component.
-	ID string
 }
 ```
 
@@ -48,8 +46,12 @@ tgcomp.MessageInfo(c, "Hello, World!")
 ```
 
 ```go
-tgcomp.MessageWithConf(c, "Hello, World!", &tgcomp.MessageConf{
+tgcomp.Message(c, "Hello, World!", &tgcomp.MessageConf{
 	Title: "Info",
 	Color: tcutil.ColorInfo,
 })
+```
+
+```go
+tgcomp.MessageDanger(c, "It broke", &tgcomp.MessageConf{Title: "danger!"})
 ```

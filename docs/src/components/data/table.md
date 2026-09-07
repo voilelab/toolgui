@@ -5,12 +5,20 @@ Table component display a table.
 ## API
 
 ```go
-func Table(c *tgframe.Container, head []string, table [][]string)
+func Table(c *tgframe.Container, head []string, table [][]string, conf ...*TableConf)
 ```
 
 * `c` is Parent container.
 * `head` is the head of table.
 * `table` is the body of table.
+* `conf` is an optional configuration, at most one.
+
+```go
+// TableConf is the configuration for the Table component.
+type TableConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 

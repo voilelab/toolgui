@@ -5,15 +5,21 @@ Html component is used to display html content.
 ## API
 
 ```go
-func Html(c *tgframe.Container, html string)
-func HtmlWithID(c *tgframe.Container, html string, id string)
+func Html(c *tgframe.Container, html string, conf ...*HtmlConf)
 ```
 
 ### Parameters
 
 * `c`: Parent container.
 * `html`: Html content to display.
-* `id`: Id of the component.
+* `conf`: Optional configuration, at most one.
+
+```go
+// HtmlConf is the configuration for the Html component.
+type HtmlConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 
