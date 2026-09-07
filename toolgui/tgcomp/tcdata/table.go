@@ -23,8 +23,15 @@ func newTableComponent(head []string, table [][]string) *tableComponent {
 	}
 }
 
+// TableConf is the configuration for the Table component.
+type TableConf struct {
+	tgframe.Base
+}
+
 // Table create a table by heading(head) and values(table).
-func Table(c *tgframe.Container, head []string, table [][]string) {
+func Table(c *tgframe.Container, head []string, table [][]string, conf ...*TableConf) {
+	cf := tgframe.OneConf("Table", conf)
+
 	if len(table) == 0 {
 		return
 	}
@@ -34,5 +41,6 @@ func Table(c *tgframe.Container, head []string, table [][]string) {
 	}
 
 	comp := newTableComponent(head, table)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

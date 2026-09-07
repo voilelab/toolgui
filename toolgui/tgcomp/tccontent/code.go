@@ -24,31 +24,21 @@ func newCodeComponent(code string) *codeComponent {
 
 // CodeConf provide extra config for Code Component.
 type CodeConf struct {
+	tgframe.Base
+
 	// Language is language of code block, leave empty to use `go`
 	Language string
-
-	// ID is id of the component
-	ID string
 }
 
 // Code create a code block with syntax highlight.
-func Code(c *tgframe.Container, code string) {
-	CodeWithConf(c, code, nil)
-}
+func Code(c *tgframe.Container, code string, conf ...*CodeConf) {
+	cf := tgframe.OneConf("Code", conf)
 
-// CodeWithConf create a code block with syntax highlight.
-func CodeWithConf(c *tgframe.Container, code string, conf *CodeConf) {
 	comp := newCodeComponent(code)
-	if conf == nil {
-		conf = &CodeConf{}
-	}
+	tgframe.SetConfID(comp, cf)
 
-	if conf.ID != "" {
-		comp.SetID(conf.ID)
-	}
-
-	if conf.Language != "" {
-		comp.Lang = conf.Language
+	if cf.Language != "" {
+		comp.Lang = cf.Language
 	} else {
 		comp.Lang = "go"
 	}

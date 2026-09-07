@@ -82,7 +82,7 @@ func TestIdenticalComponentsGetTheirOwnKey(t *testing.T) {
 func TestNestedContainersKeyUnderTheirComponent(t *testing.T) {
 	keys, _, err := keysOf(t, func(p *tgframe.Params) error {
 		tgcomp.Text(p.Main, "before")
-		left, right := tgcomp.Column2(p.Main, "cols")
+		left, right := tgcomp.Column2(p.Main)
 		tgcomp.Text(left, "in left")
 		tgcomp.Text(right, "in right")
 		return nil
@@ -172,10 +172,11 @@ func TestDuplicatedExpandIsAnError(t *testing.T) {
 	}
 }
 
-func TestExpandWithIDMakesDuplicatesLegal(t *testing.T) {
+func TestAnExpandConfIDMakesDuplicatesLegal(t *testing.T) {
 	_, _, err := keysOf(t, func(p *tgframe.Params) error {
 		tgcomp.Expand(p.Main, "Details", false)
-		tgcomp.ExpandWithID(p.Main, "Details", false, "second_details")
+		tgcomp.Expand(p.Main, "Details", false,
+			&tgcomp.ExpandConf{ID: "second_details"})
 		return nil
 	})
 	if err != nil {

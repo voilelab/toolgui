@@ -3,7 +3,6 @@ package tcdata
 import (
 	"fmt"
 
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -71,18 +70,16 @@ type ChartSeries struct {
 	Color string `json:"color"`
 }
 
-// ChartConf is the configuration for the chart components.
+// ChartConf is the configuration for the chart components. The data is not in
+// here: labels and series are what a chart is for, so every entry point takes
+// them positionally and this carries only the presentation.
 type ChartConf struct {
+	tgframe.Base
+
 	// Kind is the shape the chart is drawn in, default is ChartKindLine.
+	// [LineChart], [BarChart], [AreaChart] and [ScatterChart] set it
+	// themselves.
 	Kind ChartKind
-
-	// Labels are the x axis categories. A scatter chart has none: its x axis
-	// is a value axis.
-	Labels []string
-
-	// Series are the series to draw. Every series needs one value per label,
-	// or, for ChartKindScatter, its points instead.
-	Series []ChartSeries
 
 	// Stacked stacks the series on top of each other instead of drawing
 	// them side by side.
@@ -109,7 +106,7 @@ type chartComponent struct {
 	YLabel  string        `json:"y_label"`
 }
 
-func newChartComponent(id string, conf *ChartConf) *chartComponent {
+func newChartComponent(labels []string, series []ChartSeries, conf *ChartConf) *chartComponent {
 	height := conf.Height
 	if height == "" {
 		height = defaultChartHeight
@@ -118,11 +115,10 @@ func newChartComponent(id string, conf *ChartConf) *chartComponent {
 	return &chartComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: chartComponentName,
-			ID:   tcutil.NormalID(chartComponentName, id),
 		},
 		Kind:    conf.Kind.String(),
-		Labels:  conf.Labels,
-		Series:  conf.Series,
+		Labels:  labels,
+		Series:  series,
 		Stacked: conf.Stacked,
 		Height:  height,
 		XLabel:  conf.XLabel,
@@ -130,80 +126,74 @@ func newChartComponent(id string, conf *ChartConf) *chartComponent {
 	}
 }
 
+// Chart create a chart of the kind [ChartConf.Kind] names, default a line
+// chart. Every series needs one value per label.
+func Chart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
+	chart(c, labels, series, tgframe.OneConf("Chart", conf), nil)
+}
+
 // LineChart create a line chart, one line per series.
-// The id has to be unique in the page, and stable across runs so that the
-// chart is updated in place instead of redrawn.
-func LineChart(c *tgframe.Container, id string, labels []string, series []ChartSeries) {
-	ChartWithConf(c, id, &ChartConf{
-		Kind:   ChartKindLine,
-		Labels: labels,
-		Series: series,
-	})
+func LineChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
+	kind := ChartKindLine
+	chart(c, labels, series, tgframe.OneConf("LineChart", conf), &kind)
 }
 
 // BarChart create a bar chart, one bar per value grouped by label.
-// The id has to be unique in the page, and stable across runs so that the
-// chart is updated in place instead of redrawn.
-func BarChart(c *tgframe.Container, id string, labels []string, series []ChartSeries) {
-	ChartWithConf(c, id, &ChartConf{
-		Kind:   ChartKindBar,
-		Labels: labels,
-		Series: series,
-	})
+func BarChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
+	kind := ChartKindBar
+	chart(c, labels, series, tgframe.OneConf("BarChart", conf), &kind)
 }
 
 // AreaChart create an area chart, one filled line per series.
-// The id has to be unique in the page, and stable across runs so that the
-// chart is updated in place instead of redrawn.
-func AreaChart(c *tgframe.Container, id string, labels []string, series []ChartSeries) {
-	ChartWithConf(c, id, &ChartConf{
-		Kind:   ChartKindArea,
-		Labels: labels,
-		Series: series,
-	})
+func AreaChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
+	kind := ChartKindArea
+	chart(c, labels, series, tgframe.OneConf("AreaChart", conf), &kind)
 }
 
-// ScatterChart create a scatter chart, one marker per point. It takes points
-// rather than labels and values: both of a scatter chart's axes are value
-// axes, so a point carries its own x.
-// The id has to be unique in the page, and stable across runs so that the
-// chart is updated in place instead of redrawn.
-func ScatterChart(c *tgframe.Container, id string, series []ChartSeries) {
-	ChartWithConf(c, id, &ChartConf{
-		Kind:   ChartKindScatter,
-		Series: series,
-	})
+// ScatterChart create a scatter chart, one marker per point. It takes no
+// labels: both of a scatter chart's axes are value axes, so a point carries
+// its own x, in [ChartSeries.Points] rather than Values.
+func ScatterChart(c *tgframe.Container, series []ChartSeries, conf ...*ChartConf) {
+	kind := ChartKindScatter
+	chart(c, nil, series, tgframe.OneConf("ScatterChart", conf), &kind)
 }
 
-// ChartWithConf create a chart with a custom configuration.
-func ChartWithConf(c *tgframe.Container, id string, conf *ChartConf) {
-	if conf == nil {
-		conf = &ChartConf{}
+// chart adds the chart component. kind is what the entry point is named after,
+// and overrides whatever the conf says; [Chart] passes nil and leaves the
+// conf's own kind alone. The conf is copied rather than written through: the
+// caller owns it and may reuse it across runs.
+func chart(c *tgframe.Container, labels []string, series []ChartSeries,
+	conf *ChartConf, kind *ChartKind) {
+
+	cf := *conf
+	if kind != nil {
+		cf.Kind = *kind
 	}
 
-	for _, series := range conf.Series {
-		if conf.Kind == ChartKindScatter {
-			if len(series.Values) != 0 {
+	for _, s := range series {
+		if cf.Kind == ChartKindScatter {
+			if len(s.Values) != 0 {
 				panic(fmt.Sprintf(
 					"series %q of a scatter chart is drawn from points, not values",
-					series.Name))
+					s.Name))
 			}
 			continue
 		}
 
-		if len(series.Points) != 0 {
+		if len(s.Points) != 0 {
 			panic(fmt.Sprintf(
 				"series %q holds points, which only a scatter chart draws",
-				series.Name))
+				s.Name))
 		}
 
-		if len(series.Values) != len(conf.Labels) {
+		if len(s.Values) != len(labels) {
 			panic(fmt.Sprintf(
 				"len of values of series %q should equal to len of labels",
-				series.Name))
+				s.Name))
 		}
 	}
 
-	comp := newChartComponent(id, conf)
+	comp := newChartComponent(labels, series, &cf)
+	tgframe.SetConfID(comp, conf)
 	c.AddComponent(comp)
 }

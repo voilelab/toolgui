@@ -21,15 +21,16 @@ func newHtmlComponent(html string) *htmlComponent {
 	}
 }
 
-// Html adds a html component to the container.
-func Html(c *tgframe.Container, html string) {
-	comp := newHtmlComponent(html)
-	c.AddComponent(comp)
+// HtmlConf is the configuration for the Html component.
+type HtmlConf struct {
+	tgframe.Base
 }
 
-// HtmlWithID adds a html component to the container with a specific id.
-func HtmlWithID(c *tgframe.Container, html string, id string) {
+// Html adds an HTML component to the container.
+func Html(c *tgframe.Container, html string, conf ...*HtmlConf) {
+	cf := tgframe.OneConf("Html", conf)
+
 	comp := newHtmlComponent(html)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

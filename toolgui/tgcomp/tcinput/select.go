@@ -33,7 +33,7 @@ type SelectConf struct {
 // Select create a select dropdown list and return its selected value.
 // 0-indexed, return nil if no item is selected.
 func Select(c *tgframe.Container, label string, items []string, conf ...*SelectConf) *int {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Select", conf)
 
 	comp := newSelectComponent(label, items)
 	tgframe.SetConfID(comp, cf)

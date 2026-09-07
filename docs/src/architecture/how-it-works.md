@@ -20,7 +20,7 @@ the UI component interact immediately with the running logic.
 For example:
 
 ```go
-if tgcomp.Button(p.State, p.Main, "Click me") {
+if tgcomp.Button(p.Main, "Click me") {
     tgcomp.Text(p.Main, "Hi")
 }
 ```

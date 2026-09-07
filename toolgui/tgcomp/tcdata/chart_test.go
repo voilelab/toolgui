@@ -40,9 +40,9 @@ func addChart(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 
 func TestLineChartProps(t *testing.T) {
 	props := addChart(t, func(c *tgframe.Container) {
-		LineChart(c, "sales", []string{"Jan", "Feb"}, []ChartSeries{
+		LineChart(c, []string{"Jan", "Feb"}, []ChartSeries{
 			{Name: "2026", Values: []float64{1, 2}},
-		})
+		}, &ChartConf{ID: "sales"})
 	})
 
 	if props["id"] != "chart_component_sales" {
@@ -65,16 +65,18 @@ func TestLineChartProps(t *testing.T) {
 // The id is what keeps a chart updating in place across runs, so the same id
 // has to produce the same component id whatever the data is.
 func TestChartIDIsStableAcrossData(t *testing.T) {
+	conf := &ChartConf{ID: "sales"}
+
 	first := addChart(t, func(c *tgframe.Container) {
-		BarChart(c, "sales", []string{"Jan"}, []ChartSeries{
+		BarChart(c, []string{"Jan"}, []ChartSeries{
 			{Name: "2026", Values: []float64{1}},
-		})
+		}, conf)
 	})
 
 	second := addChart(t, func(c *tgframe.Container) {
-		BarChart(c, "sales", []string{"Jan"}, []ChartSeries{
+		BarChart(c, []string{"Jan"}, []ChartSeries{
 			{Name: "2026", Values: []float64{2}},
-		})
+		}, conf)
 	})
 
 	if first["id"] != second["id"] {
@@ -82,17 +84,18 @@ func TestChartIDIsStableAcrossData(t *testing.T) {
 	}
 }
 
-func TestChartWithConf(t *testing.T) {
+func TestChartConfDrivesTheProps(t *testing.T) {
 	props := addChart(t, func(c *tgframe.Container) {
-		ChartWithConf(c, "traffic", &ChartConf{
-			Kind:    ChartKindArea,
-			Labels:  []string{"Jan", "Feb"},
-			Series:  []ChartSeries{{Name: "hits", Values: []float64{1, 2}}},
-			Stacked: true,
-			Height:  "500px",
-			XLabel:  "month",
-			YLabel:  "hits",
-		})
+		Chart(c, []string{"Jan", "Feb"},
+			[]ChartSeries{{Name: "hits", Values: []float64{1, 2}}},
+			&ChartConf{
+				ID:      "traffic",
+				Kind:    ChartKindArea,
+				Stacked: true,
+				Height:  "500px",
+				XLabel:  "month",
+				YLabel:  "hits",
+			})
 	})
 
 	if props["kind"] != "area" {
@@ -124,17 +127,37 @@ func TestChartPanicsOnValueLabelMismatch(t *testing.T) {
 	}()
 
 	addChart(t, func(c *tgframe.Container) {
-		LineChart(c, "sales", []string{"Jan", "Feb"}, []ChartSeries{
+		LineChart(c, []string{"Jan", "Feb"}, []ChartSeries{
 			{Name: "2026", Values: []float64{1}},
 		})
 	})
 }
 
+// A named entry point sets the kind itself, and must not write that back into
+// the caller's conf: the same conf is often reused across runs and calls.
+func TestNamedChartLeavesTheCallersConfAlone(t *testing.T) {
+	conf := &ChartConf{Kind: ChartKindLine}
+
+	props := addChart(t, func(c *tgframe.Container) {
+		BarChart(c, []string{"Jan"}, []ChartSeries{
+			{Name: "2026", Values: []float64{1}},
+		}, conf)
+	})
+
+	if props["kind"] != "bar" {
+		t.Errorf("kind = %v, want bar", props["kind"])
+	}
+
+	if conf.Kind != ChartKindLine {
+		t.Errorf("conf.Kind = %v, want it untouched", conf.Kind)
+	}
+}
+
 func TestScatterChartProps(t *testing.T) {
 	props := addChart(t, func(c *tgframe.Container) {
-		ScatterChart(c, "runs", []ChartSeries{
+		ScatterChart(c, []ChartSeries{
 			{Name: "p95", Points: []ChartPoint{{X: 1, Y: 3}, {X: 2, Y: 5}}},
-		})
+		}, &ChartConf{ID: "runs"})
 	})
 
 	if props["kind"] != "scatter" {
@@ -161,7 +184,7 @@ func TestScatterChartProps(t *testing.T) {
 // adding them left the packs of the existing charts as they were.
 func TestNonScatterChartSendsNoPoints(t *testing.T) {
 	props := addChart(t, func(c *tgframe.Container) {
-		LineChart(c, "sales", []string{"Jan"}, []ChartSeries{
+		LineChart(c, []string{"Jan"}, []ChartSeries{
 			{Name: "2026", Values: []float64{1}},
 		})
 	})
@@ -180,7 +203,7 @@ func TestScatterChartPanicsOnValues(t *testing.T) {
 	}()
 
 	addChart(t, func(c *tgframe.Container) {
-		ScatterChart(c, "runs", []ChartSeries{
+		ScatterChart(c, []ChartSeries{
 			{Name: "p95", Values: []float64{1, 2}},
 		})
 	})
@@ -194,7 +217,7 @@ func TestChartPanicsOnPointsWithoutScatter(t *testing.T) {
 	}()
 
 	addChart(t, func(c *tgframe.Container) {
-		LineChart(c, "sales", nil, []ChartSeries{
+		LineChart(c, nil, []ChartSeries{
 			{Name: "2026", Points: []ChartPoint{{X: 1, Y: 2}}},
 		})
 	})

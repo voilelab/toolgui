@@ -14,14 +14,21 @@ type FileObject struct {
 func (f *FileObject) Open() (tgframe.FileReader, error)
 func (f *FileObject) Bytes() ([]byte, error)
 
-func Fileupload(s *tgframe.State, c *tgframe.Container, label, accept string) *FileObject
+func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadConf) *FileObject
 ```
 
-* `s` is State.
 * `c` is Parent container.
 * `label` is the label for options group.
 * `accept` is the file type to accept.
+* `conf` is an optional configuration, at most one.
 * Return the selected file object. nil if no file is selected.
+
+```go
+// FileuploadConf is the configuration for the Fileupload component.
+type FileuploadConf struct {
+	tgframe.Base // ID
+}
+```
 
 On a server the upload is streamed to disk rather than kept in memory, so a
 file only has to fit on disk. In the browser, where a WebAssembly app has no
@@ -36,7 +43,7 @@ filesystem to use, it stays in the tab. `Size` is the size of what was stored.
 ## Example
 
 ```go
-fileObj := tgcomp.Fileupload(p.State, p.Main, "Fileupload", ".jpg,.png")
+fileObj := tgcomp.Fileupload(p.Main, "Fileupload", ".jpg,.png")
 if fileObj != nil {
     tgcomp.Text(p.Main, "Fileupload filename: "+fileObj.Name)
     tgcomp.Text(p.Main, fmt.Sprintf("Fileupload bytes length: %d", fileObj.Size))

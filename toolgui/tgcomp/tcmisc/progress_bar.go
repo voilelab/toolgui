@@ -44,6 +44,11 @@ func (p *progressBarComponent) Remove() {
 	p.SendNotifyPack(tgframe.NewNotifyPackDelete(p))
 }
 
+// ProgressBarConf is the configuration for the ProgressBar component.
+type ProgressBarConf struct {
+	tgframe.Base
+}
+
 // ProgressBar creates a new progress bar component.
 // Example:
 // ```go
@@ -56,16 +61,11 @@ func (p *progressBarComponent) Remove() {
 //
 // bar.SetLabel("Completed")
 // ```
-func ProgressBar(c *tgframe.Container, value int, label string) *progressBarComponent {
-	comp := newProgressBarComponent(value, label, c.SendNotifyPack)
-	c.AddComponent(comp)
-	return comp
-}
+func ProgressBar(c *tgframe.Container, value int, label string, conf ...*ProgressBarConf) *progressBarComponent {
+	cf := tgframe.OneConf("ProgressBar", conf)
 
-// ProgressBarWithID creates a progress bar with a user specific id.
-func ProgressBarWithID(c *tgframe.Container, value int, label string, id string) *progressBarComponent {
 	comp := newProgressBarComponent(value, label, c.SendNotifyPack)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 	return comp
 }

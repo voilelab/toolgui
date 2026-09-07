@@ -25,32 +25,26 @@ type CaptionConf = tccontent.CaptionConf
 // Code create a code block with syntax highlight.
 var Code = tccontent.Code
 
+// CodeConf is the configuration for the Code component.
 type CodeConf = tccontent.CodeConf
-
-// CodeWithConf create a code block with syntax highlight.
-var CodeWithConf = tccontent.CodeWithConf
 
 // Divider create a horizontal line.
 var Divider = tccontent.Divider
 
-// DividerWithID create a horizontal line with ID.
-var DividerWithID = tccontent.DividerWithID
+// DividerConf is the configuration for the Divider component.
+type DividerConf = tccontent.DividerConf
 
 // Image show a image.
 var Image = tccontent.Image
 
-// ImageConf is the configuration for the Image component
+// ImageConf is the configuration for the Image component.
 type ImageConf = tccontent.ImageConf
 
-// ImageWithConf show a image with a custom configuration.
-var ImageWithConf = tccontent.ImageWithConf
-
 // Link create a link component.
-
 var Link = tccontent.Link
 
-// LinkWithID create a link component with a user specific id.
-var LinkWithID = tccontent.LinkWithID
+// LinkConf is the configuration for the Link component.
+type LinkConf = tccontent.LinkConf
 
 // LinkButton create a link that is drawn as a button.
 var LinkButton = tccontent.LinkButton
@@ -61,8 +55,8 @@ type LinkButtonConf = tccontent.LinkButtonConf
 // Markdown render markdown to html.
 var Markdown = tccontent.Markdown
 
-// Markdown create a markdown-rendering part with a user-specific id.
-var MarkdownWithID = tccontent.MarkdownWithID
+// MarkdownConf is the configuration for the Markdown component.
+type MarkdownConf = tccontent.MarkdownConf
 
 // Metric show a labelled value, with an optional delta under it.
 var Metric = tccontent.Metric
@@ -73,8 +67,8 @@ type MetricConf = tccontent.MetricConf
 // Subtitle create a subtitle.
 var Subtitle = tccontent.Subtitle
 
-// SubtitleWithID create a subtitle component with a user specific id.
-var SubtitleWithID = tccontent.SubtitleWithID
+// SubtitleConf is the configuration for the Subtitle component.
+type SubtitleConf = tccontent.SubtitleConf
 
 // Text show a text.
 var Text = tccontent.Text
@@ -91,5 +85,5 @@ type TitleConf = tccontent.TitleConf
 // Latex create a latex component.
 var Latex = tccontent.Latex
 
-// LatexWithID create a latex component with a user specific id.
-var LatexWithID = tccontent.LatexWithID
+// LatexConf is the configuration for the Latex component.
+type LatexConf = tccontent.LatexConf

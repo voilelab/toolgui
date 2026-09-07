@@ -7,19 +7,20 @@ points rather than labels, and has its own page:
 ## API
 
 ```go
-func LineChart(c *tgframe.Container, id string, labels []string, series []ChartSeries)
-func BarChart(c *tgframe.Container, id string, labels []string, series []ChartSeries)
-func AreaChart(c *tgframe.Container, id string, labels []string, series []ChartSeries)
-func ChartWithConf(c *tgframe.Container, id string, conf *ChartConf)
+func Chart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf)
+func LineChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf)
+func BarChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf)
+func AreaChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf)
 ```
 
 * `c` is the parent container.
-* `id` is the user specific id. It has to be unique in the page, and stable
-  across runs: a chart that keeps its id is updated in place instead of being
-  redrawn from scratch.
 * `labels` are the x axis categories.
 * `series` are the series to draw. Every series needs one value per label, or
   the call panics.
+* `conf` is an optional configuration, at most one.
+
+`LineChart`, `BarChart` and `AreaChart` set `Kind` themselves and ignore what
+the conf says; `Chart` follows the conf.
 
 `ChartSeries`:
 
@@ -34,20 +35,23 @@ func ChartWithConf(c *tgframe.Container, id string, conf *ChartConf)
 
 | Field     | Description                                         | Default         |
 | --------- | --------------------------------------------------- | --------------- |
+| `ID`      | The user specific id, from the embedded `tgframe.Base`. | none         |
 | `Kind`    | `ChartKindLine`, `ChartKindBar`, `ChartKindArea` or `ChartKindScatter`. | `ChartKindLine` |
-| `Labels`  | The x axis categories.                               | none            |
-| `Series`  | The series to draw.                                  | none            |
 | `Stacked` | Stack the series instead of drawing them side by side. | `false`       |
 | `Height`  | CSS height of the chart.                             | `300px`         |
 | `XLabel`  | Title of the x axis, hidden when empty.              | none            |
 | `YLabel`  | Title of the y axis, hidden when empty.              | none            |
+
+A chart is placed by position like everything else, so it does not need an id
+to be updated in place across runs. Give it one when a test or a stylesheet
+has to name it, or when the page draws two charts you want to tell apart.
 
 ## Examples
 
 ### Line
 
 ```go
-tgcomp.LineChart(p.Main, "traffic",
+tgcomp.LineChart(p.Main,
 	[]string{"Mon", "Tue", "Wed", "Thu", "Fri"},
 	[]tgcomp.ChartSeries{
 		{Name: "visits", Values: []float64{12, 19, 9, 24, 17}},
@@ -60,7 +64,7 @@ tgcomp.LineChart(p.Main, "traffic",
 ### Bar
 
 ```go
-tgcomp.BarChart(p.Main, "stars",
+tgcomp.BarChart(p.Main,
 	[]string{"Go", "Rust", "Python"},
 	[]tgcomp.ChartSeries{
 		{Name: "stars", Values: []float64{31, 24, 47}},
@@ -70,16 +74,17 @@ tgcomp.BarChart(p.Main, "stars",
 ### Stacked area
 
 ```go
-tgcomp.ChartWithConf(p.Main, "revenue", &tgcomp.ChartConf{
-	Kind:    tgcomp.ChartKindArea,
-	Labels:  []string{"Q1", "Q2", "Q3", "Q4"},
-	Series: []tgcomp.ChartSeries{
+tgcomp.AreaChart(p.Main,
+	[]string{"Q1", "Q2", "Q3", "Q4"},
+	[]tgcomp.ChartSeries{
 		{Name: "cloud", Values: []float64{4, 6, 5, 9}},
 		{Name: "desktop", Values: []float64{2, 3, 4, 4}},
 	},
-	Stacked: true,
-	YLabel:  "revenue",
-})
+	&tgcomp.ChartConf{
+		ID:      "revenue",
+		Stacked: true,
+		YLabel:  "revenue",
+	})
 ```
 
 ## Notes

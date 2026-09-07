@@ -28,7 +28,7 @@ type TextConf struct {
 
 // Text show a text.
 func Text(c *tgframe.Container, text string, conf ...*TextConf) {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Text", conf)
 
 	comp := newTextComponent(text)
 	tgframe.SetConfID(comp, cf)

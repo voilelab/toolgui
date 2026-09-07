@@ -10,15 +10,17 @@ import (
 
 const testFileuploadID = "fileupload_component_File"
 
-func newFileuploadContainer() *tgframe.Container {
-	return tgframe.NewContainer("test", tgframe.NewState(), func(pack tgframe.NotifyPack) {})
+// newFileuploadContainer builds the container the component reads its state
+// through, so that a test can seed s and then hand it straight to Fileupload.
+func newFileuploadContainer(s *tgframe.State) *tgframe.Container {
+	return tgframe.NewContainer("test", s, func(pack tgframe.NotifyPack) {})
 }
 
 func TestFileuploadWithoutPick(t *testing.T) {
 	s := tgframe.NewState()
 	defer s.Destroy()
 
-	if Fileupload(s, newFileuploadContainer(), "File", "") != nil {
+	if Fileupload(newFileuploadContainer(s), "File", "") != nil {
 		t.Error("expect no file object before a pick")
 	}
 }
@@ -31,7 +33,7 @@ func TestFileuploadWithoutContent(t *testing.T) {
 
 	s.Set(testFileuploadID, map[string]any{"name": "a.txt", "size": 5})
 
-	if Fileupload(s, newFileuploadContainer(), "File", "") != nil {
+	if Fileupload(newFileuploadContainer(s), "File", "") != nil {
 		t.Error("expect no file object when the content is missing")
 	}
 }
@@ -53,7 +55,7 @@ func TestFileupload(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	fileObj := Fileupload(s, newFileuploadContainer(), "File", "")
+	fileObj := Fileupload(newFileuploadContainer(s), "File", "")
 	if fileObj == nil {
 		t.Fatal("expect a file object")
 	}

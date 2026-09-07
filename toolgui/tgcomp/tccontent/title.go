@@ -28,7 +28,7 @@ type TitleConf struct {
 
 // Title show a title.
 func Title(c *tgframe.Container, text string, conf ...*TitleConf) {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Title", conf)
 
 	comp := newTitleComponent(text)
 	tgframe.SetConfID(comp, cf)

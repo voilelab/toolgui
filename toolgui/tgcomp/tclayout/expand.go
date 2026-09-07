@@ -31,19 +31,18 @@ func newExpandComponent(title string, expanded bool) *expandComponent {
 	return comp
 }
 
+// ExpandConf is the configuration for the Expand component.
+type ExpandConf struct {
+	tgframe.Base
+}
+
 // Expand create a expandable component.
-func Expand(c *tgframe.Container, title string, expanded bool) *tgframe.Container {
-	return expand(c, newExpandComponent(title, expanded))
-}
+func Expand(c *tgframe.Container, title string, expanded bool, conf ...*ExpandConf) *tgframe.Container {
+	cf := tgframe.OneConf("Expand", conf)
 
-// ExpandWithID create a expandable component with a user specific id.
-func ExpandWithID(c *tgframe.Container, title string, expanded bool, id string) *tgframe.Container {
 	expandComp := newExpandComponent(title, expanded)
-	expandComp.SetID(id)
-	return expand(c, expandComp)
-}
+	tgframe.SetConfID(expandComp, cf)
 
-func expand(c *tgframe.Container, expandComp *expandComponent) *tgframe.Container {
 	comp := c.AddComponent(expandComp)
 	return c.AddContainerTo(comp, "inner", 0)
 }

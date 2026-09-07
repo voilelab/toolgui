@@ -25,12 +25,20 @@ func newRadioComponent(label string, items []string) *radioComponent {
 	}
 }
 
+// RadioConf is the configuration for the Radio component.
+type RadioConf struct {
+	tgframe.Base
+}
+
 // Radio create a group of radio items and return its selected value.
-func Radio(s *tgframe.State, c *tgframe.Container, label string, items []string) *int {
+func Radio(c *tgframe.Container, label string, items []string, conf ...*RadioConf) *int {
+	cf := tgframe.OneConf("Radio", conf)
+
 	comp := newRadioComponent(label, items)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
-	idx := s.GetInt(comp.ID)
+	idx := c.State.GetInt(comp.ID)
 	if idx == nil {
 		return nil
 	}
