@@ -46,6 +46,13 @@
   overflow-wrap: anywhere;
 }
 
+/* A page stops widening past this and stays centred, so lines do not run the
+   full width of a large screen. */
+.toolgui-page {
+  max-width: 1344px;
+  margin-inline: auto;
+}
+
 /* min-width:0 keeps wide children (tables, code blocks) from stretching this
    flex item past the viewport instead of scrolling inside it. */
 .toolgui-main {
