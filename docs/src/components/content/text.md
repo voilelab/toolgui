@@ -2,6 +2,8 @@
 
 Text component display a text.
 
+The text supports [emoji shortcodes](emoji.md): `:tada:` renders as 🎉.
+
 ## API
 
 ```go

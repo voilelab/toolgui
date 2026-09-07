@@ -1,5 +1,8 @@
 # Markdown
 
+Prose supports [emoji shortcodes](emoji.md). A shortcode in a code span or a
+fenced block stays as written.
+
 ## API
 
 ### Interface
