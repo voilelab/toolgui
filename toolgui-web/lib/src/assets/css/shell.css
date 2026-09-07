@@ -17,8 +17,8 @@
   top: 0;
   max-height: 100vh;
   overflow-y: auto;
-  background-color: var(--bulma-scheme-main-bis);
-  border-right: 1px solid var(--bulma-border-weak);
+  background-color: var(--tg-surface-alt);
+  border-right: 1px solid var(--tg-border-weak);
 }
 
 .toolgui-nav-body {
@@ -56,7 +56,7 @@
   padding: 1.5rem 1rem;
 }
 
-/* Below Bulma's tablet breakpoint the column becomes a collapsible top bar. */
+/* Below the tablet breakpoint the column becomes a collapsible top bar. */
 @media screen and (max-width: 768px) {
   .toolgui-shell {
     flex-direction: column;
@@ -69,7 +69,7 @@
     max-height: none;
     overflow-y: visible;
     border-right: none;
-    border-bottom: 1px solid var(--bulma-border-weak);
+    border-bottom: 1px solid var(--tg-border-weak);
   }
 
   .toolgui-nav-burger {

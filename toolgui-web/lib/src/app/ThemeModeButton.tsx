@@ -1,27 +1,22 @@
-import React, { Component } from 'react'
+import React from 'react'
+import { useComputedColorScheme, useMantineColorScheme } from '@mantine/core'
 
-import { ThemeMode } from '../util/theme'
+// ThemeModeButton flips Mantine's color scheme, which the rest of the app
+// follows.
+export function ThemeModeButton() {
+  const { setColorScheme } = useMantineColorScheme()
+  const dark = useComputedColorScheme('light', {
+    getInitialValueInEffect: false,
+  }) === 'dark'
 
-interface ThemeModeButtonProps {
-  themeMode: ThemeMode
-  onChange: (themeMode: ThemeMode) => void
-}
-
-// ThemeModeButton only reports the flip; the app owns the theme, so there is
-// one place that decides what it started as.
-export class ThemeModeButton extends Component<ThemeModeButtonProps> {
-  render() {
-    const dark = this.props.themeMode === 'dark'
-
-    return (
-      <button className="button"
-        onClick={() => { this.props.onChange(dark ? 'light' : 'dark') }}>
-        <span className="icon">
-          {dark ?
-            <i className="fas fa-moon"></i> :
-            <i className="fas fa-sun"></i>}
-        </span>
-      </button>
-    )
-  }
+  return (
+    <button className="button"
+      onClick={() => { setColorScheme(dark ? 'light' : 'dark') }}>
+      <span className="icon">
+        {dark ?
+          <i className="fas fa-moon"></i> :
+          <i className="fas fa-sun"></i>}
+      </span>
+    </button>
+  )
 }

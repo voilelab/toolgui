@@ -1,0 +1,16 @@
+/* The app's own theme tokens: the only names the app's CSS uses for colour,
+   so the framework underneath can change without touching every file. Values
+   come from Mantine's palette, which Mantine flips on <html>. */
+:root {
+  /* A surface set a step apart from the page background. */
+  --tg-surface-alt: var(--mantine-color-gray-0);
+  /* A divider that separates without drawing attention. */
+  --tg-border-weak: var(--mantine-color-gray-2);
+}
+
+/* Dark reads the other way round: the surface sits below the page, not above
+   it, so it needs its own values rather than a semantic variable. */
+:root[data-mantine-color-scheme='dark'] {
+  --tg-surface-alt: var(--mantine-color-dark-8);
+  --tg-border-weak: var(--mantine-color-dark-6);
+}

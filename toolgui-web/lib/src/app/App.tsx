@@ -13,6 +13,7 @@
 import 'bulma/css/bulma.min.css'
 import '@mantine/core/styles.css'
 import '@mantine/dates/styles.css'
+import '@toolgui-web/lib/src/assets/css/theme.css'
 import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
 import '@toolgui-web/lib/src/assets/css/fontawesome-solid.css'
 
@@ -28,7 +29,8 @@ import { setIcon } from '../util/seticon';
 import { emojize } from '../util/emoji';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
-import { ThemeMode, applyThemeMode, initialThemeMode, storeThemeMode } from '../util/theme';
+import { ThemeMode, preferredThemeMode, themeModeManager } from '../util/theme';
+import { ThemeModeSync } from './ThemeModeSync';
 
 // pageNameFromLocation reads the page name off the URL.
 function pageNameFromLocation(appConf: AppConf): string {
@@ -85,10 +87,13 @@ interface AppState {
   pageFound: boolean
   pageName: string
   error: Error | null
-  themeMode: ThemeMode
 }
 
 export class App extends Component<AppProps, AppState> {
+  // What to start in until the visitor has stored a choice of their own; the
+  // stored one comes back through themeModeManager.
+  private defaultColorScheme: ThemeMode
+
   constructor(props: AppProps) {
     super(props);
 
@@ -117,18 +122,9 @@ export class App extends Component<AppProps, AppState> {
       pageFound: pageFound,
       pageName: pageName,
       error: null,
-      themeMode: initialThemeMode(),
     }
-  }
 
-  componentDidMount() {
-    applyThemeMode(this.state.themeMode)
-  }
-
-  changeThemeMode(themeMode: ThemeMode) {
-    applyThemeMode(themeMode)
-    storeThemeMode(themeMode)
-    this.setState({ themeMode: themeMode })
+    this.defaultColorScheme = preferredThemeMode()
   }
 
   startUpdate() {
@@ -208,36 +204,39 @@ export class App extends Component<AppProps, AppState> {
   }
 
   render() {
-    // forceColorScheme, not Mantine's own toggle: the app already owns the
-    // theme, and two sources of truth would drift.
+    // Mantine holds the color scheme, so there is one source of truth for the
+    // theme; ThemeModeSync reads it back out for the app.
     return (
-      <MantineProvider forceColorScheme={this.state.themeMode}>
-        <div className="toolgui-shell">
-          <AppSideNav
-            appConf={this.props.appConf}
-            forest={this.state.forest}
-            running={this.state.running}
-            pageFound={this.state.pageFound}
-            pageName={this.state.pageName}
-            onNavigate={this.props.onNavigate}
-            rerun={() => { this.props.update({}) }}
-            update={(e) => { this.props.update(e) }}
-            upload={async (f, id) => await this.props.upload(f, id)}
-            themeMode={this.state.themeMode}
-            onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
+      <MantineProvider defaultColorScheme={this.defaultColorScheme}
+        colorSchemeManager={themeModeManager}>
+        <ThemeModeSync>
+          {(themeMode) =>
+            <div className="toolgui-shell">
+              <AppSideNav
+                appConf={this.props.appConf}
+                forest={this.state.forest}
+                running={this.state.running}
+                pageFound={this.state.pageFound}
+                pageName={this.state.pageName}
+                onNavigate={this.props.onNavigate}
+                rerun={() => { this.props.update({}) }}
+                update={(e) => { this.props.update(e) }}
+                upload={async (f, id) => await this.props.upload(f, id)}
+                themeMode={themeMode} />
 
-          <main className="toolgui-main">
-            <AppBody
-              appConf={this.props.appConf}
-              pageFound={this.state.pageFound}
-              forest={this.state.forest}
-              update={(e) => { this.props.update(e) }}
-              upload={async (f, id) => await this.props.upload(f, id)}
-              themeMode={this.state.themeMode} />
+              <main className="toolgui-main">
+                <AppBody
+                  appConf={this.props.appConf}
+                  pageFound={this.state.pageFound}
+                  forest={this.state.forest}
+                  update={(e) => { this.props.update(e) }}
+                  upload={async (f, id) => await this.props.upload(f, id)}
+                  themeMode={themeMode} />
 
-            <AppError error={this.state.error} />
-          </main>
-        </div>
+                <AppError error={this.state.error} />
+              </main>
+            </div>}
+        </ThemeModeSync>
       </MantineProvider>
     )
   }
