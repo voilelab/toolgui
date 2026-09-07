@@ -5,13 +5,19 @@
 // Bulma is pinned: 1.0.4 turned the selected navbar item's text dark.
 // Imported before anything else, so shell.css and the app's own CSS win.
 //
+// Bulma and Mantine coexist while the components move over one batch at a
+// time. Mantine comes second so its layer wins where the two collide.
+//
 // fontawesome-solid.css stands in for the package's solid.css, which would
 // also pull a .ttf copy of the font into the build.
 import 'bulma/css/bulma.min.css'
+import '@mantine/core/styles.css'
+import '@mantine/dates/styles.css'
 import '@fortawesome/fontawesome-free/css/fontawesome.min.css'
 import '@toolgui-web/lib/src/assets/css/fontawesome-solid.css'
 
 import React, { Component } from 'react'
+import { MantineProvider } from '@mantine/core'
 
 import { Forest } from './Nodes'
 import { clearState } from '../components/state'
@@ -202,33 +208,37 @@ export class App extends Component<AppProps, AppState> {
   }
 
   render() {
+    // forceColorScheme, not Mantine's own toggle: the app already owns the
+    // theme, and two sources of truth would drift.
     return (
-      <div className="toolgui-shell">
-        <AppSideNav
-          appConf={this.props.appConf}
-          forest={this.state.forest}
-          running={this.state.running}
-          pageFound={this.state.pageFound}
-          pageName={this.state.pageName}
-          onNavigate={this.props.onNavigate}
-          rerun={() => { this.props.update({}) }}
-          update={(e) => { this.props.update(e) }}
-          upload={async (f, id) => await this.props.upload(f, id)}
-          themeMode={this.state.themeMode}
-          onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
-
-        <main className="toolgui-main">
-          <AppBody
+      <MantineProvider forceColorScheme={this.state.themeMode}>
+        <div className="toolgui-shell">
+          <AppSideNav
             appConf={this.props.appConf}
-            pageFound={this.state.pageFound}
             forest={this.state.forest}
+            running={this.state.running}
+            pageFound={this.state.pageFound}
+            pageName={this.state.pageName}
+            onNavigate={this.props.onNavigate}
+            rerun={() => { this.props.update({}) }}
             update={(e) => { this.props.update(e) }}
             upload={async (f, id) => await this.props.upload(f, id)}
-            themeMode={this.state.themeMode} />
+            themeMode={this.state.themeMode}
+            onChange={(themeMode) => { this.changeThemeMode(themeMode) }} />
 
-          <AppError error={this.state.error} />
-        </main>
-      </div>
+          <main className="toolgui-main">
+            <AppBody
+              appConf={this.props.appConf}
+              pageFound={this.state.pageFound}
+              forest={this.state.forest}
+              update={(e) => { this.props.update(e) }}
+              upload={async (f, id) => await this.props.upload(f, id)}
+              themeMode={this.state.themeMode} />
+
+            <AppError error={this.state.error} />
+          </main>
+        </div>
+      </MantineProvider>
     )
   }
 }

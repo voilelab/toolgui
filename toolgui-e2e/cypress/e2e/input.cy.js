@@ -50,12 +50,14 @@ describe('Input', () => {
 
   it('Select', () => {
     cy.visit('/input')
-    cy.get('select').select(['Value1'])
-    cy.get('select').blur()
+    // Mantine's Select is a combobox over a listbox, not a native <select>:
+    // open the dropdown, then click the option.
+    cy.get('input[id=select_component_Select]').click()
+    cy.get('[role=option]').contains('Value1').click()
     cy.contains('Value: Value1').should('exist')
 
-    cy.get('select').select(['Value2'])
-    cy.get('select').blur()
+    cy.get('input[id=select_component_Select]').click()
+    cy.get('[role=option]').contains('Value2').click()
     cy.contains('Value: Value2').should('exist')
   })
 
@@ -70,12 +72,18 @@ describe('Input', () => {
 
   it('Datepicker', () => {
     cy.visit('/input')
-    cy.get('input[type=date]').type('2000-01-01')
-    cy.get('input[type=date]').blur()
+    // Mantine's DateInput is a text input that parses what is typed, so there
+    // is no type=date to select on and no segments to overwrite — the second
+    // date has to clear the first.
+    const date = 'input[id=datepicker_component_Datepicker]'
+
+    cy.get(date).type('2000-01-01')
+    cy.get(date).blur()
     cy.contains('2000-01-01').should('exist')
 
-    cy.get('input[type=date]').type('2002-02-02')
-    cy.get('input[type=date]').blur()
+    cy.get(date).clear()
+    cy.get(date).type('2002-02-02')
+    cy.get(date).blur()
     cy.contains('2002-02-02').should('exist')
   })
 
@@ -92,13 +100,44 @@ describe('Input', () => {
 
   it('Datetimepicker', () => {
     cy.visit('/input')
-    cy.get('input[type=datetime-local]').type('2000-01-01T20:34')
-    cy.get('input[type=datetime-local]').blur()
-    cy.contains('2000-01-01 20:34').should('exist')
 
-    cy.get('input[type=datetime-local]').type('2002-01-02T11:34')
-    cy.get('input[type=datetime-local]').blur()
-    cy.contains('2002-01-02 11:34').should('exist')
+    // Mantine's DateTimePicker is a calendar popover, so the day is clicked
+    // rather than typed and the calendar opens on the current month. Dates
+    // are therefore taken from this month instead of a fixed year.
+    const dayOfThisMonth = (day) => {
+      const date = new Date()
+      date.setDate(day)
+      return date
+    }
+
+    // How Mantine labels a day cell, e.g. '1 September 2026'.
+    const dayLabel = (date) => date.toLocaleDateString('en-GB', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    })
+
+    // What the demo prints back, e.g. '2026-09-01 20:34'.
+    const expected = (date, time) => {
+      const pad = (n) => String(n).padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}` +
+        `-${pad(date.getDate())} ${time}`
+    }
+
+    const pick = (date, hours, minutes) => {
+      cy.get('button[id=datepicker_component_Datetimepicker]').click()
+      cy.get(`button[aria-label="${dayLabel(date)}"]`).click()
+      // The hours and minutes spin inputs, then the popover's submit tick.
+      cy.get('[role=spinbutton]').eq(0).clear().type(hours)
+      cy.get('[role=spinbutton]').eq(1).clear().type(minutes)
+      cy.get('.mantine-DateTimePicker-submitButton').click()
+    }
+
+    const first = dayOfThisMonth(1)
+    pick(first, '20', '34')
+    cy.contains(expected(first, '20:34')).should('exist')
+
+    const second = dayOfThisMonth(2)
+    pick(second, '11', '34')
+    cy.contains(expected(second, '11:34')).should('exist')
   })
 
   it('Number', () => {

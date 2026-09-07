@@ -8,10 +8,10 @@ import '@toolgui-web/lib/src/assets/css/latex.css'
 
 export function TLatex({ node }: Props) {
 
-  const containerRef = useRef<HTMLDivElement>();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    katex.render(node.props.latex, containerRef.current, {
+    katex.render(node.props.latex, containerRef.current!, {
       displayMode: false,
       throwOnError: false,
     });
