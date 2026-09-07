@@ -42,9 +42,23 @@ string.
 
 ## Building
 
+`cmd/toolgui-wasm` compiles the app and writes the site around it -- the
+frontend it carries embedded, and the `wasm_exec.js` of the toolchain that
+just compiled the binary:
+
+```shell
+go get -tool github.com/voilelab/toolgui/cmd/toolgui-wasm
+
+go tool toolgui-wasm build -o dist ./cmd/myapp
+go tool toolgui-wasm serve ./cmd/myapp
+```
+
+In this repository:
+
 ```shell
 task build_wasm_hello   # the example, into example/hello/build
 task run_wasm_hello     # the same, served at http://localhost:3000
+task run_wasm_demo      # the component demo, in the browser
 ```
 
 See [the book](https://voilelab.github.io/toolgui/hello-world/wasm.html) for

@@ -12,6 +12,7 @@ experience to Streamlit for Python users.
 > and may be subject to changes in the future.
 
 The repository ships a demo app covering every component. `task run_demo`
-serves it at http://localhost:3000.
+serves it at http://localhost:3000, and [the same demo runs here in your
+browser](demo/), compiled to WebAssembly.
 
 ![screen-shot](screen-shot.png)

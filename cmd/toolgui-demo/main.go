@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"image/jpeg"
 	"io"
-	"log"
 	"log/slog"
 	"strings"
 	"time"
@@ -16,7 +15,6 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
-	"github.com/voilelab/toolgui/toolgui/tgexec"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -667,11 +665,13 @@ func FuncCachePage(p *tgframe.Params) error {
 	return nil
 }
 
-func main() {
+// newApp build the demo. main lives in main_server.go and main_wasm.go: the
+// pages are the same either way, only the executor differs.
+func newApp() *tgframe.App {
 	app := tgframe.NewApp()
 
 	// The title trails the page title in the browser tab, and names the app
-	// in the manifest below unless that gives its own name.
+	// in the manifest main_server.go sets unless that gives its own name.
 	app.SetTitle("ToolGUI Demo")
 
 	app.AddPage("index", "Index", MainPage)
@@ -684,22 +684,5 @@ func main() {
 	app.AddPage("function_cache", "Function Cache", FuncCachePage)
 	app.AddPage("code", "Source Code", SourceCodePage)
 
-	e := tgexec.NewWebExecutor(app)
-
-	// What a browser reads when the demo is installed to a home screen.
-	e.SetManifest(&tgexec.Manifest{
-		Name:            "ToolGUI Demo",
-		ShortName:       "ToolGUI",
-		Description:     "A demo of the components ToolGUI provides.",
-		StartURL:        ".",
-		Display:         "standalone",
-		ThemeColor:      "#000000",
-		BackgroundColor: "#ffffff",
-	})
-
-	log.Println("Starting service...")
-	err := e.StartService(":3000")
-	if err != nil {
-		log.Println(err)
-	}
+	return app
 }

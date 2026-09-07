@@ -1,7 +1,7 @@
 name: Docs
 
 # Publishes docs/ (mdBook) to GitHub Pages from main, so the book matches the
-# released API rather than dev.
+# released API rather than dev. The wasm demo goes up beside it, under /demo.
 #
 # Release pushes main with GITHUB_TOKEN, and pushes made with that token do not
 # start workflow runs -- so this hangs off the Release run instead of `on:
@@ -47,6 +47,22 @@ jobs:
       - name: Build with mdBook
         working-directory: docs
         run: mdbook build
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      # The browser frontend is committed by Release, so this needs no yarn.
+      # A main released before it existed just skips the demo.
+      - name: Build the wasm demo
+        run: |
+          if [ ! -f toolgui-web/wasm/build/index.html ]; then
+            echo "::warning::no browser assets on main, skipping the demo"
+            exit 0
+          fi
+          go run ./cmd/toolgui-wasm build -o docs/book/demo ./cmd/toolgui-demo
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

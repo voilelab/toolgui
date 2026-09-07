@@ -22,12 +22,10 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
       
-      - name: Fake build assets
-        run: |
-          cd toolgui-web
-          mkdir -p app/build/static
-          echo "fake" > app/build/index.html
-          echo "fake" > app/build/static/fake.txt
+      # The same stub the other workflows use, so a new embed only has to be
+      # added in one place.
+      - name: Stub web assets
+        run: ./scripts/stub-assets.sh
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8

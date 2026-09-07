@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Create placeholder web assets so `go build` works without a yarn build.
-# toolgui-web/web.go and toolgui-wails/assets.go embed build output that is
-# gitignored.
+# toolgui-web/web.go, toolgui-web/wasm/assets.go and toolgui-wails/assets.go
+# embed build output that is gitignored.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT/toolgui-web/app/build"
 WAILS_DIR="$ROOT/toolgui-wails/frontend/dist"
+WASM_DIR="$ROOT/toolgui-web/wasm/build"
 
 if [ -f "$BUILD_DIR/index.html" ]; then
 	echo "web assets already present, skipping stub"
@@ -34,4 +35,17 @@ else
 HTML
 
 	echo "stubbed wails assets in $WAILS_DIR"
+fi
+
+if [ -f "$WASM_DIR/index.html" ]; then
+	echo "wasm assets already present, skipping stub"
+else
+	mkdir -p "$WASM_DIR"
+	cat > "$WASM_DIR/index.html" <<'HTML'
+<!doctype html>
+<title>toolgui: assets not built</title>
+<p>Placeholder page. Run <code>task asset_wasm</code> to build the real browser assets.</p>
+HTML
+
+	echo "stubbed wasm assets in $WASM_DIR"
 fi

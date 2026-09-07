@@ -3,3 +3,4 @@
 # Committed by the Release workflow. Keep the bytes the build produced.
 toolgui-web/app/build/** -text
 toolgui-wails/frontend/dist/** -text
+toolgui-web/wasm/build/** -text

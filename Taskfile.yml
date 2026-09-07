@@ -81,15 +81,30 @@ tasks:
 
   # Static site for the wasm example, in toolgui/tgwasm/example/hello/build.
   build_wasm_hello:
-    vars:
-      OUT: toolgui/tgwasm/example/hello/build
     cmds:
       - task: asset_lib
       - task: asset_wasm
-      - ./scripts/build-wasm.sh ./toolgui/tgwasm/example/hello {{.OUT}}
+      - go run ./cmd/toolgui-wasm build -o toolgui/tgwasm/example/hello/build
+        ./toolgui/tgwasm/example/hello
 
-  # Serve it. Any static file server does; nothing runs on the server side.
+  # The same, served at localhost:3000. Nothing runs on the server side; the
+  # command is there so a .wasm arrives as application/wasm.
   run_wasm_hello:
     cmds:
-      - task: build_wasm_hello
-      - python3 -m http.server 3000 -d toolgui/tgwasm/example/hello/build
+      - task: asset_lib
+      - task: asset_wasm
+      - go run ./cmd/toolgui-wasm serve -o toolgui/tgwasm/example/hello/build
+        ./toolgui/tgwasm/example/hello
+
+  # The demo as a static site, the way GitHub Pages publishes it.
+  build_wasm_demo:
+    cmds:
+      - task: asset_lib
+      - task: asset_wasm
+      - go run ./cmd/toolgui-wasm build -o cmd/toolgui-demo/build ./cmd/toolgui-demo
+
+  run_wasm_demo:
+    cmds:
+      - task: asset_lib
+      - task: asset_wasm
+      - go run ./cmd/toolgui-wasm serve -o cmd/toolgui-demo/build ./cmd/toolgui-demo
