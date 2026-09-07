@@ -97,7 +97,7 @@ func (app *App) SetHashPageNameMode(v bool) {
 	app.hashPageNameMode = v
 }
 
-// SetTitle set the app title. The browser tab shows it after the page title,
+// SetTitle sets the app title. The browser tab shows it after the page title,
 // and it names the app in the web manifest and in the desktop window.
 //
 //	app.SetTitle("My Tool")

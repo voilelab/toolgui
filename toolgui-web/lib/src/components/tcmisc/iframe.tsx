@@ -45,14 +45,16 @@ export function TIframe({ node, update, upload, theme }: Props) {
       return
     }
 
-    const result = await upload(file)
+    // The guest's file is stored under the iframe, the component that owns
+    // the guest.
+    const result = await upload(file, node.props.id)
     post({
       type: 'upload_result',
       requestID: requestID,
       ok: result.ok,
       error: result.error,
     })
-  }, [post, upload])
+  }, [post, upload, node.props.id])
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {

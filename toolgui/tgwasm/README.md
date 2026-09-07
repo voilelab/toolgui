@@ -29,7 +29,7 @@ The Go program runs in a Web Worker and publishes `globalThis.toolgui`:
 | --- | --- |
 | `GET /api/app` | `toolgui.appConf()` |
 | update websocket | `toolgui.update(eventJSON)` + the `toolgui.onPack` callback |
-| `POST /api/files` | `toolgui.uploadFile(name, base64)` |
+| `POST /api/files` | `toolgui.uploadFile(componentID, name, base64)` |
 | a page load | `toolgui.start(pageName)` |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both

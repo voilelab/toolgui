@@ -2,6 +2,8 @@
 
 Subtitle component display a subtitle.
 
+The text supports [emoji shortcodes](emoji.md): `:tada:` renders as 🎉.
+
 ## API
 
 ```go

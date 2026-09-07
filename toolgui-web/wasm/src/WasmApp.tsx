@@ -103,7 +103,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
         update={(event: UpdateEvent) => {
           this.backend.update(event).catch((e) => { console.error(e) })
         }}
-        upload={(file) => this.backend.uploadFile(file)} />
+        upload={(file, id) => this.backend.uploadFile(file, id)} />
     )
   }
 }

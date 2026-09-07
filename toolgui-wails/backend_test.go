@@ -180,17 +180,56 @@ func TestToolGUIBeforeStart(t *testing.T) {
 		t.Fatal("expect ErrNoSession from Update before Start")
 	}
 
-	if backend.UploadFile("a.txt", "") != ErrNoSession {
-		t.Fatal("expect ErrNoSession from UploadFile before Start")
+	if _, err := backend.UploadFileStart("a.txt"); err != ErrNoSession {
+		t.Fatal("expect ErrNoSession from UploadFileStart before Start")
+	}
+
+	if backend.UploadFileFinish("f", "1") != ErrNoSession {
+		t.Fatal("expect ErrNoSession from UploadFileFinish before Start")
 	}
 }
 
-func TestToolGUIUploadFile(t *testing.T) {
-	const content = "hello file"
+// uploadFile sends content the way the frontend does: start, chunk, finish.
+func uploadFile(t *testing.T, backend *ToolGUI, componentID, name string, chunks ...string) {
+	t.Helper()
+
+	uploadID, err := backend.UploadFileStart(name)
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	for _, chunk := range chunks {
+		err = backend.UploadFileChunk(uploadID,
+			base64.StdEncoding.EncodeToString([]byte(chunk)))
+		if err != nil {
+			t.Fatalf("UploadFileChunk: %v", err)
+		}
+	}
+
+	if err := backend.UploadFileFinish(componentID, uploadID); err != nil {
+		t.Fatalf("UploadFileFinish: %v", err)
+	}
+}
+
+// TestToolGUIUploadFileChunk checks a file that crosses the bridge in pieces
+// lands whole, in the order the chunks were sent.
+func TestToolGUIUploadFileChunk(t *testing.T) {
+	const componentID = "fileupload_component_file"
 
 	files := make(chan []byte, 1)
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
-		files <- p.State.GetFile("a.txt")
+		file := p.State.GetFile(componentID)
+		if file == nil {
+			files <- nil
+			return nil
+		}
+
+		bs, err := file.Bytes()
+		if err != nil {
+			return err
+		}
+
+		files <- bs
 		return nil
 	}))
 	defer backend.shutdown(t.Context())
@@ -202,19 +241,179 @@ func TestToolGUIUploadFile(t *testing.T) {
 	events.waitResult(t)
 	<-files
 
-	err = backend.UploadFile("a.txt", base64.StdEncoding.EncodeToString([]byte(content)))
-	if err != nil {
-		t.Fatalf("UploadFile: %v", err)
-	}
+	uploadFile(t, backend, componentID, "a.txt", "hello ", "file")
 
-	err = backend.Update(`{"type":"input","id":"a.txt","value":"a.txt"}`)
+	err = backend.Update(`{"type":"input","id":"` + componentID + `","value":"a.txt"}`)
 	if err != nil {
 		t.Fatalf("Update: %v", err)
 	}
 	events.waitResult(t)
 
-	if got := string(<-files); got != content {
+	if got := string(<-files); got != "hello file" {
 		t.Fatalf("expect the uploaded file in the state, got %q", got)
+	}
+}
+
+// TestToolGUIUploadFileHidesUntilFinish checks the component sees nothing
+// until the last chunk lands, so a page that reruns mid-upload doesn't read
+// half a file.
+func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
+	const componentID = "fileupload_component_file"
+
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	uploadID, err := backend.UploadFileStart("a.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	err = backend.UploadFileChunk(uploadID,
+		base64.StdEncoding.EncodeToString([]byte("half")))
+	if err != nil {
+		t.Fatalf("UploadFileChunk: %v", err)
+	}
+
+	if backend.state.GetFile(componentID) != nil {
+		t.Error("expect no file under the component while it is still arriving")
+	}
+
+	if err := backend.UploadFileFinish(componentID, uploadID); err != nil {
+		t.Fatalf("UploadFileFinish: %v", err)
+	}
+
+	if backend.state.GetFile(componentID) == nil {
+		t.Error("expect the file under the component once it finished")
+	}
+}
+
+// TestToolGUIUploadFileOverlapping checks two picks racing on one component
+// keep their own content: the second replaces the first, whatever order the
+// chunks arrive in.
+func TestToolGUIUploadFileOverlapping(t *testing.T) {
+	const componentID = "fileupload_component_file"
+
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	firstID, err := backend.UploadFileStart("first.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	secondID, err := backend.UploadFileStart("second.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	chunk := func(uploadID, content string) {
+		t.Helper()
+
+		err := backend.UploadFileChunk(uploadID,
+			base64.StdEncoding.EncodeToString([]byte(content)))
+		if err != nil {
+			t.Fatalf("UploadFileChunk: %v", err)
+		}
+	}
+
+	chunk(firstID, "one")
+	chunk(secondID, "two")
+	chunk(firstID, "one")
+	chunk(secondID, "two")
+
+	if err := backend.UploadFileFinish(componentID, firstID); err != nil {
+		t.Fatalf("UploadFileFinish: %v", err)
+	}
+
+	if err := backend.UploadFileFinish(componentID, secondID); err != nil {
+		t.Fatalf("UploadFileFinish: %v", err)
+	}
+
+	file := backend.state.GetFile(componentID)
+	if file == nil {
+		t.Fatal("expect a file under the component")
+	}
+
+	bs, err := file.Bytes()
+	if err != nil {
+		t.Fatalf("Bytes: %v", err)
+	}
+
+	if string(bs) != "twotwo" {
+		t.Errorf("expect the second upload's own content, got %q", bs)
+	}
+
+	if file.Name() != "second.txt" {
+		t.Errorf("Name = %q, want second.txt", file.Name())
+	}
+}
+
+// TestToolGUIUploadFileUnknownID checks a chunk for an upload the session
+// doesn't know, which is what one sent after a session switch looks like, is
+// refused rather than written somewhere.
+func TestToolGUIUploadFileUnknownID(t *testing.T) {
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	err := backend.UploadFileChunk("no_such_upload",
+		base64.StdEncoding.EncodeToString([]byte("x")))
+	if err != ErrNoUpload {
+		t.Errorf("UploadFileChunk error = %v, want ErrNoUpload", err)
+	}
+
+	if err := backend.UploadFileFinish("comp", "no_such_upload"); err != ErrNoUpload {
+		t.Errorf("UploadFileFinish error = %v, want ErrNoUpload", err)
+	}
+}
+
+// TestToolGUIStartDropsPendingUploads checks a session switch drops the
+// uploads the old session had in flight.
+func TestToolGUIStartDropsPendingUploads(t *testing.T) {
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	uploadID, err := backend.UploadFileStart("a.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	err = backend.UploadFileChunk(uploadID,
+		base64.StdEncoding.EncodeToString([]byte("x")))
+	if err != ErrNoUpload {
+		t.Errorf("UploadFileChunk error = %v, want ErrNoUpload", err)
 	}
 }
 
@@ -230,7 +429,12 @@ func TestToolGUIUploadFileBadBase64(t *testing.T) {
 	}
 	events.waitResult(t)
 
-	if backend.UploadFile("a.txt", "not base64!") == nil {
+	uploadID, err := backend.UploadFileStart("a.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	if backend.UploadFileChunk(uploadID, "not base64!") == nil {
 		t.Fatal("expect an error for invalid base64")
 	}
 }

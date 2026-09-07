@@ -18,12 +18,14 @@
     "bulma": "1.0.0",
     "chart.js": "^4",
     "dompurify": "^3.4.14",
+    "emojibase-data": "^17.0.0",
     "katex": "^0.16.29",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-syntax-highlighter": "^15.5.0",
-    "typescript": "^5.5.2"
+    "typescript": "^5.5.2",
+    "unist-util-visit": "^5.0.0"
   },
   "scripts": {
     "build": "./node_modules/.bin/babel --out-dir build --source-maps --extensions \".js,.mjs,.jsx,.ts,.tsx\" src",
@@ -45,6 +47,7 @@
     "@babel/preset-env": "^7.29.7",
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
+    "@types/mdast": "^4.0.0",
     "@types/react-syntax-highlighter": "^15.5.13"
   }
 }

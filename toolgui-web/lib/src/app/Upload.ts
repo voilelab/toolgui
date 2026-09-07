@@ -5,4 +5,6 @@ export interface UploadResult {
   error?: string
 }
 
-export type UploadFunc = (file: File) => Promise<UploadResult>
+// componentID says which fileupload the file belongs to, so a transport can
+// store it per component instead of per file name.
+export type UploadFunc = (file: File, componentID: string) => Promise<UploadResult>
