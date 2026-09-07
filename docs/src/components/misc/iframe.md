@@ -11,28 +11,25 @@ page, its DOM, its cookies or its storage. It talks to the app only through
 ## API
 
 ```go
-func Iframe(c *tgframe.Container, html string, script bool)
-func IframeWithID(c *tgframe.Container, html string, script bool, id string)
-func IframeWithConf(c *tgframe.Container, html string, conf *IframeConf)
+func Iframe(c *tgframe.Container, html string, conf ...*IframeConf)
 func IframeValue(s *tgframe.State, id string, out any) error
 ```
 
 * `c` is the container to add the iframe to.
 * `html` is the html to show in the iframe.
-* `script` is used to allow the iframe to run javascript.
-* `id` is the user specific id.
+* `conf` is an optional configuration, at most one.
 
 `IframeConf`:
 
 | Field    | Description                                       | Default   |
 | -------- | ------------------------------------------------- | --------- |
+| `ID`     | The user specific id, from the embedded `tgframe.Base`. | hashed id |
 | `Script` | Allow the iframe to run javascript.               | `false`   |
 | `Width`  | CSS width of the iframe.                          | `100%`    |
 | `Height` | CSS height of the iframe, or `auto`.              | `150px`   |
-| `ID`     | The user specific id.                             | hashed id |
 
 `IframeValue` unmarshals the latest value the iframe sent through
-`window.toolgui.update` into `out`. The `id` is the one passed to `IframeWithID` or
+`window.toolgui.update` into `out`. The `id` is the one passed as
 `IframeConf.ID`, so an interactive iframe needs an explicit id — the default id
 is derived from a hash of the html.
 
@@ -43,7 +40,7 @@ is derived from a hash of the html.
 Show h1 element in the iframe.
 
 ```go
-tgcomp.Iframe(p.Main, "<h1>Hello World</h1>", true)
+tgcomp.Iframe(p.Main, "<h1>Hello World</h1>", &tgcomp.IframeConf{Script: true})
 ```
 
 ### Script
@@ -58,17 +55,16 @@ htmlWithScript := `
 	element.innerText = 'Hello world gen by script';
 </script>`
 
-tgcomp.IframeWithID(
+tgcomp.Iframe(
 	p.Main,
 	htmlWithScript,
-	true,
-	"iframe_with_script")
+	&tgcomp.IframeConf{Script: true, ID: "iframe_with_script"})
 ```
 
 ### Sizing
 
 ```go
-tgcomp.IframeWithConf(p.Main, "<h1>Hello World</h1>", &tgcomp.IframeConf{
+tgcomp.Iframe(p.Main, "<h1>Hello World</h1>", &tgcomp.IframeConf{
 	Script: true,
 	Width:  "300px",
 	Height: "400px",
@@ -94,7 +90,7 @@ opaque origin.
   Undefined until the first render.
 
 ```go
-tgcomp.IframeWithConf(
+tgcomp.Iframe(
 	p.Main,
 	`<button id="btn">Click me to update</button>
 	<script>
@@ -136,7 +132,7 @@ offscreen iframe stays at the default height and takes its real one as it
 becomes visible.
 
 ```go
-tgcomp.IframeWithConf(
+tgcomp.Iframe(
 	p.Main,
 	`<div id="out">waiting for render</div>
 	<script>

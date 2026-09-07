@@ -1,32 +1,45 @@
 # Number Input
 
-NumberInput create a number input and return its value.
+Number create a number input and return its value.
 
 ## API
 
 ### Interface
 
 ```go
-func NumberFloat64(s *tgframe.State, c *tgframe.Container, label string) *float64
-func NumberWithConfFloat64(s *tgframe.State, c *tgframe.Container, label string, conf *NumberConf[float64]) *float64
+type Numeric interface {
+	~int | ~int64 | ~float64
+}
 
-func NumberInt64(s *tgframe.State, c *tgframe.Container, label string) *int64
-func NumberWithConfInt64(s *tgframe.State, c *tgframe.Container, label string, conf *NumberConf[int64]) *int64
+func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T
 ```
 
 ### Parameters
 
-* `s` is State.
 * `c` is Parent container.
 * `label` is the label of the number input.
-* `conf` is the configuration of the number input.
+* `conf` is an optional configuration, at most one.
 
-`NumberConf` is generic, so it has no alias in `tgcomp`.
+`Number` is one function for every numeric type it supports, so the type comes
+from the conf or from an explicit instantiation:
+
+```go
+count := tgcomp.Number[int](p.Main, "Count")
+ratio := tgcomp.Number(p.Main, "Ratio", &tcinput.NumberConf[float64]{})
+```
+
+The `~` in the constraint lets a page keep its own named type all the way in,
+so `type Rating int` is a `Number[Rating]`.
+
+`NumberConf` is generic, so `tgcomp.NumberConf` is an alias you can name but
+the methods below live on `tcinput.NumberConf`.
 Import it from `github.com/voilelab/toolgui/toolgui/tgcomp/tcinput`.
 
 ```go
 // NumberConf is the configuration for a number component.
-type NumberConf[T float64 | int64] struct {
+type NumberConf[T Numeric] struct {
+	tgframe.Base // ID
+
 	// Default is the default value of the number component.
 	Default *T
 
@@ -47,36 +60,21 @@ type NumberConf[T float64 | int64] struct {
 
 	// Disabled is the disabled state of the number component.
 	Disabled bool
-
-	// ID is the ID of the number component.
-	ID string
 }
 
-func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T] {
-	c.Default = &v
-	return c
-}
-
-func (c *NumberConf[T]) SetMin(v T) *NumberConf[T] {
-	c.Min = &v
-	return c
-}
-
-func (c *NumberConf[T]) SetMax(v T) *NumberConf[T] {
-	c.Max = &v
-	return c
-}
-
-func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
-	c.Step = &v
-	return c
-}
+func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T]
+func (c *NumberConf[T]) SetMin(v T) *NumberConf[T]
+func (c *NumberConf[T]) SetMax(v T) *NumberConf[T]
+func (c *NumberConf[T]) SetStep(v T) *NumberConf[T]
 ```
+
+An integral `T` cannot step by 0, so an explicit zero step means 1. The value
+comes back from the client as a JSON number, so an integral `T` truncates it.
 
 ## Example
 
 ```go
-numberValue := tgcomp.NumberWithConfFloat64(p.State, numberCompCol, "Number",
+numberValue := tgcomp.Number(numberCompCol, "Number",
 	(&tcinput.NumberConf[float64]{
 		Placeholder: "input the value here",
 		Color:       tcutil.ColorSuccess,
@@ -87,5 +85,6 @@ if numberValue != nil {
 	valStr = fmt.Sprint(*numberValue)
 }
 
-tgcomp.TextWithID(numberCompCol, "Value: "+valStr, "number_result")
+tgcomp.Text(numberCompCol, "Value: "+valStr,
+	&tgcomp.TextConf{ID: "number_result"})
 ```

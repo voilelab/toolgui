@@ -38,43 +38,32 @@ var MessageWarning = tcmisc.MessageWarning
 // MessageDanger is a component that displays a message with danger color.
 var MessageDanger = tcmisc.MessageDanger
 
-// MessageConf is the configuration for the Message component.
+// MessageConf is the configuration for the Message components.
 type MessageConf = tcmisc.MessageConf
-
-// MessageWithConf shows a message to the user with a specific configuration.
-var MessageWithConf = tcmisc.MessageWithConf
 
 // ProgressBar shows a progress bar to the user.
 var ProgressBar = tcmisc.ProgressBar
 
-// ProgressBarWithID creates a progress bar with a user specific id.
-var ProgressBarWithID = tcmisc.ProgressBarWithID
+// ProgressBarConf is the configuration for the ProgressBar component.
+type ProgressBarConf = tcmisc.ProgressBarConf
 
-// Iframe and IframeWithID is experimental component, their feature is not stable.
-// Use them with caution.
-
-// Iframe show a iframe.
-// script is used to allow the iframe to run javascript.
+// Iframe is an experimental component, its feature is not stable.
+// Use it with caution.
+//
+// Iframe shows an iframe. IframeConf.Script allows it to run JavaScript.
 var Iframe = tcmisc.Iframe
-
-// IframeWithID create a iframe component with a user specific id.
-// script is used to allow the iframe to run javascript.
-var IframeWithID = tcmisc.IframeWithID
 
 // IframeConf is the configuration for the Iframe component.
 type IframeConf = tcmisc.IframeConf
 
-// IframeWithConf show a iframe with a custom configuration.
-var IframeWithConf = tcmisc.IframeWithConf
-
 // IframeValue reads the latest value an iframe sent through window.update.
 var IframeValue = tcmisc.IframeValue
 
-// Html adds a html component to the container.
+// Html adds an HTML component to the container.
 var Html = tcmisc.Html
 
-// HtmlWithID adds a html component to the container with a specific id.
-var HtmlWithID = tcmisc.HtmlWithID
+// HtmlConf is the configuration for the Html component.
+type HtmlConf = tcmisc.HtmlConf
 
 // Plugin runs a script in a sandboxed frame and hands it props. The script is
 // served from the app, see [tgframe.App.AddPluginAssets].
@@ -82,9 +71,6 @@ var Plugin = tcmisc.Plugin
 
 // PluginConf is the configuration for the Plugin component.
 type PluginConf = tcmisc.PluginConf
-
-// PluginWithConf runs a plugin with a custom configuration.
-var PluginWithConf = tcmisc.PluginWithConf
 
 // PluginValue reads the latest value a plugin sent through
 // window.toolgui.update.

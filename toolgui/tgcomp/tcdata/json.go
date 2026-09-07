@@ -27,17 +27,19 @@ func newJSONComponent(s string) *jsonComponent {
 	}
 }
 
+// JSONConf is the configuration for the JSON component.
+type JSONConf struct {
+	tgframe.Base
+}
+
 // JSON create a JSON viewer for v.
 // If v is a string, it will be treated as a JSON string.
 // If v is not a string, it will be serialized to a JSON string.
-func JSON(c *tgframe.Container, v any) {
-	c.AddComponent(newJSONComponent(serializeJSON(v)))
-}
+func JSON(c *tgframe.Container, v any, conf ...*JSONConf) {
+	cf := tgframe.OneConf("JSON", conf)
 
-// JSONWithID create a JSON viewer with a user specific id.
-func JSONWithID(c *tgframe.Container, v any, id string) {
 	comp := newJSONComponent(serializeJSON(v))
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }
 

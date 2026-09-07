@@ -34,8 +34,7 @@ func (r *runState) registerID(comp Component) {
 		if r.err == nil {
 			r.err = tgutil.Errorf(
 				"%w: `%s`. Two components cannot share an id; give one of them"+
-					" its own through the component's id argument, its WithID"+
-					" variant or its Conf.ID.",
+					" its own through the component's Conf.ID.",
 				ErrDuplicatedID, id)
 		}
 		return

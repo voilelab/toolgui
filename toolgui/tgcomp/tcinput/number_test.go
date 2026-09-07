@@ -12,7 +12,7 @@ import (
 // there for.
 type Rating int
 
-func spikeContainer(state *tgframe.State, packs *[]tgframe.NotifyPack) *tgframe.Container {
+func testContainer(state *tgframe.State, packs *[]tgframe.NotifyPack) *tgframe.Container {
 	return tgframe.NewContainer("test", state, func(pack tgframe.NotifyPack) {
 		*packs = append(*packs, pack)
 	})
@@ -29,7 +29,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 2.5)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[float64](spikeContainer(state, &packs), "n")
+		got := tcinput.Number[float64](testContainer(state, &packs), "n")
 		if got == nil || *got != 2.5 {
 			t.Fatalf("got %v, want 2.5", got)
 		}
@@ -39,7 +39,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[int64](spikeContainer(state, &packs), "n")
+		got := tcinput.Number[int64](testContainer(state, &packs), "n")
 		if got == nil || *got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
@@ -50,7 +50,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[int](spikeContainer(state, &packs), "n")
+		got := tcinput.Number[int](testContainer(state, &packs), "n")
 		if got == nil || *got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
@@ -60,7 +60,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set(id, 4.0)
 		var packs []tgframe.NotifyPack
-		got := tcinput.Number[Rating](spikeContainer(state, &packs), "n")
+		got := tcinput.Number[Rating](testContainer(state, &packs), "n")
 		if got == nil || *got != Rating(4) {
 			t.Fatalf("got %v, want Rating(4)", got)
 		}
@@ -75,7 +75,7 @@ func TestNumberTruncatesTowardsTheIntegralType(t *testing.T) {
 	state.Set("number_component_n", 2.9)
 
 	var packs []tgframe.NotifyPack
-	got := tcinput.Number[int](spikeContainer(state, &packs), "n")
+	got := tcinput.Number[int](testContainer(state, &packs), "n")
 	if got == nil || *got != 2 {
 		t.Fatalf("got %v, want 2", got)
 	}
@@ -103,7 +103,7 @@ func TestNumberStepsByOneForIntegralTypes(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var packs []tgframe.NotifyPack
-			tc.call(spikeContainer(tgframe.NewState(), &packs))
+			tc.call(testContainer(tgframe.NewState(), &packs))
 
 			if len(packs) != 1 {
 				t.Fatalf("got %d packs, want 1", len(packs))
@@ -137,7 +137,7 @@ func TestNumberDoesNotWriteBackToTheCallersConf(t *testing.T) {
 	conf := (&tcinput.NumberConf[int]{}).SetStep(0)
 
 	var packs []tgframe.NotifyPack
-	tcinput.Number(spikeContainer(tgframe.NewState(), &packs), "n", conf)
+	tcinput.Number(testContainer(tgframe.NewState(), &packs), "n", conf)
 
 	if *conf.Step != 0 {
 		t.Errorf("conf.Step = %v, want 0", *conf.Step)
@@ -154,7 +154,7 @@ func TestNumberInfersTFromExplicitInstantiation(t *testing.T) {
 	state.Set("number_component_n", 3.0)
 
 	var packs []tgframe.NotifyPack
-	c := spikeContainer(state, &packs)
+	c := testContainer(state, &packs)
 
 	// No conf, T from the instantiation.
 	if got := tcinput.Number[int](c, "n"); got == nil || *got != 3 {
@@ -183,7 +183,7 @@ func TestNumberConfEmbedsBase(t *testing.T) {
 	state.Set("number_component_count", 5.0)
 
 	var packs []tgframe.NotifyPack
-	got := tcinput.Number(spikeContainer(state, &packs), "n", conf)
+	got := tcinput.Number(testContainer(state, &packs), "n", conf)
 	if got == nil || *got != 5 {
 		t.Fatalf("got %v, want 5 read under the conf's id", got)
 	}

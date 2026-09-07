@@ -5,12 +5,18 @@ Divider component display a horizontal line.
 ## API
 
 ```go
-func Divider(c *tgframe.Container)
-func DividerWithID(c *tgframe.Container, id string)
+func Divider(c *tgframe.Container, conf ...*DividerConf)
 ```
 
 * `c` is Parent container.
-* `id` is a user specific element id.
+* `conf` is an optional configuration, at most one.
+
+```go
+// DividerConf is the configuration for the Divider component.
+type DividerConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 

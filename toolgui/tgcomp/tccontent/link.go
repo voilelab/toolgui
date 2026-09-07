@@ -23,14 +23,16 @@ func newLinkComponent(text, url string) *linkComponent {
 	}
 }
 
-// Link create a link component.
-func Link(c *tgframe.Container, text, url string) {
-	c.AddComponent(newLinkComponent(text, url))
+// LinkConf is the configuration for the Link component.
+type LinkConf struct {
+	tgframe.Base
 }
 
-// LinkWithID create a link component with a user specific id.
-func LinkWithID(c *tgframe.Container, text, url, id string) {
+// Link create a link component.
+func Link(c *tgframe.Container, text, url string, conf ...*LinkConf) {
+	cf := tgframe.OneConf("Link", conf)
+
 	comp := newLinkComponent(text, url)
-	comp.SetID(id)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }

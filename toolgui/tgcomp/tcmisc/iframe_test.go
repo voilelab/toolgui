@@ -40,7 +40,7 @@ func addIframe(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 
 func TestIframeDefaultSize(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		Iframe(c, "<b>hi</b>", true)
+		Iframe(c, "<b>hi</b>", &IframeConf{Script: true})
 	})
 
 	if props["width"] != defaultIframeWidth {
@@ -52,9 +52,9 @@ func TestIframeDefaultSize(t *testing.T) {
 	}
 }
 
-func TestIframeWithConf(t *testing.T) {
+func TestIframeConfDrivesTheProps(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		IframeWithConf(c, "<b>hi</b>", &IframeConf{
+		Iframe(c, "<b>hi</b>", &IframeConf{
 			Script: true,
 			Width:  "300px",
 			Height: "400px",
@@ -83,7 +83,7 @@ func TestIframeWithConf(t *testing.T) {
 // on the event, not the bare user id.
 func TestIframeValueRoundTrip(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
-		IframeWithID(c, "<b>hi</b>", true, "my_iframe")
+		Iframe(c, "<b>hi</b>", &IframeConf{Script: true, ID: "my_iframe"})
 	})
 
 	// What the frontend sends back: the iframe's own component id.

@@ -96,7 +96,7 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 
 // Number create a number input and return its value.
 func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Number", conf)
 
 	comp := newNumberComponent[T](label)
 	comp.Placeholder = cf.Placeholder

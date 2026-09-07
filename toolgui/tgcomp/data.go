@@ -5,11 +5,14 @@ import "github.com/voilelab/toolgui/toolgui/tgcomp/tcdata"
 // JSON create a JSON viewer for v.
 var JSON = tcdata.JSON
 
-// JSONWithID create a JSON viewer with a user specific id.
-var JSONWithID = tcdata.JSONWithID
+// JSONConf is the configuration for the JSON component.
+type JSONConf = tcdata.JSONConf
 
 // Table create a table by heading(head) and values(table).
 var Table = tcdata.Table
+
+// TableConf is the configuration for the Table component.
+type TableConf = tcdata.TableConf
 
 // ChartKind is the shape a chart is drawn in.
 type ChartKind = tcdata.ChartKind
@@ -31,6 +34,9 @@ type ChartSeries = tcdata.ChartSeries
 // ChartConf is the configuration for the chart components.
 type ChartConf = tcdata.ChartConf
 
+// Chart create a chart of the kind ChartConf.Kind names.
+var Chart = tcdata.Chart
+
 // LineChart create a line chart, one line per series.
 var LineChart = tcdata.LineChart
 
@@ -39,6 +45,3 @@ var BarChart = tcdata.BarChart
 
 // AreaChart create an area chart, one filled line per series.
 var AreaChart = tcdata.AreaChart
-
-// ChartWithConf create a chart with a custom configuration.
-var ChartWithConf = tcdata.ChartWithConf

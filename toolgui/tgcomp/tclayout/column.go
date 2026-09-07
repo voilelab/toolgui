@@ -3,7 +3,6 @@ package tclayout
 import (
 	"fmt"
 
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -15,47 +14,13 @@ type columnComponent struct {
 	Equal bool `json:"equal"`
 }
 
-func newColumnComponent(id string) *columnComponent {
+func newColumnComponent(equal bool) *columnComponent {
 	return &columnComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: columnComponentName,
-			ID:   tcutil.NormalID(columnComponentName, id),
 		},
+		Equal: equal,
 	}
-}
-
-// Column create N columns.
-func Column(c *tgframe.Container, id string, n uint) []*tgframe.Container {
-	if n == 0 {
-		panic("number of columns should > 0")
-	}
-
-	colsComp := c.AddComponent(newColumnComponent(id))
-
-	cols := make([]*tgframe.Container, n)
-	for i := range n {
-		cols[i] = c.AddContainerTo(colsComp, fmt.Sprint(i), int(i))
-	}
-
-	return cols
-}
-
-// Column1 create 1 columns.
-func Column1(c *tgframe.Container, id string) *tgframe.Container {
-	cols := Column(c, id, 1)
-	return cols[0]
-}
-
-// Column2 create 2 columns.
-func Column2(c *tgframe.Container, id string) (*tgframe.Container, *tgframe.Container) {
-	cols := Column(c, id, 2)
-	return cols[0], cols[1]
-}
-
-// Column3 create 3 columns.
-func Column3(c *tgframe.Container, id string) (*tgframe.Container, *tgframe.Container, *tgframe.Container) {
-	cols := Column(c, id, 3)
-	return cols[0], cols[1], cols[2]
 }
 
 // ColumnConf is the configuration for the column components. The containers a
@@ -65,18 +30,11 @@ type ColumnConf struct {
 	tgframe.Base
 }
 
-// EqColumn create N columns with equal width.
-func EqColumn(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
-	if n == 0 || n > 5 {
-		panic("number of columns should be 1, 2, 3, 4, 5")
-	}
-
-	cf := tgframe.OneConf(conf)
-
-	comp := &columnComponent{
-		BaseComponent: &tgframe.BaseComponent{Name: columnComponentName},
-		Equal:         true,
-	}
+// column adds a column component of n columns and returns their containers.
+// The two entry points differ only in whether the columns share the width
+// evenly, so the body is written once here.
+func column(c *tgframe.Container, n uint, equal bool, cf *ColumnConf) []*tgframe.Container {
+	comp := newColumnComponent(equal)
 	tgframe.SetConfID(comp, cf)
 
 	colsComp := c.AddComponent(comp)
@@ -87,6 +45,44 @@ func EqColumn(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Cont
 	}
 
 	return cols
+}
+
+// Column create N columns, each as wide as its content needs.
+func Column(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
+	if n == 0 {
+		panic("number of columns should > 0")
+	}
+
+	return column(c, n, false, tgframe.OneConf("Column", conf))
+}
+
+// Column1 create 1 column.
+func Column1(c *tgframe.Container, conf ...*ColumnConf) *tgframe.Container {
+	cols := Column(c, 1, conf...)
+	return cols[0]
+}
+
+// Column2 create 2 columns.
+func Column2(c *tgframe.Container, conf ...*ColumnConf) (*tgframe.Container, *tgframe.Container) {
+	cols := Column(c, 2, conf...)
+	return cols[0], cols[1]
+}
+
+// Column3 create 3 columns.
+func Column3(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
+
+	cols := Column(c, 3, conf...)
+	return cols[0], cols[1], cols[2]
+}
+
+// EqColumn create N columns with equal width.
+func EqColumn(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
+	if n == 0 || n > 5 {
+		panic("number of columns should be 1, 2, 3, 4, 5")
+	}
+
+	return column(c, n, true, tgframe.OneConf("EqColumn", conf))
 }
 
 // EqColumn1 create 1 column.

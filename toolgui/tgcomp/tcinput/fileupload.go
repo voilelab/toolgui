@@ -57,14 +57,22 @@ func (f *FileObject) Bytes() ([]byte, error) {
 	return f.file.Bytes()
 }
 
+// FileuploadConf is the configuration for the Fileupload component.
+type FileuploadConf struct {
+	tgframe.Base
+}
+
 // Fileupload create a fileupload and return its selected file.
 // Return nil if no file is selected.
-func Fileupload(s *tgframe.State, c *tgframe.Container, label, accept string) *FileObject {
+func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadConf) *FileObject {
+	cf := tgframe.OneConf("Fileupload", conf)
+
 	comp := newFileuploadComponent(label, accept)
+	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
 	var fileObj *FileObject
-	err := s.GetObject(comp.ID, &fileObj)
+	err := c.State.GetObject(comp.ID, &fileObj)
 	if err != nil {
 		panic(err)
 	}
@@ -75,7 +83,7 @@ func Fileupload(s *tgframe.State, c *tgframe.Container, label, accept string) *F
 
 	// The content is stored under the component, so a second fileupload that
 	// takes a file of the same name doesn't take this one's content with it.
-	fileObj.file = s.GetFile(comp.ID)
+	fileObj.file = c.State.GetFile(comp.ID)
 	if fileObj.file == nil {
 		// The pick reached the state but the upload didn't.
 		return nil
