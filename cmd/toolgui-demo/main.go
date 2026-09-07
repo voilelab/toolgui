@@ -639,6 +639,11 @@ func FuncCachePage(p *tgframe.Params) error {
 
 func main() {
 	app := tgframe.NewApp()
+
+	// The title trails the page title in the browser tab, and names the app
+	// in the manifest below unless that gives its own name.
+	app.SetTitle("ToolGUI Demo")
+
 	app.AddPage("index", "Index", MainPage)
 	app.AddPage("content", "Content", ContentPage)
 	app.AddPage("data", "Data", DataPage)
@@ -650,6 +655,22 @@ func main() {
 	app.AddPage("code", "Source Code", SourceCodePage)
 
 	e := tgexec.NewWebExecutor(app)
+
+	// What a browser reads when the demo is installed to a home screen.
+	e.SetManifest(&tgexec.Manifest{
+		Name:        "ToolGUI Demo",
+		ShortName:   "ToolGUI",
+		Description: "A demo of the components ToolGUI provides.",
+		Icons: []tgexec.ManifestIcon{
+			{Src: "logo192.png", Type: "image/png", Sizes: "192x192"},
+			{Src: "logo512.png", Type: "image/png", Sizes: "512x512"},
+		},
+		StartURL:        ".",
+		Display:         "standalone",
+		ThemeColor:      "#000000",
+		BackgroundColor: "#ffffff",
+	})
+
 	log.Println("Starting service...")
 	err := e.StartService(":3000")
 	if err != nil {

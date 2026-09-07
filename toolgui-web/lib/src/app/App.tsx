@@ -41,6 +41,20 @@ function pageNameFromLocation(appConf: AppConf): string {
   return ''
 }
 
+// documentTitle puts the app title after the page's, so a tab says which page
+// of which app it holds. Either one alone stands on its own.
+function documentTitle(appConf: AppConf, pageTitle: string): string {
+  if (!appConf.title) {
+    return pageTitle
+  }
+
+  if (!pageTitle) {
+    return appConf.title
+  }
+
+  return `${pageTitle} - ${appConf.title}`
+}
+
 const NOTIFY_TYPE_CREATE = 1
 const NOTIFY_TYPE_UPDATE = 2
 const NOTIFY_TYPE_DELETE = 3
@@ -77,12 +91,12 @@ export class App extends Component<AppProps, AppState> {
     const curconf = this.props.appConf.page_confs[pageName]
     let pageFound = true
     if (curconf) {
-      document.title = curconf.title
+      document.title = documentTitle(props.appConf, curconf.title)
       if (curconf.emoji) {
         setIcon(curconf.emoji)
       }
     } else {
-      document.title = 'Page not found'
+      document.title = documentTitle(props.appConf, 'Page not found')
       setIcon('❓')
       pageFound = false
     }

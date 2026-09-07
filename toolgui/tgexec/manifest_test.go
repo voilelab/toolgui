@@ -52,6 +52,40 @@ func TestManifestDefault(t *testing.T) {
 	}
 }
 
+// The app title names the default manifest, so a titled app doesn't have to
+// write one out to be named.
+func TestManifestDefaultTakesAppTitle(t *testing.T) {
+	app := tgframe.NewApp()
+	app.SetTitle("My Tool")
+	app.AddPage("index", "Index", func(p *tgframe.Params) error { return nil })
+
+	e := NewWebExecutor(app)
+	t.Cleanup(e.Destroy)
+
+	mux, err := e.Mux()
+	if err != nil {
+		t.Fatalf("Mux: %v", err)
+	}
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	_, members := getManifest(t, srv.URL)
+
+	if members["name"] != "My Tool" {
+		t.Errorf("name = %v, want %q", members["name"], "My Tool")
+	}
+
+	if members["short_name"] != "My Tool" {
+		t.Errorf("short_name = %v, want %q", members["short_name"], "My Tool")
+	}
+
+	// The rest of the default is still there.
+	if members["display"] != "standalone" {
+		t.Errorf("display = %v, want %q", members["display"], "standalone")
+	}
+}
+
 // What the app sets is what the browser reads.
 func TestManifestSet(t *testing.T) {
 	srv, e := newTestServer(t)

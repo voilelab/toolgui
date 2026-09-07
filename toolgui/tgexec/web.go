@@ -37,6 +37,7 @@ type WebExecutor struct {
 
 	app *tgframe.App
 
+	// manifest is nil until the app sets one, and nil serves the default.
 	manifest *Manifest
 }
 
@@ -54,13 +55,24 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 			5*time.Minute),
 
 		app: app,
-
-		manifest: DefaultManifest(),
 	}
 }
 
+// defaultManifest return the manifest served when the app sets none. The app
+// title names it, so an app that sets a title doesn't repeat it here.
+func (e *WebExecutor) defaultManifest() *Manifest {
+	manifest := DefaultManifest()
+
+	if title := e.app.AppConf().Title; title != "" {
+		manifest.Name = title
+		manifest.ShortName = title
+	}
+
+	return manifest
+}
+
 // SetManifest set the web app manifest served at /manifest.json. A nil
-// manifest restores [DefaultManifest].
+// manifest goes back to the default, which [tgframe.App.SetTitle] names.
 //
 //	e.SetManifest(&tgexec.Manifest{
 //		Name:      "My Tool",
@@ -68,10 +80,6 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 //		Display:   "standalone",
 //	})
 func (e *WebExecutor) SetManifest(manifest *Manifest) {
-	if manifest == nil {
-		manifest = DefaultManifest()
-	}
-
 	e.manifest = manifest
 }
 
@@ -228,7 +236,12 @@ func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request) {
-	bs, err := json.Marshal(e.manifest)
+	manifest := e.manifest
+	if manifest == nil {
+		manifest = e.defaultManifest()
+	}
+
+	bs, err := json.Marshal(manifest)
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 		slog.Error("marshal manifest", "error", err)

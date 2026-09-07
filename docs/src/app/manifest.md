@@ -20,8 +20,9 @@ e.StartService(":3001")
 ```
 
 Empty fields are left out of the served json, so the manifest holds only what
-the app sets. `SetManifest(nil)` goes back to `tgexec.DefaultManifest()`, which
-is also what an app that never calls it serves.
+the app sets. `SetManifest(nil)` goes back to the default, which an app that
+never calls it serves too: `tgexec.DefaultManifest()`, named after the
+[app title](index.md#title) when it has one.
 
 ## Other members
 

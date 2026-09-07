@@ -49,7 +49,8 @@ type Manifest struct {
 	Extra map[string]any `json:"-"`
 }
 
-// DefaultManifest return the manifest served when the app sets none.
+// DefaultManifest return the base of the manifest served when the app sets
+// none. The app title, when it has one, names that manifest.
 func DefaultManifest() *Manifest {
 	return &Manifest{
 		Name:      "ToolGUI App",
