@@ -19,6 +19,31 @@ mermaid runtime that `book.toml` points at; it is gitignored rather than
 committed, so run it once after cloning or `mdbook build` fails on the missing
 files. Re-run it after upgrading `mdbook-mermaid` to refresh them.
 
+## Diagrams
+
+Most diagrams are ```` ```mermaid ```` blocks, drawn in the hand-drawn look:
+
+````
+```mermaid
+---
+config:
+  look: handDrawn
+---
+graph TD
+    ...
+```
+````
+
+The Server-Client architecture diagram is laid out by hand instead, because
+dagre will not keep its two layers apart. Its source is
+`src/architecture/server-client.excalidraw`: open it at
+[excalidraw.com](https://excalidraw.com), move things, then `File` → `Export
+image` → `SVG`, with background off, over `src/architecture/server-client.svg`.
+Save the scene back over the `.excalidraw` too, so the two stay in step.
+
+Export in light mode only. `diagrams.css` inverts the SVG for the dark themes,
+which is the same filter Excalidraw's own dark export writes.
+
 ## Publishing
 
 `.github/workflows/docs.yml` publishes to GitHub Pages from `main`, which the

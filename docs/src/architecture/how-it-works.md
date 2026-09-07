@@ -42,28 +42,7 @@ in `p.State` with key `Click me`.
 
 ## Server-Client Architecture
 
-```mermaid
-graph LR
-    subgraph state["State Layer"]
-        State
-        StateStorage["State Storage"]
-    end
-    subgraph chain["Request Chain"]
-        Client
-        Executor
-        Session
-        PageFunc["Page Func"]
-    end
-    State <--> Client
-    Executor -- "state ID" --> StateStorage
-    StateStorage -- "State" --> Executor
-    Client -- "event" --> Executor
-    Executor -- "event" --> Session
-    Session -- "State" --> PageFunc
-    PageFunc -- "notify" --> Session
-    Session -- "packs" --> Executor
-    Executor -- "packs" --> Client
-```
+![Server-client architecture](server-client.svg)
 
 Server-Client need to handle a more complex part: multiple state for multiple users.
 Hence we need a `state_id` for each state.
