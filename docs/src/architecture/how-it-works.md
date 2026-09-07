@@ -2,7 +2,13 @@
 
 ## Basic
 
-![ui-state-pagefunc](ui-state-pagefunc.png)
+```mermaid
+graph LR
+    UI -- "value update" --> State
+    State -- "get value" --> PageFunc["Page Func"]
+    UI -- "rerun" --> PageFunc
+    PageFunc -- "notify update" --> UI
+```
 
 The key concept is that in the **Page Function**,
 the UI component interact immediately with the running logic.
