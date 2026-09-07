@@ -84,7 +84,9 @@ func build(out, pkg string) error {
 
 // writeFrontend unpack the embedded browser frontend into out.
 func writeFrontend(out string) error {
-	return fs.WalkDir(wasmweb.GetAssets(), ".", func(name string, entry fs.DirEntry, err error) error {
+	assets := wasmweb.GetAssets()
+
+	return fs.WalkDir(assets, ".", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -94,7 +96,7 @@ func writeFrontend(out string) error {
 			return os.MkdirAll(target, 0o755)
 		}
 
-		bs, err := fs.ReadFile(wasmweb.GetAssets(), name)
+		bs, err := fs.ReadFile(assets, name)
 		if err != nil {
 			return err
 		}
@@ -134,12 +136,14 @@ func copyWasmExec(out string) error {
 
 	bs, err := os.ReadFile(src)
 	if err != nil {
-		return tgutil.Errorf("%w", err)
+		return tgutil.Errorf("read %s: %w", src, err)
 	}
 
-	err = os.WriteFile(filepath.Join(out, "wasm_exec.js"), bs, 0o644)
+	dst := filepath.Join(out, "wasm_exec.js")
+
+	err = os.WriteFile(dst, bs, 0o644)
 	if err != nil {
-		return tgutil.Errorf("%w", err)
+		return tgutil.Errorf("write %s: %w", dst, err)
 	}
 
 	return nil
