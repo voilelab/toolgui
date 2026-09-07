@@ -19,6 +19,7 @@ import { AppConf } from './AppConf';
 import { AppSideNav } from './AppSideNav';
 import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
+import { emojize } from '../util/emoji';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
 import { ThemeMode, applyThemeMode, initialThemeMode, storeThemeMode } from '../util/theme';
@@ -79,7 +80,7 @@ export class App extends Component<AppProps, AppState> {
     if (curconf) {
       document.title = curconf.title
       if (curconf.emoji) {
-        setIcon(curconf.emoji)
+        setIcon(emojize(curconf.emoji))
       }
     } else {
       document.title = 'Page not found'
