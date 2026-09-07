@@ -26,11 +26,18 @@ export function TTab({ node, update, upload, theme }: Props) {
         </ul>
       </div>
       <div>
-        <TComponent key={node.children[activeIndex].reactKey}
-          node={node.children[activeIndex]}
-          update={update}
-          upload={upload}
-          theme={theme} />
+        {
+          // Every tab stays mounted and the inactive ones are hidden, so
+          // switching away does not throw away what a tab holds.
+          node.children.map((child, index) => (
+            <div key={child.reactKey} hidden={index !== activeIndex}>
+              <TComponent node={child}
+                update={update}
+                upload={upload}
+                theme={theme} />
+            </div>
+          ))
+        }
       </div>
     </>
   )

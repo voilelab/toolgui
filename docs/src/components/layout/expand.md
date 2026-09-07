@@ -17,3 +17,9 @@ func Expand(c *tgframe.Container, title string, expanded bool) *tgframe.Containe
 ```go
 tgcomp.Expand(c, "Expand", true)
 ```
+
+## Rendering
+
+The contents are built on the first open and then stay rendered, hidden while
+collapsed. An expander that was never opened costs nothing, and collapsing one
+that was opened keeps what it holds.
