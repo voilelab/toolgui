@@ -11,10 +11,10 @@ type Container struct {
 
 	SendNotifyPack SendNotifyPackFunc `json:"-"`
 
-	// State is the session state of the run this container belongs to. Every
-	// container of a run carries the same one, so a component reads and writes
-	// state through the container it is added to instead of being handed a
-	// State of its own. Nil outside a run.
+	// State is the session state a component added here reads and writes,
+	// instead of being handed a State of its own. [App.Run] gives every
+	// container of a run the same one; a container built directly through
+	// [NewContainer] carries whatever its caller passed, which may be nil.
 	State *State `json:"-"`
 
 	// counter is the index the next component added here gets. Containers are

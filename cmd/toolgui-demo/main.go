@@ -591,7 +591,7 @@ func MiscPage(p *tgframe.Params) error {
 		return errors.New("new error")
 	}
 	tgcomp.Code(errorCodeCol, `if tgcomp.Button(errorCompCol, "Show error") {
-	return errors.New("New error")
+	return errors.New("new error")
 }`)
 
 	tgcomp.Divider(p.Main)
