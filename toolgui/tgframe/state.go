@@ -89,6 +89,9 @@ func (s *State) Set(key string, v any) {
 //	todoList := state.Default("todoList", &TODOList{}).(*TODOList)
 //
 // ```
+//
+// The cast is on the caller, and panics when the key holds another type.
+// Prefer [Default], which does the same without one.
 func (s *State) Default(key string, v any) any {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
@@ -124,60 +127,132 @@ func (s *State) GetObject(key string, out any) error {
 	return nil
 }
 
+// toNumber reads val as a float64, whichever numeric type it was stored as.
+// A value can reach the state by two routes: the frontend sends every number
+// as JSON, so it lands as a float64, while user code writing a default with
+// [State.Set] writes whatever Go type it had at hand. Both have to read back
+// the same. A string is not a number here — it is a mistake in the caller,
+// not a format to parse.
+func toNumber(val any) (float64, bool) {
+	switch v := val.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int8:
+		return float64(v), true
+	case int16:
+		return float64(v), true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	case uint8:
+		return float64(v), true
+	case uint16:
+		return float64(v), true
+	case uint32:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	default:
+		return 0, false
+	}
+}
+
+// Get returns the value stored under key as a T. The second result is false
+// when the key holds nothing, or holds a value of another type — reading a
+// key the user filled in by hand never panics.
+//
+// It is a function rather than a method because Go methods cannot take type
+// parameters.
+func Get[T any](s *State, key string) (T, bool) {
+	s.rwLock.RLock()
+	defer s.rwLock.RUnlock()
+
+	v, ok := s.values[key].(T)
+	return v, ok
+}
+
+// Default returns a pointer to the T stored under key, storing v there first
+// when the key holds nothing of that type. The state keeps the pointer, so
+// what the caller writes through it is what the next run reads back:
+//
+//	todoList := tgframe.Default(p.State, "todoList", TODOList{})
+//	todoList.Items = append(todoList.Items, item)
+//
+// A key holding some other type is overwritten rather than reported: the
+// alternative is handing back a pointer whose writes go nowhere.
+func Default[T any](s *State, key string, v T) *T {
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	if p, ok := s.values[key].(*T); ok {
+		return p
+	}
+
+	s.values[key] = &v
+	return &v
+}
+
 // GetString gets the value of a key and returns it as a string.
+// It returns nil when the key is unset or holds something other than a string.
 func (s *State) GetString(key string) *string {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok || val == nil {
+	ss, ok := s.values[key].(string)
+	if !ok {
 		return nil
 	}
 
-	ss := val.(string)
 	return &ss
 }
 
-// GetFloat gets the value of a key and returns it as a float64.
+// GetFloat gets the value of a key and returns it as a float64. Any numeric
+// type is read, so a default written as Set(key, 30) reads back the same as
+// the 30.0 the frontend would have sent. It returns nil when the key is unset
+// or holds a non-numeric value.
 func (s *State) GetFloat(key string) *float64 {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok || val == nil {
+	f, ok := toNumber(s.values[key])
+	if !ok {
 		return nil
 	}
 
-	f := val.(float64)
 	return &f
 }
 
-// GetInt gets the value of a key and returns it as an int.
-// If the key is not set, it returns nil.
+// GetInt gets the value of a key and returns it as an int, truncating a
+// fractional value. Like [State.GetFloat] it reads any numeric type, and
+// returns nil when the key is unset or holds a non-numeric value.
 func (s *State) GetInt(key string) *int {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok || val == nil {
+	f, ok := toNumber(s.values[key])
+	if !ok {
 		return nil
 	}
 
-	i := val.(int)
+	i := int(f)
 	return &i
 }
 
 // GetBool gets the value of a key and returns it as a bool.
+// It returns false when the key is unset or holds something other than a bool.
 func (s *State) GetBool(key string) bool {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok {
-		return false
-	}
-
-	return val.(bool)
+	b, _ := s.values[key].(bool)
+	return b
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
