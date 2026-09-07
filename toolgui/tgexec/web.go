@@ -3,6 +3,7 @@ package tgexec
 import (
 	"encoding/json"
 	"io"
+	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
@@ -39,6 +40,9 @@ type WebExecutor struct {
 
 	// manifest is nil until the app sets one, and nil serves the default.
 	manifest *Manifest
+
+	// assets is nil until the app sets one.
+	assets fs.FS
 }
 
 type stateIDPack struct {
@@ -81,6 +85,20 @@ func (e *WebExecutor) defaultManifest() *Manifest {
 //	})
 func (e *WebExecutor) SetManifest(manifest *Manifest) {
 	e.manifest = manifest
+}
+
+// SetAssets serve the files at the root of fsys under /assets/, so an app can
+// hand the browser files of its own: a manifest icon, an image a page links
+// to. A nil fsys serves none.
+//
+//	//go:embed assets
+//	var assets embed.FS
+//
+//	// assets/icon.png is served at /assets/icon.png.
+//	sub, _ := fs.Sub(assets, "assets")
+//	e.SetAssets(sub)
+func (e *WebExecutor) SetAssets(fsys fs.FS) {
+	e.assets = fsys
 }
 
 // Destory release all resource.
@@ -231,6 +249,17 @@ func (e *WebExecutor) handleAssets(resp http.ResponseWriter, req *http.Request) 
 	resp.Write(body)
 }
 
+// handleAsset serve a file the app gave [WebExecutor.SetAssets]. Reading the
+// fs per request, rather than at mux time, frees the app to set it whenever.
+func (e *WebExecutor) handleAsset(resp http.ResponseWriter, req *http.Request) {
+	if e.assets == nil {
+		http.NotFound(resp, req)
+		return
+	}
+
+	http.FileServerFS(e.assets).ServeHTTP(resp, req)
+}
+
 func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte(toolguiweb.IndexBody))
 }
@@ -293,6 +322,9 @@ func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 	mux.HandleFunc("GET /api/health", e.handleHealth)
 
 	mux.Handle("GET /static/", http.FileServerFS(toolguiweb.GetStaticDir()))
+
+	mux.Handle("GET /assets/", http.StripPrefix("/assets/",
+		http.HandlerFunc(e.handleAsset)))
 
 	return mux, nil
 }
