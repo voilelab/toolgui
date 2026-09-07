@@ -2,7 +2,11 @@
 
 How ToolGUI could ship an app as WebAssembly: the page function compiled to
 `js/wasm` and run in the browser, with no Go process behind it. This picks a
-shape and measures its cost; it does not implement anything.
+shape and measures its cost.
+
+**Status: phase 1 landed** — `toolgui/tgwasm`, the `toolgui-web/wasm` frontend
+and the hello example are in the tree, built by `task build_wasm_hello`. The
+rest of the plan below stands as written.
 
 ## What a wasm build buys
 

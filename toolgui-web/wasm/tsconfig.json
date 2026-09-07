@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "esModuleInterop": true,
+    // Same level as the other adapters, so the three stay comparable.
+    "strict": false
+  },
+  "include": [
+    "src",
+  ]
+}
