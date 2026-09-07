@@ -19,6 +19,10 @@ tgcomp.Text(box, "Text2")
 Then the **Component Tree** will be:
 
 ```mermaid
+---
+config:
+  look: handDrawn
+---
 graph TD
     Main --> Text1[Text]
     Main --> Button

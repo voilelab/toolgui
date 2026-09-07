@@ -3,6 +3,10 @@
 ## Basic
 
 ```mermaid
+---
+config:
+  look: handDrawn
+---
 graph LR
     UI -- "value update" --> State
     State -- "get value" --> PageFunc["Page Func"]
