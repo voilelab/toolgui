@@ -25,6 +25,9 @@ const (
 
 	// ChartKindArea draws one line per series, filled to the axis.
 	ChartKindArea
+
+	// ChartKindScatter draws one marker per point, on two value axes.
+	ChartKindScatter
 )
 
 // String returns the kind as it is named on the wire.
@@ -36,9 +39,17 @@ func (k ChartKind) String() string {
 		return "bar"
 	case ChartKindArea:
 		return "area"
+	case ChartKindScatter:
+		return "scatter"
 	}
 
 	panic(fmt.Sprintf("unsupported chart kind: %d", int(k)))
+}
+
+// ChartPoint is one point of a scatter chart, on the two value axes.
+type ChartPoint struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 // ChartSeries is one named series of a chart.
@@ -46,8 +57,14 @@ type ChartSeries struct {
 	// Name labels the series in the legend and the tooltip.
 	Name string `json:"name"`
 
-	// Values holds one value per label, in the same order.
+	// Values holds one value per label, in the same order. Every kind but
+	// ChartKindScatter is drawn from it.
 	Values []float64 `json:"values"`
+
+	// Points holds the {x, y} points of a ChartKindScatter series, which has
+	// no labels to line its values up with. Omitted from the wire for the
+	// other kinds, so their packs are unchanged.
+	Points []ChartPoint `json:"points,omitempty"`
 
 	// Color overrides the theme palette. Any CSS color.
 	Color string `json:"color"`
@@ -60,7 +77,8 @@ type ChartConf struct {
 	tgframe.Base
 
 	// Kind is the shape the chart is drawn in, default is ChartKindLine.
-	// [LineChart], [BarChart] and [AreaChart] set it themselves.
+	// [LineChart], [BarChart], [AreaChart] and [ScatterChart] set it
+	// themselves.
 	Kind ChartKind
 
 	// Stacked stacks the series on top of each other instead of drawing
@@ -132,6 +150,14 @@ func AreaChart(c *tgframe.Container, labels []string, series []ChartSeries, conf
 	chart(c, labels, series, tgframe.OneConf("AreaChart", conf), &kind)
 }
 
+// ScatterChart create a scatter chart, one marker per point. It takes no
+// labels: both of a scatter chart's axes are value axes, so a point carries
+// its own x, in [ChartSeries.Points] rather than Values.
+func ScatterChart(c *tgframe.Container, series []ChartSeries, conf ...*ChartConf) {
+	kind := ChartKindScatter
+	chart(c, nil, series, tgframe.OneConf("ScatterChart", conf), &kind)
+}
+
 // chart adds the chart component. kind is what the entry point is named after,
 // and overrides whatever the conf says; [Chart] passes nil and leaves the
 // conf's own kind alone. The conf is copied rather than written through: the
@@ -145,6 +171,21 @@ func chart(c *tgframe.Container, labels []string, series []ChartSeries,
 	}
 
 	for _, s := range series {
+		if cf.Kind == ChartKindScatter {
+			if len(s.Values) != 0 {
+				panic(fmt.Sprintf(
+					"series %q of a scatter chart is drawn from points, not values",
+					s.Name))
+			}
+			continue
+		}
+
+		if len(s.Points) != 0 {
+			panic(fmt.Sprintf(
+				"series %q holds points, which only a scatter chart draws",
+				s.Name))
+		}
+
 		if len(s.Values) != len(labels) {
 			panic(fmt.Sprintf(
 				"len of values of series %q should equal to len of labels",

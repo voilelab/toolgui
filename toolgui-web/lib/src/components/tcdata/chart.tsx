@@ -11,6 +11,7 @@ import {
   LineElement,
   LinearScale,
   PointElement,
+  ScatterController,
   Tooltip,
 } from "chart.js"
 
@@ -22,7 +23,7 @@ import { Props } from "../component_interface"
 // every controller and scale instead.
 Chart.register(
   BarController, BarElement, LineController, LineElement, PointElement,
-  CategoryScale, LinearScale, Filler, Legend, Tooltip)
+  ScatterController, CategoryScale, LinearScale, Filler, Legend, Tooltip)
 
 // Categorical palette, validated for both themes. Slots are handed out in
 // order and never cycled: a chart with more series than slots has to name its
@@ -145,11 +146,27 @@ function seriesColor(series: any, index: number, theme: string): string {
 function buildConfig(props: any, theme: string, surface: string): any {
   const area = props.kind === 'area'
   const bar = props.kind === 'bar'
+  const scatter = props.kind === 'scatter'
   const chrome = chromes[theme]
-  const showPoints = props.labels.length <= maxPointLabels
+  // A scatter chart sends no labels, and draws its markers either way.
+  const showPoints = (props.labels?.length ?? 0) <= maxPointLabels
 
   const datasets = props.series.map((series: any, index: number) => {
     const color = seriesColor(series, index, theme)
+
+    if (scatter) {
+      return {
+        label: series.name,
+        data: series.points,
+        backgroundColor: color,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        // The same ring the line markers get, so overlapping points stay
+        // countable.
+        pointBorderColor: surface,
+        pointBorderWidth: 1,
+      }
+    }
 
     if (bar) {
       return {
@@ -186,13 +203,13 @@ function buildConfig(props: any, theme: string, surface: string): any {
   })
 
   return {
-    type: bar ? 'bar' : 'line',
+    type: scatter ? 'scatter' : (bar ? 'bar' : 'line'),
     data: { labels: props.labels, datasets: datasets },
     options: {
       responsive: true,
       // The wrapper owns the height, so the canvas must not keep a ratio.
       maintainAspectRatio: false,
-      interaction: bar
+      interaction: bar || scatter
         ? { mode: 'nearest', intersect: true }
         : { mode: 'index', intersect: false },
       plugins: {
@@ -207,8 +224,12 @@ function buildConfig(props: any, theme: string, surface: string): any {
       },
       scales: {
         x: {
+          // A scatter chart's x carries values, not categories.
+          type: scatter ? 'linear' : 'category',
           stacked: props.stacked,
-          grid: { display: false },
+          // A category axis reads off its labels; a value axis needs the grid
+          // to follow a point back to a tick.
+          grid: scatter ? { color: chrome.grid } : { display: false },
           border: { color: chrome.grid },
           ticks: { color: chrome.tick },
           title: {

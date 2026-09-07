@@ -23,6 +23,10 @@ import { TDivider } from "./tccontent/divider"
 import { TMarkdown } from "./tccontent/markdown"
 import { TCode } from "./tccontent/code"
 import { TLink } from "./tccontent/link"
+import { TLinkButton } from "./tccontent/link_button"
+import { TCaption } from "./tccontent/caption"
+import { TMetric } from "./tccontent/metric"
+import { TBadge } from "./tccontent/badge"
 import { TIframe } from "./tcmisc/iframe"
 
 import { TJson } from "./tcdata/json"
@@ -66,7 +70,11 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   markdown_component: TMarkdown,
   code_component: TCode,
   link_component: TLink,
+  link_button_component: TLinkButton,
   latex_component: TLatex,
+  caption_component: TCaption,
+  metric_component: TMetric,
+  badge_component: TBadge,
 
   json_component: TJson,
   table_component: TTable,

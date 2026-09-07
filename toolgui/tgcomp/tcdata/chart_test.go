@@ -152,3 +152,73 @@ func TestNamedChartLeavesTheCallersConfAlone(t *testing.T) {
 		t.Errorf("conf.Kind = %v, want it untouched", conf.Kind)
 	}
 }
+
+func TestScatterChartProps(t *testing.T) {
+	props := addChart(t, func(c *tgframe.Container) {
+		ScatterChart(c, []ChartSeries{
+			{Name: "p95", Points: []ChartPoint{{X: 1, Y: 3}, {X: 2, Y: 5}}},
+		}, &ChartConf{ID: "runs"})
+	})
+
+	if props["kind"] != "scatter" {
+		t.Errorf("kind = %v, want scatter", props["kind"])
+	}
+
+	series, ok := props["series"].([]any)
+	if !ok || len(series) != 1 {
+		t.Fatalf("series = %v, want one series", props["series"])
+	}
+
+	points, ok := series[0].(map[string]any)["points"].([]any)
+	if !ok || len(points) != 2 {
+		t.Fatalf("points = %v, want two points", series[0])
+	}
+
+	first := points[0].(map[string]any)
+	if first["x"] != float64(1) || first["y"] != float64(3) {
+		t.Errorf("first point = %v, want {x: 1, y: 3}", first)
+	}
+}
+
+// Points are omitted from the wire for the kinds that do not draw them, so
+// adding them left the packs of the existing charts as they were.
+func TestNonScatterChartSendsNoPoints(t *testing.T) {
+	props := addChart(t, func(c *tgframe.Container) {
+		LineChart(c, []string{"Jan"}, []ChartSeries{
+			{Name: "2026", Values: []float64{1}},
+		})
+	})
+
+	series := props["series"].([]any)[0].(map[string]any)
+	if _, ok := series["points"]; ok {
+		t.Errorf("series = %v, want no points key", series)
+	}
+}
+
+func TestScatterChartPanicsOnValues(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("no panic, want a panic on a scatter series holding values")
+		}
+	}()
+
+	addChart(t, func(c *tgframe.Container) {
+		ScatterChart(c, []ChartSeries{
+			{Name: "p95", Values: []float64{1, 2}},
+		})
+	})
+}
+
+func TestChartPanicsOnPointsWithoutScatter(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Error("no panic, want a panic on a line series holding points")
+		}
+	}()
+
+	addChart(t, func(c *tgframe.Container) {
+		LineChart(c, nil, []ChartSeries{
+			{Name: "2026", Points: []ChartPoint{{X: 1, Y: 2}}},
+		})
+	})
+}

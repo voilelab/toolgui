@@ -1,6 +1,8 @@
 # Chart
 
-Chart component draws a line, bar or area chart.
+Chart component draws a line, bar or area chart. A scatter chart is drawn from
+points rather than labels, and has its own page:
+[Scatter Chart](scatter_chart.md).
 
 ## API
 
@@ -26,6 +28,7 @@ the conf says; `Chart` follows the conf.
 | -------- | -------------------------------------------------- |
 | `Name`   | Shown in the legend and the tooltip.                |
 | `Values` | One value per label, in the same order.             |
+| `Points` | The `{X, Y}` points of a scatter series, instead of `Values`. |
 | `Color`  | Any CSS color, overriding the theme palette.        |
 
 `ChartConf`:
@@ -33,7 +36,7 @@ the conf says; `Chart` follows the conf.
 | Field     | Description                                         | Default         |
 | --------- | --------------------------------------------------- | --------------- |
 | `ID`      | The user specific id, from the embedded `tgframe.Base`. | none         |
-| `Kind`    | `ChartKindLine`, `ChartKindBar` or `ChartKindArea`.  | `ChartKindLine` |
+| `Kind`    | `ChartKindLine`, `ChartKindBar`, `ChartKindArea` or `ChartKindScatter`. | `ChartKindLine` |
 | `Stacked` | Stack the series instead of drawing them side by side. | `false`       |
 | `Height`  | CSS height of the chart.                             | `300px`         |
 | `XLabel`  | Title of the x axis, hidden when empty.              | none            |
