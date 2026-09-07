@@ -190,7 +190,7 @@ func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
 	}
 
 	if err := file.write(r, false); err != nil {
-		file.remove()
+		file.body.remove()
 		return nil, tgutil.Errorf("%w", err)
 	}
 

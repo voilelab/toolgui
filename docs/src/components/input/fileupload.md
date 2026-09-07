@@ -23,8 +23,9 @@ func Fileupload(s *tgframe.State, c *tgframe.Container, label, accept string) *F
 * `accept` is the file type to accept.
 * Return the selected file object. nil if no file is selected.
 
-The upload is streamed to disk rather than kept in memory, so a file only has
-to fit on disk. `Size` is the size of what was stored.
+On a server the upload is streamed to disk rather than kept in memory, so a
+file only has to fit on disk. In the browser, where a WebAssembly app has no
+filesystem to use, it stays in the tab. `Size` is the size of what was stored.
 
 * `Open` returns a reader over the content, which the caller closes. It reads
   at an offset too, so `archive/zip` and the image decoders can work straight

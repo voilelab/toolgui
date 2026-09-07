@@ -68,5 +68,6 @@
     "lib",
     "app",
     "wails",
+    "wasm",
   ]
 }

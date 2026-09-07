@@ -91,6 +91,16 @@ main module. See [toolgui-wails/README.md](toolgui-wails/README.md).
 task run_wails_hello
 ```
 
+### Browser app (WebAssembly)
+
+`toolgui/tgwasm` runs the same app in the browser, compiled to `js/wasm`, with
+no server behind it. The build is four static files. See
+[toolgui/tgwasm/README.md](toolgui/tgwasm/README.md).
+
+```shell
+task run_wasm_hello
+```
+
 ### Build without the web assets
 
 `toolgui-web/web.go` and `toolgui-wails/assets.go` embed build output that is

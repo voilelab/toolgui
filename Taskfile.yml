@@ -28,6 +28,13 @@ tasks:
       - yarn build
       - yarn typecheck
   
+  asset_wasm:
+    dir: ./toolgui-web/wasm
+    cmds:
+      - yarn
+      - yarn build
+      - yarn typecheck
+
   run_demo:
     cmds:
       - task: asset_lib
@@ -71,3 +78,18 @@ tasks:
       - task: wails_hello
         vars:
           WAILS_CMD: build
+
+  # Static site for the wasm example, in toolgui/tgwasm/example/hello/build.
+  build_wasm_hello:
+    vars:
+      OUT: toolgui/tgwasm/example/hello/build
+    cmds:
+      - task: asset_lib
+      - task: asset_wasm
+      - ./scripts/build-wasm.sh ./toolgui/tgwasm/example/hello {{.OUT}}
+
+  # Serve it. Any static file server does; nothing runs on the server side.
+  run_wasm_hello:
+    cmds:
+      - task: build_wasm_hello
+      - python3 -m http.server 3000 -d toolgui/tgwasm/example/hello/build

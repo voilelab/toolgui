@@ -1,11 +1,7 @@
 package tgframe
 
 import (
-	"fmt"
 	"io"
-	"log/slog"
-	"os"
-	"path/filepath"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -18,11 +14,33 @@ type FileReader interface {
 	io.ReaderAt
 }
 
-// File is a file the user uploaded. Its content lives on disk, so a page can
-// take a file larger than the memory the process has to spare.
+// fileBody is where one file's bytes are kept.
+type fileBody interface {
+	open() (FileReader, error)
+
+	// write copies r in, onto the end when atEnd is set and over what is
+	// there otherwise, and returns how much it wrote.
+	write(r io.Reader, atEnd bool) (int64, error)
+
+	remove()
+}
+
+// fileBodies makes the bodies of one state's files and clears up after them.
+// Which one a build gets is what decides where an upload is kept: on disk on
+// a server, in memory in the browser, which has no filesystem to put it on.
+// Its methods are called under the store's lock, so they need none of their
+// own.
+type fileBodies interface {
+	newBody() (fileBody, error)
+	destroy()
+}
+
+// File is a file the user uploaded. Where its content lives is the build's
+// business: on a server it's on disk, so a page can take a file larger than
+// the memory the process has to spare.
 type File struct {
 	name string
-	path string
+	body fileBody
 
 	lock sync.RWMutex
 	size int64
@@ -43,7 +61,7 @@ func (f *File) Size() int64 {
 
 // Open return a reader over the content. The caller closes it.
 func (f *File) Open() (FileReader, error) {
-	fp, err := os.Open(f.path)
+	fp, err := f.body.open()
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
@@ -54,7 +72,13 @@ func (f *File) Open() (FileReader, error) {
 // Bytes read the whole content into memory. Prefer [File.Open] for anything
 // that can work on a stream.
 func (f *File) Bytes() ([]byte, error) {
-	bs, err := os.ReadFile(f.path)
+	fp, err := f.Open()
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
+	defer fp.Close()
+
+	bs, err := io.ReadAll(fp)
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
@@ -68,28 +92,8 @@ func (f *File) Append(r io.Reader) error {
 	return f.write(r, true)
 }
 
-// write copies r into the file, truncating it first unless atEnd is set.
 func (f *File) write(r io.Reader, atEnd bool) error {
-	flag := os.O_CREATE | os.O_WRONLY
-	if atEnd {
-		flag |= os.O_APPEND
-	} else {
-		flag |= os.O_TRUNC
-	}
-
-	fp, err := os.OpenFile(f.path, flag, 0o600)
-	if err != nil {
-		return tgutil.Errorf("%w", err)
-	}
-
-	// io.Copy works through a fixed buffer, so what's held is the buffer and
-	// not the upload.
-	n, err := io.Copy(fp, r)
-
-	closeErr := fp.Close()
-	if err == nil {
-		err = closeErr
-	}
+	n, err := f.body.write(r, atEnd)
 
 	f.lock.Lock()
 	if atEnd {
@@ -106,59 +110,31 @@ func (f *File) write(r io.Reader, atEnd bool) error {
 	return nil
 }
 
-// remove drops the content from disk. The File is unusable afterwards.
-func (f *File) remove() {
-	if err := os.Remove(f.path); err != nil && !os.IsNotExist(err) {
-		slog.Error("remove file", "path", f.path, "error", err)
-	}
-}
-
-// fileStore is where a state's uploads live: a directory of its own, and the
-// file each key currently holds. A cloned state shares one of these, so the
-// two can't hand out the same path.
+// fileStore is a state's uploads: the file each key currently holds, and
+// wherever their bytes are kept. A cloned state shares one of these, so the
+// two can't hand out the same place to write.
 type fileStore struct {
-	lock  sync.Mutex
-	dir   string
-	seq   int
-	files map[string]*File
+	lock   sync.Mutex
+	bodies fileBodies
+	files  map[string]*File
 }
 
 func newFileStore() *fileStore {
-	return &fileStore{files: make(map[string]*File)}
+	return &fileStore{bodies: newFileBodies(), files: make(map[string]*File)}
 }
 
-// newFile makes an empty file in the store's directory. It belongs to no key
-// until [fileStore.put] takes it, so an upload in progress can't be read as
-// the page's current file.
+// newFile makes an empty file. It belongs to no key until [fileStore.put]
+// takes it, so an upload in progress can't be read as the page's current file.
 func (s *fileStore) newFile(name string) (*File, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.dir == "" {
-		dir, err := os.MkdirTemp("", "toolgui-state-")
-		if err != nil {
-			return nil, tgutil.Errorf("%w", err)
-		}
-
-		s.dir = dir
-	}
-
-	s.seq++
-
-	// The file is named after the counter: naming it after the upload would
-	// mean trusting a name the browser chose.
-	file := &File{name: name, path: filepath.Join(s.dir, fmt.Sprint(s.seq))}
-
-	fp, err := os.OpenFile(file.path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
+	body, err := s.bodies.newBody()
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
 
-	if err := fp.Close(); err != nil {
-		return nil, tgutil.Errorf("%w", err)
-	}
-
-	return file, nil
+	return &File{name: name, body: body}, nil
 }
 
 // put stores file under key and drops what the key held. The old file is
@@ -171,7 +147,7 @@ func (s *fileStore) put(key string, file *File) {
 	s.lock.Unlock()
 
 	if old != nil && old != file {
-		old.remove()
+		old.body.remove()
 	}
 }
 
@@ -182,19 +158,11 @@ func (s *fileStore) get(key string) *File {
 	return s.files[key]
 }
 
-// destroy removes every file the store holds, the directory included.
+// destroy drops every file the store holds.
 func (s *fileStore) destroy() {
 	s.lock.Lock()
-	dir := s.dir
-	s.dir = ""
+	defer s.lock.Unlock()
+
 	s.files = make(map[string]*File)
-	s.lock.Unlock()
-
-	if dir == "" {
-		return
-	}
-
-	if err := os.RemoveAll(dir); err != nil {
-		slog.Error("remove state files", "dir", dir, "error", err)
-	}
+	s.bodies.destroy()
 }

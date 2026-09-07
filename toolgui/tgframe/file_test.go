@@ -3,7 +3,6 @@ package tgframe
 import (
 	"bytes"
 	"io"
-	"os"
 	"strings"
 	"testing"
 )
@@ -45,19 +44,23 @@ func TestStateGetFileMissing(t *testing.T) {
 }
 
 // TestStateWriteFileReplaces checks a second upload to the same component
-// takes the first one's place, and its disk with it.
+// takes the first one's place. Where the first one's content goes is the
+// storage's business, checked where each storage is implemented.
 func TestStateWriteFileReplaces(t *testing.T) {
 	s := NewState()
 	defer s.Destroy()
 
-	first, err := s.WriteFile("comp", "a.txt", strings.NewReader("old"))
-	if err != nil {
+	if _, err := s.WriteFile("comp", "a.txt", strings.NewReader("old")); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
 	second, err := s.WriteFile("comp", "b.txt", strings.NewReader("new"))
 	if err != nil {
 		t.Fatalf("WriteFile: %v", err)
+	}
+
+	if s.GetFile("comp") != second {
+		t.Fatal("expect the key to hold the second file")
 	}
 
 	bs, err := second.Bytes()
@@ -67,10 +70,6 @@ func TestStateWriteFileReplaces(t *testing.T) {
 
 	if string(bs) != "new" {
 		t.Errorf("Bytes = %q, want new", bs)
-	}
-
-	if _, err := os.Stat(first.path); !os.IsNotExist(err) {
-		t.Errorf("expect the replaced file to be gone, stat gave %v", err)
 	}
 }
 
@@ -213,35 +212,19 @@ func TestFileOpen(t *testing.T) {
 	}
 }
 
-// TestStateDestroyRemovesFiles checks a state that goes away takes the
-// uploads it was holding with it.
+// TestStateDestroyRemovesFiles checks a state that goes away lets go of the
+// uploads it was holding.
 func TestStateDestroyRemovesFiles(t *testing.T) {
 	s := NewState()
 
-	file, err := s.WriteFile("comp", "a.txt", strings.NewReader("hello"))
-	if err != nil {
+	if _, err := s.WriteFile("comp", "a.txt", strings.NewReader("hello")); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
 	s.Destroy()
 
-	if _, err := os.Stat(file.path); !os.IsNotExist(err) {
-		t.Errorf("expect the file to be gone, stat gave %v", err)
-	}
-
 	if s.GetFile("comp") != nil {
 		t.Error("expect no file after Destroy")
-	}
-}
-
-// TestStateDestroyWithoutFiles checks a state that never saw an upload leaves
-// no directory behind to clean up.
-func TestStateDestroyWithoutFiles(t *testing.T) {
-	s := NewState()
-	s.Destroy()
-
-	if s.files.dir != "" {
-		t.Errorf("file dir = %q, want empty", s.files.dir)
 	}
 }
 
