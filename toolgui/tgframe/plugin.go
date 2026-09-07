@@ -3,6 +3,7 @@ package tgframe
 import (
 	"errors"
 	"io/fs"
+	"maps"
 	"net/http"
 	"path"
 	"regexp"
@@ -45,6 +46,9 @@ func (app *App) AddPluginAssets(name string, fsys fs.FS) error {
 		return tgutil.NewError("nil plugin assets")
 	}
 
+	app.pluginLock.Lock()
+	defer app.pluginLock.Unlock()
+
 	if _, exist := app.pluginAssets[name]; exist {
 		return tgutil.Errorf("%w: `%s`", ErrDuplicatedPluginName, name)
 	}
@@ -53,18 +57,37 @@ func (app *App) AddPluginAssets(name string, fsys fs.FS) error {
 	return nil
 }
 
+// pluginAsset return the asset set registered under name.
+func (app *App) pluginAsset(name string) (fs.FS, bool) {
+	app.pluginLock.RLock()
+	defer app.pluginLock.RUnlock()
+
+	fsys, ok := app.pluginAssets[name]
+	return fsys, ok
+}
+
 // PluginAssets return the registered asset sets by name. Executors serve them;
 // a page function has no use for it.
+//
+// The map is a copy: an asset set is registered through [App.AddPluginAssets],
+// which is what keeps the names valid and unique.
 func (app *App) PluginAssets() map[string]fs.FS {
-	return app.pluginAssets
+	app.pluginLock.RLock()
+	defer app.pluginLock.RUnlock()
+
+	return maps.Clone(app.pluginAssets)
 }
 
 // PluginAssetURL return the url the given file of the named asset set is
 // served at.
 //
 //	tgcomp.Plugin(p.Main, "gauge", tgframe.PluginAssetURL("gauge", "gauge.js"), props)
+//
+// The file names something in the set and nothing outside it: path.Join cleans
+// what it builds, so a file reaching upwards would otherwise walk out of the
+// prefix and name a url the app does not serve.
 func PluginAssetURL(name, file string) string {
-	return path.Join(PluginAssetPrefix, name, file)
+	return path.Join(PluginAssetPrefix, path.Join("/", name), path.Join("/", file))
 }
 
 // PluginAssetHandler serves an app's plugin assets under [PluginAssetPrefix].
@@ -78,7 +101,7 @@ func PluginAssetHandler(app *App) http.Handler {
 	mux.HandleFunc("GET "+PluginAssetPrefix+"{name}/{file...}",
 		func(resp http.ResponseWriter, req *http.Request) {
 			name := req.PathValue("name")
-			fsys, ok := app.PluginAssets()[name]
+			fsys, ok := app.pluginAsset(name)
 			if !ok {
 				resp.WriteHeader(http.StatusNotFound)
 				return

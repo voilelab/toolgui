@@ -2,6 +2,7 @@ package tgframe
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,6 +43,67 @@ func TestPluginAssetURL(t *testing.T) {
 	if got := PluginAssetURL("gauge", "gauge.js"); got != "/plugin/gauge/gauge.js" {
 		t.Errorf("PluginAssetURL = %q, want /plugin/gauge/gauge.js", got)
 	}
+}
+
+// A url names something in the set. A file reaching upwards would otherwise
+// be cleaned into a url outside the prefix, which the app does not serve.
+func TestPluginAssetURLStaysInTheSet(t *testing.T) {
+	cases := map[string]string{
+		"/gauge.js":            "/plugin/gauge/gauge.js",
+		"../../secret":         "/plugin/gauge/secret",
+		"../other/other.js":    "/plugin/gauge/other/other.js",
+		"nested/../nested.css": "/plugin/gauge/nested.css",
+	}
+
+	for file, want := range cases {
+		if got := PluginAssetURL("gauge", file); got != want {
+			t.Errorf("PluginAssetURL(gauge, %q) = %q, want %q", file, got, want)
+		}
+	}
+}
+
+// The map is the app's own bookkeeping: a caller that mutates what it reads
+// back would be registering a set behind AddPluginAssets, name checks and all.
+func TestPluginAssetsIsACopy(t *testing.T) {
+	app := NewApp()
+	if err := app.AddPluginAssets("gauge", testAssets()); err != nil {
+		t.Fatalf("AddPluginAssets: %v", err)
+	}
+
+	sets := app.PluginAssets()
+	delete(sets, "gauge")
+	sets["../evil"] = testAssets()
+
+	if _, ok := app.PluginAssets()["gauge"]; !ok {
+		t.Error("gauge went missing from the app")
+	}
+
+	if _, ok := app.PluginAssets()["../evil"]; ok {
+		t.Error("a set was registered without going through AddPluginAssets")
+	}
+}
+
+// A set can be registered while the app is serving, so the two have to be
+// safe against each other.
+func TestPluginAssetsConcurrentRegisterAndServe(t *testing.T) {
+	app := NewApp()
+	handler := PluginAssetHandler(app)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := range 50 {
+			_ = app.AddPluginAssets(fmt.Sprintf("gauge%d", i), testAssets())
+		}
+	}()
+
+	for range 50 {
+		resp := httptest.NewRecorder()
+		handler.ServeHTTP(resp,
+			httptest.NewRequest(http.MethodGet, PluginAssetURL("gauge0", "gauge.js"), nil))
+	}
+
+	<-done
 }
 
 func TestPluginAssetHandler(t *testing.T) {
