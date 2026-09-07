@@ -18,13 +18,21 @@ func LinkButton(c *tgframe.Container, text, url string, conf ...*LinkButtonConf)
 * `c` is Parent container.
 * `text` is the button text.
 * `url` is the url to navigate to.
+* `conf` is an optional configuration, at most one.
 
-`LinkButtonConf`:
+```go
+// LinkButtonConf is the configuration for the LinkButton component.
+type LinkButtonConf struct {
+	tgframe.Base // ID
 
-| Field   | Description                                                       | Default   |
-| ------- | ----------------------------------------------------------------- | --------- |
-| `Color` | `tcutil.ColorInfo`, `ColorSuccess`, `ColorWarning` or `ColorDanger`. | neutral |
-| `ID`    | A user specific element id.                                        | derived   |
+	// Color is the color of the button. Default is tcutil.ColorNull, which
+	// leaves it neutral.
+	Color tcutil.Color
+}
+```
+
+`Color` is one of `tcutil.ColorInfo`, `ColorSuccess`, `ColorWarning` or
+`ColorDanger`.
 
 ## Example
 

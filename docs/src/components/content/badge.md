@@ -13,13 +13,21 @@ func Badge(c *tgframe.Container, text string, conf ...*BadgeConf)
 
 * `c` is Parent container.
 * `text` is the badge text.
+* `conf` is an optional configuration, at most one.
 
-`BadgeConf`:
+```go
+// BadgeConf is the configuration for the Badge component.
+type BadgeConf struct {
+	tgframe.Base // ID
 
-| Field   | Description                                                       | Default          |
-| ------- | ----------------------------------------------------------------- | ---------------- |
-| `Color` | `tcutil.ColorInfo`, `ColorSuccess`, `ColorWarning` or `ColorDanger`. | neutral        |
-| `ID`    | A user specific element id.                                        | derived          |
+	// Color is the color of the badge. Default is tcutil.ColorNull, which
+	// leaves it neutral.
+	Color tcutil.Color
+}
+```
+
+`Color` is one of `tcutil.ColorInfo`, `ColorSuccess`, `ColorWarning` or
+`ColorDanger`.
 
 ## Example
 

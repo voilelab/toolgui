@@ -34,7 +34,7 @@ type BadgeConf struct {
 
 // Badge show a short label, for a status or a tag next to other content.
 func Badge(c *tgframe.Container, text string, conf ...*BadgeConf) {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Badge", conf)
 
 	comp := newBadgeComponent(text)
 	comp.Color = cf.Color

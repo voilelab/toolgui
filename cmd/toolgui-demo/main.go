@@ -278,13 +278,14 @@ func DataPage(p *tgframe.Params) error {
 	scatterCompCol, scatterCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_scatter_chart"})
 	tgcomp.Echo(scatterCodeCol, code, func() {
-		tgcomp.ScatterChart(scatterCompCol, "demo_scatter",
+		tgcomp.ScatterChart(scatterCompCol,
 			[]tgcomp.ChartSeries{
 				{Name: "runs", Points: []tgcomp.ChartPoint{
 					{X: 1, Y: 3}, {X: 2, Y: 5}, {X: 3, Y: 4},
 					{X: 4, Y: 8}, {X: 5, Y: 6},
 				}},
-			})
+			},
+			&tgcomp.ChartConf{ID: "demo_scatter"})
 	})
 
 	tgcomp.Divider(p.Main)

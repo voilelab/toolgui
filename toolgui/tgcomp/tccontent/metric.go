@@ -48,7 +48,7 @@ type MetricConf struct {
 
 // Metric show a labelled value, with an optional delta under it.
 func Metric(c *tgframe.Container, label, value string, conf ...*MetricConf) {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Metric", conf)
 
 	// Trimmed once here, so that what the client shows and what the tone was
 	// read off are the same string: a delta of only spaces is no delta.

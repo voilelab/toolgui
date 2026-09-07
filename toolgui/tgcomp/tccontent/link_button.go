@@ -38,7 +38,7 @@ type LinkButtonConf struct {
 // than reporting a click, so unlike Button it returns nothing and keeps no
 // state.
 func LinkButton(c *tgframe.Container, text, url string, conf ...*LinkButtonConf) {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("LinkButton", conf)
 
 	comp := newLinkButtonComponent(text, url)
 	comp.Color = cf.Color

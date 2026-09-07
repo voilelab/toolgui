@@ -14,14 +14,21 @@ func Metric(c *tgframe.Container, label, value string, conf ...*MetricConf)
 * `c` is Parent container.
 * `label` is the name of the metric.
 * `value` is the value, already formatted the way it should be shown.
+* `conf` is an optional configuration, at most one.
 
-`MetricConf`:
+```go
+// MetricConf is the configuration for the Metric component.
+type MetricConf struct {
+	tgframe.Base // ID
 
-| Field               | Description                                          | Default |
-| ------------------- | ---------------------------------------------------- | ------- |
-| `Delta`             | The change shown under the value, e.g. `+12%`. Hidden when empty. | none |
-| `DeltaColorInverse` | Paint an increase red and a decrease green.          | `false` |
-| `ID`                | A user specific element id.                          | derived |
+	// Delta is the change shown under the value, e.g. "+12%" or "-3.2k".
+	// Hidden when empty.
+	Delta string
+
+	// DeltaColorInverse paints an increase red and a decrease green.
+	DeltaColorInverse bool
+}
+```
 
 A delta that starts with `-` is a decrease, and is drawn in red with a down
 arrow; anything else is an increase, drawn in green with an up arrow. Set

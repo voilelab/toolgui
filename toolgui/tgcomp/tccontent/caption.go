@@ -28,7 +28,7 @@ type CaptionConf struct {
 
 // Caption show a small dimmed text, for a note next to what it explains.
 func Caption(c *tgframe.Container, text string, conf ...*CaptionConf) {
-	cf := tgframe.OneConf(conf)
+	cf := tgframe.OneConf("Caption", conf)
 
 	comp := newCaptionComponent(text)
 	tgframe.SetConfID(comp, cf)

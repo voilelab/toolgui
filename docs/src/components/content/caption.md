@@ -13,12 +13,14 @@ func Caption(c *tgframe.Container, text string, conf ...*CaptionConf)
 
 * `c` is Parent container.
 * `text` is the caption text.
+* `conf` is an optional configuration, at most one.
 
-`CaptionConf`:
-
-| Field | Description                 | Default |
-| ----- | --------------------------- | ------- |
-| `ID`  | A user specific element id. | derived |
+```go
+// CaptionConf is the configuration for the Caption component.
+type CaptionConf struct {
+	tgframe.Base // ID
+}
+```
 
 ## Example
 
