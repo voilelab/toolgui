@@ -21,6 +21,7 @@
     * [State Cache](architecture/state-cache.md)
 
 * [Components](architecture/components.md)
+    * [Custom Components](architecture/custom-components.md)
 
 * [Error Handling](architecture/error-handling.md)
 
