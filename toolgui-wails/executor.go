@@ -82,9 +82,17 @@ type Executor struct {
 // NewExecutor return an Executor serving app in a desktop window.
 // A nil conf uses [DefaultConf].
 func NewExecutor(app *tgframe.App, conf *Conf) *Executor {
+	filled := conf.withDefaults()
+
+	// The app title names the window too, so an app that sets one doesn't
+	// repeat it here. A title in the conf still wins.
+	if (conf == nil || conf.Title == "") && app.AppConf().Title != "" {
+		filled.Title = app.AppConf().Title
+	}
+
 	return &Executor{
 		app:  app,
-		conf: conf.withDefaults(),
+		conf: filled,
 	}
 }
 

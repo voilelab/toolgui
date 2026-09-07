@@ -3,6 +3,7 @@ package tgexec
 import (
 	"encoding/json"
 	"io"
+	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
@@ -36,6 +37,12 @@ type WebExecutor struct {
 	stateMap tgutil.UUIDMap[tgframe.State]
 
 	app *tgframe.App
+
+	// manifest is nil until the app sets one, and nil serves the default.
+	manifest *Manifest
+
+	// assets is nil until the app sets one.
+	assets fs.FS
 }
 
 type stateIDPack struct {
@@ -53,6 +60,45 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 
 		app: app,
 	}
+}
+
+// defaultManifest return the manifest served when the app sets none. The app
+// title names it, so an app that sets a title doesn't repeat it here.
+func (e *WebExecutor) defaultManifest() *Manifest {
+	manifest := DefaultManifest()
+
+	if title := e.app.AppConf().Title; title != "" {
+		manifest.Name = title
+		manifest.ShortName = title
+	}
+
+	return manifest
+}
+
+// SetManifest set the web app manifest served at /manifest.json. A nil
+// manifest goes back to the default, which [tgframe.App.SetTitle] names.
+//
+//	e.SetManifest(&tgexec.Manifest{
+//		Name:      "My Tool",
+//		ShortName: "My Tool",
+//		Display:   "standalone",
+//	})
+func (e *WebExecutor) SetManifest(manifest *Manifest) {
+	e.manifest = manifest
+}
+
+// SetAssets serve the files at the root of fsys under /assets/, so an app can
+// hand the browser files of its own: a manifest icon, an image a page links
+// to. A nil fsys serves none.
+//
+//	//go:embed assets
+//	var assets embed.FS
+//
+//	// assets/icon.png is served at /assets/icon.png.
+//	sub, _ := fs.Sub(assets, "assets")
+//	e.SetAssets(sub)
+func (e *WebExecutor) SetAssets(fsys fs.FS) {
+	e.assets = fsys
 }
 
 // Destory release all resource.
@@ -203,8 +249,36 @@ func (e *WebExecutor) handleAssets(resp http.ResponseWriter, req *http.Request) 
 	resp.Write(body)
 }
 
+// handleAsset serve a file the app gave [WebExecutor.SetAssets]. Reading the
+// fs per request, rather than at mux time, frees the app to set it whenever.
+func (e *WebExecutor) handleAsset(resp http.ResponseWriter, req *http.Request) {
+	if e.assets == nil {
+		http.NotFound(resp, req)
+		return
+	}
+
+	http.FileServerFS(e.assets).ServeHTTP(resp, req)
+}
+
 func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte(toolguiweb.IndexBody))
+}
+
+func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request) {
+	manifest := e.manifest
+	if manifest == nil {
+		manifest = e.defaultManifest()
+	}
+
+	bs, err := json.Marshal(manifest)
+	if err != nil {
+		resp.WriteHeader(http.StatusInternalServerError)
+		slog.Error("marshal manifest", "error", err)
+		return
+	}
+
+	resp.Header().Set("Content-Type", "application/manifest+json")
+	resp.Write(bs)
 }
 
 func (e *WebExecutor) handleHealth(resp http.ResponseWriter, req *http.Request) {
@@ -227,6 +301,10 @@ func (e *WebExecutor) handleAppConf(resp http.ResponseWriter, req *http.Request)
 //	http.ListenAndServe(":8080", mux)
 func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 	mux := http.NewServeMux()
+
+	// More specific than the page patterns below, so it wins over them.
+	mux.HandleFunc("GET /manifest.json", e.handleManifest)
+
 	if e.app.AppConf().HashPageNameMode {
 		mux.HandleFunc("GET /{name}", e.handleAssets)
 		mux.HandleFunc("GET /", e.handleIndex)
@@ -244,6 +322,9 @@ func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 	mux.HandleFunc("GET /api/health", e.handleHealth)
 
 	mux.Handle("GET /static/", http.FileServerFS(toolguiweb.GetStaticDir()))
+
+	mux.Handle("GET /assets/", http.StripPrefix("/assets/",
+		http.HandlerFunc(e.handleAsset)))
 
 	mux.Handle("GET "+tgframe.PluginAssetPrefix, tgframe.PluginAssetHandler(e.app))
 

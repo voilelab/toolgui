@@ -58,6 +58,8 @@ type App struct {
 	pageConfs map[string]*PageConfig
 	pageFuncs map[string]RunFunc
 
+	title string
+
 	// pluginAssets are the file sets served under [PluginAssetPrefix], by name.
 	// A set is looked up per request, so the lock is what lets one be
 	// registered while the app is already serving.
@@ -72,6 +74,9 @@ type App struct {
 type AppConf struct {
 	PageNames []string               `json:"page_names"`
 	PageConfs map[string]*PageConfig `json:"page_confs"`
+
+	// Title names the app itself, after the page title in the browser tab.
+	Title string `json:"title"`
 
 	HashPageNameMode bool `json:"hash_page_name_mode"`
 
@@ -100,6 +105,14 @@ func NewApp() *App {
 // SetHashPageMode set value of hash page name mode flag.
 func (app *App) SetHashPageNameMode(v bool) {
 	app.hashPageNameMode = v
+}
+
+// SetTitle set the app title. The browser tab shows it after the page title,
+// and it names the app in the web manifest and in the desktop window.
+//
+//	app.SetTitle("My Tool")
+func (app *App) SetTitle(v string) {
+	app.title = v
 }
 
 // SetShowVersion set whether the side nav shows the toolgui version.
@@ -160,6 +173,8 @@ func (app *App) AppConf() *AppConf {
 	return &AppConf{
 		PageNames: app.pageNames,
 		PageConfs: app.pageConfs,
+
+		Title: app.title,
 
 		MainContainerID:    realMainContainerID(),
 		SidebarContainerID: realSidebarContainerID(),

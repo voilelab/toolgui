@@ -139,3 +139,47 @@ func TestMuxServesPluginAssets(t *testing.T) {
 		t.Errorf("body = %q", body)
 	}
 }
+
+// An app serves its own files -- a manifest icon, a page's image -- from the
+// fs it hands the executor.
+func TestAssetsAreServed(t *testing.T) {
+	srv, e := newTestServer(t)
+	e.SetAssets(fstest.MapFS{"icon.png": {Data: []byte("PNG")}})
+
+	resp, err := http.Get(srv.URL + "/assets/icon.png")
+	if err != nil {
+		t.Fatalf("get asset: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if string(body) != "PNG" {
+		t.Errorf("body = %q, want %q", body, "PNG")
+	}
+
+	// A file the app doesn't have says so, rather than handing back a page.
+	missing, err := http.Get(srv.URL + "/assets/nope.png")
+	if err != nil {
+		t.Fatalf("get missing asset: %v", err)
+	}
+	defer missing.Body.Close()
+
+	if missing.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", missing.StatusCode, http.StatusNotFound)
+	}
+}
+
+// An app that gave no fs has no files, rather than a page under /assets/.
+func TestAssetsUnsetIsNotFound(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	resp, err := http.Get(srv.URL + "/assets/icon.png")
+	if err != nil {
+		t.Fatalf("get asset: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusNotFound)
+	}
+}

@@ -152,7 +152,8 @@ type Conf struct {
 ```
 
 Empty fields fall back to `DefaultConf`: a 1024x768 white window titled
-`ToolGUI`.
+`ToolGUI`. An [app title](../app/index.md#title) names the window ahead of that
+default, so a `Conf` only sets `Title` to override it.
 
 ## A separate module
 
