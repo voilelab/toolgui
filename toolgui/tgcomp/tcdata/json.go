@@ -41,7 +41,7 @@ func JSON(c *tgframe.Container, v any, conf ...*JSONConf) {
 
 	serialized, err := serializeJSON(v)
 	if err != nil {
-		c.Fail(tgutil.Errorf("%w", err))
+		c.Fail(tgutil.Errorf("serialize to JSON: %w", err))
 		return
 	}
 
