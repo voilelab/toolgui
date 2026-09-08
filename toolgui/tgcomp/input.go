@@ -59,6 +59,13 @@ var Select = tcinput.Select
 // SelectConf is the configuration for the Select component.
 type SelectConf = tcinput.SelectConf
 
+// Multiselect create a dropdown list that takes more than one item and return
+// the indices of the selected ones.
+var Multiselect = tcinput.Multiselect
+
+// MultiselectConf is the configuration for the Multiselect component.
+type MultiselectConf = tcinput.MultiselectConf
+
 // Textarea create a textarea and return its value.
 var Textarea = tcinput.Textarea
 
