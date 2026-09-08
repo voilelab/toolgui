@@ -32,6 +32,10 @@ func (p *progressBarComponent) SetLabel(label string)
 func (p *progressBarComponent) Remove()
 ```
 
+`Remove` also gives the bar's `Conf.ID` back, so the same id can be declared
+again later in the run and the removed bar's state is not handed to whatever
+lands on that id next.
+
 ## Example
 
 ```go

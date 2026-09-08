@@ -128,3 +128,14 @@ func (c *Container) innerContainer(comp Component, suffix string, idx int) *Cont
 func (c *Container) With(f func(c *Container)) {
 	f(c)
 }
+
+// RemoveComponent takes comp off the screen and gives back its own id, not
+// those of anything it added below, so this run may claim it again and
+// [App.Run] drops the state under an id nothing claims, as [Slot.Clear] does.
+func (c *Container) RemoveComponent(comp Component) {
+	c.SendNotifyPack(NewNotifyPackDelete(comp))
+
+	if c.run != nil {
+		c.run.unregisterID(comp)
+	}
+}

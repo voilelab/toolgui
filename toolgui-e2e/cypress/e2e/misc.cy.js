@@ -30,6 +30,27 @@ describe('Misc', () => {
     shown().contains('Working…').should('not.exist')
   })
 
+  // The bar's value lives in state, so each click has to survive the rerun.
+  // The label is scoped to the component column, or the source beside it
+  // matches too; the bar itself carries the value as aria-valuenow.
+  it('Progress bar moves ten points per click', () => {
+    cy.visit('/misc')
+    const shown = () => cy.get('#column_component_show_progress_bar_0')
+    const bar = () =>
+      cy.get('#progress_bar_component_misc_progress [role=progressbar]')
+
+    bar().should('have.attr', 'aria-valuenow', '30')
+    shown().contains('progress_bar: 30%').should('exist')
+
+    shown().contains('+10%').click()
+    bar().should('have.attr', 'aria-valuenow', '40')
+    shown().contains('progress_bar: 40%').should('exist')
+
+    shown().contains('+10%').click()
+    bar().should('have.attr', 'aria-valuenow', '50')
+    shown().contains('progress_bar: 50%').should('exist')
+  })
+
   it('Status collects its lines and closes as a success', () => {
     cy.visit('/misc')
     const shown = () => cy.get('#column_component_show_status_0')
