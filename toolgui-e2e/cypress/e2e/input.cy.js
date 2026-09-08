@@ -89,16 +89,18 @@ describe('Input', () => {
   it('Checkbox default', () => {
     cy.visit('/input')
     const box = 'input[id="checkbox_component_Checkbox default on"]'
+    // Scoped: the default-on toggle prints a Default: line of its own.
+    const result = () => cy.get('div[id=column_component_show_checkbox]')
 
     cy.get(box).should('be.checked')
-    cy.contains('Default: true').should('exist')
+    result().contains('Default: true').should('exist')
 
     cy.get(box).click()
-    cy.contains('Default: false').should('exist')
+    result().contains('Default: false').should('exist')
     cy.get(box).should('not.be.checked')
 
     cy.contains('Rerun').click()
-    cy.contains('Default: false').should('exist')
+    result().contains('Default: false').should('exist')
     cy.get(box).should('not.be.checked')
   })
 
@@ -419,6 +421,24 @@ describe('Input', () => {
     cy.get(toggle).click({ force: true })
     cy.get(toggle).should('not.be.checked')
     result().contains('Value: false').should('exist')
+  })
+
+  // The Checkbox default case, for the switch.
+  it('Toggle default', () => {
+    cy.visit('/input')
+    const toggle = 'input[id="toggle_component_Toggle default on"]'
+    const result = () => cy.get('div[id=column_component_show_toggle]')
+
+    cy.get(toggle).should('be.checked')
+    result().contains('Default: true').should('exist')
+
+    cy.get(toggle).click({ force: true })
+    cy.get(toggle).should('not.be.checked')
+    result().contains('Default: false').should('exist')
+
+    cy.contains('Rerun').click()
+    cy.get(toggle).should('not.be.checked')
+    result().contains('Default: false').should('exist')
   })
 
   it('ColorPicker', () => {

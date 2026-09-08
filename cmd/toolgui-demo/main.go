@@ -709,6 +709,11 @@ func InputPage(p *tgframe.Params) error {
 		toggleValue := tgcomp.Toggle(toggleCompCol, "Toggle")
 		tgcomp.Text(toggleCompCol, fmt.Sprint("Value: ", toggleValue),
 			&tgcomp.TextConf{ID: "toggle_result"})
+
+		onValue := tgcomp.Toggle(toggleCompCol, "Toggle default on",
+			&tgcomp.ToggleConf{Default: true})
+		tgcomp.Text(toggleCompCol, fmt.Sprint("Default: ", onValue),
+			&tgcomp.TextConf{ID: "toggle_default_result"})
 	})
 
 	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
