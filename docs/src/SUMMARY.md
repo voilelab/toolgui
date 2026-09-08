@@ -48,6 +48,7 @@
 * [Data Components](components/data/index.md)
     * [JSON](components/data/json.md)
     * [Table](components/data/table.md)
+    * [DataFrame](components/data/dataframe.md)
     * [Chart](components/data/chart.md)
     * [Scatter Chart](components/data/scatter_chart.md)
 

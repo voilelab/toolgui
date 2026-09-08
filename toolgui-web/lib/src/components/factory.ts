@@ -31,6 +31,7 @@ import { TIframe } from "./tcmisc/iframe"
 
 import { TJson } from "./tcdata/json"
 import { TTable } from "./tcdata/table"
+import { TDataFrame } from "./tcdata/dataframe"
 import { TChart } from "./tcdata/chart"
 
 import { TProgressar } from "./tcmisc/progress_bar"
@@ -78,6 +79,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
 
   json_component: TJson,
   table_component: TTable,
+  dataframe_component: TDataFrame,
   chart_component: TChart,
 
   progress_bar_component: TProgressar,

@@ -1,6 +1,12 @@
 # Table
 
-Table component display a table.
+Table component display a table. It is static: the rows are drawn in the order
+they are given, and there is nothing for the reader to click.
+
+Reach for it when the rows are few and already in the order they should be
+read in. When the rows are many, or when the reader — not the page function —
+should decide the order, use [DataFrame](dataframe.md), which sorts, searches
+and pages in the browser.
 
 ## API
 

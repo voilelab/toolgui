@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -213,6 +214,30 @@ func ContentPage(p *tgframe.Params) error {
 	return nil
 }
 
+// demoOrders is the fake order book the DataFrame demo pages through. It is
+// generated rather than written out so that there is enough of it to sort,
+// search and page.
+func demoOrders() [][]string {
+	regions := []string{"APAC", "EMEA", "LATAM", "NA"}
+	items := []string{"Keyboard", "Monitor", "Mouse", "Laptop", "Dock"}
+
+	const count = 2000
+	ordered := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+
+	rows := make([][]string, 0, count)
+	for i := range count {
+		rows = append(rows, []string{
+			fmt.Sprintf("ORD-%04d", i+1),
+			ordered.AddDate(0, 0, i%365).Format(time.RFC3339),
+			regions[i%len(regions)],
+			items[i%len(items)],
+			strconv.Itoa(i + 1),
+		})
+	}
+
+	return rows
+}
+
 func DataPage(p *tgframe.Params) error {
 	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
@@ -244,6 +269,27 @@ func DataPage(p *tgframe.Params) error {
 	tgcomp.Echo(tableCodeCol, code, func() {
 		tgcomp.Table(tableCompCol, []string{"a", "b"},
 			[][]string{{"1", "2"}, {"3", "4"}})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	dataFrameCompCol, dataFrameCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe"})
+	tgcomp.Echo(dataFrameCodeCol, code, func() {
+		tgcomp.DataFrame(dataFrameCompCol,
+			[]string{"Order", "Ordered", "Region", "Item", "Amount"},
+			demoOrders(),
+			&tgcomp.DataFrameConf{
+				ID:       "demo_orders",
+				PageSize: 10,
+				ColumnConf: []tgcomp.DataFrameColumnConf{
+					{Width: "9rem"},
+					{Type: tgcomp.ColumnTypeDatetime},
+					{},
+					{},
+					{Type: tgcomp.ColumnTypeNumber},
+				},
+			})
 	})
 
 	tgcomp.Divider(p.Main)
