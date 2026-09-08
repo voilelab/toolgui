@@ -16,9 +16,10 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string, conf ...*Da
 
 * `c` is Parent container.
 * `head` is the head of table. It cannot be empty.
-* `rows` is the body of table. Every row needs one cell per head entry;
-  a row of any other length panics, the way a chart panics on a series that
-  does not line up with its labels.
+* `rows` is the body of table. Every row needs one cell per head entry; a row
+  of any other length draws an error placeholder instead of the table and
+  fails the run, the way a chart does on a series that does not line up with
+  its labels.
 * `conf` is an optional configuration, at most one.
 
 ```go
@@ -53,7 +54,7 @@ conf := (&tgcomp.DataFrameConf{}).SetSearchable(false)
 ```
 
 Set `PageSize` above the row count to keep every row on one page. A negative
-`PageSize` panics.
+`PageSize` fails the run and draws an error placeholder.
 
 `Height` caps the table rather than fixing it: the page grows the table until
 it reaches `Height`, and the rows scroll under a pinned head from there. Left
@@ -82,7 +83,8 @@ It is named after the component because `ColumnConf` is the layout
 [Column](../layout/column.md)'s.
 
 `ColumnConf` is either empty, leaving every column on its defaults, or exactly
-as long as `head`. Any other length panics.
+as long as `head`. Any other length fails the run and draws an error
+placeholder.
 
 The rows stay a plain string matrix; `Type` is what tells the client how to
 read them:

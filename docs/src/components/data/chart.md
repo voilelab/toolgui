@@ -15,8 +15,9 @@ func AreaChart(c *tgframe.Container, labels []string, series []ChartSeries, conf
 
 * `c` is the parent container.
 * `labels` are the x axis categories.
-* `series` are the series to draw. Every series needs one value per label, or
-  the call panics.
+* `series` are the series to draw. Every series needs one value per label; a
+  series of any other length draws an error placeholder instead of the chart
+  and fails the run, without stopping the rest of the page.
 * `conf` is an optional configuration, at most one.
 
 `LineChart`, `BarChart` and `AreaChart` set `Kind` themselves and ignore what

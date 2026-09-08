@@ -2,6 +2,7 @@ package tcdata
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -36,6 +37,24 @@ func addComponent(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 	}
 
 	return out.Component
+}
+
+// failMessage runs a call that cannot draw its component and returns the
+// message of the error placeholder it left in the container instead.
+func failMessage(t *testing.T, add func(c *tgframe.Container)) string {
+	t.Helper()
+
+	props := addComponent(t, add)
+	if props["name"] != tgframe.ErrorComponentName {
+		t.Fatalf("name = %v, want %v", props["name"], tgframe.ErrorComponentName)
+	}
+
+	msg, ok := props["message"].(string)
+	if !ok {
+		t.Fatalf("message = %v, want a string", props["message"])
+	}
+
+	return msg
 }
 
 func TestLineChartProps(t *testing.T) {
@@ -119,18 +138,16 @@ func TestChartConfDrivesTheProps(t *testing.T) {
 	}
 }
 
-func TestChartPanicsOnValueLabelMismatch(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("no panic, want a panic on a series shorter than the labels")
-		}
-	}()
-
-	addComponent(t, func(c *tgframe.Container) {
+func TestChartFailsOnValueLabelMismatch(t *testing.T) {
+	msg := failMessage(t, func(c *tgframe.Container) {
 		LineChart(c, []string{"Jan", "Feb"}, []ChartSeries{
 			{Name: "2026", Values: []float64{1}},
 		})
 	})
+
+	if !strings.Contains(msg, "should equal to len of labels") {
+		t.Errorf("message = %q, want it to name the label mismatch", msg)
+	}
 }
 
 // A named entry point sets the kind itself, and must not write that back into
@@ -195,30 +212,26 @@ func TestNonScatterChartSendsNoPoints(t *testing.T) {
 	}
 }
 
-func TestScatterChartPanicsOnValues(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("no panic, want a panic on a scatter series holding values")
-		}
-	}()
-
-	addComponent(t, func(c *tgframe.Container) {
+func TestScatterChartFailsOnValues(t *testing.T) {
+	msg := failMessage(t, func(c *tgframe.Container) {
 		ScatterChart(c, []ChartSeries{
 			{Name: "p95", Values: []float64{1, 2}},
 		})
 	})
+
+	if !strings.Contains(msg, "not values") {
+		t.Errorf("message = %q, want it to name the values", msg)
+	}
 }
 
-func TestChartPanicsOnPointsWithoutScatter(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Error("no panic, want a panic on a line series holding points")
-		}
-	}()
-
-	addComponent(t, func(c *tgframe.Container) {
+func TestChartFailsOnPointsWithoutScatter(t *testing.T) {
+	msg := failMessage(t, func(c *tgframe.Container) {
 		LineChart(c, nil, []ChartSeries{
 			{Name: "2026", Points: []ChartPoint{{X: 1, Y: 2}}},
 		})
 	})
+
+	if !strings.Contains(msg, "only a scatter chart draws") {
+		t.Errorf("message = %q, want it to name the points", msg)
+	}
 }

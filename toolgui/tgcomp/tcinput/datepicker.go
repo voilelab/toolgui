@@ -6,6 +6,7 @@ import (
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &datepickerComponent{}
@@ -118,7 +119,8 @@ func Datepicker(c *tgframe.Container, label string, conf ...*DatepickerConf) *Da
 
 	date, err := time.Parse(dateFormat, *dateStr)
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse date: %v", err))
+		c.Fail(tgutil.Errorf("failed to parse date: %w", err))
+		return nil
 	}
 
 	return &Date{
@@ -199,7 +201,8 @@ func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *Ti
 
 	t, err := time.Parse(timeFormat, *timeStr)
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse time: %v", err))
+		c.Fail(tgutil.Errorf("failed to parse time: %w", err))
+		return nil
 	}
 
 	return &Time{
@@ -268,7 +271,8 @@ func Datetimepicker(c *tgframe.Container, label string, conf ...*DatetimepickerC
 
 	datetime, err := time.Parse(datetimeFormat, *datetimeStr)
 	if err != nil {
-		panic(fmt.Sprintf("failed to parse datetime: %v", err))
+		c.Fail(tgutil.Errorf("failed to parse datetime: %w", err))
+		return nil
 	}
 
 	return &datetime

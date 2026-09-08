@@ -85,7 +85,8 @@ func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadC
 	var fileObj *FileObject
 	err := c.State.GetObject(comp.ID, &fileObj)
 	if err != nil {
-		panic(err)
+		c.Fail(tgutil.Errorf("failed to read the picked file: %w", err))
+		return nil
 	}
 
 	if fileObj == nil {

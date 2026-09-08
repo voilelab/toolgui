@@ -44,6 +44,8 @@ import { TMessage } from "./tcmisc/message"
 import { THtml } from "./tcmisc/html"
 import { TPlugin } from "./tcmisc/plugin"
 
+import { TError } from "./tgframe/error"
+
 import { Props } from "./component_interface"
 import { TTab } from "./tclayout/tab"
 import { TLatex } from "./tccontent/latex"
@@ -101,6 +103,8 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   iframe_component: TIframe,
   html_component: THtml,
   plugin_component: TPlugin,
+
+  error_component: TError,
 }
 
 

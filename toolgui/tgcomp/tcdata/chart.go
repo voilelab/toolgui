@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &chartComponent{}
@@ -173,23 +174,26 @@ func chart(c *tgframe.Container, labels []string, series []ChartSeries,
 	for _, s := range series {
 		if cf.Kind == ChartKindScatter {
 			if len(s.Values) != 0 {
-				panic(fmt.Sprintf(
+				c.Fail(tgutil.Errorf(
 					"series %q of a scatter chart is drawn from points, not values",
 					s.Name))
+				return
 			}
 			continue
 		}
 
 		if len(s.Points) != 0 {
-			panic(fmt.Sprintf(
+			c.Fail(tgutil.Errorf(
 				"series %q holds points, which only a scatter chart draws",
 				s.Name))
+			return
 		}
 
 		if len(s.Values) != len(labels) {
-			panic(fmt.Sprintf(
+			c.Fail(tgutil.Errorf(
 				"len of values of series %q should equal to len of labels",
 				s.Name))
+			return
 		}
 	}
 

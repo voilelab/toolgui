@@ -16,7 +16,9 @@ func Table(c *tgframe.Container, head []string, table [][]string, conf ...*Table
 
 * `c` is Parent container.
 * `head` is the head of table.
-* `table` is the body of table.
+* `table` is the body of table. Every row needs one cell per head entry; rows
+  of any other length draw an error placeholder instead of the table and fail
+  the run, without stopping the rest of the page.
 * `conf` is an optional configuration, at most one.
 
 ```go

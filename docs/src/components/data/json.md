@@ -12,6 +12,10 @@ func JSON(c *tgframe.Container, v any, conf ...*JSONConf)
 * `v` is the object.
   * string: assume to be a serialized JSON string.
   * other: assume to be a struct and will be converted to a JSON string.
+
+  A string that is not JSON, or a value that will not marshal, draws an error
+  placeholder instead of the viewer and fails the run, without stopping the
+  rest of the page.
 * `conf` is an optional configuration, at most one.
 
 ```go

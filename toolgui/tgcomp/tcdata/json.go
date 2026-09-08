@@ -5,6 +5,7 @@ import (
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &jsonComponent{}
@@ -38,31 +39,32 @@ type JSONConf struct {
 func JSON(c *tgframe.Container, v any, conf ...*JSONConf) {
 	cf := tgframe.OneConf("JSON", conf)
 
-	comp := newJSONComponent(serializeJSON(v))
+	serialized, err := serializeJSON(v)
+	if err != nil {
+		c.Fail(tgutil.Errorf("%w", err))
+		return
+	}
+
+	comp := newJSONComponent(serialized)
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 }
 
-func serializeJSON(v any) string {
-	var serialized string
-
+func serializeJSON(v any) (string, error) {
 	if res, ok := v.(string); ok {
 		// check if the string is a valid JSON
 		var js map[string]any
-		err := json.Unmarshal([]byte(res), &js)
-		if err != nil {
-			panic(err)
+		if err := json.Unmarshal([]byte(res), &js); err != nil {
+			return "", err
 		}
 
-		serialized = res
-	} else {
-		bs, err := json.Marshal(v)
-		if err != nil {
-			panic(err)
-		}
-
-		serialized = string(bs)
+		return res, nil
 	}
 
-	return serialized
+	bs, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bs), nil
 }
