@@ -17,6 +17,13 @@ func Datetimepicker(c *tgframe.Container, label string, conf ...*DatetimepickerC
 // DatetimepickerConf is the configuration for the Datetimepicker component.
 type DatetimepickerConf struct {
 	tgframe.Base // ID
+
+	// Default is the datetime the picker starts on, read to the minute. It is
+	// only read until the app user first picks one.
+	Default *time.Time
+
+	// Disabled is true if the datetimepicker is disabled.
+	Disabled bool
 }
 ```
 
@@ -29,5 +36,16 @@ if dateValue != nil {
 		&tgcomp.TextConf{ID: "datetimepicker_result"})
 }
 ```
+
+Starting on a datetime, until the app user picks another:
+
+```go
+start := time.Date(2026, 9, 8, 13, 5, 0, 0, time.UTC)
+tgcomp.Datetimepicker(p.Main, "Datetimepicker",
+	&tgcomp.DatetimepickerConf{Default: &start})
+```
+
+The wire carries minutes, so a `Default` with seconds on it is read to the
+minute — the same value a pick of that minute gives.
 
 ![datetimepicker component](datetimepicker.png)

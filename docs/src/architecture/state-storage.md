@@ -72,9 +72,10 @@ p.State.Set("number_component_Age", 30)
 age := tgcomp.Number(p.Main, "Age", (&tgcomp.NumberConf[int64]{}).SetDefault(30))
 ```
 
-Every component takes a conf, but only `Textbox`, `Number`, `Checkbox` and
-`Multiselect` have a `Default` in theirs today, so `Select` and `Radio` can be
-given a value the page reads but not one it shows.
+Every input that has a value to start on takes a `Default` in its conf, so
+writing the key directly is a thing to reach for only when the value is not
+known where the component is written. `Fileupload` is the exception, for the
+reason its [page](../components/input/fileupload.md) gives.
 
 The key is `<component name>_<label>`, unless the component was given an
 explicit `ID` in its conf, in which case the key is that id verbatim.
@@ -96,13 +97,24 @@ explicit `ID` in its conf, in which case the key is that id verbatim.
 for. The frontend's select has a placeholder as its first option, so Go
 numbers the real items from 1 and keeps 0 for "nothing selected"; radio has no
 placeholder and numbers from 0, using an unset key for "nothing selected".
-Neither shows through the API — both return a 0-based index, and `nil` when
-nothing is selected — so it only bites when writing the key directly. To
-preselect the second item:
+Neither shows through the API — both return a 0-based index, take a 0-based
+`Conf.Default`, and give `nil` when nothing is selected — so it only bites
+when writing the key directly. To preselect the second item:
 
 ```go
 p.State.Set("select_component_Fruit", 2) // 1-based
 p.State.Set("radio_component_Fruit", 1)  // 0-based
+```
+
+Both drop an index that points outside `items` — a selection left over from a
+run of a longer list reads as nothing selected, rather than as an index the
+page would go on to use. Which is what `Conf.Default` is for, and it is
+0-based for both:
+
+```go
+second := 1
+tgcomp.Select(p.Main, "Fruit", fruits, &tgcomp.SelectConf{Default: &second})
+tgcomp.Radio(p.Main, "Fruit", fruits, &tgcomp.RadioConf{Default: &second})
 ```
 
 `Multiselect` numbers from 0 like `Radio`, and holds a list rather than one
@@ -115,3 +127,5 @@ p.State.Set("multiselect_component_Fruit", []int{0, 2})
 
 The pickers parse the string they read, and a value in the wrong format fails
 the run rather than being ignored, so write the format in the table exactly.
+An empty string is the one they do read: it is the app user having cleared the
+picker, and reads back as `nil` rather than as a default to fall back to.

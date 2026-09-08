@@ -38,6 +38,7 @@ export function TFileupload({ node, update, upload }: Props) {
       name={node.props.id}
       label={node.props.label}
       accept={node.props.accept}
+      disabled={node.props.disabled}
       placeholder={file ? file.name : 'No file uploaded'}
       mb="md"
       onChange={handleFileChange}

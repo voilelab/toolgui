@@ -13,13 +13,16 @@ export function TSelect({ node, update }: Props) {
     label: item,
   }))
 
-  const selected = stateValues[node.props.id] || 0
+  // The default is 1-based too, so it drops straight into the same slot, and
+  // only stands in until the component is first touched.
+  const selected = stateValues[node.props.id] ?? node.props.default ?? 0
 
   return (
     <Select
       id={node.props.id}
       label={node.props.label}
       placeholder="Please select an option"
+      disabled={node.props.disabled}
       data={data}
       value={selected > 0 ? String(selected) : null}
       onChange={(value) => {

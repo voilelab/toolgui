@@ -27,8 +27,17 @@ func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadC
 // FileuploadConf is the configuration for the Fileupload component.
 type FileuploadConf struct {
 	tgframe.Base // ID
+
+	// Disabled is true if the fileupload is disabled.
+	Disabled bool
 }
 ```
+
+There is no `Default` here, unlike the other inputs. A file input is the one
+control a page cannot fill in on the app user's behalf: the browser refuses to
+have its value set from script, so a default would read back in Go while the
+box on screen stayed empty. A page that wants to start from a file it already
+has should read that file itself rather than ask for one.
 
 On a server the upload is streamed to disk rather than kept in memory, so a
 file only has to fit on disk. In the browser, where a WebAssembly app has no
