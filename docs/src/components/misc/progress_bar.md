@@ -7,7 +7,7 @@ ProgressBar is a component that displays a progress bar.
 ### Interface
 
 ```go
-func ProgressBar(c *tgframe.Container, value int, label string, conf ...*ProgressBarConf) *progressBarComponent
+func ProgressBar(c *tgframe.Container, value int, label string, conf ...*ProgressBarConf) *ProgressBarHandle
 ```
 
 ### Parameters
@@ -24,13 +24,18 @@ type ProgressBarConf struct {
 }
 ```
 
-The returned component can be updated while the page function is running:
+The returned handle moves the bar along while the page function runs:
 
 ```go
-func (p *progressBarComponent) SetValue(value int)
-func (p *progressBarComponent) SetLabel(label string)
-func (p *progressBarComponent) Remove()
+func (p *ProgressBarHandle) SetValue(value int)
+func (p *ProgressBarHandle) SetLabel(label string)
+func (p *ProgressBarHandle) Remove()
 ```
+
+`ProgressBarHandle` is exported, so the work that moves the bar need not be
+the code that drew it: the handle can be kept in a struct field, passed to a
+function, or named in an interface of your own. See [what a component hands
+back](../../architecture/components.md#what-a-component-hands-back).
 
 `Remove` also gives the bar's `Conf.ID` back, so the same id can be declared
 again later in the run and the removed bar's state is not handed to whatever

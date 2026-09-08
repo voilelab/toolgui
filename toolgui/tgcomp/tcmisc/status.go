@@ -25,14 +25,14 @@ type StatusConf struct {
 	Expanded bool
 }
 
-// StatusContainer is what [Status] hands out. It is an expander whose label
+// StatusHandle is what [Status] hands out. It is an expander whose label
 // carries the state of the work, and whose contents are the lines written to
 // it so far.
 //
 // It holds an [tclayout.Empty] slot and rewrites it on every change, so the
 // label and the lines are always what the last call left.
-type StatusContainer struct {
-	slot     *tclayout.EmptyContainer
+type StatusHandle struct {
+	slot     *tclayout.EmptySlot
 	id       string
 	label    string
 	expanded bool
@@ -40,9 +40,15 @@ type StatusContainer struct {
 	lines    []string
 }
 
+// StatusContainer is the old name of [StatusHandle].
+//
+// Deprecated: use [StatusHandle]. A status is a handle on work being
+// reported, not a container components can be added to.
+type StatusContainer = StatusHandle
+
 // Status reports a piece of work while the page function does it. Write the
-// lines as they come, and close it with [StatusContainer.Complete] or
-// [StatusContainer.Error]:
+// lines as they come, and close it with [StatusHandle.Complete] or
+// [StatusHandle.Fail]:
 //
 //	s := tgcomp.Status(c, "Importing…")
 //	for _, f := range files {
@@ -53,7 +59,7 @@ type StatusContainer struct {
 //
 // A status that is never closed stays in its running state, which is what the
 // page should show when the work did not get that far.
-func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusContainer {
+func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusHandle {
 	cf := tgframe.OneConf("Status", conf)
 
 	// The status is built out of an expander, which is rewritten on every
@@ -64,7 +70,7 @@ func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusCont
 		id = label
 	}
 
-	s := &StatusContainer{
+	s := &StatusHandle{
 		slot:     tclayout.Empty(c, &tclayout.EmptyConf{ID: cf.ID}),
 		id:       id,
 		label:    label,
@@ -77,28 +83,38 @@ func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusCont
 }
 
 // Write appends a line to the status.
-func (s *StatusContainer) Write(text string) {
+func (s *StatusHandle) Write(text string) {
 	s.lines = append(s.lines, text)
 	s.render()
 }
 
 // Update replaces the label, leaving the state and the lines alone.
-func (s *StatusContainer) Update(label string) {
+func (s *StatusHandle) Update(label string) {
 	s.label = label
 	s.render()
 }
 
 // Complete closes the status as a success, taking a new label at most one.
-func (s *StatusContainer) Complete(label ...string) {
+// Two labels or more is a mistake rather than something to join, and panics,
+// as passing two confs to a component does.
+func (s *StatusHandle) Complete(label ...string) {
 	s.finish(statusComplete, label)
 }
 
-// Error closes the status as a failure, taking a new label at most one.
-func (s *StatusContainer) Error(label ...string) {
+// Fail closes the status as a failure, taking a new label at most one.
+func (s *StatusHandle) Fail(label ...string) {
 	s.finish(statusError, label)
 }
 
-func (s *StatusContainer) finish(state statusState, label []string) {
+// Error closes the status as a failure, taking a new label at most one.
+//
+// Deprecated: use [StatusHandle.Fail]. This name reads like the [error]
+// interface, which a status does not implement.
+func (s *StatusHandle) Error(label ...string) {
+	s.finish(statusError, label)
+}
+
+func (s *StatusHandle) finish(state statusState, label []string) {
 	if len(label) > 1 {
 		panic("toolgui: Status takes at most one closing label")
 	}
@@ -112,7 +128,7 @@ func (s *StatusContainer) finish(state statusState, label []string) {
 }
 
 // render draws the status as it now stands, over what was there before.
-func (s *StatusContainer) render() {
+func (s *StatusHandle) render() {
 	s.slot.With(func(c *tgframe.Container) {
 		inner := tclayout.Expand(c, string(s.state)+" "+s.label, s.expanded,
 			&tclayout.ExpandConf{ID: s.id})

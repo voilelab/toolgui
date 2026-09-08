@@ -9,7 +9,7 @@ failure.
 ### Interface
 
 ```go
-func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusContainer
+func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusHandle
 ```
 
 ### Parameters
@@ -29,24 +29,32 @@ type StatusConf struct {
 }
 ```
 
-The returned container is written while the page function runs:
+The returned handle is written while the page function runs:
 
 ```go
 // Write appends a line to the status.
-func (s *StatusContainer) Write(text string)
+func (s *StatusHandle) Write(text string)
 
 // Update replaces the label, leaving the state and the lines alone.
-func (s *StatusContainer) Update(label string)
+func (s *StatusHandle) Update(label string)
 
 // Complete closes the status as a success, taking a new label at most one.
-func (s *StatusContainer) Complete(label ...string)
+func (s *StatusHandle) Complete(label ...string)
 
-// Error closes the status as a failure, taking a new label at most one.
-func (s *StatusContainer) Error(label ...string)
+// Fail closes the status as a failure, taking a new label at most one.
+func (s *StatusHandle) Fail(label ...string)
 ```
+
+`Complete` and `Fail` take at most one closing label; two or more panics, the
+way passing two confs to a component does.
 
 A status that is never closed stays in its running state, which is what the
 page should show when the work did not get that far.
+
+`StatusHandle` was called `StatusContainer`, and `Fail` was called `Error` —
+a name that reads like the `error` interface. Both old names are kept as
+deprecated aliases. See [what a component hands
+back](../../architecture/components.md#what-a-component-hands-back).
 
 ## Example
 
@@ -56,7 +64,7 @@ s := tgcomp.Status(c, "Importing…")
 for _, f := range files {
 	s.Write(f)
 	if err := importFile(f); err != nil {
-		s.Error("Import failed: " + err.Error())
+		s.Fail("Import failed: " + err.Error())
 		return err
 	}
 }

@@ -26,8 +26,14 @@ type EmptyConf struct {
 	tgframe.Base
 }
 
-// EmptyContainer is what [Empty] hands out: a place in the page that can be
+// EmptySlot is what [Empty] hands out: a place in the page that can be
 // written and written over.
+type EmptySlot = tgframe.Slot
+
+// EmptyContainer is the old name of [EmptySlot].
+//
+// Deprecated: use [EmptySlot]. A slot is written whole through
+// [tgframe.Slot.With], not added to the way a container is.
 type EmptyContainer = tgframe.Slot
 
 // Empty reserves a place in the page and hands back a slot to write it with.
@@ -47,7 +53,7 @@ type EmptyContainer = tgframe.Slot
 //	})
 //
 // The slot starts empty on every run, whatever the last run left in it.
-func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptyContainer {
+func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptySlot {
 	cf := tgframe.OneConf("Empty", conf)
 
 	comp := newEmptyComponent()

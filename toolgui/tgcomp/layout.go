@@ -73,6 +73,11 @@ var Empty = tclayout.Empty
 // EmptyConf is the configuration for the Empty component.
 type EmptyConf = tclayout.EmptyConf
 
-// EmptyContainer is what Empty hands out: a place in the page that can be
-// written and written over.
-type EmptyContainer = tclayout.EmptyContainer
+// EmptySlot is what Empty hands out: a place in the page that can be written
+// and written over.
+type EmptySlot = tclayout.EmptySlot
+
+// EmptyContainer is the old name of EmptySlot.
+//
+// Deprecated: use [EmptySlot].
+type EmptyContainer = tclayout.EmptySlot
