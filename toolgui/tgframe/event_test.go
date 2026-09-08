@@ -167,20 +167,25 @@ func TestParseEventSelectEmptyMultiValue(t *testing.T) {
 	}
 }
 
-// A multi-valued event marshals back to the shape the frontend sends, and a
-// single-valued one does not grow a values field it never had.
-func TestEventSelectRoundTrip(t *testing.T) {
+// What the frontend puts on the wire reads back as the right fields, and
+// marshalling keeps an empty values there while leaving an event that never
+// had one without it. A multi-valued payload carries no value of its own, so
+// what comes back out is not what went in: Go's zero fills the field the
+// frontend omitted, which is harmless only because values is what ApplyState
+// reads once it is present.
+func TestEventSelectMarshalShape(t *testing.T) {
 	for _, tt := range []struct {
 		name string
-		data string
+		sent string
+		want string
 	}{
-		{"single", `{"id":"a","value":2}`},
-		{"multi", `{"id":"a","value":0,"values":[0,2]}`},
-		{"empty multi", `{"id":"a","value":0,"values":[]}`},
+		{"single", `{"id":"a","value":2}`, `{"id":"a","value":2}`},
+		{"multi", `{"id":"a","values":[0,2]}`, `{"id":"a","value":0,"values":[0,2]}`},
+		{"empty multi", `{"id":"a","values":[]}`, `{"id":"a","value":0,"values":[]}`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var event EventSelect
-			if err := json.Unmarshal([]byte(tt.data), &event); err != nil {
+			if err := json.Unmarshal([]byte(tt.sent), &event); err != nil {
 				t.Fatalf("Unmarshal: %v", err)
 			}
 
@@ -189,8 +194,8 @@ func TestEventSelectRoundTrip(t *testing.T) {
 				t.Fatalf("Marshal: %v", err)
 			}
 
-			if string(bs) != tt.data {
-				t.Errorf("round trip = %s, want %s", bs, tt.data)
+			if string(bs) != tt.want {
+				t.Errorf("Marshal = %s, want %s", bs, tt.want)
 			}
 		})
 	}

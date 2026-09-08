@@ -560,23 +560,26 @@ func InputPage(p *tgframe.Params) error {
 	tgcomp.Echo(formCodeCol, code, func() {
 		var a, b *float64
 		var ops []int
+		opItems := []string{"sum", "product"}
 		tgcomp.Form(formCompCol, &tgcomp.FormConf{ID: "form"}).With(func(c *tgframe.Container) {
 			a = tgcomp.Number[float64](c, "a")
 			b = tgcomp.Number[float64](c, "b")
-			ops = tgcomp.Multiselect(c, "ops", []string{"sum", "product"},
+			ops = tgcomp.Multiselect(c, "ops", opItems,
 				&tgcomp.MultiselectConf{Placeholder: "pick the operations"})
 		})
 
 		if a != nil && b != nil {
+			// Named rather than numbered, so adding an item to opItems cannot
+			// silently turn into one of the operations already here.
 			for _, op := range ops {
-				if op == 0 {
+				switch opItems[op] {
+				case "sum":
 					tgcomp.Text(formCompCol,
 						fmt.Sprintf("int(a) + int(b) = %d", int(*a)+int(*b)))
-					continue
+				case "product":
+					tgcomp.Text(formCompCol,
+						fmt.Sprintf("int(a) * int(b) = %d", int(*a)*int(*b)))
 				}
-
-				tgcomp.Text(formCompCol,
-					fmt.Sprintf("int(a) * int(b) = %d", int(*a)*int(*b)))
 			}
 		}
 	})
