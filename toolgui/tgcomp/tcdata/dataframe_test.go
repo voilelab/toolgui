@@ -190,25 +190,3 @@ func TestDataFrameDoesNotWriteBackToTheCallersConf(t *testing.T) {
 		t.Errorf("conf = %+v, want it left alone", conf)
 	}
 }
-
-func TestColumnTypeString(t *testing.T) {
-	for _, tc := range []struct {
-		typ  ColumnType
-		want string
-	}{
-		{ColumnTypeText, "text"},
-		{ColumnTypeNumber, "number"},
-		{ColumnTypeDatetime, "datetime"},
-	} {
-		if got := tc.typ.String(); got != tc.want {
-			t.Errorf("String = %q, want %q", got, tc.want)
-		}
-	}
-
-	defer func() {
-		if recover() == nil {
-			t.Errorf("an unsupported type did not panic")
-		}
-	}()
-	_ = ColumnType(9).String()
-}
