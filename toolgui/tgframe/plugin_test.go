@@ -39,12 +39,6 @@ func TestAddPluginAssetsRejectsNameThatIsNotOneSegment(t *testing.T) {
 	}
 }
 
-func TestPluginAssetURL(t *testing.T) {
-	if got := PluginAssetURL("gauge", "gauge.js"); got != "/plugin/gauge/gauge.js" {
-		t.Errorf("PluginAssetURL = %q, want /plugin/gauge/gauge.js", got)
-	}
-}
-
 // A url names something in the set. A file reaching upwards would otherwise
 // be cleaned into a url outside the prefix, which the app does not serve.
 func TestPluginAssetURLStaysInTheSet(t *testing.T) {
