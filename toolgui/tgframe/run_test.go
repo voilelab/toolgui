@@ -196,3 +196,37 @@ func TestTakingARootContainersIDIsAnError(t *testing.T) {
 		t.Fatalf("err = %v, want ErrDuplicatedID", err)
 	}
 }
+
+// A run records the ids it drew on the state, so a transport can tell a
+// component of the page from a name a client made up.
+func TestRunRecordsComponentIDs(t *testing.T) {
+	app := tgframe.NewApp()
+	app.AddPage("index", "Index", func(p *tgframe.Params) error {
+		tgcomp.Text(p.Main, "hello", &tgcomp.TextConf{
+			Base: tgframe.Base{ID: "drawn"},
+		})
+		return nil
+	})
+
+	state := tgframe.NewState()
+
+	// The id a component carries is its name and the one the conf gave it.
+	const drawnID = "text_component_drawn"
+
+	if state.HasComponentID(drawnID) {
+		t.Error("expect no component id before the page runs")
+	}
+
+	err := app.Run("index", state, func(p tgframe.NotifyPack) {})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+
+	if !state.HasComponentID(drawnID) {
+		t.Error("expect the drawn component id to be recorded")
+	}
+
+	if state.HasComponentID("never_drawn") {
+		t.Error("expect an id the page never drew to be unknown")
+	}
+}

@@ -20,8 +20,17 @@ The executor keeps a pool of states, each with a `state_id`:
    the pool, so a reconnect resumes on the same state.
 
 A state that is no longer alive expires 5 minutes after its last use. The pool
-is swept when a new state is created, so an expired state may outlive the
-timeout on an idle server.
+is swept when a new state is created, at most once per timeout, so an expired
+state may outlive the timeout on an idle server.
+
+The pool holds 1024 states at most. A connection that asks for one when the
+pool is full, and nothing in it can be reclaimed, is refused with an error and
+left to retry — another page closing frees a state. `SetMaxStateCount` changes
+the limit:
+
+```go
+e.SetMaxStateCount(64)
+```
 
 The `state_id` lives only in the page's JavaScript. A reload, or navigating to
 another page, always starts a new session with an empty state.
