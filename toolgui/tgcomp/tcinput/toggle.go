@@ -48,8 +48,6 @@ func Toggle(c *tgframe.Container, label string, conf ...*ToggleConf) bool {
 
 	c.AddComponent(comp)
 
-	// Same as [Checkbox]: state tells an untouched toggle from one the user
-	// switched off, which GetBool cannot.
 	if v, ok := c.State.Get[bool](comp.ID); ok {
 		return v
 	}
