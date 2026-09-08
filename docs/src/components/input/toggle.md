@@ -41,3 +41,5 @@ toggleValue := tgcomp.Toggle(p.Main, "Toggle")
 tgcomp.Text(p.Main, fmt.Sprint("Value: ", toggleValue),
 	&tgcomp.TextConf{ID: "toggle_result"})
 ```
+
+![toggle component](toggle.png)

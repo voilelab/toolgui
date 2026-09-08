@@ -54,3 +54,5 @@ tgcomp.Text(p.Main, "Value: "+sizes[*selIdx],
 Use this over [Select](select.md) when the options are ordered — sizes, tiers,
 buckets — so that their order is part of what the control shows. For an
 unordered list, a dropdown reads better.
+
+![select slider component](select_slider.png)

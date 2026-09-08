@@ -49,3 +49,5 @@ color := tgcomp.ColorPicker(p.Main, "ColorPicker",
 tgcomp.Text(p.Main, "Value: "+color,
 	&tgcomp.TextConf{ID: "color_picker_result"})
 ```
+
+![color picker component](color_picker.png)
