@@ -391,10 +391,15 @@ describe('Input', () => {
 
     result().contains('Value: false').should('exist')
 
+    // Both halves each time: the switch itself moves, and Go agrees. A
+    // controlled Switch whose state does not move would pass the second
+    // check and fail the first.
     cy.get(toggle).click({ force: true })
+    cy.get(toggle).should('be.checked')
     result().contains('Value: true').should('exist')
 
     cy.get(toggle).click({ force: true })
+    cy.get(toggle).should('not.be.checked')
     result().contains('Value: false').should('exist')
   })
 
@@ -437,12 +442,29 @@ describe('Input', () => {
 
     const result = () => cy.get('div[id=column_component_show_widget_form]')
 
+    const thumb = 'div[id=slider_component_threshold] [role=slider]'
+    const toggle = 'input[id=toggle_component_enabled]'
+
     result().contains('threshold = 0, enabled = false').should('exist')
 
     // Inside a form nothing reruns until Submit, so the values move on screen
-    // while Go keeps reporting the ones it last received.
+    // while Go keeps reporting the ones it last received. The on-screen half
+    // is the one worth asserting here: with no rerun to redraw them, a
+    // controlled input that does not keep its own state sits there refusing
+    // to move, and only the form case shows it.
     arrow('div[id=slider_component_threshold]', 'ArrowRight')
-    cy.get('input[id=toggle_component_enabled]').click({ force: true })
+    cy.get(thumb).should('have.attr', 'aria-valuenow', '25')
+
+    cy.get(toggle).click({ force: true })
+    cy.get(toggle).should('be.checked')
+
+    // It goes back and forth, not just on once.
+    cy.get(toggle).click({ force: true })
+    cy.get(toggle).should('not.be.checked')
+    cy.get(toggle).click({ force: true })
+    cy.get(toggle).should('be.checked')
+
+    // And through all of that Go has heard nothing.
     result().contains('threshold = 0, enabled = false').should('exist')
 
     result().contains('Submit').click()
