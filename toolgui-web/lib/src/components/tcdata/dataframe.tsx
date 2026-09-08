@@ -43,7 +43,11 @@ function sortKey(value: string, type: Column["type"]): number | string | null {
   }
 }
 
-function compare(a: string, b: string, type: Column["type"]): number {
+// compare orders two cells of the same column. dir is 1 ascending and -1
+// descending, and is applied to the values only: a cell that does not parse
+// sorts last whichever way the column is sorted, which is why descending
+// cannot be the ascending order reversed.
+function compare(a: string, b: string, type: Column["type"], dir: number): number {
   const ka = sortKey(a, type)
   const kb = sortKey(b, type)
 
@@ -52,10 +56,10 @@ function compare(a: string, b: string, type: Column["type"]): number {
   }
 
   if (typeof ka === "string" && typeof kb === "string") {
-    return ka.localeCompare(kb)
+    return dir * ka.localeCompare(kb)
   }
 
-  return (ka as number) - (kb as number)
+  return dir * ((ka as number) - (kb as number))
 }
 
 // SortButton is a column head that toggles through ascending, descending and
@@ -114,11 +118,9 @@ export function TDataFrame({ node }: Props) {
     }
 
     const type = columns[sort.column].type
+    const dir = sort.desc ? -1 : 1
     const out = found.slice()
-    out.sort((a, b) => compare(a[sort.column], b[sort.column], type))
-    if (sort.desc) {
-      out.reverse()
-    }
+    out.sort((a, b) => compare(a[sort.column], b[sort.column], type, dir))
 
     return out
   }, [found, sort, columns])
