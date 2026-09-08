@@ -75,7 +75,10 @@ describe('Input', () => {
     // Same reason as the Select case: the options sit in a portal below the
     // input, and scrolling one to the top would take the input off screen.
     const noScroll = { scrollBehavior: false }
-    const option = (label) => cy.get('[role=option]').contains(label)
+    // cy.contains(selector, text) yields the option itself; chaining contains
+    // off a get would descend to the bare span holding the label, which
+    // carries none of the option's attributes.
+    const option = (label) => cy.contains('[role=option]', label)
     // Read off the demo's own line rather than the page: the code column
     // beside it prints the same words as source.
     const result = () => cy.get('#text_component_multiselect_result')
@@ -247,7 +250,7 @@ describe('Input', () => {
     // The multiselect holds its pick until Submit, like every other field in
     // a form, and reaches Go with the rest of them.
     cy.get('input[id=multiselect_component_ops]').click()
-    cy.get('[role=option]').contains('sum').click(noScroll)
+    cy.contains('[role=option]', 'sum').click(noScroll)
     // The dropdown stays open across picks, and would cover Submit.
     cy.get('input[id=multiselect_component_ops]').blur()
     cy.contains('int(a) + int(b) = 24').should('not.exist')
@@ -262,7 +265,7 @@ describe('Input', () => {
 
     // A second pick is carried alongside the first.
     cy.get('input[id=multiselect_component_ops]').click()
-    cy.get('[role=option]').contains('product').click(noScroll)
+    cy.contains('[role=option]', 'product').click(noScroll)
     cy.get('input[id=multiselect_component_ops]').blur()
     cy.contains('Submit').click()
     cy.contains('int(a) + int(b) = 25').should('exist')
