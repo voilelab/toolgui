@@ -9,6 +9,10 @@ import { TFileupload } from "./tcinput/fileupload"
 import { TRadio } from "./tcinput/radio"
 import { TDatepicker } from "./tcinput/datepicker"
 import { TNumber } from "./tcinput/number"
+import { TSlider } from "./tcinput/slider"
+import { TSelectSlider } from "./tcinput/select_slider"
+import { TToggle } from "./tcinput/toggle"
+import { TColorPicker } from "./tcinput/color_picker"
 import { TForm } from "./tcinput/form"
 import { TDownloadButton } from "./tcinput/download_button"
 
@@ -58,6 +62,10 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   radio_component: TRadio,
   datepicker_component: TDatepicker,
   number_component: TNumber,
+  slider_component: TSlider,
+  select_slider_component: TSelectSlider,
+  toggle_component: TToggle,
+  color_picker_component: TColorPicker,
   form_component: TForm,
   download_button_component: TDownloadButton,
 
