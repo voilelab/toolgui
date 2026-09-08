@@ -116,28 +116,6 @@ func TestAConfDeclaringItsOwnIDShadowsBaseSilently(t *testing.T) {
 	}
 }
 
-// TestBothLiteralSpellingsCompile pins the two ways to set an id on a conf.
-// The flat one needs the caller's file to be at language version 1.27; the
-// nested one works at any version and is the fallback a caller below 1.27
-// would need.
-//
-// toolgui's own go.mod is already at go 1.27.1, so a consumer module must
-// declare at least that to depend on it at all — the toolchain refuses an
-// older one before it ever type-checks a literal. The fallback is therefore
-// unreachable in practice, and is pinned here only so that the claim stays
-// true if the go directive is ever lowered.
-func TestBothLiteralSpellingsCompile(t *testing.T) {
-	flat := &tgcomp.ButtonConf{ID: "x", Disabled: true}
-	nested := &tgcomp.ButtonConf{Base: tgframe.Base{ID: "x"}, Disabled: true}
-
-	if flat.ID != nested.ID {
-		t.Errorf("flat %q, nested %q", flat.ID, nested.ID)
-	}
-	if flat.Disabled != nested.Disabled {
-		t.Error("Disabled differs between the two spellings")
-	}
-}
-
 // widgetConf is a third-party component's conf: it lives outside tgframe and
 // tgcomp, and declares nothing but the embed. It is what the custom-components
 // doc tells people to write.

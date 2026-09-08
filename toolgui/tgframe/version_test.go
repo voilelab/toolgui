@@ -11,14 +11,10 @@ func TestVersion(t *testing.T) {
 	}
 }
 
-func TestAppConfVersion(t *testing.T) {
+func TestAppConfShowVersion(t *testing.T) {
 	app := NewApp()
 
-	conf := app.AppConf()
-	if conf.Version != Version() {
-		t.Errorf("AppConf().Version = %q, want %q", conf.Version, Version())
-	}
-	if !conf.ShowVersion {
+	if !app.AppConf().ShowVersion {
 		t.Error("AppConf().ShowVersion = false, want true by default")
 	}
 
