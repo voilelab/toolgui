@@ -12,12 +12,17 @@ describe('Input', () => {
   const arrow = (selector, key) =>
     cy.get(selector).trigger('keydown', { key })
 
-  // Presses at `from`, moves to `to` and releases, as fractions of the
-  // element's width. The moves are triggered on the element itself and reach
-  // Mantine's document listeners by bubbling. midDrag runs with the button
-  // still down, which is where a value that is only reported on release can
-  // be caught not having been reported.
-  const drag = (selector, from, to, midDrag, fy = 0.5) => {
+  // Presses at `from`, moves to `to`, waits for `beforeRelease` and lets go,
+  // as fractions of the element's width. The moves are triggered on the
+  // element itself and reach Mantine's document listeners by bubbling.
+  //
+  // beforeRelease is not optional. Mantine samples the pointer in a
+  // requestAnimationFrame and reads the last sample when the button comes up,
+  // so a release in the same tick as the move reports where the drag started
+  // rather than where it ended. Assert something there that only holds once
+  // that frame has landed -- which is also where a value that is reported
+  // only on release can be caught not having been reported yet.
+  const drag = (selector, from, to, beforeRelease, fy = 0.5) => {
     cy.get(selector).then(($el) => {
       const rect = $el[0].getBoundingClientRect()
       const at = (fx) => ({
@@ -30,7 +35,7 @@ describe('Input', () => {
         .trigger('mousedown', { button: 0, ...at(from) })
         .trigger('mousemove', at(to))
 
-      midDrag?.()
+      beforeRelease()
 
       cy.wrap($el).trigger('mouseup', at(to))
     })
@@ -255,10 +260,12 @@ describe('Input', () => {
   it('Slider', () => {
     cy.visit('/input')
 
-    // Mantine's Slider is a div, so the id is on its root, and the track
-    // container inside it is the part that follows the pointer.
+    // Mantine's Slider is a div, so the id is on its root. The track
+    // container inside it is the part that follows the pointer, and the thumb
+    // is what reports where the pointer has taken it.
     const root = 'div[id=slider_component_Slider]'
     const track = `${root} ${TRACK}`
+    const thumb = `${root} [role=slider]`
     const result = () => cy.get('div[id=column_component_show_slider]')
 
     // 'Value: ' is the demo printing the value back from Go. Without it the
@@ -277,8 +284,9 @@ describe('Input', () => {
     // A drag reports on release, not on every step it crosses, which is what
     // keeps one drag to one rerun.
     drag(track, 0.4, 0.9, () => {
-      // Mid-drag: the handle has moved, but nothing has been sent, so Go is
-      // still reporting where the drag started.
+      // Mid-drag: the handle is at the end of the track, and nothing has been
+      // sent, so Go is still reporting where the drag started.
+      cy.get(thumb).should('have.attr', 'aria-valuenow', '90')
       result().contains('Value: 40').should('exist')
     })
     result().contains('Value: 90').should('exist')
@@ -309,7 +317,9 @@ describe('Input', () => {
     result().contains('Value: S').should('exist')
 
     // And a drag lands on the mark it is let go over.
-    drag(`${root} ${TRACK}`, 1, 1)
+    drag(`${root} ${TRACK}`, 1, 1, () => {
+      cy.get(`${root} [role=slider]`).should('have.attr', 'aria-valuenow', '2')
+    })
     result().contains('Value: L').should('exist')
   })
 
@@ -350,8 +360,15 @@ describe('Input', () => {
     // in that area is, is the browser's business, so what is checked is that
     // Go ends up reporting the one the picker is left showing.
     cy.get(picker).click()
-    drag('.mantine-ColorInput-saturation', 0.9, 0.9, undefined, 0.9)
-    result().contains('Value: #23d160').should('not.exist')
+    cy.get(picker).invoke('val').then((typed) => {
+      drag('.mantine-ColorInput-saturation', 0.9, 0.9, () => {
+        // Mid-drag: the field has moved off the typed color, and nothing has
+        // been sent, so Go is still reporting the typed one.
+        cy.get(picker).should('not.have.value', typed)
+        result().contains('Value: #23d160').should('exist')
+      }, 0.9)
+    })
+
     cy.get(picker).invoke('val').then((picked) => {
       result().contains(`Value: ${picked.toLowerCase()}`).should('exist')
     })
