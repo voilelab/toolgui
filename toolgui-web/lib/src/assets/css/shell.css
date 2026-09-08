@@ -33,6 +33,11 @@
   display: none;
 }
 
+/* Only shown above the mobile breakpoint, where the burger is hidden. */
+.toolgui-nav-collapse {
+  display: none;
+}
+
 /* Pins the rerun and theme controls to the bottom of the column. */
 .toolgui-nav-foot {
   margin-top: auto;
@@ -59,6 +64,31 @@
   flex: 1 1 auto;
   min-width: 0;
   padding: 1.5rem 1rem;
+}
+
+/* Above the tablet breakpoint the column can collapse to just its handle,
+   handing the 240px back to .toolgui-main. Scoped to the breakpoint so a
+   column left collapsed cannot fight the burger on a narrow viewport. */
+@media screen and (min-width: 769px) {
+  .toolgui-nav-collapse {
+    display: inline-flex;
+    align-self: flex-end;
+  }
+
+  .toolgui-nav.is-collapsed {
+    flex: 0 0 auto;
+    width: auto;
+    padding-inline: 0.5rem;
+  }
+
+  .toolgui-nav.is-collapsed .toolgui-nav-collapse {
+    align-self: center;
+  }
+
+  /* display:none, not unmounting: the page's own sidebar keeps its state. */
+  .toolgui-nav.is-collapsed .toolgui-nav-body {
+    display: none;
+  }
 }
 
 /* Below the tablet breakpoint the column becomes a collapsible top bar. */

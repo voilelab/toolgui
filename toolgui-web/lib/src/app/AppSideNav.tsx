@@ -1,5 +1,6 @@
 import React, { Component } from "react";
-import { Burger, Button, Divider, Group, Loader, NavLink, Text } from "@mantine/core";
+import { ActionIcon, Burger, Button, Divider, Group, Loader, NavLink, Text } from "@mantine/core";
+import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from "@tabler/icons-react";
 
 import { ThemeModeButton } from './ThemeModeButton';
 import { AppConf } from "./AppConf";
@@ -27,9 +28,15 @@ interface AppSideNavProps {
 
 interface AppSideNavState {
   // Whether the collapsed mobile menu is open. Ignored on wider screens,
-  // where the column is always shown.
+  // where the burger is hidden.
   open: boolean
+  // Whether the column is collapsed to its handle. Ignored below the mobile
+  // breakpoint, where the burger owns the toggle instead.
+  collapsed: boolean
 }
+
+// The nav body both toggles point at.
+const navBodyID = 'toolgui-nav-body'
 
 // AppSideNav is the left column: the page list on top, the page's own sidebar
 // below it, and the app controls at the bottom.
@@ -38,6 +45,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     super(props)
     this.state = {
       open: false,
+      collapsed: false,
     }
   }
 
@@ -76,13 +84,29 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     const sidebarNode = this.sidebarNode()
     const hasSidebar = sidebarNode.children.length > 0
 
-    return <aside className="toolgui-nav">
+    const collapsed = this.state.collapsed
+
+    return <aside className={`toolgui-nav ${collapsed ? 'is-collapsed' : ''}`}>
       <Burger className="toolgui-nav-burger"
         aria-label="menu"
+        aria-controls={navBodyID}
         opened={this.state.open}
         onClick={() => { this.setState((prev) => ({ open: !prev.open })) }} />
 
-      <div className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
+      {/* Stays in the column when collapsed, so the strip keeps a handle. */}
+      <ActionIcon className="toolgui-nav-collapse"
+        variant="subtle" size="lg"
+        aria-label={collapsed ? 'Expand the side column' : 'Collapse the side column'}
+        aria-expanded={!collapsed}
+        aria-controls={navBodyID}
+        onClick={() => { this.setState((prev) => ({ collapsed: !prev.collapsed })) }}>
+        {collapsed ?
+          <IconLayoutSidebarLeftExpand size={18} /> :
+          <IconLayoutSidebarLeftCollapse size={18} />}
+      </ActionIcon>
+
+      <div id={navBodyID}
+        className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
         <nav className="toolgui-nav-list" aria-label="main navigation">
           {
             this.props.appConf.page_names.map(name => {
