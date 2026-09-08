@@ -24,6 +24,11 @@ type State struct {
 
 	clickID string
 
+	// runIDs is the set of component ids the last run of the page drew. An
+	// upload names the component it belongs to, and this is what says the
+	// name is one of the page's own rather than one the caller made up.
+	runIDs map[string]bool
+
 	rwLock sync.RWMutex
 }
 
@@ -50,8 +55,28 @@ func (s *State) Clone() *State {
 		values:    maps.Clone(s.values),
 		files:     s.files,
 		funcCache: maps.Clone(s.funcCache),
+		runIDs:    maps.Clone(s.runIDs),
 		clickID:   s.clickID,
 	}
+}
+
+// setRunIDs records the component ids a run drew.
+func (s *State) setRunIDs(ids map[string]bool) {
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	s.runIDs = maps.Clone(ids)
+}
+
+// HasComponentID reports whether the last run of the page drew a component
+// under id. A transport that stores something the client names -- an upload
+// under its component id -- checks the name here first, or a caller could
+// write to any key it likes.
+func (s *State) HasComponentID(id string) bool {
+	s.rwLock.RLock()
+	defer s.rwLock.RUnlock()
+
+	return s.runIDs[id]
 }
 
 // SetClickID set the id of clicked button.

@@ -22,13 +22,28 @@ import (
 // MaxUploadSize limit the size of a file upload request.
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
+// DefaultMaxStateCount is how many states an executor keeps by default. Every
+// update connection takes one, and nothing authenticates a connection, so
+// without a cap anyone who reaches the service can ask for states until the
+// process runs out of memory and disk.
+const DefaultMaxStateCount = 1024
+
+// stateIDTimeout is how long a connection has, once the handshake is done, to
+// say which state it wants.
+const stateIDTimeout = 30 * time.Second
+
+// readHeaderTimeout is how long a connection has to send its request line and
+// headers, and idleTimeout how long a kept-alive connection may sit between
+// requests.
+const (
+	readHeaderTimeout = 30 * time.Second
+	idleTimeout       = 120 * time.Second
+)
+
 // ErrUpdateInterrupt is raise at panic when current state is going to interrupt
 //
 // Deprecated: use [tgframe.ErrUpdateInterrupt].
 var ErrUpdateInterrupt = tgframe.ErrUpdateInterrupt
-
-// FIXME: use errors.Is or errors.As
-const forceClosedByRemoteStr = "An existing connection was forcibly closed by the remote host."
 
 // WebExecutor is a web ui executor for ToolGUI.
 type WebExecutor struct {
@@ -36,13 +51,13 @@ type WebExecutor struct {
 
 	stateMap tgutil.UUIDMap[tgframe.State]
 
-	// TODO: Let it be configurable
+	// maxUploadSize is the size cap of one upload request, guarded by confMu.
 	maxUploadSize int64
 
 	app *tgframe.App
 
-	// confMu guards manifest and assets, which the app may set at any time,
-	// including while handlers are already serving requests.
+	// confMu guards manifest, assets and maxUploadSize, which the app may set at
+	// any time, including while handlers are already serving requests.
 	confMu sync.RWMutex
 
 	// manifest is nil until the app sets one, and nil serves the default.
@@ -62,17 +77,37 @@ type stateIDPack struct {
 
 // NewWebExecutor return a WebExecutor.
 func NewWebExecutor(app *tgframe.App) *WebExecutor {
+	stateMap := tgutil.NewUUIDMap(
+		tgframe.NewState, func(t *tgframe.State) { t.Destroy() },
+		5*time.Minute)
+	stateMap.SetMaxSize(DefaultMaxStateCount)
+
 	return &WebExecutor{
 		rootAssets: toolguiweb.GetRootAssets(),
 
-		stateMap: tgutil.NewUUIDMap(
-			tgframe.NewState, func(t *tgframe.State) { t.Destroy() },
-			5*time.Minute),
+		stateMap: stateMap,
 
 		maxUploadSize: MaxUploadSize,
 
 		app: app,
 	}
+}
+
+// SetMaxStateCount limits how many states the executor keeps at once, which is
+// how many pages it serves at once: a connection that asks for one when the
+// limit is reached is turned away. A count of 0 or less is no limit.
+func (e *WebExecutor) SetMaxStateCount(n int) {
+	e.stateMap.SetMaxSize(n)
+}
+
+// SetMaxUploadSize limits the size of one upload request, [MaxUploadSize] by
+// default. It covers the whole request, not just the file part, and an upload
+// over it is answered with 413.
+func (e *WebExecutor) SetMaxUploadSize(n int64) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
+	e.maxUploadSize = n
 }
 
 // defaultManifest returns the manifest served when the app sets none. The app
@@ -209,8 +244,21 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		return
 	}
 
+	// A connection that finishes the handshake and then says nothing holds a
+	// goroutine and an fd for as long as it likes, so the first message has a
+	// deadline. It is lifted once the message lands: after that the socket is
+	// meant to sit idle between the user's events.
+	if err := ws.SetReadDeadline(time.Now().Add(stateIDTimeout)); err != nil {
+		slog.Error("set state id deadline", "error", err)
+	}
+
 	var pack stateIDPack
 	err := websocket.JSON.Receive(ws, &pack)
+
+	if derr := ws.SetReadDeadline(time.Time{}); derr != nil {
+		slog.Error("clear state id deadline", "error", derr)
+	}
+
 	if err != nil {
 		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   err.Error(),
@@ -225,7 +273,20 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 
 	state, alive := e.stateMap.Get(stateID)
 	if state == nil {
-		stateID = e.stateMap.New()
+		newStateID, err := e.stateMap.New()
+		if err != nil {
+			// The service is holding as many states as it may. Another
+			// connection dropping frees one, so the client is left to retry
+			// rather than told to give up.
+			websocket.JSON.Send(ws, &tgframe.ResultPack{
+				Error:   "too many sessions, try again later",
+				Success: false,
+			})
+			slog.Error("new state", "error", err)
+			return
+		}
+
+		stateID = newStateID
 		state, _ = e.stateMap.Get(stateID)
 		websocket.JSON.Send(ws, stateIDPack{
 			StateID: stateID,
@@ -247,7 +308,9 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		func(pack any) error { return websocket.JSON.Send(ws, pack) })
 	if err != nil {
 		// NewSession only fails on the page name, so a retry would fail the
-		// same way.
+		// same way. The state is nobody's again either way.
+		e.stateMap.SetAlive(stateID, false)
+
 		websocket.JSON.Send(ws, &tgframe.ResultPack{
 			Error:   err.Error(),
 			Success: false,
@@ -257,15 +320,25 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		return
 	}
 
+	// Whichever way the loop ends, the connection is done with the state: the
+	// session stops running the page, and the state goes back to not alive, so
+	// a reconnect can take it and the cleanup can reclaim it.
+	defer func() {
+		session.Close()
+		e.stateMap.SetAlive(stateID, false)
+	}()
+
 	for {
 		var bs []byte
 		err := websocket.Message.Receive(ws, &bs)
 		if err != nil {
-			if err == io.EOF || strings.Contains(err.Error(), forceClosedByRemoteStr) {
-				// Connection closed
+			if !recoverableReceiveErr(err) {
+				// The connection is closed or broken. Reading it again would
+				// only return the same error, and answering it would fail too.
+				if !errors.Is(err, io.EOF) {
+					slog.Error("receive", "error", err)
+				}
 
-				session.Close()
-				e.stateMap.SetAlive(stateID, false)
 				break
 			}
 
@@ -284,6 +357,15 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	}
 }
 
+// recoverableReceiveErr reports whether the read loop can carry on after err.
+// Only a frame the codec refused is: the connection is still in step and the
+// next Receive drains what is left of the frame. Anything else -- a closed or
+// reset connection -- comes back the same way every call, so reading on would
+// spin and never hand the state back.
+func recoverableReceiveErr(err error) bool {
+	return errors.Is(err, websocket.ErrFrameTooLarge)
+}
+
 func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 	stateID := req.Header.Get("STATE_ID")
 	state, alive := e.stateMap.Get(stateID)
@@ -300,7 +382,19 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	req.Body = http.MaxBytesReader(w, req.Body, e.maxUploadSize)
+	// A file is kept under the component it belongs to, so an id the page
+	// never drew names a file nothing reads or releases. Taking one would let
+	// a caller fill the disk under a new name every time.
+	if !state.HasComponentID(componentID) {
+		http.Error(w, "Component ID is not on the page", http.StatusForbidden)
+		return
+	}
+
+	e.confMu.RLock()
+	maxUploadSize := e.maxUploadSize
+	e.confMu.RUnlock()
+
+	req.Body = http.MaxBytesReader(w, req.Body, maxUploadSize)
 
 	// MultipartReader hands over the parts as they arrive. ParseMultipartForm
 	// would buffer the whole upload first.
@@ -491,7 +585,23 @@ func (e *WebExecutor) StartService(addr string) error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	err = http.ListenAndServe(addr, mux)
+	// A connection that opens and then dribbles out its headers, or is kept
+	// alive and left idle, holds a goroutine and an fd for free, so both get a
+	// deadline.
+	//
+	// ReadTimeout and WriteTimeout stay unset on purpose: they cover a whole
+	// request, and the update websocket is one request that lives as long as
+	// the page is open, so either would cut a working session off. What bounds
+	// the socket instead is the deadline handleUpdate puts on the first
+	// message, and a read loop that ends the moment the connection breaks.
+	srv := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: readHeaderTimeout,
+		IdleTimeout:       idleTimeout,
+	}
+
+	err = srv.ListenAndServe()
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

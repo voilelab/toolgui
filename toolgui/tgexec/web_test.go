@@ -3,6 +3,7 @@ package tgexec
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -22,12 +23,19 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+// testComponentID is the fileupload the test page draws. An upload has to
+// name a component the page drew, so this is the only id one may carry.
+const testComponentID = "fileupload_component_File"
+
 // newTestServer starts a server for an app with a single page.
 func newTestServer(t *testing.T) (*httptest.Server, *WebExecutor) {
 	t.Helper()
 
 	app := tgframe.NewApp()
-	app.AddPage("index", "Index", func(p *tgframe.Params) error { return nil })
+	app.AddPage("index", "Index", func(p *tgframe.Params) error {
+		tcinput.Fileupload(p.Main, "File", "")
+		return nil
+	})
 
 	e := NewWebExecutor(app)
 	t.Cleanup(e.Destroy)
@@ -120,7 +128,45 @@ func newUploadState(t *testing.T, srv *httptest.Server) string {
 		t.Fatalf("receive: %v", err)
 	}
 
+	// An empty event is what the client sends once connected. The run it
+	// starts is what draws the page's components, and an upload may only name
+	// one of those.
+	if err := websocket.Message.Send(ws, []byte(`{}`)); err != nil {
+		t.Fatalf("send empty event: %v", err)
+	}
+
+	waitRun(t, ws)
+
 	return pack.StateID
+}
+
+// waitRun reads what the server sends until a run reports its result, so the
+// test goes on with the page drawn.
+func waitRun(t *testing.T, ws *websocket.Conn) {
+	t.Helper()
+
+	if err := ws.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("set deadline: %v", err)
+	}
+	defer func() { _ = ws.SetReadDeadline(time.Time{}) }()
+
+	for {
+		var bs []byte
+		if err := websocket.Message.Receive(ws, &bs); err != nil {
+			t.Fatalf("receive: %v", err)
+		}
+
+		var pack tgframe.ResultPack
+		if err := json.Unmarshal(bs, &pack); err != nil {
+			continue
+		}
+
+		// A notify pack and the ready pack carry neither, so what ends the
+		// wait is the result the run finishes with.
+		if pack.Success || pack.Error != "" {
+			return
+		}
+	}
 }
 
 // uploadRequest builds a multipart upload of content for componentID.
@@ -164,7 +210,7 @@ func TestUploadStoresFileUnderComponent(t *testing.T) {
 	stateID := newUploadState(t, srv)
 
 	resp, err := srv.Client().Do(
-		uploadRequest(t, srv.URL, stateID, "comp", "hello file"))
+		uploadRequest(t, srv.URL, stateID, testComponentID, "hello file"))
 	if err != nil {
 		t.Fatalf("upload: %v", err)
 	}
@@ -175,7 +221,7 @@ func TestUploadStoresFileUnderComponent(t *testing.T) {
 	}
 
 	state, _ := e.stateMap.Get(stateID)
-	file := state.GetFile("comp")
+	file := state.GetFile(testComponentID)
 	if file == nil {
 		t.Fatal("expect the upload in the state")
 	}
@@ -191,6 +237,30 @@ func TestUploadStoresFileUnderComponent(t *testing.T) {
 
 	if string(bs) != "hello file" {
 		t.Errorf("Bytes = %q, want hello file", bs)
+	}
+}
+
+// TestUploadWithUndeclaredComponentID checks an upload naming a component the
+// page never drew is refused. Taking one would let a caller keep a file per
+// name it invents, and there is nothing that ever reads or releases those.
+func TestUploadWithUndeclaredComponentID(t *testing.T) {
+	srv, e := newTestServer(t)
+	stateID := newUploadState(t, srv)
+
+	resp, err := srv.Client().Do(
+		uploadRequest(t, srv.URL, stateID, "no_such_component", "hello"))
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("StatusCode = %d, want 403", resp.StatusCode)
+	}
+
+	state, _ := e.stateMap.Get(stateID)
+	if state.GetFile("no_such_component") != nil {
+		t.Error("expect the refused upload to be stored nowhere")
 	}
 }
 
@@ -216,7 +286,7 @@ func TestUploadWithUnknownStateID(t *testing.T) {
 	srv, _ := newTestServer(t)
 
 	resp, err := srv.Client().Do(
-		uploadRequest(t, srv.URL, "no_such_state", "comp", "hello"))
+		uploadRequest(t, srv.URL, "no_such_state", testComponentID, "hello"))
 	if err != nil {
 		t.Fatalf("upload: %v", err)
 	}
@@ -250,7 +320,7 @@ func TestUploadWithoutFilePart(t *testing.T) {
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("STATE_ID", stateID)
-	req.Header.Set("COMPONENT_ID", "comp")
+	req.Header.Set("COMPONENT_ID", testComponentID)
 
 	resp, err := srv.Client().Do(req)
 	if err != nil {
@@ -291,7 +361,7 @@ func TestWriteUploadErrorOther(t *testing.T) {
 func TestUploadReachesFileupload(t *testing.T) {
 	// The id the browser puts on the input, and the one the component looks
 	// its content up under.
-	const componentID = "fileupload_component_File"
+	const componentID = testComponentID
 
 	files := make(chan string, 4)
 
@@ -383,7 +453,7 @@ func waitFile(t *testing.T, files chan string) string {
 // part: a small file followed by a huge field is still refused.
 func TestUploadOverMaxSize(t *testing.T) {
 	srv, e := newTestServer(t)
-	e.maxUploadSize = 512
+	e.SetMaxUploadSize(512)
 
 	stateID := newUploadState(t, srv)
 
@@ -414,7 +484,7 @@ func TestUploadOverMaxSize(t *testing.T) {
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("STATE_ID", stateID)
-	req.Header.Set("COMPONENT_ID", "comp")
+	req.Header.Set("COMPONENT_ID", testComponentID)
 
 	resp, err := srv.Client().Do(req)
 	if err != nil {
@@ -460,7 +530,7 @@ func TestUploadWithTrailingField(t *testing.T) {
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("STATE_ID", stateID)
-	req.Header.Set("COMPONENT_ID", "comp")
+	req.Header.Set("COMPONENT_ID", testComponentID)
 
 	resp, err := srv.Client().Do(req)
 	if err != nil {
@@ -473,7 +543,7 @@ func TestUploadWithTrailingField(t *testing.T) {
 	}
 
 	state, _ := e.stateMap.Get(stateID)
-	bs, err := state.GetFile("comp").Bytes()
+	bs, err := state.GetFile(testComponentID).Bytes()
 	if err != nil {
 		t.Fatalf("Bytes: %v", err)
 	}
@@ -736,5 +806,145 @@ func TestUpdateRejectsMissingOrigin(t *testing.T) {
 
 	if len(body) != 0 {
 		t.Errorf("body = %q, want empty", body)
+	}
+}
+
+// dialUpdateRaw opens an update socket over a TCP connection the test holds,
+// so it can drop it the way a network does rather than closing it politely.
+func dialUpdateRaw(t *testing.T, srv *httptest.Server) (*websocket.Conn, *net.TCPConn) {
+	t.Helper()
+
+	url := strings.Replace(srv.URL, "http://", "ws://", 1) + "/api/update/index"
+	config, err := websocket.NewConfig(url, srv.URL)
+	if err != nil {
+		t.Fatalf("config: %v", err)
+	}
+
+	conn, err := net.Dial("tcp", srv.Listener.Addr().String())
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+
+	ws, err := websocket.NewClient(config, conn)
+	if err != nil {
+		conn.Close()
+		t.Fatalf("websocket client: %v", err)
+	}
+
+	return ws, conn.(*net.TCPConn)
+}
+
+// TestUpdateResetReleasesState checks a connection that breaks without a
+// close -- a reset, what a dropped network looks like -- gives its state back.
+// The read loop used to carry on past anything that wasn't io.EOF, which left
+// the state alive for good and spun on an error that never goes away.
+func TestUpdateResetReleasesState(t *testing.T) {
+	srv, e := newTestServer(t)
+
+	ws, conn := dialUpdateRaw(t, srv)
+
+	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var pack stateIDPack
+	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	state, alive := e.stateMap.Get(pack.StateID)
+	if state == nil || !alive {
+		t.Fatal("expect a live state for the connection")
+	}
+
+	state.Set("key", "value")
+
+	// Linger 0 makes the close a reset, so the server's next read fails with
+	// something other than io.EOF.
+	if err := conn.SetLinger(0); err != nil {
+		t.Fatalf("set linger: %v", err)
+	}
+	conn.Close()
+
+	waitNotAlive(t, e, pack.StateID)
+
+	// The state is kept for the reconnect, with what the page put in it.
+	back, alive := e.stateMap.Get(pack.StateID)
+	if back != state {
+		t.Fatal("expect the state to be kept for a reconnect")
+	}
+
+	if alive {
+		t.Error("expect the state to be back to not alive")
+	}
+
+	if v, _ := back.Get[string]("key"); v != "value" {
+		t.Errorf("key = %q, want value", v)
+	}
+
+	// A reconnect naming it takes it back, rather than being turned away for
+	// a connection that is long gone.
+	ws2 := dialUpdate(t, srv, "index")
+	if err := websocket.JSON.Send(ws2, stateIDPack{StateID: pack.StateID}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	if err := websocket.Message.Send(ws2, []byte(`{}`)); err != nil {
+		t.Fatalf("send empty event: %v", err)
+	}
+
+	waitRun(t, ws2)
+
+	if _, alive := e.stateMap.Get(pack.StateID); !alive {
+		t.Error("expect the reconnect to take the state back")
+	}
+}
+
+// waitNotAlive waits for the server to hand the state back.
+func waitNotAlive(t *testing.T, e *WebExecutor, stateID string) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, alive := e.stateMap.Get(stateID); !alive {
+			return
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Fatal("the state stayed alive after the connection broke")
+}
+
+// TestUpdateOverMaxStateCount checks a connection asking for a state the
+// service has no room for is told so, rather than being handed one anyway.
+func TestUpdateOverMaxStateCount(t *testing.T) {
+	srv, e := newTestServer(t)
+	e.SetMaxStateCount(1)
+
+	newUploadState(t, srv)
+
+	ws := dialUpdate(t, srv, "index")
+	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var pack tgframe.ResultPack
+	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+		t.Fatalf("receive: %v", err)
+	}
+
+	if pack.Success {
+		t.Error("Success = true, want false")
+	}
+
+	if pack.Error == "" {
+		t.Error("expect the refusal to say why")
+	}
+
+	// The client may come back once a connection frees a state, so this is
+	// not the end of the road for it.
+	if pack.Fatal {
+		t.Error("Fatal = true, want false")
 	}
 }
