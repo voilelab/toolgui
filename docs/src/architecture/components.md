@@ -73,15 +73,8 @@ type ButtonConf struct {
 Writing `&ButtonConf{ID: "save_all"}` — a promoted field as a key in a
 composite literal — needs the **calling file** to be at language version Go
 1.27 or above. That is the only version-dependent thing a user of toolgui
-touches. A module still on 1.26 spells the same thing out:
-
-```go
-&tgcomp.ButtonConf{Base: tgframe.Base{ID: "save_all"}}
-```
-
-toolgui's own `go.mod` says `go 1.27.1`, so a module that depends on it is
-already above that line; the nested spelling is there for a project that
-lowers its own `go` directive per file or per package.
+touches, and toolgui's own `go.mod` says `go 1.27.1`, so a module that
+depends on it is already above that line.
 
 ## Identity: position and id
 
