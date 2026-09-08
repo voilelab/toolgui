@@ -7,5 +7,6 @@ It doesn't return any value to user.
 import "github.com/voilelab/toolgui/toolgui/tgcomp"
 ```
 
-These components are shown on the `content` page of the demo app,
-which `task run_demo` serves at http://localhost:3000/content.
+These components are shown on the `content` page of the demo app: [run it in
+your browser](../../demo/#/content), or `task run_demo` and open
+http://localhost:3000/content.

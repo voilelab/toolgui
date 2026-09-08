@@ -12,6 +12,12 @@ experience to Streamlit for Python users.
 > The API for this package is still under development,
 > and may be subject to changes in the future.
 
+## Live demo
+
+**<https://voilelab.github.io/toolgui/demo/>** — the demo app covering every
+component, compiled to WebAssembly and running entirely in your browser, with
+no server behind it.
+
 Documentation: <https://voilelab.github.io/toolgui/>, built from
 [`docs/`](docs/). It tracks the latest release; `docs/` on `dev` is ahead of it.
 
