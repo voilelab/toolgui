@@ -9,7 +9,7 @@ export function TCheckbox({ node, update }: Props) {
     <Checkbox
       id={node.props.id}
       label={node.props.label}
-      checked={stateValues[node.props.id] || node.props.default}
+      checked={stateValues[node.props.id] ?? node.props.default}
       disabled={node.props.disabled}
       onChange={(event) => {
         const checked = event.currentTarget.checked

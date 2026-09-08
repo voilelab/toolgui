@@ -46,5 +46,10 @@ func Checkbox(c *tgframe.Container, label string, conf ...*CheckboxConf) bool {
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
-	return c.State.GetBool(comp.ID)
+
+	if v, ok := c.State.Get[bool](comp.ID); ok {
+		return v
+	}
+
+	return cf.Default
 }
