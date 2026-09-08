@@ -1,6 +1,41 @@
 const path = require('path')
 
 describe('Input', () => {
+  // Mantine follows the pointer from the track container rather than from the
+  // component's root, which is where the id sits.
+  const TRACK = '.mantine-Slider-trackContainer'
+
+  // Steps a slider by one step. The keys are handled on the component's own
+  // root, which is where the id sits, so the event goes straight there rather
+  // than through the thumb — the thumb is a div, which cy.type() will not
+  // take.
+  const arrow = (selector, key) =>
+    cy.get(selector).trigger('keydown', { key })
+
+  // Presses at `from`, moves to `to` and releases, as fractions of the
+  // element's width. The moves are triggered on the element itself and reach
+  // Mantine's document listeners by bubbling. midDrag runs with the button
+  // still down, which is where a value that is only reported on release can
+  // be caught not having been reported.
+  const drag = (selector, from, to, midDrag, fy = 0.5) => {
+    cy.get(selector).then(($el) => {
+      const rect = $el[0].getBoundingClientRect()
+      const at = (fx) => ({
+        clientX: rect.left + rect.width * fx,
+        clientY: rect.top + rect.height * fy,
+        force: true,
+      })
+
+      cy.wrap($el)
+        .trigger('mousedown', { button: 0, ...at(from) })
+        .trigger('mousemove', at(to))
+
+      midDrag?.()
+
+      cy.wrap($el).trigger('mouseup', at(to))
+    })
+  }
+
   it('Textarea input', () => {
     cy.visit('/input')
     cy.get('textarea').type('testarea: 1')
@@ -37,8 +72,11 @@ describe('Input', () => {
 
   it('Checkbox', () => {
     cy.visit('/input')
-    cy.get('input[type=checkbox]').click()
-    cy.contains('Value: true').should('exist')
+    // By id rather than by type: a Mantine Switch is a checkbox too, so the
+    // toggles further down the page answer to input[type=checkbox] as well.
+    cy.get('input[id=checkbox_component_Checkbox]').click()
+    cy.get('div[id=column_component_show_checkbox]')
+      .contains('Value: true').should('exist')
   })
 
   it('Button click', () => {
@@ -212,6 +250,128 @@ describe('Input', () => {
     cy.contains('int(a) + int(b) = 24').should('exist')
     cy.contains('Submit').click()
     cy.contains('int(a) + int(b) = 25').should('exist')
+  })
+
+  it('Slider', () => {
+    cy.visit('/input')
+
+    // Mantine's Slider is a div, so the id is on its root, and the track
+    // container inside it is the part that follows the pointer.
+    const root = 'div[id=slider_component_Slider]'
+    const track = `${root} ${TRACK}`
+    const result = () => cy.get('div[id=column_component_show_slider]')
+
+    // 'Value: ' is the demo printing the value back from Go. Without it the
+    // slider's own bubble carries the same number, and the case would pass on
+    // the browser alone.
+    result().contains('Value: 50').should('exist')
+
+    // The step is 10, so an arrow key is one step.
+    arrow(root, 'ArrowRight')
+    result().contains('Value: 60').should('exist')
+
+    arrow(root, 'ArrowLeft')
+    arrow(root, 'ArrowLeft')
+    result().contains('Value: 40').should('exist')
+
+    // A drag reports on release, not on every step it crosses, which is what
+    // keeps one drag to one rerun.
+    drag(track, 0.4, 0.9, () => {
+      // Mid-drag: the handle has moved, but nothing has been sent, so Go is
+      // still reporting where the drag started.
+      result().contains('Value: 40').should('exist')
+    })
+    result().contains('Value: 90').should('exist')
+  })
+
+  it('SelectSlider', () => {
+    cy.visit('/input')
+
+    const root = 'div[id=select_slider_component_SelectSlider]'
+    const result = () => cy.get('div[id=column_component_show_select_slider]')
+
+    // Nothing picked yet, so the handle is on the first item.
+    result().contains('Value: S').should('exist')
+
+    arrow(root, 'ArrowRight')
+    result().contains('Value: M').should('exist')
+
+    arrow(root, 'ArrowRight')
+    result().contains('Value: L').should('exist')
+
+    // The last item is the end of the track: there is nothing past it to
+    // slide onto, so the value stays where it is.
+    arrow(root, 'ArrowRight')
+    result().contains('Value: L').should('exist')
+
+    arrow(root, 'ArrowLeft')
+    arrow(root, 'ArrowLeft')
+    result().contains('Value: S').should('exist')
+
+    // And a drag lands on the mark it is let go over.
+    drag(`${root} ${TRACK}`, 1, 1)
+    result().contains('Value: L').should('exist')
+  })
+
+  it('Toggle', () => {
+    cy.visit('/input')
+
+    // Mantine draws the switch itself and leaves the checkbox behind it at
+    // zero opacity, so the click goes to the input the way the file one does.
+    const toggle = 'input[id=toggle_component_Toggle]'
+    const result = () => cy.get('div[id=column_component_show_toggle]')
+
+    result().contains('Value: false').should('exist')
+
+    cy.get(toggle).click({ force: true })
+    result().contains('Value: true').should('exist')
+
+    cy.get(toggle).click({ force: true })
+    result().contains('Value: false').should('exist')
+  })
+
+  it('ColorPicker', () => {
+    cy.visit('/input')
+
+    const picker = 'input[id=color_picker_component_ColorPicker]'
+    const result = () => cy.get('div[id=column_component_show_color_picker]')
+
+    // Untouched, the value is the conf's default.
+    result().contains('Value: #ff3860').should('exist')
+    cy.get(picker).should('have.value', '#ff3860')
+
+    // Typed in uppercase, read back in lower: Go promises '#rrggbb'.
+    cy.get(picker).clear()
+    cy.get(picker).type('#23D160')
+    cy.get(picker).blur()
+    result().contains('Value: #23d160').should('exist')
+
+    // Picked off the saturation area rather than typed. Which color a point
+    // in that area is, is the browser's business, so what is checked is that
+    // Go ends up reporting the one the picker is left showing.
+    cy.get(picker).click()
+    drag('.mantine-ColorInput-saturation', 0.9, 0.9, undefined, 0.9)
+    result().contains('Value: #23d160').should('not.exist')
+    cy.get(picker).invoke('val').then((picked) => {
+      result().contains(`Value: ${picked.toLowerCase()}`).should('exist')
+    })
+  })
+
+  it('Form carries the new widgets', () => {
+    cy.visit('/input')
+
+    const result = () => cy.get('div[id=column_component_show_widget_form]')
+
+    result().contains('threshold = 0, enabled = false').should('exist')
+
+    // Inside a form nothing reruns until Submit, so the values move on screen
+    // while Go keeps reporting the ones it last received.
+    arrow('div[id=slider_component_threshold]', 'ArrowRight')
+    cy.get('input[id=toggle_component_enabled]').click({ force: true })
+    result().contains('threshold = 0, enabled = false').should('exist')
+
+    result().contains('Submit').click()
+    result().contains('threshold = 25, enabled = true').should('exist')
   })
 
   const downloadsFolder = Cypress.config('downloadsFolder');

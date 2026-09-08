@@ -563,6 +563,73 @@ func InputPage(p *tgframe.Params) error {
 		}
 	})
 
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "13"})
+
+	sliderCompCol, sliderCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_slider"})
+	tgcomp.Echo(sliderCodeCol, code, func() {
+		sliderValue := tgcomp.Slider(sliderCompCol, "Slider",
+			(&tcinput.SliderConf[int64]{}).SetMin(0).SetMax(100).SetStep(10).
+				SetDefault(50))
+
+		// A slider always sits somewhere, so the pointer is never nil.
+		tgcomp.Text(sliderCompCol, fmt.Sprint("Value: ", *sliderValue),
+			&tgcomp.TextConf{ID: "slider_result"})
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "14"})
+
+	selectSliderCompCol, selectSliderCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_select_slider"})
+	tgcomp.Echo(selectSliderCodeCol, code, func() {
+		sizes := []string{"S", "M", "L"}
+		selIdx := tgcomp.SelectSlider(selectSliderCompCol, "SelectSlider", sizes)
+
+		tgcomp.Text(selectSliderCompCol, "Value: "+sizes[*selIdx],
+			&tgcomp.TextConf{ID: "select_slider_result"})
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "15"})
+
+	toggleCompCol, toggleCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_toggle"})
+	tgcomp.Echo(toggleCodeCol, code, func() {
+		toggleValue := tgcomp.Toggle(toggleCompCol, "Toggle")
+		tgcomp.Text(toggleCompCol, fmt.Sprint("Value: ", toggleValue),
+			&tgcomp.TextConf{ID: "toggle_result"})
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "16"})
+
+	colorPickerCompCol, colorPickerCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_color_picker"})
+	tgcomp.Echo(colorPickerCodeCol, code, func() {
+		color := tgcomp.ColorPicker(colorPickerCompCol, "ColorPicker",
+			&tgcomp.ColorPickerConf{Default: "#ff3860"})
+
+		tgcomp.Text(colorPickerCompCol, "Value: "+color,
+			&tgcomp.TextConf{ID: "color_picker_result"})
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
+
+	widgetFormCompCol, widgetFormCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_widget_form"})
+	tgcomp.Echo(widgetFormCodeCol, code, func() {
+		var threshold *int64
+		var enabled bool
+
+		tgcomp.Form(widgetFormCompCol, &tgcomp.FormConf{ID: "widget_form"}).
+			With(func(c *tgframe.Container) {
+				threshold = tgcomp.Slider(c, "threshold",
+					(&tcinput.SliderConf[int64]{}).SetMax(100).SetStep(25))
+				enabled = tgcomp.Toggle(c, "enabled")
+			})
+
+		tgcomp.Text(widgetFormCompCol,
+			fmt.Sprintf("threshold = %d, enabled = %v", *threshold, enabled))
+	})
+
 	return nil
 }
 

@@ -23,6 +23,18 @@ var Checkbox = tcinput.Checkbox
 // CheckboxConf is the configuration for the Checkbox component.
 type CheckboxConf = tcinput.CheckboxConf
 
+// Toggle create a switch and return true if it's on.
+var Toggle = tcinput.Toggle
+
+// ToggleConf is the configuration for the Toggle component.
+type ToggleConf = tcinput.ToggleConf
+
+// ColorPicker create a color picker and return the picked color.
+var ColorPicker = tcinput.ColorPicker
+
+// ColorPickerConf is the configuration for the ColorPicker component.
+type ColorPickerConf = tcinput.ColorPickerConf
+
 // Datepicker create a datepicker and return its selected date.
 var Datepicker = tcinput.Datepicker
 
@@ -59,6 +71,13 @@ var Select = tcinput.Select
 // SelectConf is the configuration for the Select component.
 type SelectConf = tcinput.SelectConf
 
+// SelectSlider create a slider over a list of items and return the index of
+// the selected one.
+var SelectSlider = tcinput.SelectSlider
+
+// SelectSliderConf is the configuration for the SelectSlider component.
+type SelectSliderConf = tcinput.SelectSliderConf
+
 // Textarea create a textarea and return its value.
 var Textarea = tcinput.Textarea
 
@@ -85,6 +104,19 @@ func Number[T tcinput.Numeric](
 	c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
 
 	return tcinput.Number[T](c, label, conf...)
+}
+
+// SliderConf is the configuration for the Slider component.
+type SliderConf[T tcinput.Numeric] = tcinput.SliderConf[T]
+
+// Slider create a slider over a numeric range and return its value.
+//
+// A generic function cannot be forwarded by a var, so this is a wrapper rather
+// than an alias like its neighbours.
+func Slider[T tcinput.Numeric](
+	c *tgframe.Container, label string, conf ...*SliderConf[T]) *T {
+
+	return tcinput.Slider[T](c, label, conf...)
 }
 
 // Form create a form component.
