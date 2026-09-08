@@ -13,7 +13,7 @@ const modulePath = "github.com/voilelab/toolgui"
 // The Release workflow rewrites this line on the commit it tags, so a released
 // tree always carries its own version. The value committed on dev is the last
 // release it was bumped to.
-const fallbackVersion = "v0.3.0"
+const fallbackVersion = "v0.4.0"
 
 // Version return the version of toolgui this binary was built against.
 //
