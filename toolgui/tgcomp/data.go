@@ -14,6 +14,48 @@ var Table = tcdata.Table
 // TableConf is the configuration for the Table component.
 type TableConf = tcdata.TableConf
 
+// DataFrame create a table the user can sort, search and page through, all in
+// the browser.
+var DataFrame = tcdata.DataFrame
+
+// DataFrameConf is the configuration for the DataFrame component.
+type DataFrameConf = tcdata.DataFrameConf
+
+// DataFrameColumnConf is the configuration of one DataFrame column. It is
+// named after the component because ColumnConf is the layout Column's.
+type DataFrameColumnConf = tcdata.DataFrameColumnConf
+
+// ColumnType is how a DataFrame column's cells are read and sorted.
+type ColumnType = tcdata.ColumnType
+
+const (
+	// ColumnTypeText sorts the cells as strings.
+	ColumnTypeText = tcdata.ColumnTypeText
+
+	// ColumnTypeNumber sorts the cells by their numeric value.
+	ColumnTypeNumber = tcdata.ColumnTypeNumber
+
+	// ColumnTypeDatetime sorts the cells by the instant they name.
+	ColumnTypeDatetime = tcdata.ColumnTypeDatetime
+)
+
+// ColumnAlign is which edge a DataFrame column's cells sit against.
+type ColumnAlign = tcdata.ColumnAlign
+
+const (
+	// ColumnAlignAuto aligns a number column right, every other one left.
+	ColumnAlignAuto = tcdata.ColumnAlignAuto
+
+	// ColumnAlignLeft aligns the cells left.
+	ColumnAlignLeft = tcdata.ColumnAlignLeft
+
+	// ColumnAlignCenter centers the cells.
+	ColumnAlignCenter = tcdata.ColumnAlignCenter
+
+	// ColumnAlignRight aligns the cells right.
+	ColumnAlignRight = tcdata.ColumnAlignRight
+)
+
 // ChartKind is the shape a chart is drawn in.
 type ChartKind = tcdata.ChartKind
 
