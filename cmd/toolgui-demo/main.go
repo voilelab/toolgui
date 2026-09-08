@@ -62,7 +62,7 @@ func main() {
 		return nil
 	})
 
-	tgexec.NewWebExecutor(app).StartService(":3001")
+	tgexec.NewWebExecutor(app).StartService("127.0.0.1:3001")
 }
 ` + "```"
 

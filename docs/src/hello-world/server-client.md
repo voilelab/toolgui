@@ -20,7 +20,7 @@ func main() {
 		return nil
 	})
 
-	tgexec.NewWebExecutor(app).StartService(":3001")
+	tgexec.NewWebExecutor(app).StartService("127.0.0.1:3001")
 }
 ```
 
@@ -66,5 +66,5 @@ func(p *tgframe.Params) error {
 The web executor provides a web server GUI interface for `App`.
 
 ```go
-tgexec.NewWebExecutor(app).StartService(":3001")
+tgexec.NewWebExecutor(app).StartService("127.0.0.1:3001")
 ```

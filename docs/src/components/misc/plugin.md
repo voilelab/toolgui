@@ -62,7 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	tgexec.NewWebExecutor(app).StartService(":3000")
+	tgexec.NewWebExecutor(app).StartService("127.0.0.1:3000")
 }
 ```
 
