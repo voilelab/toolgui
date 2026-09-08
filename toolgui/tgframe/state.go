@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"maps"
+	"math"
 	"runtime"
 	"sync"
 
@@ -75,32 +76,6 @@ func (s *State) Set(key string, v any) {
 	s.values[key] = v
 }
 
-// Default sets the value of a key if the key is not set.
-// If the key is set, it returns the value.
-// If the key is not set, it sets the value and returns the value.
-// The v should be a pointer.
-// Example:
-// ```go
-//
-//	type TODOList struct {
-//		Items []string `json:"items"`
-//	}
-//
-//	todoList := state.Default("todoList", &TODOList{}).(*TODOList)
-//
-// ```
-func (s *State) Default(key string, v any) any {
-	s.rwLock.Lock()
-	defer s.rwLock.Unlock()
-
-	_, ok := s.values[key]
-	if !ok {
-		s.values[key] = v
-	}
-
-	return s.values[key]
-}
-
 // GetObject gets the value of a key and unmarshals it to the out object.
 func (s *State) GetObject(key string, out any) error {
 	s.rwLock.RLock()
@@ -124,60 +99,117 @@ func (s *State) GetObject(key string, out any) error {
 	return nil
 }
 
-// GetString gets the value of a key and returns it as a string.
+// toNumber reads any numeric type as a float64, so a default written from Go
+// reads back like the float64 the frontend's JSON lands. A string is not one.
+func toNumber(val any) (float64, bool) {
+	switch v := val.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int8:
+		return float64(v), true
+	case int16:
+		return float64(v), true
+	case int32:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	case uint8:
+		return float64(v), true
+	case uint16:
+		return float64(v), true
+	case uint32:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	default:
+		return 0, false
+	}
+}
+
+// Get returns the value under key as a T, false when it is missing or another
+// type. Reading a key the user filled in by hand never panics.
+func (s *State) Get[T any](key string) (T, bool) {
+	s.rwLock.RLock()
+	defer s.rwLock.RUnlock()
+
+	v, ok := s.values[key].(T)
+	return v, ok
+}
+
+// Default returns a pointer to the T under key, storing v there first when the
+// key holds nothing of that type. The state keeps the pointer, so writes
+// through it survive the rerun; a key holding another type is overwritten.
+func (s *State) Default[T any](key string, v T) *T {
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	if p, ok := s.values[key].(*T); ok {
+		return p
+	}
+
+	s.values[key] = &v
+	return &v
+}
+
+// GetString reads a string, nil when the key holds none.
 func (s *State) GetString(key string) *string {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok || val == nil {
+	ss, ok := s.values[key].(string)
+	if !ok {
 		return nil
 	}
 
-	ss := val.(string)
 	return &ss
 }
 
-// GetFloat gets the value of a key and returns it as a float64.
+// GetFloat reads any numeric type as a float64, nil when there is none.
 func (s *State) GetFloat(key string) *float64 {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok || val == nil {
+	f, ok := toNumber(s.values[key])
+	if !ok {
 		return nil
 	}
 
-	f := val.(float64)
 	return &f
 }
 
-// GetInt gets the value of a key and returns it as an int.
-// If the key is not set, it returns nil.
+// GetInt is [State.GetFloat] truncated to an int, nil when an int cannot hold it.
 func (s *State) GetInt(key string) *int {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok || val == nil {
+	f, ok := toNumber(s.values[key])
+	if !ok {
 		return nil
 	}
 
-	i := val.(int)
+	// Bounds as float64: math.MaxInt has no exact one, so comparing against it
+	// would let 2^63 through.
+	if math.IsNaN(f) || f < float64(math.MinInt) || f >= -float64(math.MinInt) {
+		return nil
+	}
+
+	i := int(f)
 	return &i
 }
 
-// GetBool gets the value of a key and returns it as a bool.
+// GetBool reads a bool, false when the key holds none.
 func (s *State) GetBool(key string) bool {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	val, ok := s.values[key]
-	if !ok {
-		return false
-	}
-
-	return val.(bool)
+	b, _ := s.values[key].(bool)
+	return b
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever

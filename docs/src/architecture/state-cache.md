@@ -28,7 +28,7 @@ func (t *TODOList) Add(text string) {
 func Main(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Example for Todo App")
 
-	todoList := p.State.Default("todoList", &TODOList{}).(*TODOList)
+	todoList := p.State.Default("todoList", TODOList{})
 
 	inp := tgcomp.Textbox(p.Main, "Add todo")
 	if tgcomp.Button(p.Main, "Add") && inp != "" {
