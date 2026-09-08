@@ -18,7 +18,17 @@ func Radio(c *tgframe.Container, label string, items []string, conf ...*RadioCon
 // RadioConf is the configuration for the Radio component.
 type RadioConf struct {
 	tgframe.Base // ID
+
+	// Default is the item the group starts on, as an index into items,
+	// 0-based like the return. It is only read until the app user first
+	// touches the component, and one that points outside items is ignored.
+	Default *int
+
+	// Disabled is true if the radio group is disabled.
+	Disabled bool
 }
+
+func (c *RadioConf) SetDefault(v int) *RadioConf
 ```
 
 ## Example
@@ -29,6 +39,13 @@ if radioIndex != nil {
 	tgcomp.Text(p.Main, fmt.Sprintf("Value: Value%d", *radioIndex+3),
 		&tgcomp.TextConf{ID: "radio_result"})
 }
+```
+
+Starting on the second item, until the app user picks another:
+
+```go
+tgcomp.Radio(p.Main, "Radio", []string{"Value3", "Value4"},
+	(&tgcomp.RadioConf{}).SetDefault(1))
 ```
 
 ![radio component](radio.png)

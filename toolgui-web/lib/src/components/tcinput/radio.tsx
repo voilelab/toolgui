@@ -6,12 +6,15 @@ import { Props } from "../component_interface"
 
 export function TRadio({ node, update }: Props) {
   const items: string[] = node.props.items
-  const selected = stateValues[node.props.id]
+
+  // Unlike the select, 0 is a real item here, so the default is null rather
+  // than 0 when there is none. It only stands in until the group is touched.
+  const selected = stateValues[node.props.id] ?? node.props.default
 
   return (
     <Radio.Group
       id={node.props.id}
-      value={selected === undefined ? null : String(selected)}
+      value={selected == null ? null : String(selected)}
       mb="md"
       onChange={(value) => {
         stateValues[node.props.id] = Number(value)
@@ -23,7 +26,8 @@ export function TRadio({ node, update }: Props) {
       }}>
       <Stack gap="xs">
         {items.map((x, idx) =>
-          <Radio key={idx} value={String(idx)} label={x} />
+          <Radio key={idx} value={String(idx)} label={x}
+            disabled={node.props.disabled} />
         )}
       </Stack>
     </Radio.Group>

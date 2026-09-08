@@ -14,7 +14,9 @@ const DATETIME_MANTINE_FORMAT = 'YYYY-MM-DD HH:mm:ss'
 
 export function TDatepicker({ node, update }: Props) {
   const id = node.props.id
-  const stored = stateValues[id] || ''
+  // The default only stands in until the picker is first touched, and an
+  // empty string is a value the app user cleared rather than one to fill in.
+  const stored = stateValues[id] ?? node.props.default ?? ''
 
   const send = () => {
     update({
@@ -31,6 +33,7 @@ export function TDatepicker({ node, update }: Props) {
       <TimeInput
         id={id}
         label={node.props.label}
+        disabled={node.props.disabled}
         defaultValue={stored}
         onChange={(event) => { stateValues[id] = event.currentTarget.value }}
         onBlur={send} />
@@ -44,6 +47,7 @@ export function TDatepicker({ node, update }: Props) {
       <DateTimePicker
         id={id}
         label={node.props.label}
+        disabled={node.props.disabled}
         valueFormat="YYYY-MM-DD HH:mm"
         defaultValue={stored ?
           dayjs(stored).format(DATETIME_MANTINE_FORMAT) : null}
@@ -61,6 +65,7 @@ export function TDatepicker({ node, update }: Props) {
     <DateInput
       id={id}
       label={node.props.label}
+      disabled={node.props.disabled}
       valueFormat="YYYY-MM-DD"
       defaultValue={stored || null}
       onChange={(value) => { stateValues[id] = value || '' }}

@@ -11,8 +11,9 @@ var fileuploadComponentName = "fileupload_component"
 
 type fileuploadComponent struct {
 	*tgframe.BaseComponent
-	Label  string `json:"label"`
-	Accept string `json:"accept"`
+	Label    string `json:"label"`
+	Accept   string `json:"accept"`
+	Disabled bool   `json:"disabled"`
 }
 
 func newFileuploadComponent(label, accept string) *fileuploadComponent {
@@ -58,8 +59,17 @@ func (f *FileObject) Bytes() ([]byte, error) {
 }
 
 // FileuploadConf is the configuration for the Fileupload component.
+//
+// There is no Default here, unlike the other inputs. A file input is the one
+// control a page cannot fill in on the app user's behalf: the browser refuses
+// to have its value set from script, so a default would read back in Go while
+// the box on screen stayed empty. A page that wants to start from a file it
+// already has should read that file itself rather than ask for one.
 type FileuploadConf struct {
 	tgframe.Base
+
+	// Disabled is true if the fileupload is disabled.
+	Disabled bool
 }
 
 // Fileupload create a fileupload and return its selected file.
@@ -68,6 +78,7 @@ func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadC
 	cf := tgframe.OneConf("Fileupload", conf)
 
 	comp := newFileuploadComponent(label, accept)
+	comp.Disabled = cf.Disabled
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 

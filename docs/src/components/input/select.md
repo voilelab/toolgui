@@ -18,17 +18,41 @@ func Select(c *tgframe.Container, label string, items []string, conf ...*SelectC
 // SelectConf is the configuration for the Select component.
 type SelectConf struct {
 	tgframe.Base // ID
+
+	// Default is the item the select starts on, as an index into items,
+	// 0-based like the return. It is only read until the app user first
+	// touches the component, and one that points outside items is ignored.
+	Default *int
+
+	// Disabled is true if the select is disabled.
+	Disabled bool
 }
+
+func (c *SelectConf) SetDefault(v int) *SelectConf
 ```
+
+`Default` is 0-based like the return, so a `Default` of `0` starts on
+`items[0]`. The state behind a select is 1-based — the frontend keeps its first
+option for the placeholder — but that offset stays inside the component; see
+[State Storage](../../architecture/state-storage.md) for the one place it
+shows.
 
 ## Example
 
 ```go
-selIndex := tgcomp.Select(p.Main, "Select", []string{"Value1", "Value2"})
+values := []string{"Value1", "Value2"}
+selIndex := tgcomp.Select(p.Main, "Select", values)
 if selIndex != nil {
 	tgcomp.Text(p.Main, fmt.Sprintf("Value: Value%d", *selIndex+1),
 		&tgcomp.TextConf{ID: "select_result"})
 }
+```
+
+Starting on the second item, until the app user picks another:
+
+```go
+tgcomp.Select(p.Main, "Select", values,
+	(&tgcomp.SelectConf{}).SetDefault(1))
 ```
 
 A select derives its id from its label, so two with the same label collide.

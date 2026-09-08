@@ -35,6 +35,13 @@ var ColorPicker = tcinput.ColorPicker
 // ColorPickerConf is the configuration for the ColorPicker component.
 type ColorPickerConf = tcinput.ColorPickerConf
 
+// Date is a date a [Datepicker] hands back, and the type its Default takes.
+type Date = tcinput.Date
+
+// Time is a time of day a [Timepicker] hands back, and the type its Default
+// takes.
+type Time = tcinput.Time
+
 // Datepicker create a datepicker and return its selected date.
 var Datepicker = tcinput.Datepicker
 
