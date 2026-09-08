@@ -745,7 +745,18 @@ func MiscPage(p *tgframe.Params) error {
 	prgbarCompCol, prgbarCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_progress_bar"})
 	tgcomp.Echo(prgbarCodeCol, code, func() {
-		tgcomp.ProgressBar(prgbarCompCol, 30, "progress_bar")
+		// The bar is drawn from state, so a click moves it on the rerun.
+		pct := p.State.Default("misc_progress", 30)
+		if tgcomp.Button(prgbarCompCol, "+10%") {
+			*pct += 10
+			if *pct > 100 {
+				*pct = 0
+			}
+		}
+
+		tgcomp.ProgressBar(prgbarCompCol, *pct,
+			fmt.Sprintf("progress_bar: %d%%", *pct),
+			&tgcomp.ProgressBarConf{ID: "misc_progress"})
 	})
 
 	tgcomp.Divider(p.Main)
