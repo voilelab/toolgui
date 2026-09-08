@@ -12,8 +12,6 @@ type progressBarComponent struct {
 	Value int    `json:"value"`
 	Label string `json:"label"`
 
-	// container is where the bar was added, so that it can update itself and
-	// hand its id back when removed.
 	container *tgframe.Container `json:"-"`
 }
 
