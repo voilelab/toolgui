@@ -202,9 +202,7 @@ func TestTakingARootContainersIDIsAnError(t *testing.T) {
 func TestRunRecordsComponentIDs(t *testing.T) {
 	app := tgframe.NewApp()
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
-		tgcomp.Text(p.Main, "hello", &tgcomp.TextConf{
-			Base: tgframe.Base{ID: "drawn"},
-		})
+		tgcomp.Text(p.Main, "hello", &tgcomp.TextConf{ID: "drawn"})
 		return nil
 	})
 

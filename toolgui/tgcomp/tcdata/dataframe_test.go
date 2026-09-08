@@ -49,7 +49,7 @@ func TestDataFrameConf(t *testing.T) {
 	head, rows := twoByTwo()
 	props := addComponent(t, func(c *tgframe.Container) {
 		DataFrame(c, head, rows, (&DataFrameConf{
-			Base:     tgframe.Base{ID: "orders"},
+			ID:       "orders",
 			PageSize: 10,
 			Height:   "400px",
 			ColumnConf: []DataFrameColumnConf{

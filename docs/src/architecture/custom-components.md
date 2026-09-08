@@ -19,7 +19,7 @@ type MetricConf struct {
 func Metric(c *tgframe.Container, label string, value float64, conf ...*MetricConf) {
 	cf := tgframe.OneConf("Metric", conf)
 
-	box := tgcomp.Box(c, &tgcomp.BoxConf{Base: cf.Base})
+	box := tgcomp.Box(c, &tgcomp.BoxConf{ID: cf.ID})
 	tgcomp.Text(box, label)
 	tgcomp.Title(box, strconv.FormatFloat(value, 'f', 2, 64))
 }
@@ -46,7 +46,7 @@ Two things to watch for.
 **Ids have to stay unique.** Everything stateful inside your function claims
 an id, and two calls on one page claim it twice, which fails the run with
 `duplicated component id`. Pass the conf's id down to whatever inside needs
-one, as `Metric` passes `cf.Base` to the box. Components that hold no state —
+one, as `Metric` passes `cf.ID` to the box. Components that hold no state —
 `Text`, `Title`, `Markdown` — have no id unless you give them one, so a
 display-only function may never need to.
 
@@ -155,7 +155,7 @@ func Gauge(c *tgframe.Container, value float64, conf ...*GaugeConf) float64 {
 	cf := tgframe.OneConf("Gauge", conf)
 
 	tgcomp.Iframe(c, gaugeHTML, &tgcomp.IframeConf{
-		Base:   cf.Base,
+		ID:     cf.ID,
 		Script: true,
 		Height: "auto",
 	})
