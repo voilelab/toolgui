@@ -51,9 +51,14 @@ func main() {
 	app.AddPage("index", "Index", Main)
 	e := tgexec.NewWebExecutor(app)
 	log.Println("Starting service...")
-	e.StartService(":3000")
+	e.StartService("127.0.0.1:3000")
 }
 ```
+
+The app binds to `127.0.0.1` because ToolGUI has no login of its own: whoever
+reaches the page runs the tool. To serve it to more than this machine, put it
+behind a proxy that authenticates — see
+[Serving It Safely](https://voilelab.github.io/toolgui/architecture/exposure.html).
 
 ## For Dev
 

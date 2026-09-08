@@ -50,6 +50,10 @@ type WebExecutor struct {
 
 	// assets is nil until the app sets one.
 	assets fs.FS
+
+	// allowedOrigins is nil until the app sets some, and holds normalized
+	// origins the update socket takes on top of the app's own.
+	allowedOrigins []string
 }
 
 type stateIDPack struct {
@@ -114,6 +118,78 @@ func (e *WebExecutor) SetAssets(fsys fs.FS) {
 	defer e.confMu.Unlock()
 
 	e.assets = fsys
+}
+
+// SetAllowedOrigins lets pages from these origins open the update websocket,
+// on top of the app's own origin. Each entry is a full origin, scheme and
+// all, the way a browser sends it:
+//
+//	e.SetAllowedOrigins([]string{"https://tools.example.com"})
+//
+// Unset, the socket takes only an Origin whose host matches the one the
+// request asked for, so no other site can drive the app. Name the public
+// origin here when a reverse proxy in front of the app rewrites Host.
+func (e *WebExecutor) SetAllowedOrigins(origins []string) {
+	normalized := make([]string, 0, len(origins))
+	for _, origin := range origins {
+		normalized = append(normalized, normalizeOrigin(origin))
+	}
+
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
+	e.allowedOrigins = normalized
+}
+
+// normalizeOrigin puts an origin in the one form the comparison uses: no
+// trailing slash, and lowercase, since scheme and host are case-insensitive.
+func normalizeOrigin(origin string) string {
+	return strings.ToLower(strings.TrimSuffix(origin, "/"))
+}
+
+// checkUpdateOrigin turns away an update handshake from a page the app
+// doesn't belong to. The same-origin policy leaves websockets alone, so
+// without this any site the browser visits could open the socket, press the
+// app's buttons and read back everything it renders.
+//
+// x/net/websocket answers a handshake error with 403, so no session, and no
+// state, comes of a refused connection.
+func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Request) error {
+	origin, err := websocket.Origin(config, req)
+	if err != nil {
+		slog.Error("websocket origin", "error", err)
+		return tgutil.Errorf("%w", err)
+	}
+
+	if origin == nil {
+		// The default handshake refuses a missing Origin as well, so
+		// non-browser clients stay as they were.
+		return tgutil.Errorf("websocket: no origin")
+	}
+
+	config.Origin = origin
+
+	// The host the browser asked for is the app's own origin, whatever name
+	// or port it is reached under.
+	if strings.EqualFold(origin.Host, req.Host) {
+		return nil
+	}
+
+	e.confMu.RLock()
+	allowed := e.allowedOrigins
+	e.confMu.RUnlock()
+
+	want := normalizeOrigin(origin.Scheme + "://" + origin.Host)
+	for _, o := range allowed {
+		if o == want {
+			return nil
+		}
+	}
+
+	slog.Error("websocket origin not allowed",
+		"origin", origin.String(), "host", req.Host)
+
+	return tgutil.Errorf("websocket: origin not allowed")
 }
 
 // Destory release all resource.
@@ -390,7 +466,10 @@ func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 		}
 	}
 
-	mux.Handle("GET /api/update/{name}", websocket.Handler(e.handleUpdate))
+	mux.Handle("GET /api/update/{name}", &websocket.Server{
+		Handler:   e.handleUpdate,
+		Handshake: e.checkUpdateOrigin,
+	})
 	mux.HandleFunc("POST /api/files", e.handleUpload)
 	mux.HandleFunc("GET /api/app", e.handleAppConf)
 	mux.HandleFunc("GET /api/health", e.handleHealth)

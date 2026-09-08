@@ -106,7 +106,7 @@ jobs:
           yarn workspace @toolgui-web/lib build
           yarn workspace @toolgui-web/app build
 
-      # cypress.config.js points at localhost:3000, where the demo listens
+      # cypress.config.js points at 127.0.0.1:3000, where the demo listens
       - name: Start demo server
         run: |
           go build -o /tmp/toolgui-demo ./cmd/toolgui-demo
@@ -117,7 +117,7 @@ jobs:
         with:
           working-directory: toolgui-e2e
           browser: chrome
-          wait-on: http://localhost:3000
+          wait-on: http://127.0.0.1:3000
           wait-on-timeout: 60
 
       - name: Dump demo server log

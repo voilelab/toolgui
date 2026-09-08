@@ -12,6 +12,8 @@
 
 * [How it works?](architecture/how-it-works.md)
 
+* [Serving It Safely](architecture/exposure.md)
+
 * [App](app/index.md)
     * [Side Nav](app/sidenav.md)
     * [Page](app/page.md)

@@ -37,7 +37,7 @@ build splits its entry points:
 
 ```text
 page.go          the pages, no build tag
-main_server.go   //go:build !(js && wasm)   tgexec.NewWebExecutor(app).StartService(":3000")
+main_server.go   //go:build !(js && wasm)   tgexec.NewWebExecutor(app).StartService("127.0.0.1:3000")
 main_wasm.go     //go:build js && wasm      tgwasm.NewExecutor(app).Run()
 ```
 

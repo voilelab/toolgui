@@ -16,7 +16,7 @@ e.SetManifest(&tgexec.Manifest{
 	ThemeColor:      "#000000",
 	BackgroundColor: "#ffffff",
 })
-e.StartService(":3001")
+e.StartService("127.0.0.1:3001")
 ```
 
 toolgui ships no icon of its own, so an app that wants one serves the file
@@ -53,7 +53,7 @@ func main() {
 		},
 	})
 
-	e.StartService(":3001")
+	e.StartService("127.0.0.1:3001")
 }
 ```
 

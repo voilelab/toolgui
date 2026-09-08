@@ -1,9 +1,12 @@
 package tgexec
 
 import (
+	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -617,5 +620,103 @@ func TestMuxServesPluginAssets(t *testing.T) {
 
 	if string(body) != "window.toolgui.update(1)" {
 		t.Errorf("body = %q", body)
+	}
+}
+
+// dialUpdateOrigin dials the update socket with an Origin of its own, so a
+// test can play a page that the app doesn't belong to.
+func dialUpdateOrigin(t *testing.T, srv *httptest.Server, origin string) (*websocket.Conn, error) {
+	t.Helper()
+
+	url := strings.Replace(srv.URL, "http://", "ws://", 1) + "/api/update/index"
+
+	ws, err := websocket.Dial(url, "", origin)
+	if ws != nil {
+		t.Cleanup(func() { ws.Close() })
+	}
+
+	return ws, err
+}
+
+// The same-origin policy doesn't cover websockets, so a page on another site
+// can reach the socket. It must not get a session out of it.
+func TestUpdateRejectsCrossSiteOrigin(t *testing.T) {
+	srv, e := newTestServer(t)
+
+	if _, err := dialUpdateOrigin(t, srv, "http://evil.example"); err == nil {
+		t.Fatal("dial succeeded, want a refused handshake")
+	}
+
+	if size := e.stateMap.Size(); size != 0 {
+		t.Errorf("states = %d, want 0", size)
+	}
+}
+
+// The app's own pages carry an Origin matching the host they were served
+// from, whichever name and port that is.
+func TestUpdateAcceptsSameHostOrigin(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	// httptest serves on 127.0.0.1, and localhost reaches the same port under
+	// a name of its own.
+	hosts := []string{srv.URL, strings.Replace(srv.URL, "127.0.0.1", "localhost", 1)}
+
+	for _, host := range hosts {
+		url := strings.Replace(host, "http://", "ws://", 1) + "/api/update/index"
+
+		ws, err := websocket.Dial(url, "", host)
+		if err != nil {
+			t.Fatalf("dial %s: %v", host, err)
+		}
+
+		ws.Close()
+	}
+}
+
+// A reverse proxy serves the app under an origin of its own, which the app
+// has to name for the browser to get through.
+func TestUpdateAcceptsAllowedOrigin(t *testing.T) {
+	srv, e := newTestServer(t)
+
+	e.SetAllowedOrigins([]string{"https://Tools.Example.com/"})
+
+	if _, err := dialUpdateOrigin(t, srv, "https://tools.example.com"); err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+
+	if _, err := dialUpdateOrigin(t, srv, "https://other.example.com"); err == nil {
+		t.Error("dial succeeded, want a refused handshake")
+	}
+}
+
+// A client that sends no Origin at all is refused, as it was before the host
+// check went in. x/net/websocket's own client won't dial without one, so the
+// handshake goes out by hand.
+func TestUpdateRejectsMissingOrigin(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	host := strings.TrimPrefix(srv.URL, "http://")
+
+	conn, err := net.Dial("tcp", host)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+
+	fmt.Fprintf(conn, "GET /api/update/index HTTP/1.1\r\n"+
+		"Host: %s\r\n"+
+		"Upgrade: websocket\r\n"+
+		"Connection: Upgrade\r\n"+
+		"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"+
+		"Sec-WebSocket-Version: 13\r\n\r\n", host)
+
+	resp, err := http.ReadResponse(bufio.NewReader(conn), nil)
+	if err != nil {
+		t.Fatalf("read response: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusForbidden {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
 	}
 }
