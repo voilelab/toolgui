@@ -91,6 +91,36 @@ describe('Nav', () => {
       .contains('Sidebar is here').should('be.visible')
   })
 
+  // jumpToPage loads the next page from scratch, so component state is gone
+  // by the time it paints; only what was stored survives. cy.visit is that
+  // same load.
+  it('The collapsed column stays collapsed across a page change', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-collapse').click()
+    cy.get('.toolgui-nav-body').should('not.be.visible')
+
+    cy.visit('/layout')
+    cy.get('.toolgui-nav').should('have.class', 'is-collapsed')
+    cy.get('.toolgui-nav-body').should('not.be.visible')
+    cy.get('.toolgui-nav-collapse').should('have.attr', 'aria-expanded', 'false')
+
+    // And expanding again is what the page after that comes back to.
+    cy.get('.toolgui-nav-collapse').click()
+    cy.reload()
+    cy.get('.toolgui-nav-body').should('be.visible')
+    cy.get('.toolgui-nav').should('not.have.class', 'is-collapsed')
+  })
+
+  // A visitor who has never touched the toggle gets the column expanded,
+  // with nothing of theirs stored to say otherwise.
+  it('A first visit lands on an expanded column', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-body').should('be.visible')
+    cy.window().then((win) => {
+      expect(win.localStorage.getItem('sidenav_collapsed')).to.be.null
+    })
+  })
+
   it('The column collapses behind a burger on a narrow viewport', () => {
     cy.viewport(420, 800)
     cy.visit('/index')
