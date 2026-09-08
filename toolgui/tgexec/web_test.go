@@ -148,7 +148,7 @@ func waitRun(t *testing.T, ws *websocket.Conn) {
 	if err := ws.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		t.Fatalf("set deadline: %v", err)
 	}
-	defer ws.SetReadDeadline(time.Time{})
+	defer func() { _ = ws.SetReadDeadline(time.Time{}) }()
 
 	for {
 		var bs []byte
