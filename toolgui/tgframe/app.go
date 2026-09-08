@@ -228,6 +228,15 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 		Main:    newMain,
 		Sidebar: newSidebar,
 	})
+
+	// The page function returned, so what it claimed is what is on the screen.
+	// Record it: an upload names a component id, and the state is where that
+	// name is checked. A run cut short panics instead, and leaves the ids of
+	// the run that did finish in place.
+	if state != nil {
+		state.setRunIDs(run.ids)
+	}
+
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

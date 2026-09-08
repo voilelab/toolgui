@@ -31,6 +31,27 @@ So the handshake takes only an `Origin` whose host matches the one the request
 asked for, and answers anything else with 403. Nothing has to be configured for
 this; it is how the socket behaves.
 
+## Limits
+
+Nothing authenticates a connection, so what one can ask for is capped. The
+service holds 1024 states at most, one per open page, and a connection that
+finds no room is refused rather than handed one anyway. One upload is 1 GiB at
+most, and it is stored under a component the page actually drew, so a caller
+cannot keep a file per name it invents. `StartService` also puts deadlines on
+sending a request's headers, on sitting idle between requests, and on naming a
+state once the websocket handshake is done.
+
+The two caps are worth lowering on anything reachable by more than the person
+running it:
+
+```go
+e.SetMaxStateCount(64)
+e.SetMaxUploadSize(16 * 1024 * 1024)
+```
+
+These bound what one visitor costs. They are not a substitute for deciding who
+reaches the page.
+
 ## Behind a reverse proxy
 
 To serve the tool to more than the local machine, put it behind a proxy that
