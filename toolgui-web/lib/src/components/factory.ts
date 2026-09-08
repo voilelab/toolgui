@@ -3,6 +3,7 @@ import { TTextbox } from "./tcinput/textbox"
 import { TCheckbox } from "./tcinput/checkbox"
 import { TButton } from "./tcinput/button"
 import { TSelect } from "./tcinput/select"
+import { TMultiselect } from "./tcinput/multiselect"
 import { TTextarea } from "./tcinput/textarea"
 import { TFileupload } from "./tcinput/fileupload"
 import { TRadio } from "./tcinput/radio"
@@ -35,6 +36,7 @@ import { TIframe } from "./tcmisc/iframe"
 
 import { TJson } from "./tcdata/json"
 import { TTable } from "./tcdata/table"
+import { TDataFrame } from "./tcdata/dataframe"
 import { TChart } from "./tcdata/chart"
 
 import { TProgressar } from "./tcmisc/progress_bar"
@@ -52,6 +54,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   checkbox_component: TCheckbox,
   button_component: TButton,
   select_component: TSelect,
+  multiselect_component: TMultiselect,
   textarea_component: TTextarea,
   fileupload_component: TFileupload,
   radio_component: TRadio,
@@ -86,6 +89,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
 
   json_component: TJson,
   table_component: TTable,
+  dataframe_component: TDataFrame,
   chart_component: TChart,
 
   progress_bar_component: TProgressar,

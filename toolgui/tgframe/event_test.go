@@ -1,6 +1,7 @@
 package tgframe
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -90,5 +91,112 @@ func TestParseEventIframeIsTheCustomEvent(t *testing.T) {
 
 	if _, ok := event.(*EventCustom); !ok {
 		t.Fatalf("got %T, want *EventCustom", event)
+	}
+}
+
+// The single-valued payload a select or a radio sends is what it always was,
+// and a frontend that has never heard of a multi-valued one keeps working.
+func TestParseEventSelectSingleValue(t *testing.T) {
+	event, err := ParseEvent([]byte(`{"type":"select","id":"select_component_Fruit","value":2}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	selectEvent, ok := event.(*EventSelect)
+	if !ok {
+		t.Fatalf("got %T, want *EventSelect", event)
+	}
+
+	if selectEvent.Values != nil {
+		t.Errorf("Values = %v, want nil", selectEvent.Values)
+	}
+
+	state := NewState()
+	selectEvent.ApplyState(state)
+
+	idx := state.GetInt("select_component_Fruit")
+	if idx == nil || *idx != 2 {
+		t.Fatalf("state = %v, want 2", idx)
+	}
+}
+
+func TestParseEventSelectMultiValue(t *testing.T) {
+	event, err := ParseEvent([]byte(
+		`{"type":"select","id":"multiselect_component_Fruit","values":[0,2]}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	selectEvent, ok := event.(*EventSelect)
+	if !ok {
+		t.Fatalf("got %T, want *EventSelect", event)
+	}
+
+	state := NewState()
+	selectEvent.ApplyState(state)
+
+	var got []int
+	if err := state.GetObject("multiselect_component_Fruit", &got); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+
+	if len(got) != 2 || got[0] != 0 || got[1] != 2 {
+		t.Fatalf("state = %v, want [0 2]", got)
+	}
+}
+
+// Deselecting the last item sends an empty list, which has to stay a
+// selection of nothing rather than fall through to the single value's zero.
+func TestParseEventSelectEmptyMultiValue(t *testing.T) {
+	event, err := ParseEvent([]byte(
+		`{"type":"select","id":"multiselect_component_Fruit","values":[]}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	state := NewState()
+	event.ApplyState(state)
+
+	var got []int
+	if err := state.GetObject("multiselect_component_Fruit", &got); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+
+	if got == nil || len(got) != 0 {
+		t.Fatalf("state = %v, want an empty selection", got)
+	}
+}
+
+// What the frontend puts on the wire reads back as the right fields, and
+// marshalling keeps an empty values there while leaving an event that never
+// had one without it. A multi-valued payload carries no value of its own, so
+// what comes back out is not what went in: Go's zero fills the field the
+// frontend omitted, which is harmless only because values is what ApplyState
+// reads once it is present.
+func TestEventSelectMarshalShape(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		sent string
+		want string
+	}{
+		{"single", `{"id":"a","value":2}`, `{"id":"a","value":2}`},
+		{"multi", `{"id":"a","values":[0,2]}`, `{"id":"a","value":0,"values":[0,2]}`},
+		{"empty multi", `{"id":"a","values":[]}`, `{"id":"a","value":0,"values":[]}`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var event EventSelect
+			if err := json.Unmarshal([]byte(tt.sent), &event); err != nil {
+				t.Fatalf("Unmarshal: %v", err)
+			}
+
+			bs, err := json.Marshal(&event)
+			if err != nil {
+				t.Fatalf("Marshal: %v", err)
+			}
+
+			if string(bs) != tt.want {
+				t.Errorf("Marshal = %s, want %s", bs, tt.want)
+			}
+		})
 	}
 }

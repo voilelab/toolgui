@@ -48,6 +48,7 @@
 * [Data Components](components/data/index.md)
     * [JSON](components/data/json.md)
     * [Table](components/data/table.md)
+    * [DataFrame](components/data/dataframe.md)
     * [Chart](components/data/chart.md)
     * [Scatter Chart](components/data/scatter_chart.md)
 
@@ -60,6 +61,7 @@
     * [Toggle](components/input/toggle.md)
     * [Button](components/input/button.md)
     * [Select](components/input/select.md)
+    * [Multiselect](components/input/multiselect.md)
     * [Radio](components/input/radio.md)
     * [Select Slider](components/input/select_slider.md)
     * [Datepicker](components/input/datepicker.md)

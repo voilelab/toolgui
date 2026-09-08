@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -213,6 +214,30 @@ func ContentPage(p *tgframe.Params) error {
 	return nil
 }
 
+// demoOrders is the fake order book the DataFrame demo pages through. It is
+// generated rather than written out so that there is enough of it to sort,
+// search and page.
+func demoOrders() [][]string {
+	regions := []string{"APAC", "EMEA", "LATAM", "NA"}
+	items := []string{"Keyboard", "Monitor", "Mouse", "Laptop", "Dock"}
+
+	const count = 2000
+	ordered := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+
+	rows := make([][]string, 0, count)
+	for i := range count {
+		rows = append(rows, []string{
+			fmt.Sprintf("ORD-%04d", i+1),
+			ordered.AddDate(0, 0, i%365).Format(time.RFC3339),
+			regions[i%len(regions)],
+			items[i%len(items)],
+			strconv.Itoa(i + 1),
+		})
+	}
+
+	return rows
+}
+
 func DataPage(p *tgframe.Params) error {
 	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
@@ -244,6 +269,27 @@ func DataPage(p *tgframe.Params) error {
 	tgcomp.Echo(tableCodeCol, code, func() {
 		tgcomp.Table(tableCompCol, []string{"a", "b"},
 			[][]string{{"1", "2"}, {"3", "4"}})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	dataFrameCompCol, dataFrameCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe"})
+	tgcomp.Echo(dataFrameCodeCol, code, func() {
+		tgcomp.DataFrame(dataFrameCompCol,
+			[]string{"Order", "Ordered", "Region", "Item", "Amount"},
+			demoOrders(),
+			&tgcomp.DataFrameConf{
+				ID:       "demo_orders",
+				PageSize: 10,
+				ColumnConf: []tgcomp.DataFrameColumnConf{
+					{Width: "9rem"},
+					{Type: tgcomp.ColumnTypeDatetime},
+					{},
+					{},
+					{Type: tgcomp.ColumnTypeNumber},
+				},
+			})
 	})
 
 	tgcomp.Divider(p.Main)
@@ -453,6 +499,27 @@ func InputPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "6"})
 
+	multiselectCompCol, multiselectCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_multiselect"})
+	tgcomp.Echo(multiselectCodeCol, code, func() {
+		items := []string{"Alpha", "Beta", "Gamma"}
+		selIdxes := tgcomp.Multiselect(multiselectCompCol, "Multiselect", items,
+			&tgcomp.MultiselectConf{
+				Placeholder:   "pick up to two",
+				MaxSelections: 2,
+			})
+
+		selItems := []string{}
+		for _, idx := range selIdxes {
+			selItems = append(selItems, items[idx])
+		}
+
+		tgcomp.Text(multiselectCompCol, "Values: "+strings.Join(selItems, ", "),
+			&tgcomp.TextConf{ID: "multiselect_result"})
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "7"})
+
 	radioCompCol, radioCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_radio"})
 	tgcomp.Echo(radioCodeCol, code, func() {
@@ -468,7 +535,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "radio_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "7"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "8"})
 
 	datepickerCompCol, datepickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_datepicker"})
@@ -483,7 +550,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "datepicker_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "8"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "9"})
 
 	timepickerCompCol, timepickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_timepicker"})
@@ -498,7 +565,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "timepicker_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "9"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "10"})
 
 	datetimepickerCompCol, datetimepickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_datetimepicker"})
@@ -513,7 +580,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "datetimepicker_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "10"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "11"})
 
 	numberCompCol, numberCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_number"})
@@ -532,23 +599,38 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "number_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "11"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "12"})
 
 	formCompCol, formCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_form"})
 	tgcomp.Echo(formCodeCol, code, func() {
 		var a, b *float64
+		var ops []int
+		opItems := []string{"sum", "product"}
 		tgcomp.Form(formCompCol, &tgcomp.FormConf{ID: "form"}).With(func(c *tgframe.Container) {
 			a = tgcomp.Number[float64](c, "a")
 			b = tgcomp.Number[float64](c, "b")
+			ops = tgcomp.Multiselect(c, "ops", opItems,
+				&tgcomp.MultiselectConf{Placeholder: "pick the operations"})
 		})
 
 		if a != nil && b != nil {
-			tgcomp.Text(formCompCol, fmt.Sprintf("int(a) + int(b) = %d", int(*a)+int(*b)))
+			// Named rather than numbered, so adding an item to opItems cannot
+			// silently turn into one of the operations already here.
+			for _, op := range ops {
+				switch opItems[op] {
+				case "sum":
+					tgcomp.Text(formCompCol,
+						fmt.Sprintf("int(a) + int(b) = %d", int(*a)+int(*b)))
+				case "product":
+					tgcomp.Text(formCompCol,
+						fmt.Sprintf("int(a) * int(b) = %d", int(*a)*int(*b)))
+				}
+			}
 		}
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "12"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "13"})
 
 	downloadButtonCompCol, downloadButtonCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_download_button"})
@@ -563,7 +645,7 @@ func InputPage(p *tgframe.Params) error {
 		}
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "13"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "14"})
 
 	sliderCompCol, sliderCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_slider"})
@@ -577,7 +659,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "slider_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "14"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "15"})
 
 	selectSliderCompCol, selectSliderCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_select_slider"})
@@ -589,7 +671,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "select_slider_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "15"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "16"})
 
 	toggleCompCol, toggleCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_toggle"})
@@ -599,7 +681,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "toggle_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "16"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
 
 	colorPickerCompCol, colorPickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_color_picker"})
@@ -611,7 +693,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "color_picker_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "18"})
 
 	widgetFormCompCol, widgetFormCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_widget_form"})
