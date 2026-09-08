@@ -144,7 +144,7 @@ func (e *WebExecutor) SetAllowedOrigins(origins []string) {
 // normalizeOrigin puts an origin in the one form the comparison uses: no
 // trailing slash, and lowercase, since scheme and host are case-insensitive.
 func normalizeOrigin(origin string) string {
-	return strings.ToLower(strings.TrimSuffix(origin, "/"))
+	return strings.ToLower(strings.TrimRight(origin, "/"))
 }
 
 // checkUpdateOrigin turns away an update handshake from a page the app
@@ -158,13 +158,13 @@ func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Requ
 	origin, err := websocket.Origin(config, req)
 	if err != nil {
 		slog.Error("websocket origin", "error", err)
-		return tgutil.Errorf("%w", err)
+		return err
 	}
 
 	if origin == nil {
 		// The default handshake refuses a missing Origin as well, so
 		// non-browser clients stay as they were.
-		return tgutil.Errorf("websocket: no origin")
+		return errors.New("websocket: no origin")
 	}
 
 	config.Origin = origin
@@ -189,7 +189,7 @@ func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Requ
 	slog.Error("websocket origin not allowed",
 		"origin", origin.String(), "host", req.Host)
 
-	return tgutil.Errorf("websocket: origin not allowed")
+	return errors.New("websocket: origin not allowed")
 }
 
 // Destory release all resource.

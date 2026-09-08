@@ -678,10 +678,17 @@ func TestUpdateAcceptsSameHostOrigin(t *testing.T) {
 func TestUpdateAcceptsAllowedOrigin(t *testing.T) {
 	srv, e := newTestServer(t)
 
-	e.SetAllowedOrigins([]string{"https://Tools.Example.com/"})
+	// Case and trailing slashes are noise an entry may carry; the origin a
+	// browser sends has neither.
+	e.SetAllowedOrigins([]string{
+		"https://Tools.Example.com/",
+		"https://proxy.example.com//",
+	})
 
-	if _, err := dialUpdateOrigin(t, srv, "https://tools.example.com"); err != nil {
-		t.Fatalf("dial: %v", err)
+	for _, origin := range []string{"https://tools.example.com", "https://proxy.example.com"} {
+		if _, err := dialUpdateOrigin(t, srv, origin); err != nil {
+			t.Fatalf("dial %s: %v", origin, err)
+		}
 	}
 
 	if _, err := dialUpdateOrigin(t, srv, "https://other.example.com"); err == nil {
@@ -718,5 +725,16 @@ func TestUpdateRejectsMissingOrigin(t *testing.T) {
 
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusForbidden)
+	}
+
+	// A refused handshake says only that it was refused: x/net/websocket
+	// keeps the error out of the response, so nothing of the server leaks.
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	if len(body) != 0 {
+		t.Errorf("body = %q, want empty", body)
 	}
 }
