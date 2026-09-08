@@ -9,6 +9,7 @@ import { TComponent } from "../components/factory";
 import { UpdateEvent } from "./UpdateEvent";
 import { UploadFunc } from "./Upload";
 import { ThemeMode } from "../util/theme";
+import { initialNavCollapsed, storeNavCollapsed } from "../util/sidenav";
 import { emojize } from "../util/emoji";
 
 import '@toolgui-web/lib/src/assets/css/shell.css'
@@ -31,7 +32,8 @@ interface AppSideNavState {
   // where the burger is hidden.
   open: boolean
   // Whether the column is collapsed to its handle. Ignored below the mobile
-  // breakpoint, where the burger owns the toggle instead.
+  // breakpoint, where the burger owns the toggle instead. Outlives the page:
+  // stored, and read back before the first paint.
   collapsed: boolean
 }
 
@@ -45,8 +47,14 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     super(props)
     this.state = {
       open: false,
-      collapsed: false,
+      collapsed: initialNavCollapsed(),
     }
+  }
+
+  toggleCollapsed() {
+    const collapsed = !this.state.collapsed
+    storeNavCollapsed(collapsed)
+    this.setState({ collapsed })
   }
 
   jumpToPage(name: string) {
@@ -99,7 +107,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
         aria-label={collapsed ? 'Expand the side column' : 'Collapse the side column'}
         aria-expanded={!collapsed}
         aria-controls={navBodyID}
-        onClick={() => { this.setState((prev) => ({ collapsed: !prev.collapsed })) }}>
+        onClick={() => { this.toggleCollapsed() }}>
         {collapsed ?
           <IconLayoutSidebarLeftExpand size={18} /> :
           <IconLayoutSidebarLeftCollapse size={18} />}
