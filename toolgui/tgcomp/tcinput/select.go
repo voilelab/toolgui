@@ -43,6 +43,13 @@ type SelectConf struct {
 	Disabled bool
 }
 
+// SetDefault sets Default from a value, so a literal index can be written
+// where the conf is.
+func (c *SelectConf) SetDefault(v int) *SelectConf {
+	c.Default = &v
+	return c
+}
+
 // Select create a select dropdown list and return its selected value.
 // 0-indexed, return nil if no item is selected.
 //

@@ -27,6 +27,8 @@ type SelectConf struct {
 	// Disabled is true if the select is disabled.
 	Disabled bool
 }
+
+func (c *SelectConf) SetDefault(v int) *SelectConf
 ```
 
 `Default` is 0-based like the return, so a `Default` of `0` starts on
@@ -49,8 +51,8 @@ if selIndex != nil {
 Starting on the second item, until the app user picks another:
 
 ```go
-second := 1
-tgcomp.Select(p.Main, "Select", values, &tgcomp.SelectConf{Default: &second})
+tgcomp.Select(p.Main, "Select", values,
+	(&tgcomp.SelectConf{}).SetDefault(1))
 ```
 
 A select derives its id from its label, so two with the same label collide.

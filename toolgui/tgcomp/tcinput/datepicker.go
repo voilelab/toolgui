@@ -84,6 +84,13 @@ type DatepickerConf struct {
 	Disabled bool
 }
 
+// SetDefault sets Default from a value, so a literal can be written where the
+// conf is.
+func (c *DatepickerConf) SetDefault(v Date) *DatepickerConf {
+	c.Default = &v
+	return c
+}
+
 // Datepicker create a datepicker and return its selected date.
 // Return nil if no date is selected.
 func Datepicker(c *tgframe.Container, label string, conf ...*DatepickerConf) *Date {
@@ -160,6 +167,13 @@ type TimepickerConf struct {
 	Disabled bool
 }
 
+// SetDefault sets Default from a value, so a literal can be written where the
+// conf is.
+func (c *TimepickerConf) SetDefault(v Time) *TimepickerConf {
+	c.Default = &v
+	return c
+}
+
 // Timepicker create a timepicker and return its selected time.
 // Return nil if no time is selected.
 func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *Time {
@@ -220,6 +234,13 @@ type DatetimepickerConf struct {
 
 	// Disabled is true if the datetimepicker is disabled.
 	Disabled bool
+}
+
+// SetDefault sets Default from a value, so a literal can be written where the
+// conf is.
+func (c *DatetimepickerConf) SetDefault(v time.Time) *DatetimepickerConf {
+	c.Default = &v
+	return c
 }
 
 // Datetimepicker create a datetimepicker and return its selected datetime.

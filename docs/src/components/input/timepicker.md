@@ -30,6 +30,8 @@ type TimepickerConf struct {
 	// Disabled is true if the timepicker is disabled.
 	Disabled bool
 }
+
+func (c *TimepickerConf) SetDefault(v Time) *TimepickerConf
 ```
 
 ## Example
@@ -45,9 +47,8 @@ if timeValue != nil {
 Starting on a time, until the app user picks another:
 
 ```go
-tgcomp.Timepicker(p.Main, "Timepicker", &tgcomp.TimepickerConf{
-	Default: &tgcomp.Time{Hour: 9, Min: 30},
-})
+tgcomp.Timepicker(p.Main, "Timepicker",
+	(&tgcomp.TimepickerConf{}).SetDefault(tgcomp.Time{Hour: 9, Min: 30}))
 ```
 
 ![timepicker component](timepicker.png)

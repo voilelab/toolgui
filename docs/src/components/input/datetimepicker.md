@@ -25,6 +25,8 @@ type DatetimepickerConf struct {
 	// Disabled is true if the datetimepicker is disabled.
 	Disabled bool
 }
+
+func (c *DatetimepickerConf) SetDefault(v time.Time) *DatetimepickerConf
 ```
 
 ## Example
@@ -40,9 +42,9 @@ if dateValue != nil {
 Starting on a datetime, until the app user picks another:
 
 ```go
-start := time.Date(2026, 9, 8, 13, 5, 0, 0, time.UTC)
 tgcomp.Datetimepicker(p.Main, "Datetimepicker",
-	&tgcomp.DatetimepickerConf{Default: &start})
+	(&tgcomp.DatetimepickerConf{}).SetDefault(
+		time.Date(2026, 9, 8, 13, 5, 0, 0, time.UTC)))
 ```
 
 The wire carries minutes, so a `Default` with seconds on it is read to the

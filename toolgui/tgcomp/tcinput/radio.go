@@ -43,6 +43,13 @@ type RadioConf struct {
 	Disabled bool
 }
 
+// SetDefault sets Default from a value, so a literal index can be written
+// where the conf is.
+func (c *RadioConf) SetDefault(v int) *RadioConf {
+	c.Default = &v
+	return c
+}
+
 // Radio create a group of radio items and return its selected value.
 // 0-indexed, return nil if no item is selected.
 //

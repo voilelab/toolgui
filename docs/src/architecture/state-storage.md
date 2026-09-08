@@ -112,9 +112,8 @@ page would go on to use. Which is what `Conf.Default` is for, and it is
 0-based for both:
 
 ```go
-second := 1
-tgcomp.Select(p.Main, "Fruit", fruits, &tgcomp.SelectConf{Default: &second})
-tgcomp.Radio(p.Main, "Fruit", fruits, &tgcomp.RadioConf{Default: &second})
+tgcomp.Select(p.Main, "Fruit", fruits, (&tgcomp.SelectConf{}).SetDefault(1))
+tgcomp.Radio(p.Main, "Fruit", fruits, (&tgcomp.RadioConf{}).SetDefault(1))
 ```
 
 `Multiselect` numbers from 0 like `Radio`, and holds a list rather than one

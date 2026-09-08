@@ -31,6 +31,8 @@ type DatepickerConf struct {
 	// Disabled is true if the datepicker is disabled.
 	Disabled bool
 }
+
+func (c *DatepickerConf) SetDefault(v Date) *DatepickerConf
 ```
 
 ## Example
@@ -47,9 +49,9 @@ if dateValue != nil {
 Starting on a date, until the app user picks another:
 
 ```go
-tgcomp.Datepicker(p.Main, "Datepicker", &tgcomp.DatepickerConf{
-	Default: &tgcomp.Date{Year: 2026, Month: 9, Day: 8},
-})
+tgcomp.Datepicker(p.Main, "Datepicker",
+	(&tgcomp.DatepickerConf{}).SetDefault(
+		tgcomp.Date{Year: 2026, Month: 9, Day: 8}))
 ```
 
 Clearing the picker is an answer of "no date": the return goes back to nil and

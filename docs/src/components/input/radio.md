@@ -27,6 +27,8 @@ type RadioConf struct {
 	// Disabled is true if the radio group is disabled.
 	Disabled bool
 }
+
+func (c *RadioConf) SetDefault(v int) *RadioConf
 ```
 
 ## Example
@@ -42,9 +44,8 @@ if radioIndex != nil {
 Starting on the second item, until the app user picks another:
 
 ```go
-second := 1
 tgcomp.Radio(p.Main, "Radio", []string{"Value3", "Value4"},
-	&tgcomp.RadioConf{Default: &second})
+	(&tgcomp.RadioConf{}).SetDefault(1))
 ```
 
 ![radio component](radio.png)

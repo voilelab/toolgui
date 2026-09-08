@@ -426,6 +426,53 @@ func TestDatetimepickerDefault(t *testing.T) {
 	})
 }
 
+// TestSetDefaultBuilders pins the shorthand the pointer Defaults need to be
+// writable where the conf is, the way NumberConf.SetDefault already is.
+func TestSetDefaultBuilders(t *testing.T) {
+	t.Run("select", func(t *testing.T) {
+		got := selectValue(tgframe.NewState(), (&tcinput.SelectConf{}).SetDefault(2))
+		if got == nil || *got != 2 {
+			t.Fatalf("Select = %v, want 2", got)
+		}
+	})
+
+	t.Run("radio", func(t *testing.T) {
+		got := radioValue(tgframe.NewState(), (&tcinput.RadioConf{}).SetDefault(2))
+		if got == nil || *got != 2 {
+			t.Fatalf("Radio = %v, want 2", got)
+		}
+	})
+
+	t.Run("datepicker", func(t *testing.T) {
+		got := tcinput.Datepicker(defaultContainer(tgframe.NewState()), "Day",
+			(&tcinput.DatepickerConf{}).SetDefault(
+				tcinput.Date{Year: 2026, Month: 9, Day: 8}))
+
+		if got == nil || got.String() != "2026-09-08" {
+			t.Fatalf("Datepicker = %v, want 2026-09-08", got)
+		}
+	})
+
+	t.Run("timepicker", func(t *testing.T) {
+		got := tcinput.Timepicker(defaultContainer(tgframe.NewState()), "At",
+			(&tcinput.TimepickerConf{}).SetDefault(tcinput.Time{Hour: 9, Min: 30}))
+
+		if got == nil || got.String() != "09:30" {
+			t.Fatalf("Timepicker = %v, want 09:30", got)
+		}
+	})
+
+	t.Run("datetimepicker", func(t *testing.T) {
+		want := time.Date(2026, 9, 8, 13, 5, 0, 0, time.UTC)
+		got := tcinput.Datetimepicker(defaultContainer(tgframe.NewState()), "When",
+			(&tcinput.DatetimepickerConf{}).SetDefault(want))
+
+		if got == nil || !got.Equal(want) {
+			t.Fatalf("Datetimepicker = %v, want %v", got, want)
+		}
+	})
+}
+
 // A fileupload has no Default to test — see [tcinput.FileuploadConf] for why —
 // so Disabled is the whole of its share of this.
 func TestFileuploadDisabled(t *testing.T) {
