@@ -121,15 +121,35 @@ what a search that matches nothing leaves behind.
 
 ### Large tables
 
-**Paging, not virtual scrolling, is what keeps a large `DataFrame` smooth.**
-Only `PageSize` rows are ever in the DOM, so the render cost is the page size
-and not the row count. Measured on this page's demo grown to 10,000 rows, with
-`PageSize` 10: 10 rows in the DOM, and from click to painted frame 24 ms for a
-sort, 33 ms for a search keystroke and 31 ms for a page jump.
+**Paging, not virtual scrolling, is how a large `DataFrame` stays usable.**
+Only `PageSize` rows are ever in the DOM, so what a sort or a keystroke has to
+re-render is the page size and not the row count.
 
-That bound is on rendering only. The rows themselves are sent whole and
-filtered and sorted in full on every interaction, so a table far past 10,000
-rows is worth paging on the server side instead.
+Measured on the demo grown to 10,000 rows, each configuration alone on the
+page, taking the median of ten samples from click to painted frame:
+
+| | `PageSize` 10 | every row on one page |
+| --------------------------- | ------- | --------- |
+| rows in the DOM             | 10      | 10,000    |
+| page load, first row painted| 660 ms  | 2,922 ms  |
+| sort                        | 31 ms   | 1,534 ms  |
+| search keystroke            | 31 ms   | 596 ms    |
+| page jump                   | 31 ms   | —         |
+
+Scrolling is not what paging rescues: scrolling 4,800 px through all 10,000
+rows dropped no frames either way (80 frames, median 16.7 ms, none over
+25 ms), because the rows are laid out once and the browser scrolls them on the
+compositor. What degrades without paging is **re-rendering** — a sort costs
+1.5 s and every search keystroke close to 0.6 s, which is what makes an
+unpaged table of this size unusable.
+
+So take the advice above to set `PageSize` above the row count only for tables
+of a few hundred rows at most.
+
+Neither number is a server-side bound. The rows are sent whole — 10,000 rows
+of this demo's five columns is a 573 KiB pack, the same either way — and are
+filtered and sorted in full on every interaction. A table far past 10,000 rows
+is worth paging on the server side instead.
 
 ## Example
 
