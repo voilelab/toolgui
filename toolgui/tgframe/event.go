@@ -125,13 +125,26 @@ func (e *EventInput) ApplyState(state *State) {
 }
 
 // EventSelect is the event of a select event
-// it's used for select/radio component
+// it's used for select/radio/multiselect component
 type EventSelect struct {
 	ID    string `json:"id"`
 	Value int    `json:"value"`
+
+	// Values carries the selection of a component that takes more than one,
+	// and is absent from a single-valued one's payload. It is a field of its
+	// own rather than a Value that may be either shape so that a frontend
+	// built before multi-selection existed keeps working unchanged.
+	Values []int `json:"values,omitzero"`
 }
 
 func (e *EventSelect) ApplyState(state *State) {
+	// An empty selection still arrives as [], so the nil check is what tells
+	// a multi-valued payload from a single-valued one, not the length.
+	if e.Values != nil {
+		state.Set(e.ID, e.Values)
+		return
+	}
+
 	state.Set(e.ID, e.Value)
 }
 
