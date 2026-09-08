@@ -59,6 +59,7 @@
     * [Checkbox](components/input/checkbox.md)
     * [Button](components/input/button.md)
     * [Select](components/input/select.md)
+    * [Multiselect](components/input/multiselect.md)
     * [Radio](components/input/radio.md)
     * [Datepicker](components/input/datepicker.md)
     * [Timepicker](components/input/timepicker.md)

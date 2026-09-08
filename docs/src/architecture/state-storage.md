@@ -72,9 +72,9 @@ p.State.Set("number_component_Age", 30)
 age := tgcomp.Number(p.Main, "Age", (&tgcomp.NumberConf[int64]{}).SetDefault(30))
 ```
 
-Every component takes a conf, but only `Textbox`, `Number` and `Checkbox`
-have a `Default` in theirs today, so `Select` and `Radio` can be given a value
-the page reads but not one it shows.
+Every component takes a conf, but only `Textbox`, `Number`, `Checkbox` and
+`Multiselect` have a `Default` in theirs today, so `Select` and `Radio` can be
+given a value the page reads but not one it shows.
 
 The key is `<component name>_<label>`, unless the component was given an
 explicit `ID` in its conf, in which case the key is that id verbatim.
@@ -87,6 +87,7 @@ explicit `ID` in its conf, in which case the key is that id verbatim.
 | `Checkbox` | `checkbox_component_<label>` | `bool` |
 | `Select` | `select_component_<label>` | item index, **1-based**; `0` is "nothing selected" |
 | `Radio` | `radio_component_<label>` | item index, **0-based** |
+| `Multiselect` | `multiselect_component_<label>` | item indices, **0-based**, as a list; `[]` is "nothing selected" |
 | `Datepicker` | `datepicker_component_<label>` | `string`, `2006-01-02` |
 | `Timepicker` | `datepicker_component_<label>` | `string`, `15:04` |
 | `Datetimepicker` | `datepicker_component_<label>` | `string`, `2006-01-02T15:04` |
@@ -102,6 +103,14 @@ preselect the second item:
 ```go
 p.State.Set("select_component_Fruit", 2) // 1-based
 p.State.Set("radio_component_Fruit", 1)  // 0-based
+```
+
+`Multiselect` numbers from 0 like `Radio`, and holds a list rather than one
+index, so an empty list is a selection of nothing and an absent key is what
+falls back to the conf's `Default`:
+
+```go
+p.State.Set("multiselect_component_Fruit", []int{0, 2})
 ```
 
 The pickers parse the string they read, and a value in the wrong format fails

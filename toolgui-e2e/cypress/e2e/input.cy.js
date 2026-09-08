@@ -70,6 +70,45 @@ describe('Input', () => {
     cy.contains('Value: Value2').should('exist')
   })
 
+  it('Multiselect', () => {
+    cy.visit('/input')
+    // Same reason as the Select case: the options sit in a portal below the
+    // input, and scrolling one to the top would take the input off screen.
+    const noScroll = { scrollBehavior: false }
+    // cy.contains(selector, text) yields the option itself; chaining contains
+    // off a get would descend to the bare span holding the label, which
+    // carries none of the option's attributes.
+    const option = (label) => cy.contains('[role=option]', label)
+    // Read off the demo's own line rather than the page: the code column
+    // beside it prints the same words as source.
+    const result = () => cy.get('#text_component_multiselect_result')
+
+    // The dropdown stays open across picks, so it is opened once.
+    cy.get('input[id=multiselect_component_Multiselect]').click()
+
+    option('Alpha').click(noScroll)
+    result().should('have.text', 'Values: Alpha')
+
+    // A second pick joins the first rather than replacing it, and the result
+    // is in item order whatever order they were picked in.
+    option('Gamma').click(noScroll)
+    result().should('have.text', 'Values: Alpha, Gamma')
+
+    // MaxSelections is 2, so the item left over is disabled in the dropdown
+    // instead of being taken and then refused.
+    option('Beta').should('have.attr', 'data-combobox-disabled')
+
+    // Deselecting an item frees the cap again.
+    option('Alpha').click(noScroll)
+    result().should('have.text', 'Values: Gamma')
+    option('Beta').should('not.have.attr', 'data-combobox-disabled')
+
+    // Deselecting the last one is an empty selection, not a fall back to the
+    // first item.
+    option('Gamma').click(noScroll)
+    result().invoke('text').should('match', /^Values:\s*$/)
+  })
+
   it('Radio', () => {
     cy.visit('/input')
     cy.contains('Value3').click()
@@ -203,8 +242,19 @@ describe('Input', () => {
 
   it('Form', () => {
     cy.visit('/input')
+    const noScroll = { scrollBehavior: false }
+
     cy.get('input[id=number_component_a]').type('12')
     cy.get('input[id=number_component_b]').type('12')
+
+    // The multiselect holds its pick until Submit, like every other field in
+    // a form, and reaches Go with the rest of them.
+    cy.get('input[id=multiselect_component_ops]').click()
+    cy.contains('[role=option]', 'sum').click(noScroll)
+    // The dropdown stays open across picks, and would cover Submit.
+    cy.get('input[id=multiselect_component_ops]').blur()
+    cy.contains('int(a) + int(b) = 24').should('not.exist')
+
     cy.contains('Submit').click()
     cy.contains('int(a) + int(b) = 24').should('exist')
 
@@ -212,6 +262,14 @@ describe('Input', () => {
     cy.contains('int(a) + int(b) = 24').should('exist')
     cy.contains('Submit').click()
     cy.contains('int(a) + int(b) = 25').should('exist')
+
+    // A second pick is carried alongside the first.
+    cy.get('input[id=multiselect_component_ops]').click()
+    cy.contains('[role=option]', 'product').click(noScroll)
+    cy.get('input[id=multiselect_component_ops]').blur()
+    cy.contains('Submit').click()
+    cy.contains('int(a) + int(b) = 25').should('exist')
+    cy.contains('int(a) * int(b) = 156').should('exist')
   })
 
   const downloadsFolder = Cypress.config('downloadsFolder');

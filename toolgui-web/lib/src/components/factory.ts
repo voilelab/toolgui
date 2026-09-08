@@ -3,6 +3,7 @@ import { TTextbox } from "./tcinput/textbox"
 import { TCheckbox } from "./tcinput/checkbox"
 import { TButton } from "./tcinput/button"
 import { TSelect } from "./tcinput/select"
+import { TMultiselect } from "./tcinput/multiselect"
 import { TTextarea } from "./tcinput/textarea"
 import { TFileupload } from "./tcinput/fileupload"
 import { TRadio } from "./tcinput/radio"
@@ -48,6 +49,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   checkbox_component: TCheckbox,
   button_component: TButton,
   select_component: TSelect,
+  multiselect_component: TMultiselect,
   textarea_component: TTextarea,
   fileupload_component: TFileupload,
   radio_component: TRadio,
