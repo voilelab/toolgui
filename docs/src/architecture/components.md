@@ -140,3 +140,47 @@ conf like everything else, and the containers they hand out derive their ids
 from theirs.
 
 An id given this way is also the element's id in the DOM.
+
+## Writing one place more than once
+
+A page function normally writes each place once per run. A slot — what
+[`Empty`](../components/layout/empty.md) hands out, and what `Spinner` and
+`Status` are built on — is the exception: it can be written, cleared and
+written again while the run is still going, so the page can show "querying…"
+and then replace it with the result.
+
+A slot keeps **one key** across every write. Clearing it sends a delete for
+that key, and the client drops the node and the subtree under it; the next
+write creates a node there again. The alternative — a fresh key per write —
+would save the delete, but it would leave the client holding a node per write
+until the run ended, and it would move the slot's contents in the tree every
+time, so nothing inside could keep anything across a redraw.
+
+Keeping the key means an id written into the slot is claimed again on the next
+write, and an id is a name that only one component may hold. So clearing a
+slot **gives its ids back**: what was in it is off the screen, and the id is
+free for the next write to claim.
+
+```go
+slot := tgcomp.Empty(p.Main)
+for range names {
+	// The same id every time, and no `duplicated component id`: each
+	// textbox is gone before the next one is written.
+	slot.With(func(c *tgframe.Container) {
+		tgcomp.Textbox(c, "Name")
+	})
+}
+```
+
+An id that is given back and never claimed again names nothing on the page by
+the end of the run, so the state under it is dropped. That is the point: a
+widget cleared out of a slot should not hand its old value to whatever lands
+on its id next run. An id that *is* claimed again — the common case, where the
+slot is rewritten with the same widget — keeps its state, because the claim
+takes it back off the released list.
+
+Two things follow for a page function. The container a slot's `With` hands
+over is only good until the next `With` or `Clear`, so take it in the callback
+rather than keeping it. And a slot starts empty on every run, whatever the
+last run left in it, so the first write of a run is not stacked on the last
+write of the one before.

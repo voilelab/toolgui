@@ -64,3 +64,15 @@ var Expand = tclayout.Expand
 
 // ExpandConf is the configuration for the Expand component.
 type ExpandConf = tclayout.ExpandConf
+
+// Empty reserves a place in the page and hands back a slot to write it with.
+// Writing the slot again takes the previous contents off the screen instead of
+// adding to them.
+var Empty = tclayout.Empty
+
+// EmptyConf is the configuration for the Empty component.
+type EmptyConf = tclayout.EmptyConf
+
+// EmptyContainer is what Empty hands out: a place in the page that can be
+// written and written over.
+type EmptyContainer = tclayout.EmptyContainer

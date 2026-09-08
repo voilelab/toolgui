@@ -7,6 +7,7 @@ import { afterEach, expect, test, describe, vi } from 'vitest'
 import { Node } from '@toolgui-web/lib/src/app/Nodes'
 import { TTab } from '@toolgui-web/lib/src/components/tclayout/tab'
 import { TExpand } from '@toolgui-web/lib/src/components/tclayout/expand'
+import { TEmpty } from '@toolgui-web/lib/src/components/tclayout/empty'
 
 function node(key, props, children = []) {
   const n = new Node(key, props)
@@ -101,5 +102,32 @@ describe('TExpand', () => {
 
     fireEvent.click(screen.getByText('Expand'))
     expect(screen.getByText('A expand!')).toBe(content)
+  })
+})
+
+describe('TEmpty', () => {
+  const mountEmpty = (children) => render(
+    <TEmpty
+      node={node('main/0', { name: 'empty_component', id: 'empty_component_slot' }, children)}
+      {...RENDER_PROPS} />
+  )
+
+  test('draws what the slot holds, and nothing of its own', () => {
+    const { container } = mountEmpty([
+      node('main/0/0', { name: 'container_component', id: '' }, [
+        text('main/0/0/0', 'Done'),
+      ]),
+    ])
+
+    expect(screen.getByText('Done')).toBeVisible()
+    expect(container.querySelector('#empty_component_slot').textContent).toBe('Done')
+  })
+
+  test('draws nothing while the slot is empty', () => {
+    const { container } = mountEmpty([])
+
+    const slot = container.querySelector('#empty_component_slot')
+    expect(slot).not.toBeNull()
+    expect(slot.textContent).toBe('')
   })
 })

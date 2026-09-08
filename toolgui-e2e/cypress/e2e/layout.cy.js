@@ -38,4 +38,20 @@ describe('Layout spec', () => {
     cy.visit('/layout')
     cy.contains('Expand').should('exist')
   })
+
+  // The slot is written three times in one run, and what it holds at the end
+  // is the only thing on the screen. Everything is scoped to the component
+  // column: the column beside it shows the source, which names the same text.
+  it('Empty writes over its contents instead of stacking them', () => {
+    cy.visit('/layout')
+    const shown = () => cy.get('#column_component_show_empty_0')
+
+    shown().contains('No query yet.').should('exist')
+    shown().contains('Run a slow query').click()
+    shown().contains('Querying…').should('exist')
+
+    shown().contains('orders', { timeout: 15000 }).should('exist')
+    shown().contains('Querying…').should('not.exist')
+    shown().contains('No query yet.').should('not.exist')
+  })
 })
