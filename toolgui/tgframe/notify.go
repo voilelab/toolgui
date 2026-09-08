@@ -76,10 +76,18 @@ type notifyPackDelete struct {
 
 // NewNotifyPackDelete creates a new notify pack for deleting a component.
 func NewNotifyPackDelete(comp Component) *notifyPackDelete {
+	return NewNotifyPackDeleteKey(keyOf(comp))
+}
+
+// NewNotifyPackDeleteKey creates a new notify pack for deleting whatever sits
+// at key, component and subtree alike. Deleting is idempotent: a key the
+// client doesn't have is already in the state the pack asks for, which is what
+// lets a container clear a place the previous run wrote and this one has not.
+func NewNotifyPackDeleteKey(key string) *notifyPackDelete {
 	return &notifyPackDelete{
 		notifyPackBase: &notifyPackBase{
 			Type: NotifyTypeDelete,
 		},
-		Key: keyOf(comp),
+		Key: key,
 	}
 }

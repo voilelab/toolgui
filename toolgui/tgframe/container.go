@@ -24,6 +24,10 @@ type Container struct {
 
 	// run is shared by every container of a run. Nil outside a run.
 	run *runState
+
+	// track collects what is written here and below, for the [Slot] that has
+	// to be able to take it all back off the screen. Nil outside a slot.
+	track *tracker
 }
 
 func NewContainer(id string, state *State, notifyComp SendNotifyPackFunc) *Container {
@@ -45,6 +49,11 @@ func containerID(id string) string {
 	return fmt.Sprintf("%s_%s", ContainerComponentName, id)
 }
 
+// innerKey is where the idx-th container of comp sits in the node tree.
+func innerKey(comp Component, idx int) string {
+	return fmt.Sprintf("%s/%d", keyOf(comp), idx)
+}
+
 func (c *Container) AddComponent(comp Component) Component {
 	idx := c.counter
 	c.counter++
@@ -57,6 +66,7 @@ func (c *Container) AddComponent(comp Component) Component {
 	if c.run != nil {
 		c.run.registerID(comp)
 	}
+	c.track.add(comp)
 
 	c.SendNotifyPack(NewNotifyPackCreate(c.key, idx, key, comp))
 	return comp
@@ -65,6 +75,7 @@ func (c *Container) AddComponent(comp Component) Component {
 func (c *Container) AddContainer(id string) *Container {
 	newContainer := NewContainer(id, c.State, c.SendNotifyPack)
 	newContainer.run = c.run
+	newContainer.track = c.track
 	c.AddComponent(newContainer)
 	return newContainer
 }
@@ -76,25 +87,35 @@ func (c *Container) AddContainer(id string) *Container {
 // The container is given an id derived from comp's, or none when comp has
 // none: a component that does not claim an identity does not hand one out.
 func (c *Container) AddContainerTo(comp Component, suffix string, idx int) *Container {
+	inner := c.innerContainer(comp, suffix, idx)
+
+	if c.run != nil {
+		c.run.registerID(inner)
+	}
+	c.track.add(inner)
+
+	c.SendNotifyPack(NewNotifyPackCreate(keyOf(comp), idx, inner.key, inner))
+	return inner
+}
+
+// innerContainer builds the idx-th container of comp without sending it, so
+// that [Container.AddContainerTo] and [Slot] agree on what one looks like.
+func (c *Container) innerContainer(comp Component, suffix string, idx int) *Container {
 	inner := &Container{
 		BaseComponent: &BaseComponent{
 			Name: ContainerComponentName,
-			key:  fmt.Sprintf("%s/%d", keyOf(comp), idx),
+			key:  innerKey(comp, idx),
 		},
 		SendNotifyPack: c.SendNotifyPack,
 		State:          c.State,
 		run:            c.run,
+		track:          c.track,
 	}
 
 	if comp.GetID() != "" {
 		inner.ID = comp.GetID() + "_" + suffix
 	}
 
-	if c.run != nil {
-		c.run.registerID(inner)
-	}
-
-	c.SendNotifyPack(NewNotifyPackCreate(keyOf(comp), idx, inner.key, inner))
 	return inner
 }
 

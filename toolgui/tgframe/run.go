@@ -14,11 +14,17 @@ var ErrDuplicatedID = errors.New("duplicated component id")
 // runState is the bookkeeping shared by every container of a single run.
 type runState struct {
 	ids map[string]bool
+
+	// released holds the ids the run has taken back off the screen, the
+	// contents of a slot it cleared. An id claimed again leaves the set; what
+	// stays is state no component reads any more, and [App.Run] drops it.
+	released map[string]bool
+
 	err error
 }
 
 func newRunState() *runState {
-	return &runState{ids: map[string]bool{}}
+	return &runState{ids: map[string]bool{}, released: map[string]bool{}}
 }
 
 // registerID claims comp's id for this run. The first collision is kept and
@@ -29,6 +35,8 @@ func (r *runState) registerID(comp Component) {
 	if id == "" {
 		return
 	}
+
+	delete(r.released, id)
 
 	if r.ids[id] {
 		if r.err == nil {
@@ -41,4 +49,18 @@ func (r *runState) registerID(comp Component) {
 	}
 
 	r.ids[id] = true
+}
+
+// unregisterID gives comp's id back, so this run may claim it again. The state
+// under it is released at the end of the run unless something claims it first:
+// a widget that left the screen should not hand its old value to whatever
+// lands on its id next run.
+func (r *runState) unregisterID(comp Component) {
+	id := comp.GetID()
+	if id == "" {
+		return
+	}
+
+	delete(r.ids, id)
+	r.released[id] = true
 }
