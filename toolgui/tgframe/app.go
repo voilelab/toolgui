@@ -232,6 +232,15 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 		return tgutil.Errorf("%w", err)
 	}
 
+	// The page ran to the end, so an id it cleared and never wrote again names
+	// nothing on the screen. Drop the state under it, or the next run would
+	// hand that value to whatever lands on the id.
+	if state != nil {
+		for id := range run.released {
+			state.Delete(id)
+		}
+	}
+
 	return run.err
 }
 

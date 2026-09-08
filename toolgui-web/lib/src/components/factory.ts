@@ -44,6 +44,8 @@ import { Props } from "./component_interface"
 import { TTab } from "./tclayout/tab"
 import { TLatex } from "./tccontent/latex"
 import { TExpand } from "./tclayout/expand"
+import { TEmpty } from "./tclayout/empty"
+import { TSpinner } from "./tcmisc/spinner"
 
 const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   textbox_component: TTextbox,
@@ -64,6 +66,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   column_component: TColumn,
   tab_component: TTab,
   expand_component: TExpand,
+  empty_component: TEmpty,
 
   title_component: TTitle,
   subtitle_component: TSubtitle,
@@ -85,6 +88,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   chart_component: TChart,
 
   progress_bar_component: TProgressar,
+  spinner_component: TSpinner,
   message_component: TMessage,
   iframe_component: TIframe,
   html_component: THtml,

@@ -152,6 +152,58 @@ describe('Forest', () => {
     expect(f.nodes[`${MAIN}/0`]).toBeUndefined()
   })
 
+  test('removes the subtree under a node the server deletes', () => {
+    var f = new Forest([MAIN, SIDEBAR])
+
+    f = runPage(f, add => {
+      const inner = add(MAIN, box('container_component_empty_inner'))
+      add(inner, text('x'))
+    })
+
+    f = f.swallowCopy()
+    f.removeNode(`${MAIN}/0`)
+
+    // The contents go with the container, so a container written at the same
+    // key later does not inherit what this one held.
+    expect(f.nodes[`${MAIN}/0/0`]).toBeUndefined()
+    expect(shown(f)).toEqual([])
+  })
+
+  test('ignores a delete for a node it does not have', () => {
+    var f = new Forest([MAIN, SIDEBAR])
+    f = f.swallowCopy()
+
+    // A container clears its place before it writes it, whether or not an
+    // earlier run put anything there.
+    expect(() => f.removeNode(`${MAIN}/0`)).not.toThrow()
+    expect(f.nodes[MAIN].children).toHaveLength(0)
+  })
+
+  test('shows only what a slot holds now, not what it held earlier in the run', () => {
+    const EMPTY = `${MAIN}/0`
+    const SLOT = `${EMPTY}/0`
+
+    var f = new Forest([MAIN, SIDEBAR])
+    const step = (f, apply) => { const c = f.swallowCopy(); apply(c); return c }
+
+    f = step(f, c => c.beginRun())
+    f = step(f, c => c.createNode(EMPTY, MAIN, 0, { name: 'empty_component', id: '' }))
+
+    // Empty(), then two writes of the slot: each clears the place first.
+    f = step(f, c => c.removeNode(SLOT))
+    f = step(f, c => c.createNode(SLOT, EMPTY, 0, box('')))
+    f = step(f, c => c.createNode(`${SLOT}/0`, SLOT, 0, text('Querying…')))
+
+    f = step(f, c => c.removeNode(SLOT))
+    f = step(f, c => c.createNode(SLOT, EMPTY, 0, box('')))
+    f = step(f, c => c.createNode(`${SLOT}/0`, SLOT, 0, text('Done')))
+
+    f = step(f, c => c.endRun(true))
+
+    expect(shown(f, SLOT)).toEqual(['Done'])
+    expect(f.nodes[EMPTY].children).toHaveLength(1)
+  })
+
   describe('reactKey', () => {
     test('is the id when the component has one', () => {
       var f = new Forest([MAIN, SIDEBAR])

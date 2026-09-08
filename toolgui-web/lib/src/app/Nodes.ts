@@ -112,10 +112,15 @@ export class Forest {
     this.nodes[key].props = props
   }
 
+  // removeNode takes the node at key off the tree, and the subtree under it
+  // with it: a container that is gone does not leave its contents behind to be
+  // inherited by whatever lands on its key next.
+  //
+  // A key the forest doesn't have is already in the state this asks for, which
+  // is what lets a container clear a place only an earlier run wrote.
   removeNode(key: string) {
     const node = this.nodes[key]
     if (!node) {
-      console.error('Try to remove a node that doesn\'t exist:', key)
       return
     }
 
@@ -124,6 +129,12 @@ export class Forest {
       parentNode.children = parentNode.children.filter(n => n !== node)
     }
     delete this.nodes[key]
+
+    for (const child of [...node.children]) {
+      if (child) {
+        this.removeNode(child.key)
+      }
+    }
   }
 
   // endRun closes a run and drops every node it did not send. A run that

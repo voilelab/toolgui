@@ -75,3 +75,19 @@ type PluginConf = tcmisc.PluginConf
 // PluginValue reads the latest value a plugin sent through
 // window.toolgui.update.
 var PluginValue = tcmisc.PluginValue
+
+// Spinner shows that the page function is busy, and returns the function that
+// takes it down again.
+var Spinner = tcmisc.Spinner
+
+// SpinnerConf is the configuration for the Spinner component.
+type SpinnerConf = tcmisc.SpinnerConf
+
+// Status reports a piece of work while the page function does it.
+var Status = tcmisc.Status
+
+// StatusConf is the configuration for the Status component.
+type StatusConf = tcmisc.StatusConf
+
+// StatusContainer is what Status hands out.
+type StatusContainer = tcmisc.StatusContainer

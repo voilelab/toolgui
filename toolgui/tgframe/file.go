@@ -151,6 +151,18 @@ func (s *fileStore) put(key string, file *File) {
 	}
 }
 
+// remove drops the file under key, and its bytes with it.
+func (s *fileStore) remove(key string) {
+	s.lock.Lock()
+	old := s.files[key]
+	delete(s.files, key)
+	s.lock.Unlock()
+
+	if old != nil {
+		old.body.remove()
+	}
+}
+
 func (s *fileStore) get(key string) *File {
 	s.lock.Lock()
 	defer s.lock.Unlock()

@@ -398,6 +398,31 @@ func LayoutPage(p *tgframe.Params) error {
 		tgcomp.Text(expand, "A expand!")
 	})
 
+	tgcomp.Divider(p.Main)
+
+	emptyCompCol, emptyCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_empty"})
+	tgcomp.Echo(emptyCodeCol, code, func() {
+		slot := tgcomp.Empty(emptyCompCol, &tgcomp.EmptyConf{ID: "query_result"})
+		slot.With(func(c *tgframe.Container) {
+			tgcomp.Text(c, "No query yet.")
+		})
+
+		if tgcomp.Button(emptyCompCol, "Run a slow query") {
+			slot.With(func(c *tgframe.Container) {
+				tgcomp.Text(c, "Querying…")
+			})
+
+			time.Sleep(3 * time.Second)
+
+			slot.With(func(c *tgframe.Container) {
+				tgcomp.Table(c,
+					[]string{"table", "rows"},
+					[][]string{{"users", "1289"}, {"orders", "4021"}})
+			})
+		}
+	})
+
 	return nil
 }
 
@@ -721,6 +746,38 @@ func MiscPage(p *tgframe.Params) error {
 		p.Main, &tgcomp.ColumnConf{ID: "show_progress_bar"})
 	tgcomp.Echo(prgbarCodeCol, code, func() {
 		tgcomp.ProgressBar(prgbarCompCol, 30, "progress_bar")
+	})
+
+	tgcomp.Divider(p.Main)
+
+	spinnerCompCol, spinnerCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_spinner"})
+	tgcomp.Echo(spinnerCodeCol, code, func() {
+		if tgcomp.Button(spinnerCompCol, "Spin for three seconds") {
+			stop := tgcomp.Spinner(spinnerCompCol, "Working…")
+			time.Sleep(3 * time.Second)
+			stop()
+
+			tgcomp.Text(spinnerCompCol, "Done!")
+		}
+	})
+
+	tgcomp.Divider(p.Main)
+
+	statusCompCol, statusCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_status"})
+	tgcomp.Echo(statusCodeCol, code, func() {
+		if tgcomp.Button(statusCompCol, "Import three files") {
+			status := tgcomp.Status(statusCompCol, "Importing…",
+				&tgcomp.StatusConf{Expanded: true})
+
+			for _, name := range []string{"one.csv", "two.csv", "three.csv"} {
+				status.Write(name)
+				time.Sleep(time.Second)
+			}
+
+			status.Complete("Imported 3 files")
+		}
 	})
 
 	tgcomp.Divider(p.Main)
