@@ -1,6 +1,7 @@
 package tcdata
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -133,6 +134,46 @@ func TestDataFrameWithNoRows(t *testing.T) {
 	}
 }
 
+// TestDataFrameFails covers the checks the run's own data decides: they leave
+// an error placeholder rather than taking the page down.
+func TestDataFrameFails(t *testing.T) {
+	head, rows := twoByTwo()
+
+	for _, tc := range []struct {
+		name string
+		want string
+		add  func(c *tgframe.Container)
+	}{
+		{"no head", "at least one head entry", func(c *tgframe.Container) {
+			DataFrame(c, nil, nil)
+		}},
+		{"row shorter than head", "len of row 1", func(c *tgframe.Container) {
+			DataFrame(c, head, [][]string{{"1", "2"}, {"3"}})
+		}},
+		{"row longer than head", "len of row 0", func(c *tgframe.Container) {
+			DataFrame(c, head, [][]string{{"1", "2", "3"}})
+		}},
+		{"column conf of the wrong length", "len of column conf",
+			func(c *tgframe.Container) {
+				DataFrame(c, head, rows, &DataFrameConf{
+					ColumnConf: []DataFrameColumnConf{{}},
+				})
+			}},
+		{"negative page size", "should not be negative", func(c *tgframe.Container) {
+			DataFrame(c, head, rows, &DataFrameConf{PageSize: -1})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			msg := failMessage(t, tc.add)
+			if !strings.Contains(msg, tc.want) {
+				t.Errorf("message = %q, want it to contain %q", msg, tc.want)
+			}
+		})
+	}
+}
+
+// TestDataFramePanics keeps the caller mistakes panicking: two confs is a call
+// no data can make right.
 func TestDataFramePanics(t *testing.T) {
 	head, rows := twoByTwo()
 
@@ -140,23 +181,6 @@ func TestDataFramePanics(t *testing.T) {
 		name string
 		add  func(c *tgframe.Container)
 	}{
-		{"no head", func(c *tgframe.Container) {
-			DataFrame(c, nil, nil)
-		}},
-		{"row shorter than head", func(c *tgframe.Container) {
-			DataFrame(c, head, [][]string{{"1", "2"}, {"3"}})
-		}},
-		{"row longer than head", func(c *tgframe.Container) {
-			DataFrame(c, head, [][]string{{"1", "2", "3"}})
-		}},
-		{"column conf of the wrong length", func(c *tgframe.Container) {
-			DataFrame(c, head, rows, &DataFrameConf{
-				ColumnConf: []DataFrameColumnConf{{}},
-			})
-		}},
-		{"negative page size", func(c *tgframe.Container) {
-			DataFrame(c, head, rows, &DataFrameConf{PageSize: -1})
-		}},
 		{"two confs", func(c *tgframe.Container) {
 			DataFrame(c, head, rows, &DataFrameConf{}, &DataFrameConf{})
 		}},

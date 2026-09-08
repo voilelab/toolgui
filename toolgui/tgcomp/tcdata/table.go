@@ -2,6 +2,7 @@ package tcdata
 
 import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &tableComponent{}
@@ -37,7 +38,8 @@ func Table(c *tgframe.Container, head []string, table [][]string, conf ...*Table
 	}
 
 	if len(table[0]) != len(head) {
-		panic("len of head should equal to len of table[0]")
+		c.Fail(tgutil.NewError("len of head should equal to len of table[0]"))
+		return
 	}
 
 	comp := newTableComponent(head, table)

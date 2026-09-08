@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &dataFrameComponent{}
@@ -220,21 +221,25 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string, conf ...*Da
 	cf := tgframe.OneConf("DataFrame", conf)
 
 	if len(head) == 0 {
-		panic("a DataFrame needs at least one head entry")
+		c.Fail(tgutil.NewError("a DataFrame needs at least one head entry"))
+		return
 	}
 
 	if len(cf.ColumnConf) != 0 && len(cf.ColumnConf) != len(head) {
-		panic("len of column conf should equal to len of head")
+		c.Fail(tgutil.NewError("len of column conf should equal to len of head"))
+		return
 	}
 
 	if cf.PageSize < 0 {
-		panic(fmt.Sprintf("page size should not be negative, got %d", cf.PageSize))
+		c.Fail(tgutil.Errorf(
+			"page size should not be negative, got %d", cf.PageSize))
+		return
 	}
 
 	for i, row := range rows {
 		if len(row) != len(head) {
-			panic(fmt.Sprintf(
-				"len of row %d should equal to len of head", i))
+			c.Fail(tgutil.Errorf("len of row %d should equal to len of head", i))
+			return
 		}
 	}
 

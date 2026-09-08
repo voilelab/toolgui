@@ -39,12 +39,10 @@ func (r *runState) registerID(comp Component) {
 	delete(r.released, id)
 
 	if r.ids[id] {
-		if r.err == nil {
-			r.err = tgutil.Errorf(
-				"%w: `%s`. Two components cannot share an id; give one of them"+
-					" its own through the component's Conf.ID.",
-				ErrDuplicatedID, id)
-		}
+		r.fail(tgutil.Errorf(
+			"%w: `%s`. Two components cannot share an id; give one of them"+
+				" its own through the component's Conf.ID.",
+			ErrDuplicatedID, id))
 		return
 	}
 
@@ -63,4 +61,14 @@ func (r *runState) unregisterID(comp Component) {
 
 	delete(r.ids, id)
 	r.released[id] = true
+}
+
+// fail records err as the failure of this run. The first one is kept and
+// reported by [App.Run]; a later one does not overwrite it, so what the caller
+// gets back is the failure that came first rather than the last thing to go
+// wrong after it.
+func (r *runState) fail(err error) {
+	if r.err == nil {
+		r.err = err
+	}
 }

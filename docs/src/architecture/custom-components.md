@@ -125,6 +125,24 @@ stored under, and is only needed by a component that has state — see
 [Components](components.md) for how the two differ from the position key the
 container assigns.
 
+When the data a component is handed will not do, report it through
+`Container.Fail` rather than adding the component:
+
+```go
+func Sparkline(c *tgframe.Container, points []float64) {
+	if len(points) < 2 {
+		c.Fail(tgutil.NewError("a sparkline needs at least two points"))
+		return
+	}
+	...
+}
+```
+
+The run records the error and carries on, so the rest of the page still
+renders and the user sees an error placeholder where the sparkline would have
+been. Panic only for a call no data could make right. See
+[Error Handling](error-handling.md) for the split.
+
 The catch is the other half. `Name` is looked up in a map that is fixed when
 the web assets are built, and those assets are embedded into the Go binary,
 so a name nothing renders does not draw a blank — it fails the page. Adding

@@ -14,7 +14,8 @@ func ScatterChart(c *tgframe.Container, series []ChartSeries, conf ...*ChartConf
 
 * `c` is the parent container.
 * `series` are the series to draw. Every series needs its `Points`, and no
-  `Values`, or the call panics.
+  `Values`; anything else draws an error placeholder instead of the chart and
+  fails the run, without stopping the rest of the page.
 * `conf` is an optional configuration, at most one. `ScatterChart` sets `Kind`
   itself and ignores what the conf says.
 

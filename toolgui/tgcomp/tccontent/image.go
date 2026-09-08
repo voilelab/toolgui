@@ -9,6 +9,7 @@ import (
 	"image/png"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 var _ tgframe.Component = &imageComponent{}
@@ -75,18 +76,19 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
 		case ImageFormatPNG:
 			err := png.Encode(&imageBuf, v)
 			if err != nil {
-				panic(err)
+				c.Fail(tgutil.Errorf("encode png: %w", err))
+				return
 			}
 			formatStr = "png"
 		case ImageFormatJPEG:
 			err := jpeg.Encode(&imageBuf, v, nil)
 			if err != nil {
-				panic(err)
+				c.Fail(tgutil.Errorf("encode jpeg: %w", err))
+				return
 			}
 			formatStr = "jpeg"
 		default:
-			err := fmt.Errorf("unsupported image format: %v", cf.Format)
-			panic(err)
+			panic(fmt.Sprintf("unsupported image format: %v", cf.Format))
 		}
 		bs := imageBuf.Bytes()
 		b64 := base64.StdEncoding.EncodeToString(bs)

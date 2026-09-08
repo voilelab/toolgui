@@ -20,6 +20,9 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf)
     * example:
       * url: `https://http.cat/100`
       * base64 uri: `data:image/png;base64,...`
+
+  An `image.Image` that will not encode draws an error placeholder instead of
+  the image and fails the run, without stopping the rest of the page.
 * `conf` is an optional configuration, at most one.
 
 ```go
