@@ -43,10 +43,61 @@ describe('Nav', () => {
     cy.get('.toolgui-nav').contains('Sidebar is here').should('exist')
   })
 
+  it('The column collapses and hands its width to the page', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav').invoke('outerWidth').should('be.greaterThan', 200)
+
+    cy.get('.toolgui-main').invoke('outerWidth').then((mainWidth) => {
+      cy.get('.toolgui-nav-collapse').should('be.visible')
+        .should('have.attr', 'aria-expanded', 'true')
+        .should('have.attr', 'aria-controls', 'toolgui-nav-body')
+        .click()
+
+      cy.get('.toolgui-nav-body').should('not.be.visible')
+      cy.get('.toolgui-nav').invoke('outerWidth').should('be.lessThan', 100)
+      cy.get('.toolgui-main').invoke('outerWidth')
+        .should('be.greaterThan', mainWidth + 100)
+    })
+  })
+
+  // Collapsed leaves a handle, not a dead edge: still there, still a real
+  // button, so Tab reaches it and Enter / Space fire it.
+  it('The collapsed column keeps a reachable expand handle', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-collapse').click()
+
+    cy.get('.toolgui-nav-collapse').should('be.visible')
+      .should('have.attr', 'aria-expanded', 'false')
+      .should('have.prop', 'tagName', 'BUTTON')
+      .focus().should('have.focus')
+      .click()
+
+    cy.get('.toolgui-nav-body').should('be.visible')
+    cy.get('.toolgui-nav-collapse').should('have.attr', 'aria-expanded', 'true')
+  })
+
+  // Hidden, not unmounted, so the components keep their values.
+  it('Collapsing only hides the page sidebar', () => {
+    cy.visit('/sidebar')
+    cy.contains('Show sidebar').click()
+    cy.get('div[id=container_component_container_sidebar]').should('be.visible')
+
+    cy.get('.toolgui-nav-collapse').click()
+    cy.get('div[id=container_component_container_sidebar]')
+      .should('exist').should('not.be.visible')
+
+    cy.get('.toolgui-nav-collapse').click()
+    cy.get('div[id=container_component_container_sidebar]')
+      .contains('Sidebar is here').should('be.visible')
+  })
+
   it('The column collapses behind a burger on a narrow viewport', () => {
     cy.viewport(420, 800)
     cy.visit('/index')
     cy.get('.toolgui-nav-body').should('not.be.visible')
+
+    // The burger is the only toggle at this width.
+    cy.get('.toolgui-nav-collapse').should('not.be.visible')
 
     cy.get('.toolgui-nav-burger').click()
     cy.get('.toolgui-nav-body').should('be.visible')
