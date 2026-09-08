@@ -88,3 +88,48 @@ func TestWrongTypeDoesNotPanic(t *testing.T) {
 		t.Errorf("Textbox = %q, want empty", got)
 	}
 }
+
+// TestCheckboxDefault pins the three states a Default: true checkbox goes
+// through. The middle one is the whole point: an explicit false has to beat
+// the default, not read as "not touched yet".
+func TestCheckboxDefault(t *testing.T) {
+	conf := func() *tcinput.CheckboxConf {
+		return &tcinput.CheckboxConf{Default: true}
+	}
+
+	t.Run("untouched", func(t *testing.T) {
+		state := tgframe.NewState()
+
+		if got := tcinput.Checkbox(defaultContainer(state), "Agree", conf()); !got {
+			t.Fatalf("Checkbox = %v, want true", got)
+		}
+	})
+
+	t.Run("unchecked", func(t *testing.T) {
+		state := tgframe.NewState()
+		state.Set("checkbox_component_Agree", false)
+
+		if got := tcinput.Checkbox(defaultContainer(state), "Agree", conf()); got {
+			t.Fatalf("Checkbox = %v, want false", got)
+		}
+	})
+
+	t.Run("checked", func(t *testing.T) {
+		state := tgframe.NewState()
+		state.Set("checkbox_component_Agree", true)
+
+		if got := tcinput.Checkbox(defaultContainer(state), "Agree", conf()); !got {
+			t.Fatalf("Checkbox = %v, want true", got)
+		}
+	})
+
+	// The default only stands in for a missing value, so a checkbox without
+	// one still starts off.
+	t.Run("no default", func(t *testing.T) {
+		state := tgframe.NewState()
+
+		if got := tcinput.Checkbox(defaultContainer(state), "Agree"); got {
+			t.Fatalf("Checkbox = %v, want false", got)
+		}
+	})
+}

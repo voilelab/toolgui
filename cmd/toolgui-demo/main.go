@@ -494,6 +494,11 @@ func InputPage(p *tgframe.Params) error {
 		checkboxValue := tgcomp.Checkbox(checkboxCompCol, "Checkbox")
 		tgcomp.Text(checkboxCompCol, fmt.Sprint("Value: ", checkboxValue),
 			&tgcomp.TextConf{ID: "checkbox_result"})
+
+		onValue := tgcomp.Checkbox(checkboxCompCol, "Checkbox default on",
+			&tgcomp.CheckboxConf{Default: true})
+		tgcomp.Text(checkboxCompCol, fmt.Sprint("Default: ", onValue),
+			&tgcomp.TextConf{ID: "checkbox_default_result"})
 	})
 
 	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "4"})

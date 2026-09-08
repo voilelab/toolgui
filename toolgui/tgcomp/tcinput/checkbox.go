@@ -46,5 +46,12 @@ func Checkbox(c *tgframe.Container, label string, conf ...*CheckboxConf) bool {
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
-	return c.State.GetBool(comp.ID)
+
+	// State tells an untouched checkbox from one the user unchecked; GetBool
+	// reads both as false, which would make Default: true unreachable.
+	if v, ok := c.State.Get[bool](comp.ID); ok {
+		return v
+	}
+
+	return cf.Default
 }

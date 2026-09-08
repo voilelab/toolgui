@@ -37,8 +37,28 @@ describe('Input', () => {
 
   it('Checkbox', () => {
     cy.visit('/input')
-    cy.get('input[type=checkbox]').click()
+    // By id, not input[type=checkbox]: the default-on checkbox below answers
+    // to that too, and Cypress fails on multiple matches.
+    cy.get('input[id=checkbox_component_Checkbox]').click()
     cy.contains('Value: true').should('exist')
+  })
+
+  // A Default: true checkbox has to read true in Go on the first load, and
+  // still be something the user can turn off for good.
+  it('Checkbox default', () => {
+    cy.visit('/input')
+    const box = 'input[id="checkbox_component_Checkbox default on"]'
+
+    cy.get(box).should('be.checked')
+    cy.contains('Default: true').should('exist')
+
+    cy.get(box).click()
+    cy.contains('Default: false').should('exist')
+    cy.get(box).should('not.be.checked')
+
+    cy.contains('Rerun').click()
+    cy.contains('Default: false').should('exist')
+    cy.get(box).should('not.be.checked')
   })
 
   it('Button click', () => {
