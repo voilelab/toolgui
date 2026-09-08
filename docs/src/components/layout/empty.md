@@ -8,7 +8,7 @@ replace it with the result.
 ## Usage
 
 ```go
-func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptyContainer
+func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptySlot
 ```
 
 * `c`: Parent container.
@@ -28,11 +28,15 @@ The slot has two methods:
 
 ```go
 // With writes what f adds into the slot, over whatever it held.
-func (s *EmptyContainer) With(f func(c *tgframe.Container))
+func (s *EmptySlot) With(f func(c *tgframe.Container))
 
 // Clear takes what the slot holds off the screen.
-func (s *EmptyContainer) Clear()
+func (s *EmptySlot) Clear()
 ```
+
+`EmptySlot` was called `EmptyContainer`; the old name is kept as a deprecated
+alias. See [what a component hands
+back](../../architecture/components.md#what-a-component-hands-back).
 
 The container `With` hands over lives until the next `With` or `Clear`.
 Writing into it after that puts components under a node the client no longer

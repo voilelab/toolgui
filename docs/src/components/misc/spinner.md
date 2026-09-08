@@ -28,6 +28,10 @@ The spinner sits in an [Empty](../layout/empty.md) slot, so taking it down
 leaves the page as if it had never been there. The returned function may be
 called more than once; only the first call does anything.
 
+Taking it down is the only thing a spinner is asked to do afterwards, so it
+hands back a bare `func()` rather than a handle. See [what a component hands
+back](../../architecture/components.md#what-a-component-hands-back).
+
 ## Example
 
 ```go

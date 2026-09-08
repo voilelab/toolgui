@@ -76,6 +76,43 @@ composite literal — needs the **calling file** to be at language version Go
 touches, and toolgui's own `go.mod` says `go 1.27.1`, so a module that
 depends on it is already above that line.
 
+## What a component hands back
+
+Most components hand back what the user did — `Button` a `bool`, `Textbox` a
+`*string` — or nothing at all. The few that hand back something the page
+function operates *later* follow one rule, so that a caller wrapping toolgui
+in an abstraction of its own knows what to expect and can name the type:
+
+* A place the page can write and write over is a **slot**, `*XxxSlot`, and is
+  written through `With` and emptied through `Clear`.
+* Something whose only follow-up is one teardown is a **`func()`**: call it,
+  and the component is gone.
+* Anything else is a **handle**, `*XxxHandle`, with named methods for what it
+  can do. The one that takes it off the page, where there is one, is `Remove`.
+
+Every one of these types is exported, so a handle can be declared as a
+variable, kept in a struct field, passed to a function, and named in an
+interface.
+
+| Component | Hands back | Finished with |
+| --- | --- | --- |
+| `Empty` | `*EmptySlot` | `With` / `Clear` |
+| `Spinner` | `func()` | call it |
+| `Status` | `*StatusHandle` | `Complete` / `Fail` |
+| `ProgressBar` | `*ProgressBarHandle` | `Remove` |
+
+`Container` is not one of these words. `Box`, `Column`, `Form` and `Expand`
+hand out a `*tgframe.Container`, which is a place components are *added* to, as
+many as the page function likes. A slot is written whole and rewritten whole,
+and a handle is neither — which is why `EmptyContainer` is now `EmptySlot` and
+`StatusContainer` is now `StatusHandle`. The old names stay as deprecated type
+aliases, so code that uses them still compiles; new code should not use them.
+
+`Status.Error` is likewise now `Status.Fail`, with `Error` kept and deprecated:
+the old name reads like the `error` interface, which a status does not
+implement. Both take at most one closing label — two or more is a mistake
+rather than something to join, and panics, the way passing two confs does.
+
 ## Identity: position and id
 
 A page function runs again from the top on every interaction and writes every

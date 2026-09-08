@@ -47,6 +47,10 @@ var ProgressBar = tcmisc.ProgressBar
 // ProgressBarConf is the configuration for the ProgressBar component.
 type ProgressBarConf = tcmisc.ProgressBarConf
 
+// ProgressBarHandle is what ProgressBar hands out: the bar it drew, to be
+// moved along while the page function works.
+type ProgressBarHandle = tcmisc.ProgressBarHandle
+
 // Iframe is an experimental component, its feature is not stable.
 // Use it with caution.
 //
@@ -89,5 +93,10 @@ var Status = tcmisc.Status
 // StatusConf is the configuration for the Status component.
 type StatusConf = tcmisc.StatusConf
 
-// StatusContainer is what Status hands out.
-type StatusContainer = tcmisc.StatusContainer
+// StatusHandle is what Status hands out.
+type StatusHandle = tcmisc.StatusHandle
+
+// StatusContainer is the old name of StatusHandle.
+//
+// Deprecated: use [StatusHandle].
+type StatusContainer = tcmisc.StatusHandle
