@@ -1,14 +1,18 @@
 package tgframe
 
-import "runtime/debug"
+import (
+	"runtime/debug"
+	"strings"
+)
 
 // modulePath is the module path go.mod declares. A dependent's build info
 // lists this module under it.
 const modulePath = "github.com/voilelab/toolgui"
 
 // fallbackVersion is what Version reports when the build info carries no
-// version for the module -- `go run`, `-buildvcs=false`, or a build from a
-// source tree with no VCS metadata.
+// usable version for the module -- `go run`, `-buildvcs=false`, a build from a
+// source tree with no VCS metadata, or one whose checkout has no tag to derive
+// a version from.
 //
 // The Release workflow rewrites this line on the commit it tags, so a released
 // tree always carries its own version. The value committed on dev is the last
@@ -50,8 +54,11 @@ func Version() string {
 	return fallbackVersion
 }
 
-// isRealVersion reject the placeholders the toolchain uses when it has no
-// version to report: "" and "(devel)".
+// isRealVersion reject what the toolchain reports when it has no version to
+// go on: "", "(devel)", and the v0.0.0 pseudo-version it stamps from VCS when
+// the checkout carries no tag to derive from -- a CI checkout fetched without
+// tags, say. A pseudo-version off a real tag (v0.4.1-0.2026...-abc) does say
+// which release the build sits after, so it is kept.
 func isRealVersion(v string) bool {
-	return v != "" && v != "(devel)"
+	return v != "" && v != "(devel)" && !strings.HasPrefix(v, "v0.0.0-")
 }
