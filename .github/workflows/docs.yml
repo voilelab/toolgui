@@ -32,9 +32,12 @@ jobs:
       MDBOOK_VERSION: 0.4.36
       MDBOOK_MERMAID_VERSION: 0.15.0
     steps:
+      # Tags too: go stamps the demo binary's version from VCS, and a checkout
+      # without the release tag stamps a v0.0.0 pseudo-version instead.
       - uses: actions/checkout@v4
         with:
           ref: main
+          fetch-tags: true
 
       - name: Install mdBook
         run: |
