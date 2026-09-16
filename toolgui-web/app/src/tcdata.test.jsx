@@ -5,7 +5,7 @@ import { render } from './render'
 import { afterEach, beforeEach, expect, test, describe, vi } from 'vitest'
 
 import { Node } from '@toolgui-web/lib/src/app/Nodes'
-import { clearState } from '@toolgui-web/lib/src/components/state'
+import { clearState, stateValues } from '@toolgui-web/lib/src/components/state'
 import { TDataFrame } from '@toolgui-web/lib/src/components/tcdata/dataframe'
 
 const RENDER_PROPS = { update: vi.fn(), upload: vi.fn(), theme: 'light' }
@@ -617,6 +617,34 @@ describe('TDataFrame selection', () => {
 
       // Index 1 is C now, and that is what stays drawn as picked.
       expect(pickedNames()).toEqual(['C'])
+    })
+
+    // The Go side reads the same stored value, and the two have to agree on
+    // what it means. No names is not an empty selection: it is what every
+    // pick made before the table was keyed left behind, so both fall back to
+    // the indices. Pinned here because only the server was pinned when the
+    // two last disagreed about it.
+    test('falls back to the indices when no names were stored', () => {
+      stateValues.hosts = { indices: [1], keys: [] }
+      mount(keyed(abc))
+
+      expect(pickedNames()).toEqual(['B'])
+    })
+
+    test('stays empty when the stored selection was cleared', () => {
+      stateValues.hosts = { indices: [], keys: [] }
+      mount(keyed(abc))
+
+      expect(pickedNames()).toEqual([])
+    })
+
+    // Names that match nothing are an answer, not a missing one, so they do
+    // not fall back to the indices stored beside them.
+    test('does not fall back when the named row has gone', () => {
+      stateValues.hosts = { indices: [1], keys: ['B'] }
+      mount(keyed([['A', '1'], ['C', '3']]))
+
+      expect(pickedNames()).toEqual([])
     })
 
     test('a pick dropped with its row is not carried back in', () => {
