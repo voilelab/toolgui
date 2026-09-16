@@ -662,3 +662,52 @@ func TestDataFrameRowKeyDuplicateNamesTheRows(t *testing.T) {
 		}
 	}
 }
+
+// A table that gains a RowKey mid-session finds no names stored -- every pick
+// made while it was unkeyed stored none -- and falls back to the indices,
+// which is what the client draws from too. Reading the empty names as an empty
+// selection instead would blank the selection the page function is handed
+// while the table went on showing it.
+func TestDataFrameRowKeyFallsBackToIndices(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{1}, "keys": []string{}},
+	}).ApplyState(state)
+
+	rows := [][]string{{"A", "1"}, {"B", "2"}, {"C", "3"}}
+	got := pickKeyed(state, rows, keyedConf())
+	if len(got) != 1 || rows[got[0]][0] != "B" {
+		t.Fatalf("DataFrame = %v, want the row at index 1", got)
+	}
+}
+
+// Clearing a keyed selection stores neither names nor indices, and that is an
+// answer rather than something to fall back from.
+func TestDataFrameRowKeyClearedStaysCleared(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{}, "keys": []string{}},
+	}).ApplyState(state)
+
+	got := pickKeyed(state, [][]string{{"A", "1"}, {"B", "2"}}, keyedConf())
+	if len(got) != 0 {
+		t.Fatalf("DataFrame = %v, want nothing picked", got)
+	}
+}
+
+// A keyed pick whose row has gone resolves to nothing, which is not the same
+// as having no names at all: it must not fall back to the stale indices.
+func TestDataFrameRowKeyVanishedRowDoesNotFallBack(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{1}, "keys": []string{"B"}},
+	}).ApplyState(state)
+
+	got := pickKeyed(state, [][]string{{"A", "1"}, {"C", "3"}}, keyedConf())
+	if len(got) != 0 {
+		t.Fatalf("DataFrame = %v, want nothing picked", got)
+	}
+}

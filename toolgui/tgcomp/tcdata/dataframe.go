@@ -482,7 +482,13 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 
 	// A keyed table is read back by name, so a row that has moved is still
 	// the row that was picked and one that has gone takes nothing with it.
-	if cf.RowKey != nil && sel.Keys != nil {
+	//
+	// Names it has none of are not an empty selection but no answer in this
+	// shape: every pick made while the table was unkeyed stored none, so a
+	// table that has just gained a RowKey reads the indices it did store.
+	// The client draws from the same two, in the same order, and the two
+	// have to agree.
+	if cf.RowKey != nil && len(sel.Keys) != 0 {
 		return resolveRowKeys(sel.Keys, rows, *cf.RowKey, cf.Selection)
 	}
 
