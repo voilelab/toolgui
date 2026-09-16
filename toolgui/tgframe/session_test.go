@@ -4,6 +4,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 const testPageName = "test"
@@ -191,5 +193,32 @@ func TestSessionClosedIgnoresEvents(t *testing.T) {
 
 	if got := recorder.count(); got != 0 {
 		t.Fatalf("expect no pack after Close, got %d", got)
+	}
+}
+
+// TestResultPackOmitsZeroFields pins what `omitzero` buys a client: a
+// successful run reports `success` and nothing else. Under `omitempty` a
+// false bool is written, so every result would carry a `"fatal":false` the
+// frontend never asked for.
+func TestResultPackOmitsZeroFields(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		pack *ResultPack
+		want string
+	}{
+		{"success", &ResultPack{Success: true}, `{"success":true}`},
+		{"error", &ResultPack{Error: "boom"}, `{"error":"boom","success":false}`},
+		{"fatal", &ResultPack{Error: "no page", Fatal: true}, `{"error":"no page","success":false,"fatal":true}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bs, err := tgjson.Marshal(tc.pack)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			if string(bs) != tc.want {
+				t.Errorf("marshal = %s, want %s", bs, tc.want)
+			}
+		})
 	}
 }

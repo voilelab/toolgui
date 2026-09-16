@@ -199,3 +199,54 @@ func TestNumberConfEmbedsBase(t *testing.T) {
 		t.Fatalf("got %v, want 5 read under the conf's id", got)
 	}
 }
+
+// TestNumberOmitsUnsetBounds pins that an unset bound stays off the wire.
+// The fields are `*T`, so `omitzero` drops a nil pointer the same way
+// `omitempty` did — but an explicit zero bound is a value, not an absence,
+// and still has to be sent.
+func TestNumberOmitsUnsetBounds(t *testing.T) {
+	var packs []tgframe.NotifyPack
+	tcinput.Number[int](testContainer(tgframe.NewState(), &packs), "n")
+
+	if len(packs) != 1 {
+		t.Fatalf("got %d packs, want 1", len(packs))
+	}
+
+	bs, err := tgjson.Marshal(packs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got struct {
+		Component map[string]jsontext.Value `json:"component"`
+	}
+	if err := tgjson.Unmarshal(bs, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	// Step is not in the list: Number defaults an integral T's step to 1.
+	for _, name := range []string{"default", "min", "max"} {
+		if v, ok := got.Component[name]; ok {
+			t.Errorf("%s = %s, want it left out", name, v)
+		}
+	}
+
+	// An explicitly zero bound is a bound, so it is written.
+	packs = nil
+	conf := (&tcinput.NumberConf[int]{}).SetMin(0)
+	tcinput.Number(testContainer(tgframe.NewState(), &packs), "n", conf)
+
+	bs, err = tgjson.Marshal(packs[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got.Component = nil
+	if err := tgjson.Unmarshal(bs, &got); err != nil {
+		t.Fatal(err)
+	}
+
+	if v, ok := got.Component["min"]; !ok || string(v) != "0" {
+		t.Errorf("min = %s (present %v), want 0", v, ok)
+	}
+}

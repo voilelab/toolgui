@@ -18,13 +18,13 @@ type ReadyPack struct {
 
 // ResultPack reports the result of a run to the client.
 type ResultPack struct {
-	Error   string `json:"error,omitempty"`
+	Error   string `json:"error,omitzero"`
 	Success bool   `json:"success"`
 
 	// Fatal marks an error the same request would run into again, such as a
 	// page name the app doesn't have. A client is meant to give up on it
 	// rather than reconnect.
-	Fatal bool `json:"fatal,omitempty"`
+	Fatal bool `json:"fatal,omitzero"`
 }
 
 // SendPackFunc sends a pack ([NotifyPack], [ReadyPack] or [ResultPack]) to the
