@@ -1,7 +1,6 @@
 package tgexec
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -14,6 +13,7 @@ import (
 
 	toolguiweb "github.com/voilelab/toolgui/toolgui-web"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 
 	"golang.org/x/net/websocket"
@@ -235,7 +235,7 @@ func (e *WebExecutor) Destroy() {
 func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	pageName := ws.Request().PathValue("name")
 	if !e.app.HasPage(pageName) {
-		websocket.JSON.Send(ws, &tgframe.ResultPack{
+		jsonCodec.Send(ws, &tgframe.ResultPack{
 			Error:   "page not found",
 			Success: false,
 			Fatal:   true,
@@ -253,14 +253,14 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	}
 
 	var pack stateIDPack
-	err := websocket.JSON.Receive(ws, &pack)
+	err := jsonCodec.Receive(ws, &pack)
 
 	if derr := ws.SetReadDeadline(time.Time{}); derr != nil {
 		slog.Error("clear state id deadline", "error", derr)
 	}
 
 	if err != nil {
-		websocket.JSON.Send(ws, &tgframe.ResultPack{
+		jsonCodec.Send(ws, &tgframe.ResultPack{
 			Error:   err.Error(),
 			Success: false,
 		})
@@ -278,7 +278,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 			// The service is holding as many states as it may. Another
 			// connection dropping frees one, so the client is left to retry
 			// rather than told to give up.
-			websocket.JSON.Send(ws, &tgframe.ResultPack{
+			jsonCodec.Send(ws, &tgframe.ResultPack{
 				Error:   "too many sessions, try again later",
 				Success: false,
 			})
@@ -288,12 +288,12 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 
 		stateID = newStateID
 		state, _ = e.stateMap.Get(stateID)
-		websocket.JSON.Send(ws, stateIDPack{
+		jsonCodec.Send(ws, stateIDPack{
 			StateID: stateID,
 		})
 	} else {
 		if alive {
-			websocket.JSON.Send(ws, &tgframe.ResultPack{
+			jsonCodec.Send(ws, &tgframe.ResultPack{
 				Error:   "state id already alive",
 				Success: false,
 			})
@@ -305,13 +305,13 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	}
 
 	session, err := tgframe.NewSession(e.app, pageName, state,
-		func(pack any) error { return websocket.JSON.Send(ws, pack) })
+		func(pack any) error { return jsonCodec.Send(ws, pack) })
 	if err != nil {
 		// NewSession only fails on the page name, so a retry would fail the
 		// same way. The state is nobody's again either way.
 		e.stateMap.SetAlive(stateID, false)
 
-		websocket.JSON.Send(ws, &tgframe.ResultPack{
+		jsonCodec.Send(ws, &tgframe.ResultPack{
 			Error:   err.Error(),
 			Success: false,
 			Fatal:   true,
@@ -342,7 +342,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 				break
 			}
 
-			websocket.JSON.Send(ws, &tgframe.ResultPack{
+			jsonCodec.Send(ws, &tgframe.ResultPack{
 				Error:   err.Error(),
 				Success: false,
 			})
@@ -514,7 +514,7 @@ func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request
 		manifest = e.defaultManifest()
 	}
 
-	bs, err := json.Marshal(manifest)
+	bs, err := tgjson.Marshal(manifest)
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 		slog.Error("marshal manifest", "error", err)
@@ -530,7 +530,7 @@ func (e *WebExecutor) handleHealth(resp http.ResponseWriter, req *http.Request) 
 }
 
 func (e *WebExecutor) handleAppConf(resp http.ResponseWriter, req *http.Request) {
-	bs, err := json.Marshal(e.app.AppConf())
+	bs, err := tgjson.Marshal(e.app.AppConf())
 	if err != nil {
 		resp.WriteHeader(http.StatusInternalServerError)
 		return

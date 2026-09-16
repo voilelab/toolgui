@@ -1,13 +1,13 @@
 package tgframe_test
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // pack is a notify pack as the GUI client reads it, cut down to what a test
@@ -43,13 +43,13 @@ func packsOf(t *testing.T, state *tgframe.State, page tgframe.RunFunc) ([]pack, 
 
 	var packs []pack
 	err := app.RunWithHandlingPanic("index", state, func(p tgframe.NotifyPack) {
-		bs, mErr := json.Marshal(p)
+		bs, mErr := tgjson.Marshal(p)
 		if mErr != nil {
 			t.Fatalf("marshal pack: %v", mErr)
 		}
 
 		var one pack
-		if uErr := json.Unmarshal(bs, &one); uErr != nil {
+		if uErr := tgjson.Unmarshal(bs, &one); uErr != nil {
 			t.Fatalf("unmarshal pack: %v", uErr)
 		}
 

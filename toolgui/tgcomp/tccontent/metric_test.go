@@ -1,10 +1,10 @@
 package tccontent
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // addMetric runs the given call against a container and returns the json the
@@ -23,7 +23,7 @@ func addMetric(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 		t.Fatalf("got %d packs, want 1", len(packs))
 	}
 
-	bs, err := json.Marshal(packs[0])
+	bs, err := tgjson.Marshal(packs[0])
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
@@ -31,7 +31,7 @@ func addMetric(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 	var out struct {
 		Component map[string]any `json:"component"`
 	}
-	if err := json.Unmarshal(bs, &out); err != nil {
+	if err := tgjson.Unmarshal(bs, &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
 

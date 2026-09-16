@@ -4,12 +4,12 @@ package tgwasm
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"log/slog"
 	"sync"
 	"syscall/js"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -58,7 +58,7 @@ func (b *bridge) install() {
 // jsAppConf return the app config as JSON. It's the browser counterpart of
 // GET /api/app.
 func (b *bridge) jsAppConf(this js.Value, args []js.Value) any {
-	bs, err := json.Marshal(b.app.AppConf())
+	bs, err := tgjson.Marshal(b.app.AppConf())
 	if err != nil {
 		// AppConf is plain data, so this cannot fail in practice.
 		slog.Error("marshal app conf", "error", err)
@@ -169,7 +169,7 @@ func (b *bridge) send(pack any) error {
 		return tgutil.NewError("no pack callback, call onPack first")
 	}
 
-	bs, err := json.Marshal(pack)
+	bs, err := tgjson.Marshal(pack)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

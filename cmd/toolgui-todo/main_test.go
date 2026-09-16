@@ -1,11 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // runner drives the page like a client does: it feeds events to a session and
@@ -39,7 +39,7 @@ func newRunner(t *testing.T) *runner {
 func (r *runner) run(t *testing.T, event any) []string {
 	t.Helper()
 
-	bs, err := json.Marshal(event)
+	bs, err := tgjson.Marshal(event)
 	if err != nil {
 		t.Fatalf("marshal event: %v", err)
 	}
@@ -72,7 +72,7 @@ func (r *runner) run(t *testing.T, event any) []string {
 func checkboxLabel(t *testing.T, pack any) (string, bool) {
 	t.Helper()
 
-	bs, err := json.Marshal(pack)
+	bs, err := tgjson.Marshal(pack)
 	if err != nil {
 		t.Fatalf("marshal pack: %v", err)
 	}
@@ -83,7 +83,7 @@ func checkboxLabel(t *testing.T, pack any) (string, bool) {
 			Label string `json:"label"`
 		} `json:"component"`
 	}
-	if err := json.Unmarshal(bs, &parsed); err != nil {
+	if err := tgjson.Unmarshal(bs, &parsed); err != nil {
 		t.Fatalf("unmarshal pack: %v", err)
 	}
 

@@ -1,9 +1,29 @@
 package tgframe
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
+
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
+
+// sameJSON reports whether two encodings carry the same value. The tests
+// compare what a pack means, not the bytes a codec happened to choose, so a
+// change of member order or number formatting is not a failure.
+func sameJSON(t *testing.T, got, want []byte) bool {
+	t.Helper()
+
+	canon := func(what string, bs []byte) string {
+		v := jsontext.Value(bs)
+		if err := v.Canonicalize(); err != nil {
+			t.Fatalf("canonicalize %s: %v", what, err)
+		}
+
+		return string(v)
+	}
+
+	return canon("got", got) == canon("want", want)
+}
 
 func TestParseEventIframe(t *testing.T) {
 	event, err := ParseEvent([]byte(`{"type":"iframe","id":"my_iframe","value":{"clicked":true}}`))
@@ -185,17 +205,38 @@ func TestEventSelectMarshalShape(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var event EventSelect
-			if err := json.Unmarshal([]byte(tt.sent), &event); err != nil {
+			if err := tgjson.Unmarshal([]byte(tt.sent), &event); err != nil {
 				t.Fatalf("Unmarshal: %v", err)
 			}
 
-			bs, err := json.Marshal(&event)
+			bs, err := tgjson.Marshal(&event)
 			if err != nil {
 				t.Fatalf("Marshal: %v", err)
 			}
 
-			if string(bs) != tt.want {
+			if !sameJSON(t, bs, []byte(tt.want)) {
 				t.Errorf("Marshal = %s, want %s", bs, tt.want)
+			}
+		})
+	}
+}
+
+// The codec's strictness reaches the wire path an event actually arrives on:
+// a duplicate key or invalid UTF-8 is rejected rather than read as whichever
+// of the two values the decoder happened to keep.
+func TestParseEventRejectsMalformed(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		data string
+	}{
+		{"duplicate id", `{"type":"click","id":"a","id":"b"}`},
+		{"duplicate type", `{"type":"click","type":"input"}`},
+		{"invalid utf-8", "{\"type\":\"click\",\"id\":\"a\xffb\"}"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			event, err := ParseEvent([]byte(tc.data))
+			if err == nil {
+				t.Errorf("ParseEvent(%q) = %#v, want an error", tc.data, event)
 			}
 		})
 	}

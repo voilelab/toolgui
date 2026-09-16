@@ -1,10 +1,9 @@
 package tcdata
 
 import (
-	"encoding/json"
-
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -54,14 +53,14 @@ func serializeJSON(v any) (string, error) {
 	if res, ok := v.(string); ok {
 		// check if the string is a valid JSON
 		var js map[string]any
-		if err := json.Unmarshal([]byte(res), &js); err != nil {
+		if err := tgjson.Unmarshal([]byte(res), &js); err != nil {
 			return "", err
 		}
 
 		return res, nil
 	}
 
-	bs, err := json.Marshal(v)
+	bs, err := tgjson.Marshal(v)
 	if err != nil {
 		return "", err
 	}

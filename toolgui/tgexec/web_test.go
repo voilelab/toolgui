@@ -3,7 +3,6 @@ package tgexec
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 
 	"golang.org/x/net/websocket"
@@ -71,7 +71,7 @@ func TestUpdateUnknownPageIsFatal(t *testing.T) {
 	ws := dialUpdate(t, srv, "no_such_page")
 
 	var pack tgframe.ResultPack
-	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -99,12 +99,12 @@ func TestUpdateKnownPageIsNotFatal(t *testing.T) {
 	srv, _ := newTestServer(t)
 	ws := dialUpdate(t, srv, "index")
 
-	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
 		t.Fatalf("send state id: %v", err)
 	}
 
 	var pack stateIDPack
-	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -119,12 +119,12 @@ func newUploadState(t *testing.T, srv *httptest.Server) string {
 	t.Helper()
 
 	ws := dialUpdate(t, srv, "index")
-	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
 		t.Fatalf("send state id: %v", err)
 	}
 
 	var pack stateIDPack
-	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -157,7 +157,7 @@ func waitRun(t *testing.T, ws *websocket.Conn) {
 		}
 
 		var pack tgframe.ResultPack
-		if err := json.Unmarshal(bs, &pack); err != nil {
+		if err := tgjson.Unmarshal(bs, &pack); err != nil {
 			continue
 		}
 
@@ -394,12 +394,12 @@ func TestUploadReachesFileupload(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	ws := dialUpdate(t, srv, "index")
-	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
 		t.Fatalf("send state id: %v", err)
 	}
 
 	var pack stateIDPack
-	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -843,12 +843,12 @@ func TestUpdateResetReleasesState(t *testing.T) {
 
 	ws, conn := dialUpdateRaw(t, srv)
 
-	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
 		t.Fatalf("send state id: %v", err)
 	}
 
 	var pack stateIDPack
-	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 
@@ -885,7 +885,7 @@ func TestUpdateResetReleasesState(t *testing.T) {
 	// A reconnect naming it takes it back, rather than being turned away for
 	// a connection that is long gone.
 	ws2 := dialUpdate(t, srv, "index")
-	if err := websocket.JSON.Send(ws2, stateIDPack{StateID: pack.StateID}); err != nil {
+	if err := jsonCodec.Send(ws2, stateIDPack{StateID: pack.StateID}); err != nil {
 		t.Fatalf("send state id: %v", err)
 	}
 
@@ -925,12 +925,12 @@ func TestUpdateOverMaxStateCount(t *testing.T) {
 	newUploadState(t, srv)
 
 	ws := dialUpdate(t, srv, "index")
-	if err := websocket.JSON.Send(ws, stateIDPack{}); err != nil {
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
 		t.Fatalf("send state id: %v", err)
 	}
 
 	var pack tgframe.ResultPack
-	if err := websocket.JSON.Receive(ws, &pack); err != nil {
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
 		t.Fatalf("receive: %v", err)
 	}
 

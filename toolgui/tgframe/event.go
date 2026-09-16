@@ -1,9 +1,11 @@
 package tgframe
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"fmt"
 	"log"
+
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // Event is the state change made by app user
@@ -38,7 +40,7 @@ type EventStruct struct {
 
 func ParseEvent(data []byte) (Event, error) {
 	var event EventStruct
-	err := json.Unmarshal(data, &event)
+	err := tgjson.Unmarshal(data, &event)
 	if err != nil {
 		return nil, err
 	}
@@ -48,30 +50,30 @@ func ParseEvent(data []byte) (Event, error) {
 		return &EventEmpty{}, nil
 	case EventClickName:
 		var eventClick EventClick
-		err = json.Unmarshal(data, &eventClick)
+		err = tgjson.Unmarshal(data, &eventClick)
 		if err != nil {
 			return nil, err
 		}
 		return &eventClick, nil
 	case EventInputName:
 		var eventInput EventInput
-		err = json.Unmarshal(data, &eventInput)
+		err = tgjson.Unmarshal(data, &eventInput)
 		if err != nil {
 			return nil, err
 		}
 		return &eventInput, nil
 	case EventSelectName:
 		var eventSelect EventSelect
-		err = json.Unmarshal(data, &eventSelect)
+		err = tgjson.Unmarshal(data, &eventSelect)
 		if err != nil {
 			return nil, err
 		}
 		return &eventSelect, nil
 	case EventFormName:
 		var eventForm struct {
-			Events []json.RawMessage `json:"events"`
+			Events []jsontext.Value `json:"events"`
 		}
-		err = json.Unmarshal(data, &eventForm)
+		err = tgjson.Unmarshal(data, &eventForm)
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +89,7 @@ func ParseEvent(data []byte) (Event, error) {
 		return &EventForm{Events: events}, nil
 	case EventCustomName, EventIframeName:
 		var eventCustom EventCustom
-		err = json.Unmarshal(data, &eventCustom)
+		err = tgjson.Unmarshal(data, &eventCustom)
 		if err != nil {
 			return nil, err
 		}

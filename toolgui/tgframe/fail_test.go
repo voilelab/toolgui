@@ -1,12 +1,12 @@
 package tgframe_test
 
 import (
-	"encoding/json"
 	"errors"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // namesOf runs one page and returns the typename of every component it sent,
@@ -27,11 +27,11 @@ func namesOf(t *testing.T, page tgframe.RunFunc) ([]string, error) {
 	app.AddPage("index", "Index", page)
 
 	err := app.Run("index", tgframe.NewState(), func(p tgframe.NotifyPack) {
-		bs, mErr := json.Marshal(p)
+		bs, mErr := tgjson.Marshal(p)
 		if mErr != nil {
 			t.Fatalf("marshal pack: %v", mErr)
 		}
-		if uErr := json.Unmarshal(bs, &pack); uErr != nil {
+		if uErr := tgjson.Unmarshal(bs, &pack); uErr != nil {
 			t.Fatalf("unmarshal pack: %v", uErr)
 		}
 		if pack.Type != tgframe.NotifyTypeCreate {
