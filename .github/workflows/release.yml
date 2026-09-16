@@ -3,7 +3,10 @@ name: Release
 # Builds the web assets, commits them on top of dev, tags, and publishes.
 # `go get` resolves tags, so the tagged commit is what must carry app/build,
 # toolgui-wails/frontend/dist and toolgui-web/wasm/build.
-# main is a CI-owned mirror of the latest release commit.
+# Each release commit also carries the previous release tag as a second
+# parent, so the tags form a chain. GitHub's generated notes need that: a tag
+# with no earlier release in its history gets notes listing every PR ever.
+# main is the branch those release commits live on.
 
 on:
   workflow_dispatch:
@@ -38,6 +41,24 @@ jobs:
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
             echo "::error::tag $VERSION already exists"
             exit 1
+          fi
+
+      # The release commit is built on dev, which never sees the previous
+      # release commit, so without this every tag is an island. `-s ours`
+      # records the ancestry and keeps dev's tree exactly as it is; the stale
+      # assets it carries are rebuilt below.
+      - name: Chain the previous release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The highest tag below VERSION, so a late patch release chains to
+          # its own line rather than to whatever is newest.
+          prev="$({ git tag --list 'v*'; echo "$VERSION"; } | sort -V \
+            | grep -B1 -x "$VERSION" | head -1)"
+          [ "$prev" = "$VERSION" ] && prev=""
+          echo "PREV_TAG=$prev" >> "$GITHUB_ENV"
+          if [ -n "$prev" ]; then
+            git merge -s ours --no-edit -m "Chain $prev into $VERSION" "$prev"
           fi
 
       # v0.2.3 shipped a go.mod whose path no longer matched the repo, which
@@ -106,8 +127,6 @@ jobs:
 
       - name: Commit assets and tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add toolgui/tgframe/version.go
           # All three are gitignored on dev; -f includes them for the release
           # only.
@@ -119,10 +138,15 @@ jobs:
       - name: Push tag and main
         run: |
           git push origin "refs/tags/$VERSION"
+          # A fast-forward now that main's head is an ancestor; --force only
+          # covers main having drifted.
           git push --force origin "HEAD:refs/heads/main"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$VERSION" --title "$VERSION" --generate-notes
+          # --generate-notes finds PREV_TAG on its own now, but say it anyway
+          # so a broken chain shows up as wrong notes, not a repo-wide dump.
+          gh release create "$VERSION" --title "$VERSION" --generate-notes \
+            ${PREV_TAG:+--notes-start-tag "$PREV_TAG"}

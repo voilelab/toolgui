@@ -1,0 +1,54 @@
+name: Regenerate release notes
+
+# Rewrites the notes of releases already published, pinning each one to its
+# predecessor. Releases tagged before the Release workflow chained its tags
+# got notes listing every PR in the repo, because GitHub found no earlier
+# release in the tag's history to diff against.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tags:
+        description: 'Release tags to rewrite, space separated (or "all")'
+        required: true
+
+jobs:
+  regenerate:
+    name: Rewrite notes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TAGS: ${{ inputs.tags }}
+    steps:
+      - name: Rewrite
+        run: |
+          set -euo pipefail
+          published="$(gh release list --repo "$REPO" --limit 200 \
+            --json tagName --jq '.[].tagName' | sort -V)"
+
+          if [ "$TAGS" = "all" ]; then
+            targets="$published"
+          else
+            targets="$TAGS"
+          fi
+
+          for tag in $targets; do
+            if ! grep -qx -- "$tag" <<<"$published"; then
+              echo "::error::no published release for $tag"
+              exit 1
+            fi
+            # The release published immediately before this one.
+            prev="$(grep -B1 -x -- "$tag" <<<"$published" | head -1)"
+            [ "$prev" = "$tag" ] && prev=""
+
+            args=(-f "tag_name=$tag")
+            [ -n "$prev" ] && args+=(-f "previous_tag_name=$prev")
+            gh api "repos/$REPO/releases/generate-notes" "${args[@]}" \
+              --jq .body > notes.md
+
+            gh release edit "$tag" --repo "$REPO" --notes-file notes.md
+            echo "::notice::$tag rewritten against ${prev:-the start of history}"
+          done
