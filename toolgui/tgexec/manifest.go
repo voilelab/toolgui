@@ -14,36 +14,36 @@ type ManifestIcon struct {
 	Src string `json:"src"`
 
 	// Type is the mime type of the icon, e.g. "image/png".
-	Type string `json:"type,omitempty"`
+	Type string `json:"type,omitzero"`
 
 	// Sizes is a space separated list of sizes, e.g. "192x192".
-	Sizes string `json:"sizes,omitempty"`
+	Sizes string `json:"sizes,omitzero"`
 
 	// Purpose is the icon purpose, e.g. "maskable" or "any".
-	Purpose string `json:"purpose,omitempty"`
+	Purpose string `json:"purpose,omitzero"`
 }
 
 // Manifest is the web app manifest [WebExecutor] serves at /manifest.json.
 // Empty fields are left out, so only what is set reaches the browser.
 type Manifest struct {
-	Name        string `json:"name,omitempty"`
-	ShortName   string `json:"short_name,omitempty"`
-	Description string `json:"description,omitempty"`
+	Name        string `json:"name,omitzero"`
+	ShortName   string `json:"short_name,omitzero"`
+	Description string `json:"description,omitzero"`
 
-	Icons []ManifestIcon `json:"icons,omitempty"`
+	Icons []ManifestIcon `json:"icons,omitzero"`
 
-	StartURL string `json:"start_url,omitempty"`
-	Scope    string `json:"scope,omitempty"`
+	StartURL string `json:"start_url,omitzero"`
+	Scope    string `json:"scope,omitzero"`
 
 	// Display is how the app is presented, e.g. "standalone" or "browser".
-	Display     string `json:"display,omitempty"`
-	Orientation string `json:"orientation,omitempty"`
+	Display     string `json:"display,omitzero"`
+	Orientation string `json:"orientation,omitzero"`
 
-	ThemeColor      string `json:"theme_color,omitempty"`
-	BackgroundColor string `json:"background_color,omitempty"`
+	ThemeColor      string `json:"theme_color,omitzero"`
+	BackgroundColor string `json:"background_color,omitzero"`
 
-	Lang string `json:"lang,omitempty"`
-	Dir  string `json:"dir,omitempty"`
+	Lang string `json:"lang,omitzero"`
+	Dir  string `json:"dir,omitzero"`
 
 	// Extra holds manifest members this struct doesn't name, such as
 	// "shortcuts" or "categories". They are merged into the served json, and

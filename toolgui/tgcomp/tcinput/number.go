@@ -28,10 +28,10 @@ type numberComponent[T Numeric] struct {
 	*tgframe.BaseComponent
 
 	Label       string       `json:"label"`
-	Default     *T           `json:"default,omitempty"`
-	Min         *T           `json:"min,omitempty"`
-	Max         *T           `json:"max,omitempty"`
-	Step        *T           `json:"step,omitempty"`
+	Default     *T           `json:"default,omitzero"`
+	Min         *T           `json:"min,omitzero"`
+	Max         *T           `json:"max,omitzero"`
+	Step        *T           `json:"step,omitzero"`
 	Color       tcutil.Color `json:"color"`
 	Placeholder string       `json:"placeholder"`
 	Disabled    bool         `json:"disabled"`

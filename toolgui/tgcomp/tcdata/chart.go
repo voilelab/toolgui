@@ -65,7 +65,7 @@ type ChartSeries struct {
 	// Points holds the {x, y} points of a ChartKindScatter series, which has
 	// no labels to line its values up with. Omitted from the wire for the
 	// other kinds, so their packs are unchanged.
-	Points []ChartPoint `json:"points,omitempty"`
+	Points []ChartPoint `json:"points,omitzero"`
 
 	// Color overrides the theme palette. Any CSS color.
 	Color string `json:"color"`
