@@ -159,9 +159,22 @@ out of the tab order rather than made a second stop per row.
 `DefaultSelection` is what is picked before the user first touches the table,
 and is only read until then: clearing the selection is an answer, and beats
 the default from that point on. Indices pointing outside `rows` are dropped,
-and `SelectionModeSingle` keeps only the lowest one. The same dropping applies
-to a selection the user made before the data changed underneath it: a row that
-is no longer there is dropped rather than moved.
+and `SelectionModeSingle` keeps only the lowest one.
+
+#### A selection is a position, not a row
+
+If `rows` changes between runs, an index picked against the old data is read
+against the new one. Pick `rows[1]` out of `[A, B, C]`, drop `B`, and the
+selection is still `1` — which is now `C`, a row the user never picked. Only
+an index past the end of `rows` is dropped.
+
+This is the positional contract [Select](../input/select.md) and
+[Multiselect](../input/multiselect.md) already have with their `items`, and
+the id being derived from `head` keeps the selection across a rerun rather
+than making it safe across a change of data. So before acting on a selection
+destructively — deleting, submitting, sending — either hand the table rows
+whose order is stable between runs, or give it a fresh `ID` when the data is
+replaced, which drops the selection with the old id.
 
 #### Identity
 

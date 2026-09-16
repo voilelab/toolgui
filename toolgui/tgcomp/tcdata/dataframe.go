@@ -325,6 +325,13 @@ func normalizeRowSelection(idxes []int, rowCount int, mode SelectionMode) []int 
 // in, and they come back sorted and without duplicates. The result is empty
 // rather than nil when nothing is picked.
 //
+// An index is a position and not a row identity, the same contract [Select]
+// and [Multiselect] have with their items: when rows changes between runs, an
+// index picked against the old data is read against the new one, and only an
+// index past the end is dropped. Hand it rows whose order is stable between
+// runs, or a fresh [DataFrameConf.ID] when the data is replaced, before acting
+// on a selection destructively.
+//
 // [Table] is the static counterpart: reach for it when the rows are few and
 // already in the order they should be read in.
 func DataFrame(c *tgframe.Container, head []string, rows [][]string,
