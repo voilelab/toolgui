@@ -2,7 +2,10 @@ package tcdata
 
 import (
 	"fmt"
+	"slices"
+	"strings"
 
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
@@ -85,6 +88,49 @@ func (a ColumnAlign) resolve(t ColumnType) string {
 	panic(fmt.Sprintf("unsupported column align: %d", int(a)))
 }
 
+// SelectionMode is how many rows of a DataFrame the app user may pick.
+//
+// Picking a row is the one DataFrame interaction that reruns the page
+// function: sorting, searching and paging stay in the browser, but a
+// selection is an answer the page has to be given.
+type SelectionMode int
+
+const (
+	// SelectionModeNone leaves the rows unpickable, the default. A DataFrame
+	// like this holds no state and always returns an empty selection.
+	SelectionModeNone SelectionMode = iota
+
+	// SelectionModeSingle lets one row be picked at a time, by clicking it.
+	// Clicking the picked row again clears the selection.
+	SelectionModeSingle
+
+	// SelectionModeMulti lets any number of rows be picked, through a
+	// checkbox column the table grows on the left.
+	SelectionModeMulti
+)
+
+// String returns the mode as it is named on the wire.
+func (m SelectionMode) String() string {
+	switch m {
+	case SelectionModeNone:
+		return "none"
+	case SelectionModeSingle:
+		return "single"
+	case SelectionModeMulti:
+		return "multi"
+	}
+
+	panic(fmt.Sprintf("unsupported selection mode: %d", int(m)))
+}
+
+// maxSelected is how many rows the mode allows at once, 0 being no limit.
+func (m SelectionMode) maxSelected() int {
+	if m == SelectionModeSingle {
+		return 1
+	}
+	return 0
+}
+
 // DataFrameColumnConf is the configuration of one DataFrame column. It is
 // named after the component rather than called ColumnConf because the layout
 // Column already has that name.
@@ -130,6 +176,17 @@ type DataFrameConf struct {
 	// ColumnConf configures the columns, one entry per head entry. Empty
 	// leaves every column on its defaults; any other length panics.
 	ColumnConf []DataFrameColumnConf
+
+	// Selection is how many rows the app user may pick, default
+	// SelectionModeNone. Anything else makes DataFrame's return meaningful,
+	// and makes picking a row rerun the page function.
+	Selection SelectionMode
+
+	// DefaultSelection is what is picked before the app user first touches
+	// the table, as indices into rows. It is only read until then. Indices
+	// pointing outside rows are dropped, and SelectionModeSingle keeps only
+	// the lowest one.
+	DefaultSelection []int
 }
 
 // SetSortable sets Sortable, which is a pointer so that leaving it out means
@@ -164,6 +221,9 @@ type dataFrameComponent struct {
 	Searchable bool              `json:"searchable"`
 	PageSize   int               `json:"page_size"`
 	Height     string            `json:"height"`
+
+	Selection        string `json:"selection"`
+	DefaultSelection []int  `json:"default_selection"`
 }
 
 // boolOr reports what an unset conf toggle means.
@@ -195,9 +255,20 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 		pageSize = defaultDataFramePageSize
 	}
 
+	// A DataFrame carries state only once its rows can be picked, so that is
+	// the only time it needs an id of its own. The id is derived from the
+	// head rather than the rows, so a selection survives the data changing
+	// under it; two tables sharing a head are what Conf.ID is for.
+	id := ""
+	if conf.Selection != SelectionModeNone {
+		id = tcutil.HashedID(dataFrameComponentName,
+			[]byte(strings.Join(head, "\x00")))
+	}
+
 	return &dataFrameComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: dataFrameComponentName,
+			ID:   id,
 		},
 		Head:       head,
 		Rows:       rows,
@@ -206,44 +277,106 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 		Searchable: boolOr(conf.Searchable, true),
 		PageSize:   pageSize,
 		Height:     conf.Height,
+		Selection:  conf.Selection.String(),
+		DefaultSelection: normalizeRowSelection(
+			conf.DefaultSelection, len(rows), conf.Selection),
 	}
 }
 
-// DataFrame create a table the user can sort, search and page through. All
-// three happen in the browser, so none of them reruns the page function.
+// normalizeRowSelection puts a selection into the shape DataFrame promises:
+// row order, no duplicates, nothing pointing outside rows, and never nil. The
+// mode's cap is applied here too -- the frontend is what keeps the app user
+// inside it, but a payload that went past it is trimmed rather than trusted.
+func normalizeRowSelection(idxes []int, rowCount int, mode SelectionMode) []int {
+	out := []int{}
+	if mode == SelectionModeNone {
+		return out
+	}
+
+	for _, idx := range idxes {
+		if idx < 0 || idx >= rowCount {
+			continue
+		}
+
+		out = append(out, idx)
+	}
+
+	slices.Sort(out)
+	out = slices.Compact(out)
+
+	if max := mode.maxSelected(); max > 0 && len(out) > max {
+		out = out[:max]
+	}
+
+	return out
+}
+
+// DataFrame create a table the user can sort, search and page through, and
+// return the rows the user has picked, as indices into rows. Sorting,
+// searching and paging all happen in the browser, so none of them reruns the
+// page function.
 //
 // Every row needs one cell per head entry. [DataFrameColumnConf] carries what
 // the cells mean, so the data stays a plain string matrix.
 //
+// The rows can only be picked once [DataFrameConf.Selection] says so; until
+// then the return is always empty. The indices are into rows, the order the
+// page function wrote them in, not the order the table happens to show them
+// in, and they come back sorted and without duplicates. The result is empty
+// rather than nil when nothing is picked.
+//
 // [Table] is the static counterpart: reach for it when the rows are few and
 // already in the order they should be read in.
-func DataFrame(c *tgframe.Container, head []string, rows [][]string, conf ...*DataFrameConf) {
+func DataFrame(c *tgframe.Container, head []string, rows [][]string,
+	conf ...*DataFrameConf) []int {
+
 	cf := tgframe.OneConf("DataFrame", conf)
 
 	if len(head) == 0 {
 		c.Fail(tgutil.NewError("a DataFrame needs at least one head entry"))
-		return
+		return []int{}
 	}
 
 	if len(cf.ColumnConf) != 0 && len(cf.ColumnConf) != len(head) {
 		c.Fail(tgutil.NewError("len of column conf should equal to len of head"))
-		return
+		return []int{}
 	}
 
 	if cf.PageSize < 0 {
 		c.Fail(tgutil.Errorf(
 			"page size should not be negative, got %d", cf.PageSize))
-		return
+		return []int{}
 	}
 
 	for i, row := range rows {
 		if len(row) != len(head) {
 			c.Fail(tgutil.Errorf("len of row %d should equal to len of head", i))
-			return
+			return []int{}
 		}
 	}
 
 	comp := newDataFrameComponent(head, rows, cf)
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
+
+	if cf.Selection == SelectionModeNone {
+		return []int{}
+	}
+
+	// The state holds whatever the select event landed, a []int written from
+	// Go but a []float64 once it has been through JSON; GetObject reads both,
+	// and leaves idxes nil for a key holding neither.
+	var idxes []int
+	if c.State.GetObject(comp.ID, &idxes) != nil {
+		idxes = nil
+	}
+
+	if idxes == nil {
+		// Untouched, so the default stands in. Normalized a second time
+		// rather than handing back comp.DefaultSelection: the component is
+		// about to be serialized, and the caller owns what it gets back.
+		return normalizeRowSelection(cf.DefaultSelection, len(rows), cf.Selection)
+	}
+
+	return normalizeRowSelection(idxes, len(rows), cf.Selection)
 }

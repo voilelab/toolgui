@@ -141,3 +141,123 @@ describe('DataFrame', () => {
     })
   })
 })
+
+const dfHosts = '#dataframe_component_demo_hosts'
+const dfBuilds = '#dataframe_component_demo_builds'
+
+// Picking a row is the one DataFrame interaction that reruns the page
+// function, so unlike the block above, these read the answer off the page.
+describe('DataFrame selection', () => {
+  beforeEach(() => {
+    cy.visit('/data', { onBeforeLoad: trackSends })
+  })
+
+  const selectedHosts = () => cy.get('#text_component_dataframe_multi_result')
+  const selectedBuild = () => cy.get('#text_component_dataframe_single_result')
+
+  // The checkbox column is column 0, so the Host cell is column 1. Clicking a
+  // cell rather than the checkbox is the path a row click takes.
+  const hostCell = (n) => cy.get(`${dfHosts} tbody tr`).eq(n).find('td').eq(1)
+  const hostCheckbox = (n) =>
+    cy.get(`${dfHosts} tbody tr`).eq(n).find('input[type=checkbox]')
+
+  // The single-select table grows no checkbox column, so its first cell is
+  // column 0.
+  const buildCell = (n) => cy.get(`${dfBuilds} tbody tr`).eq(n).find('td').eq(0)
+
+  // The search box is reached by its label: Mantine's TextInput carries no
+  // type attribute, and a bare `input` would now also match the checkboxes.
+  const hostSearch = `${dfHosts} input[aria-label="search the table"]`
+
+  it('sends a picked row back to the page function', () => {
+    selectedHosts().should('have.text', 'Selected: none')
+
+    hostCheckbox(1).click()
+    selectedHosts().should('have.text', 'Selected: web-2')
+
+    // The result is in row order, not in the order the rows were picked.
+    hostCheckbox(0).click()
+    selectedHosts().should('have.text', 'Selected: web-1, web-2')
+  })
+
+  it('picks a row clicked anywhere, and drops it when clicked again', () => {
+    hostCell(2).click()
+    selectedHosts().should('have.text', 'Selected: db-1')
+    cy.get(`${dfHosts} tbody tr`).eq(2)
+      .should('have.attr', 'aria-selected', 'true')
+
+    hostCell(2).click()
+    selectedHosts().should('have.text', 'Selected: none')
+  })
+
+  // The index that goes back is the server's own, so a table the user has
+  // reordered still names the row the page function wrote.
+  it('picks the right row after sorting', () => {
+    // Host ascending puts db-1 first, where the server sent it third.
+    cy.get(`${dfHosts} thead th`).eq(1).find('button').click()
+    hostCell(0).should('have.text', 'db-1')
+
+    hostCheckbox(0).click()
+    selectedHosts().should('have.text', 'Selected: db-1')
+  })
+
+  it('picks the right row after searching, and keeps it once the search clears', () => {
+    cy.get(hostSearch).type('db-2')
+    cy.get(`${dfHosts} tbody tr`).should('have.length', 1)
+
+    hostCheckbox(0).click()
+    selectedHosts().should('have.text', 'Selected: db-2')
+
+    cy.get(hostSearch).clear()
+    cy.get(`${dfHosts} tbody tr`).should('have.length', 4)
+    hostCheckbox(3).should('be.checked')
+  })
+
+  it('takes every row the search kept from the head checkbox', () => {
+    cy.get(hostSearch).type('web')
+    cy.get(`${dfHosts} tbody tr`).should('have.length', 2)
+
+    cy.get(`${dfHosts} thead input[type=checkbox]`).click()
+    selectedHosts().should('have.text', 'Selected: web-1, web-2')
+
+    // The rows the search filtered out were never taken, so clearing it
+    // leaves them unpicked.
+    cy.get(hostSearch).clear()
+    cy.get(`${dfHosts} thead input[type=checkbox]`)
+      .should('have.attr', 'data-indeterminate', 'true')
+  })
+
+  it('takes one row at a time in single mode', () => {
+    // DefaultSelection names the first build, so the page starts on it.
+    selectedBuild().should('have.text', 'Build: #41 / Go / passed')
+
+    buildCell(1).click()
+    selectedBuild().should('have.text', 'Build: #42 / Rust / failed')
+    cy.get(`${dfBuilds} tbody tr`).eq(0)
+      .should('have.attr', 'aria-selected', 'false')
+
+    // Clicking the picked row again empties the selection.
+    buildCell(1).click()
+    selectedBuild().should('have.text', 'Build: none')
+  })
+
+  it('grows no checkbox column in single mode', () => {
+    cy.get(`${dfBuilds} input[type=checkbox]`).should('not.exist')
+    cy.get(`${dfBuilds} thead th`).should('have.length', 3)
+  })
+
+  // The counterpart of the DataFrame block's last test: this is the one
+  // interaction that is meant to reach the server.
+  it('talks to the server when a row is picked', () => {
+    cy.get(`${dfHosts} tbody tr`).should('have.length', 4)
+
+    cy.window().then((win) => {
+      const before = win.tgSent.length
+
+      hostCheckbox(0).click()
+      selectedHosts().should('have.text', 'Selected: web-1')
+
+      cy.window().its('tgSent').should('have.length.greaterThan', before)
+    })
+  })
+})

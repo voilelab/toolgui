@@ -15,7 +15,7 @@ var Table = tcdata.Table
 type TableConf = tcdata.TableConf
 
 // DataFrame create a table the user can sort, search and page through, all in
-// the browser.
+// the browser, and return the rows the user has picked.
 var DataFrame = tcdata.DataFrame
 
 // DataFrameConf is the configuration for the DataFrame component.
@@ -54,6 +54,20 @@ const (
 
 	// ColumnAlignRight aligns the cells right.
 	ColumnAlignRight = tcdata.ColumnAlignRight
+)
+
+// SelectionMode is how many rows of a DataFrame the app user may pick.
+type SelectionMode = tcdata.SelectionMode
+
+const (
+	// SelectionModeNone leaves the rows unpickable, the default.
+	SelectionModeNone = tcdata.SelectionModeNone
+
+	// SelectionModeSingle lets one row be picked at a time.
+	SelectionModeSingle = tcdata.SelectionModeSingle
+
+	// SelectionModeMulti lets any number of rows be picked.
+	SelectionModeMulti = tcdata.SelectionModeMulti
 )
 
 // ChartKind is the shape a chart is drawn in.

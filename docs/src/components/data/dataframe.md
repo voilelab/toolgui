@@ -1,17 +1,18 @@
 # DataFrame
 
 DataFrame component displays a table the user can sort, search and page
-through.
+through, and optionally pick rows from.
 
-All three happen in the browser, so none of them reruns the page function.
-`Table` is the static counterpart: reach for it when the rows are few and
-already in the order they should be read in, and for `DataFrame` when the rows
-are many, or when the reader — not the page function — should decide the order.
+Sorting, searching and paging all happen in the browser, so none of them
+reruns the page function. `Table` is the static counterpart: reach for it when
+the rows are few and already in the order they should be read in, and for
+`DataFrame` when the rows are many, or when the reader — not the page
+function — should decide the order.
 
 ## API
 
 ```go
-func DataFrame(c *tgframe.Container, head []string, rows [][]string, conf ...*DataFrameConf)
+func DataFrame(c *tgframe.Container, head []string, rows [][]string, conf ...*DataFrameConf) []int
 ```
 
 * `c` is Parent container.
@@ -21,6 +22,10 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string, conf ...*Da
   fails the run, the way a chart does on a series that does not line up with
   its labels.
 * `conf` is an optional configuration, at most one.
+
+The return is the rows the user has picked, as indices into `rows`. It is
+empty unless [`Selection`](#selection) says the rows can be picked, and empty
+rather than nil when nothing is picked.
 
 ```go
 // DataFrameConf is the configuration for the DataFrame component.
@@ -43,6 +48,14 @@ type DataFrameConf struct {
 
 	// ColumnConf configures the columns, one entry per head entry.
 	ColumnConf []DataFrameColumnConf
+
+	// Selection is how many rows the user may pick, default
+	// SelectionModeNone.
+	Selection SelectionMode
+
+	// DefaultSelection is what is picked before the user first touches the
+	// table, as indices into rows.
+	DefaultSelection []int
 }
 ```
 
@@ -105,6 +118,64 @@ outright.
 A `Hidden` column is still searched, so a row can be found by a value it does
 not show.
 
+### Selection
+
+`Selection` decides how many rows the user may pick, and so whether
+`DataFrame`'s return means anything:
+
+| `SelectionMode`        | What the user gets                                       |
+| ---------------------- | -------------------------------------------------------- |
+| `SelectionModeNone`    | nothing; the rows are not pickable, and the return is empty |
+| `SelectionModeSingle`  | one row at a time, picked by clicking it                  |
+| `SelectionModeMulti`   | any number of rows, through a checkbox column on the left |
+
+```go
+selected := tgcomp.DataFrame(p.Main, head, hosts, &tgcomp.DataFrameConf{
+	ID:        "hosts",
+	Selection: tgcomp.SelectionModeSingle,
+})
+
+if len(selected) != 0 {
+	tgcomp.Text(p.Main, "picked "+hosts[selected[0]][0])
+}
+```
+
+The indices are into `rows`, in the order the page function wrote them — not
+the order the table happens to show them in. Sorting and searching only change
+what is on screen, so a row picked out of a sorted table still names the row
+the page function wrote. They come back sorted and without duplicates, so
+`selected` reads the same whatever order the rows were picked in.
+
+In `SelectionModeSingle`, clicking the picked row again clears the selection.
+In `SelectionModeMulti`, the checkbox in the head takes every row the search
+kept, on whatever page it sits — and gives back only what it took, so a row
+picked by hand before the search survives it.
+
+`DefaultSelection` is what is picked before the user first touches the table,
+and is only read until then: clearing the selection is an answer, and beats
+the default from that point on. Indices pointing outside `rows` are dropped,
+and `SelectionModeSingle` keeps only the lowest one. The same dropping applies
+to a selection the user made before the data changed underneath it: a row that
+is no longer there is dropped rather than moved.
+
+#### Identity
+
+A pickable `DataFrame` holds state, so it needs an id. It derives one from
+`head` when the conf names none — from the head rather than the rows, so a
+selection survives the data being refreshed underneath it. Two pickable tables
+sharing a head on one page would collide, which is what `ID` is for.
+
+An unpickable `DataFrame` holds no state and carries no id at all, so any
+number of them can sit on a page.
+
+#### Cost
+
+Picking a row is the one `DataFrame` interaction that reruns the page
+function, and the rerun sends `rows` again in full. That is nothing for the
+tables selection is usually for, but it is worth knowing before turning it on
+for a table of the size [Large tables](#large-tables) measures: there, page
+the rows on the server side instead.
+
 ## Behaviour
 
 Clicking a column head sorts ascending, clicking it again sorts descending,
@@ -116,7 +187,8 @@ case-insensitively against every cell of the row, hidden columns included.
 
 Sorting, searching and paging are all client state. Nothing is sent to the
 server, so the page function does not rerun and no other component on the page
-is touched.
+is touched. Picking a row is the exception: that is an answer the page has to
+be given, so it reruns the page function like any other input component.
 
 With no rows the head is still drawn, over a `No rows` message — which is also
 what a search that matches nothing leaves behind.
@@ -170,6 +242,25 @@ tgcomp.DataFrame(p.Main,
 			{Type: tgcomp.ColumnTypeNumber},
 		},
 	})
+```
+
+Picking rows out of one:
+
+```go
+selected := tgcomp.DataFrame(p.Main,
+	[]string{"Host", "Region", "Status"},
+	hosts,
+	&tgcomp.DataFrameConf{
+		ID:        "hosts",
+		Selection: tgcomp.SelectionModeMulti,
+	})
+
+names := []string{}
+for _, idx := range selected {
+	names = append(names, hosts[idx][0])
+}
+
+tgcomp.Text(p.Main, "Selected: "+strings.Join(names, ", "))
 ```
 
 ![dataframe component](dataframe.png)

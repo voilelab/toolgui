@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from "react"
 import {
-  Box, Center, Group, Pagination, Table, Text, TextInput, UnstyledButton,
+  Box, Center, Checkbox, Group, Pagination, Table, Text, TextInput,
+  UnstyledButton,
 } from "@mantine/core"
 import { IconChevronDown, IconChevronUp, IconSearch, IconSelector } from "@tabler/icons-react"
 
+import { stateValues } from "../state"
 import { Props } from "../component_interface"
 
 // Column is one column as the server settled it: no default is left open.
@@ -14,10 +16,20 @@ interface Column {
   hidden: boolean
 }
 
+// Row is a row carried with the index the page function wrote it at. Filtering
+// and sorting reorder the rows, so the index has to travel with them: it is
+// what a selection is remembered by and what goes back to the server.
+interface Row {
+  cells: string[]
+  index: number
+}
+
 interface Sort {
   column: number
   desc: boolean
 }
+
+type Selection = "none" | "single" | "multi"
 
 // sortKey reads a cell as the value its column type says it holds. Cells that
 // do not parse come back as null and are kept together at the end, so a
@@ -83,20 +95,32 @@ function SortButton({ label, sort, onSort }: {
   )
 }
 
-export function TDataFrame({ node }: Props) {
+export function TDataFrame({ node, update }: Props) {
   const head: string[] = node.props.head
-  const rows: string[][] = node.props.rows || []
   const columns: Column[] = node.props.columns
   const sortable: boolean = node.props.sortable
   const searchable: boolean = node.props.searchable
   const pageSize: number = node.props.page_size
   const height: string = node.props.height
+  const selection: Selection = node.props.selection || "none"
 
   // Sorting, searching and paging are all local: none of them calls update,
-  // so none of them reruns the page function on the server.
+  // so none of them reruns the page function on the server. Picking a row is
+  // the one interaction that does.
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<Sort | null>(null)
   const [page, setPage] = useState(1)
+
+  // Nothing is picked until the table is first touched, which is when the
+  // default stands in — the same rule Go applies to the state. Kept in
+  // stateValues so the pick survives the re-render the server answer brings.
+  const [selected, setSelected] = useState<number[]>(
+    stateValues[node.props.id] || node.props.default_selection || [])
+  const picked = useMemo(() => new Set(selected), [selected])
+
+  const rows: Row[] = useMemo(
+    () => (node.props.rows || []).map((cells: string[], index: number) =>
+      ({ cells, index })), [node.props.rows])
 
   const shown = useMemo(
     () => head.map((_, i) => i).filter(i => !columns[i].hidden), [head, columns])
@@ -109,7 +133,8 @@ export function TDataFrame({ node }: Props) {
       return rows
     }
 
-    return rows.filter(row => row.some(cell => cell.toLowerCase().includes(needle)))
+    return rows.filter(row =>
+      row.cells.some(cell => cell.toLowerCase().includes(needle)))
   }, [rows, query])
 
   const sorted = useMemo(() => {
@@ -120,7 +145,8 @@ export function TDataFrame({ node }: Props) {
     const type = columns[sort.column].type
     const dir = sort.desc ? -1 : 1
     const out = found.slice()
-    out.sort((a, b) => compare(a[sort.column], b[sort.column], type, dir))
+    out.sort((a, b) =>
+      compare(a.cells[sort.column], b.cells[sort.column], type, dir))
 
     return out
   }, [found, sort, columns])
@@ -143,6 +169,45 @@ export function TDataFrame({ node }: Props) {
     })
   }
 
+  // commit is the only thing here that talks to the server. The indices are
+  // sorted so the page function reads them in row order whatever order they
+  // were picked in, which is what the Go side hands back.
+  const commit = (indices: number[]) => {
+    const next = [...new Set(indices)].sort((a, b) => a - b)
+    stateValues[node.props.id] = next
+    setSelected(next)
+    update({ type: "select", id: node.props.id, values: next })
+  }
+
+  const toggleRow = (index: number) => {
+    if (selection === "single") {
+      // Clicking the picked row again clears it, so a single-select table can
+      // be emptied without a modifier key.
+      commit(picked.has(index) ? [] : [index])
+      return
+    }
+
+    commit(picked.has(index)
+      ? selected.filter(i => i !== index)
+      : [...selected, index])
+  }
+
+  // The head checkbox covers every row the search kept, not just the page on
+  // screen: paging is how a long table is read, not how it is divided up.
+  const allPicked = sorted.length > 0 && sorted.every(row => picked.has(row.index))
+  const somePicked = sorted.some(row => picked.has(row.index))
+
+  const toggleAll = () => {
+    const inView = sorted.map(row => row.index)
+    if (allPicked) {
+      const drop = new Set(inView)
+      commit(selected.filter(i => !drop.has(i)))
+      return
+    }
+
+    commit([...selected, ...inView])
+  }
+
   return (
     <Box id={node.props.id || undefined}>
       {searchable &&
@@ -159,6 +224,13 @@ export function TDataFrame({ node }: Props) {
         <Table highlightOnHover stickyHeader={height !== ""}>
           <Table.Thead>
             <Table.Tr>
+              {selection === "multi" &&
+                <Table.Th w="2.5rem">
+                  <Checkbox aria-label="select every row"
+                    checked={allPicked}
+                    indeterminate={somePicked && !allPicked}
+                    onChange={toggleAll} />
+                </Table.Th>}
               {shown.map(i =>
                 <Table.Th key={i} w={columns[i].width || undefined}
                   ta={columns[i].align}>
@@ -171,10 +243,24 @@ export function TDataFrame({ node }: Props) {
             </Table.Tr>
           </Table.Thead>
           <Table.Tbody>
-            {visible.map((row, i) =>
-              <Table.Tr key={start + i}>
+            {visible.map(row =>
+              <Table.Tr key={row.index}
+                aria-selected={selection === "none" ? undefined : picked.has(row.index)}
+                bg={picked.has(row.index)
+                  ? "var(--mantine-color-blue-light)" : undefined}
+                style={selection === "none" ? undefined : { cursor: "pointer" }}
+                onClick={selection === "none"
+                  ? undefined : () => toggleRow(row.index)}>
+                {selection === "multi" &&
+                  // The click is stopped here so it does not also reach the
+                  // row, which would toggle the pick straight back.
+                  <Table.Td onClick={e => e.stopPropagation()}>
+                    <Checkbox aria-label={`select row ${row.index + 1}`}
+                      checked={picked.has(row.index)}
+                      onChange={() => toggleRow(row.index)} />
+                  </Table.Td>}
                 {shown.map(j =>
-                  <Table.Td key={j} ta={columns[j].align}>{row[j]}</Table.Td>)}
+                  <Table.Td key={j} ta={columns[j].align}>{row.cells[j]}</Table.Td>)}
               </Table.Tr>
             )}
           </Table.Tbody>

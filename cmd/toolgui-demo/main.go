@@ -294,6 +294,67 @@ func DataPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	dfMultiCompCol, dfMultiCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe_multi"})
+	tgcomp.Echo(dfMultiCodeCol, code, func() {
+		hosts := [][]string{
+			{"web-1", "APAC", "healthy"},
+			{"web-2", "EMEA", "degraded"},
+			{"db-1", "NA", "healthy"},
+			{"db-2", "LATAM", "down"},
+		}
+
+		selected := tgcomp.DataFrame(dfMultiCompCol,
+			[]string{"Host", "Region", "Status"}, hosts,
+			&tgcomp.DataFrameConf{
+				ID:        "demo_hosts",
+				Selection: tgcomp.SelectionModeMulti,
+			})
+
+		names := []string{}
+		for _, idx := range selected {
+			names = append(names, hosts[idx][0])
+		}
+
+		picked := "none"
+		if len(names) != 0 {
+			picked = strings.Join(names, ", ")
+		}
+
+		tgcomp.Text(dfMultiCompCol, "Selected: "+picked,
+			&tgcomp.TextConf{ID: "dataframe_multi_result"})
+	})
+
+	tgcomp.Divider(p.Main)
+
+	dfSingleCompCol, dfSingleCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe_single"})
+	tgcomp.Echo(dfSingleCodeCol, code, func() {
+		builds := [][]string{
+			{"#41", "Go", "passed"},
+			{"#42", "Rust", "failed"},
+			{"#43", "Python", "passed"},
+		}
+
+		selected := tgcomp.DataFrame(dfSingleCompCol,
+			[]string{"Build", "Language", "Result"}, builds,
+			&tgcomp.DataFrameConf{
+				ID:               "demo_builds",
+				Selection:        tgcomp.SelectionModeSingle,
+				DefaultSelection: []int{0},
+			})
+
+		detail := "none"
+		if len(selected) != 0 {
+			detail = strings.Join(builds[selected[0]], " / ")
+		}
+
+		tgcomp.Text(dfSingleCompCol, "Build: "+detail,
+			&tgcomp.TextConf{ID: "dataframe_single_result"})
+	})
+
+	tgcomp.Divider(p.Main)
+
 	lineCompCol, lineCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_line_chart"})
 	tgcomp.Echo(lineCodeCol, code, func() {
