@@ -2,13 +2,13 @@ package tgframe
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"maps"
 	"math"
 	"runtime"
 	"sync"
 
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -121,12 +121,12 @@ func (s *State) GetObject(key string, out any) error {
 		return nil
 	}
 
-	bs, err := json.Marshal(val)
+	bs, err := tgjson.Marshal(val)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
-	err = json.Unmarshal(bs, out)
+	err = tgjson.Unmarshal(bs, out)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

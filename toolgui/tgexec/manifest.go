@@ -1,8 +1,10 @@
 package tgexec
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
+	jsonv2 "encoding/json/v2"
 
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -64,34 +66,41 @@ func DefaultManifest() *Manifest {
 	}
 }
 
-// MarshalJSON merge Extra into the named members.
-func (m *Manifest) MarshalJSON() ([]byte, error) {
-	// The alias drops MarshalJSON, so this doesn't recurse.
+var _ jsonv2.MarshalerTo = (*Manifest)(nil)
+
+// MarshalJSONTo merge Extra into the named members.
+func (m *Manifest) MarshalJSONTo(enc *jsontext.Encoder) error {
+	// The alias drops MarshalJSONTo, so this doesn't recurse.
 	type manifest Manifest
 
-	bs, err := json.Marshal((*manifest)(m))
-	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
+	if len(m.Extra) == 0 {
+		err := tgjson.MarshalEncode(enc, (*manifest)(m))
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+
+		return nil
 	}
 
-	if len(m.Extra) == 0 {
-		return bs, nil
+	bs, err := tgjson.Marshal((*manifest)(m))
+	if err != nil {
+		return tgutil.Errorf("%w", err)
 	}
 
 	members := map[string]any{}
-	err = json.Unmarshal(bs, &members)
+	err = tgjson.Unmarshal(bs, &members)
 	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
+		return tgutil.Errorf("%w", err)
 	}
 
 	for name, value := range m.Extra {
 		members[name] = value
 	}
 
-	bs, err = json.Marshal(members)
+	err = tgjson.MarshalEncode(enc, members)
 	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
+		return tgutil.Errorf("%w", err)
 	}
 
-	return bs, nil
+	return nil
 }

@@ -1,11 +1,12 @@
 package tcinput_test
 
 import (
-	"encoding/json"
+	"encoding/json/jsontext"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // Rating is a user-defined named type, the case the `~` in the constraint is
@@ -109,22 +110,32 @@ func TestNumberStepsByOneForIntegralTypes(t *testing.T) {
 				t.Fatalf("got %d packs, want 1", len(packs))
 			}
 
-			bs, err := json.Marshal(packs[0])
+			bs, err := tgjson.Marshal(packs[0])
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			var got struct {
 				Component struct {
-					Step json.RawMessage `json:"step"`
+					Step jsontext.Value `json:"step"`
 				} `json:"component"`
 			}
-			if err := json.Unmarshal(bs, &got); err != nil {
+			if err := tgjson.Unmarshal(bs, &got); err != nil {
 				t.Fatal(err)
 			}
 
-			if string(got.Component.Step) != tc.want {
-				t.Errorf("step = %q, want %q", got.Component.Step, tc.want)
+			// A semantic compare, so the step is pinned to the number it
+			// is rather than to the digits the encoder wrote.
+			step, want := got.Component.Step, jsontext.Value(tc.want)
+			if err := step.Canonicalize(); err != nil {
+				t.Fatalf("canonicalize step: %v", err)
+			}
+			if err := want.Canonicalize(); err != nil {
+				t.Fatalf("canonicalize want: %v", err)
+			}
+
+			if string(step) != string(want) {
+				t.Errorf("step = %q, want %q", step, want)
 			}
 		})
 	}

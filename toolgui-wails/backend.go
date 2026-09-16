@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"sync"
 	"uuid"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -74,7 +74,7 @@ func (t *ToolGUI) shutdown(ctx context.Context) {
 // AppConf return the app config as JSON. It's the desktop counterpart of
 // GET /api/app.
 func (t *ToolGUI) AppConf() (string, error) {
-	bs, err := json.Marshal(t.app.AppConf())
+	bs, err := tgjson.Marshal(t.app.AppConf())
 	if err != nil {
 		return "", tgutil.Errorf("%w", err)
 	}
@@ -198,7 +198,7 @@ func (t *ToolGUI) send(pack any) error {
 		return tgutil.NewError("wails runtime is not ready")
 	}
 
-	bs, err := json.Marshal(pack)
+	bs, err := tgjson.Marshal(pack)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

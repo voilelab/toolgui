@@ -2,11 +2,11 @@ package tgwails
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 const testPageName = "index"
@@ -23,7 +23,7 @@ func newFakeEvents() *fakeEvents {
 
 func (f *fakeEvents) emit(packJSON string) {
 	var pack map[string]any
-	if json.Unmarshal([]byte(packJSON), &pack) != nil {
+	if tgjson.Unmarshal([]byte(packJSON), &pack) != nil {
 		return
 	}
 
@@ -79,7 +79,7 @@ func TestToolGUIAppConf(t *testing.T) {
 	}
 
 	var conf tgframe.AppConf
-	err = json.Unmarshal([]byte(confJSON), &conf)
+	err = tgjson.Unmarshal([]byte(confJSON), &conf)
 	if err != nil {
 		t.Fatalf("unmarshal app conf: %v", err)
 	}

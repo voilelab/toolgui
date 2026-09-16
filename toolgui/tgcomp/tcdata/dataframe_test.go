@@ -119,14 +119,15 @@ func TestDataFrameColumnAlign(t *testing.T) {
 
 // TestDataFrameWithNoRows pins the defined behaviour of an empty result set:
 // the component is still sent, with its head and no rows, so the page shows
-// the columns the query would have filled.
+// the columns the query would have filled. No rows reaches the client as an
+// empty list, not null, so the frontend can iterate it unguarded.
 func TestDataFrameWithNoRows(t *testing.T) {
 	props := addComponent(t, func(c *tgframe.Container) {
 		DataFrame(c, []string{"a", "b"}, nil)
 	})
 
-	if props["rows"] != nil {
-		t.Errorf("rows = %v, want none", props["rows"])
+	if rows, ok := props["rows"].([]any); !ok || len(rows) != 0 {
+		t.Errorf("rows = %v, want an empty list", props["rows"])
 	}
 
 	if head, ok := props["head"].([]any); !ok || len(head) != 2 {

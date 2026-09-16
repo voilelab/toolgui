@@ -1,12 +1,12 @@
 package tgexec
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 // getManifest fetch /manifest.json and return the response and its members.
@@ -20,7 +20,7 @@ func getManifest(t *testing.T, url string) (*http.Response, map[string]any) {
 	t.Cleanup(func() { resp.Body.Close() })
 
 	members := map[string]any{}
-	err = json.NewDecoder(resp.Body).Decode(&members)
+	err = tgjson.UnmarshalRead(resp.Body, &members)
 	if err != nil {
 		t.Fatalf("decode manifest: %v", err)
 	}
@@ -178,5 +178,60 @@ func TestManifestInHashPageNameMode(t *testing.T) {
 	_, members := getManifest(t, srv.URL)
 	if members["name"] != "ToolGUI App" {
 		t.Errorf("name = %v, want %q", members["name"], "ToolGUI App")
+	}
+}
+
+// A key in Extra wins over the named field of the same name, even when that
+// field is set and would have been written. The merge is what the app reaches
+// for to say something the struct cannot, so the struct must not win it back.
+func TestManifestExtraWinsOverNamedField(t *testing.T) {
+	bs, err := tgjson.Marshal(&Manifest{
+		Name:    "My Tool",
+		Display: "standalone",
+		Extra: map[string]any{
+			"display": "fullscreen",
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal manifest: %v", err)
+	}
+
+	members := map[string]any{}
+	if err := tgjson.Unmarshal(bs, &members); err != nil {
+		t.Fatalf("unmarshal manifest: %v", err)
+	}
+
+	if members["display"] != "fullscreen" {
+		t.Errorf("display = %v, want %q", members["display"], "fullscreen")
+	}
+
+	// The members Extra says nothing about are still the struct's.
+	if members["name"] != "My Tool" {
+		t.Errorf("name = %v, want %q", members["name"], "My Tool")
+	}
+}
+
+// A manifest with no Extra encodes straight from the struct, and a nested
+// Manifest goes through MarshalJSONTo the same way a top-level one does.
+func TestManifestMarshalsNested(t *testing.T) {
+	bs, err := tgjson.Marshal(map[string]*Manifest{
+		"manifest": {Name: "My Tool", Display: "standalone"},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var out struct {
+		Manifest struct {
+			Name    string `json:"name"`
+			Display string `json:"display"`
+		} `json:"manifest"`
+	}
+	if err := tgjson.Unmarshal(bs, &out); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	if out.Manifest.Name != "My Tool" || out.Manifest.Display != "standalone" {
+		t.Errorf("manifest = %+v, want name and display set", out.Manifest)
 	}
 }
