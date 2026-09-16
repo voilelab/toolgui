@@ -192,6 +192,27 @@ export function TDataFrame({ node, update }: Props) {
       : [...selected, index])
   }
 
+  const pickable = selection !== "none"
+
+  // In single mode the row is the only control there is, so it has to be
+  // reachable and operable from the keyboard. In multi mode the checkbox
+  // already is both, and a focusable row would only add a second tab stop
+  // per row without adding anything to do from it.
+  const rowKeys = (index: number): React.HTMLAttributes<HTMLTableRowElement> =>
+    selection !== "single" ? {} : {
+      tabIndex: 0,
+      onKeyDown: e => {
+        if (e.key !== "Enter" && e.key !== " ") {
+          return
+        }
+
+        // Space would scroll the page, and Enter would submit the form the
+        // table may sit in.
+        e.preventDefault()
+        toggleRow(index)
+      },
+    }
+
   // The head checkbox covers every row the search kept, not just the page on
   // screen: paging is how a long table is read, not how it is divided up.
   const allPicked = sorted.length > 0 && sorted.every(row => picked.has(row.index))
@@ -245,12 +266,12 @@ export function TDataFrame({ node, update }: Props) {
           <Table.Tbody>
             {visible.map(row =>
               <Table.Tr key={row.index}
-                aria-selected={selection === "none" ? undefined : picked.has(row.index)}
+                {...rowKeys(row.index)}
+                aria-selected={pickable ? picked.has(row.index) : undefined}
                 bg={picked.has(row.index)
                   ? "var(--mantine-color-blue-light)" : undefined}
-                style={selection === "none" ? undefined : { cursor: "pointer" }}
-                onClick={selection === "none"
-                  ? undefined : () => toggleRow(row.index)}>
+                style={pickable ? { cursor: "pointer" } : undefined}
+                onClick={pickable ? () => toggleRow(row.index) : undefined}>
                 {selection === "multi" &&
                   // The click is stopped here so it does not also reach the
                   // row, which would toggle the pick straight back.

@@ -1,5 +1,5 @@
 import React from 'react'
-import { cleanup, screen, fireEvent, within } from '@testing-library/react'
+import { cleanup, createEvent, screen, fireEvent, within } from '@testing-library/react'
 
 import { render } from './render'
 import { afterEach, beforeEach, expect, test, describe, vi } from 'vitest'
@@ -350,6 +350,15 @@ describe('TDataFrame selection', () => {
     expect(screen.getByLabelText('select every row')).toBeChecked()
   })
 
+  // The checkbox is already a tab stop and already keyboard-operable, so the
+  // row is not made a second one.
+  test('leaves the row out of the tab order in multi mode', () => {
+    mountHosts()
+
+    expect(bodyRow(0)).not.toHaveAttribute('tabindex')
+    expect(checkboxAt(0)).toBeInTheDocument()
+  })
+
   test('shows the default before anything is touched', () => {
     mountHosts({ default_selection: [1] })
 
@@ -390,6 +399,54 @@ describe('TDataFrame selection', () => {
       expect(bodyRow(1)).toHaveAttribute('aria-selected', 'false')
     })
 
+    // The row is the only control a single-select table has, so it has to be
+    // reachable and operable without a mouse.
+    test('makes every row a tab stop', () => {
+      mountSingle()
+
+      expect(bodyRow(0)).toHaveAttribute('tabindex', '0')
+      expect(bodyRow(2)).toHaveAttribute('tabindex', '0')
+    })
+
+    test.each([['Enter'], [' ']])('picks the focused row on %s', (key) => {
+      mountSingle()
+
+      fireEvent.keyDown(bodyRow(2), { key })
+
+      expect(sent().values).toEqual([2])
+      expect(bodyRow(2)).toHaveAttribute('aria-selected', 'true')
+    })
+
+    test('clears the pick when the picked row is keyed again', () => {
+      mountSingle()
+
+      fireEvent.keyDown(bodyRow(1), { key: 'Enter' })
+      fireEvent.keyDown(bodyRow(1), { key: 'Enter' })
+
+      expect(sent().values).toEqual([])
+    })
+
+    // Space scrolls the page and Enter submits a surrounding form, so both
+    // have to be taken rather than merely acted on.
+    test('takes the key it acts on', () => {
+      mountSingle()
+
+      const event = createEvent.keyDown(bodyRow(0), { key: 'Enter' })
+      fireEvent(bodyRow(0), event)
+
+      expect(event.defaultPrevented).toBe(true)
+    })
+
+    test('leaves other keys alone', () => {
+      mountSingle()
+
+      const event = createEvent.keyDown(bodyRow(0), { key: 'a' })
+      fireEvent(bodyRow(0), event)
+
+      expect(event.defaultPrevented).toBe(false)
+      expect(RENDER_PROPS.update).not.toHaveBeenCalled()
+    })
+
     // A default naming more than one row is the server's to trim, but the
     // table shows whatever it is given rather than second-guessing it.
     test('shows the default', () => {
@@ -407,6 +464,7 @@ describe('TDataFrame selection', () => {
 
       expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
       expect(bodyRow(0)).not.toHaveAttribute('aria-selected')
+      expect(bodyRow(0)).not.toHaveAttribute('tabindex')
     })
 
     test('never calls update', () => {

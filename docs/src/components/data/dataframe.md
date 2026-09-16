@@ -151,6 +151,11 @@ In `SelectionModeMulti`, the checkbox in the head takes every row the search
 kept, on whatever page it sits — and gives back only what it took, so a row
 picked by hand before the search survives it.
 
+Neither mode needs a mouse. In `SelectionModeSingle` the row is the control,
+so each row is a tab stop that <kbd>Enter</kbd> and <kbd>Space</kbd> pick and
+clear. In `SelectionModeMulti` the checkbox is already one, so the row is left
+out of the tab order rather than made a second stop per row.
+
 `DefaultSelection` is what is picked before the user first touches the table,
 and is only read until then: clearing the selection is an answer, and beats
 the default from that point on. Indices pointing outside `rows` are dropped,

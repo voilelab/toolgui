@@ -241,6 +241,29 @@ describe('DataFrame selection', () => {
     selectedBuild().should('have.text', 'Build: none')
   })
 
+  // The row is the only control a single-select table has, so it has to work
+  // without a mouse.
+  it('takes a row from the keyboard in single mode', () => {
+    cy.get(`${dfBuilds} tbody tr`).eq(2).should('have.attr', 'tabindex', '0')
+
+    cy.get(`${dfBuilds} tbody tr`).eq(2).focus().type('{enter}')
+    selectedBuild().should('have.text', 'Build: #43 / Python / passed')
+
+    // Space works the same, and clears the row it is on when picked.
+    cy.get(`${dfBuilds} tbody tr`).eq(2).focus().type(' ')
+    selectedBuild().should('have.text', 'Build: none')
+  })
+
+  // The checkbox is already keyboard-operable, so the row is not a second
+  // tab stop in multi mode.
+  it('leaves the row out of the tab order in multi mode', () => {
+    cy.get(`${dfHosts} tbody tr`).eq(0).should('not.have.attr', 'tabindex')
+
+    cy.get(`${dfHosts} tbody tr`).eq(0).find('input[type=checkbox]')
+      .focus().type(' ')
+    selectedHosts().should('have.text', 'Selected: web-1')
+  })
+
   it('grows no checkbox column in single mode', () => {
     cy.get(`${dfBuilds} input[type=checkbox]`).should('not.exist')
     cy.get(`${dfBuilds} thead th`).should('have.length', 3)
