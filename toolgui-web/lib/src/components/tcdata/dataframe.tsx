@@ -116,7 +116,21 @@ export function TDataFrame({ node, update }: Props) {
   // stateValues so the pick survives the re-render the server answer brings.
   const [selected, setSelected] = useState<number[]>(
     stateValues[node.props.id] || node.props.default_selection || [])
-  const picked = useMemo(() => new Set(selected), [selected])
+  const pickable = selection !== "none"
+
+  // What is drawn as picked is the selection with the current mode applied,
+  // mirroring what the Go side hands the page function. The mode can change
+  // between runs while this component stays mounted, so a selection made
+  // under a wider one must not go on being drawn under a narrower one:
+  // dropped outright when the rows are no longer pickable, and trimmed to
+  // the lowest index -- selected is kept sorted -- under single.
+  const picked = useMemo(() => {
+    if (!pickable) {
+      return new Set<number>()
+    }
+
+    return new Set(selection === "single" ? selected.slice(0, 1) : selected)
+  }, [selected, selection, pickable])
 
   const rows: Row[] = useMemo(
     () => (node.props.rows || []).map((cells: string[], index: number) =>
@@ -191,8 +205,6 @@ export function TDataFrame({ node, update }: Props) {
       ? selected.filter(i => i !== index)
       : [...selected, index])
   }
-
-  const pickable = selection !== "none"
 
   // In single mode the row is the only control there is, so it has to be
   // reachable and operable from the keyboard. In multi mode the checkbox

@@ -15,6 +15,23 @@ const RENDER_PROPS = { update: vi.fn(), upload: vi.fn(), theme: 'light' }
 const column = (type = 'text') => (
   { type, align: type === 'number' ? 'right' : 'left', width: '', hidden: false })
 
+// nodeFor builds the node a mount renders, so a test can hand the same
+// position a new set of props the way a rerun does.
+function nodeFor({ head, rows, columns, pageSize = 25, ...rest }) {
+  return new Node('main/0', {
+    name: 'dataframe_component',
+    id: '',
+    head,
+    rows,
+    columns,
+    sortable: true,
+    searchable: true,
+    page_size: pageSize,
+    height: '',
+    ...rest,
+  })
+}
+
 function mount({ head, rows, columns, pageSize = 25, ...rest }) {
   return render(
     <TDataFrame
@@ -453,6 +470,71 @@ describe('TDataFrame selection', () => {
       mountSingle({ default_selection: [2] })
 
       expect(bodyRow(2)).toHaveAttribute('aria-selected', 'true')
+    })
+  })
+
+  // The mode can change between runs while the component stays mounted, and
+  // the hook initializer does not run again, so what is drawn has to follow
+  // the mode rather than the selection alone.
+  describe('a mode change between runs', () => {
+    const props = (rest) => ({
+      head: ['host', 'region'],
+      rows: [['web-1', 'APAC'], ['web-2', 'EMEA'], ['db-1', 'NA']],
+      columns: [column(), column()],
+      id: 'hosts',
+      selection: 'multi',
+      default_selection: [],
+      ...rest,
+    })
+
+    // rerenderAs replaces the props at the same position, which is what the
+    // node tree does on a rerun -- the component is not remounted.
+    const rerenderAs = (rerender, selection) => rerender(
+      <TDataFrame node={nodeFor(props({ selection }))} {...RENDER_PROPS} />)
+
+    const selectedRows = () => screen.getAllByRole('row').slice(1)
+      .map(r => r.getAttribute('aria-selected'))
+
+    test('trims a multi selection to one row under single', () => {
+      const { rerender } = mount(props())
+
+      fireEvent.click(checkboxAt(0))
+      fireEvent.click(checkboxAt(2))
+      expect(sent().values).toEqual([0, 2])
+
+      // Go caps single at the lowest index, so the table must draw the same.
+      rerenderAs(rerender, 'single')
+      expect(selectedRows()).toEqual(['true', 'false', 'false'])
+    })
+
+    test('draws no row as picked once the rows are unpickable', () => {
+      const { rerender } = mount(props())
+
+      fireEvent.click(checkboxAt(0))
+      fireEvent.click(checkboxAt(2))
+
+      rerenderAs(rerender, 'none')
+
+      // Neither the marker nor the highlight survives: an unpickable table
+      // that still paints rows as selected is the worse half of this.
+      expect(selectedRows()).toEqual([null, null, null])
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0)
+      screen.getAllByRole('row').slice(1).forEach(
+        r => expect(r).not.toHaveStyle({ background: 'var(--mantine-color-blue-light)' }))
+    })
+
+    test('gives the rows back when the mode widens again', () => {
+      const { rerender } = mount(props())
+
+      fireEvent.click(checkboxAt(0))
+      fireEvent.click(checkboxAt(2))
+
+      rerenderAs(rerender, 'single')
+      rerenderAs(rerender, 'multi')
+
+      // The selection was only ever narrowed for drawing, never thrown away,
+      // which is what the Go side does with the state too.
+      expect(selectedRows()).toEqual(['true', 'false', 'true'])
     })
   })
 
