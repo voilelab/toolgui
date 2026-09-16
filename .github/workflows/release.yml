@@ -36,12 +36,16 @@ jobs:
           ref: dev
           fetch-depth: 0
 
-      - name: Check tag is free
+      # Both tags: toolgui-wails is its own module, so `go get` resolves it
+      # through a path-prefixed tag rather than the bare one.
+      - name: Check tags are free
         run: |
-          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
-            echo "::error::tag $VERSION already exists"
-            exit 1
-          fi
+          for t in "$VERSION" "toolgui-wails/$VERSION"; do
+            if git rev-parse -q --verify "refs/tags/$t" >/dev/null; then
+              echo "::error::tag $t already exists"
+              exit 1
+            fi
+          done
 
       # The release commit is built on dev, which never sees the previous
       # release commit, so without this every tag is an island. `-s ours`
@@ -82,6 +86,15 @@ jobs:
           f=toolgui/tgframe/version.go
           sed -i "s|^const fallbackVersion = \".*\"$|const fallbackVersion = \"$VERSION\"|" "$f"
           grep -q "const fallbackVersion = \"$VERSION\"" "$f"
+
+      # A replace only applies in the main module, so what a consumer of the
+      # desktop module resolves is this require. Left at v0.0.0 it resolves to
+      # nothing and `go get` fails.
+      - name: Stamp the desktop module's parent requirement
+        run: |
+          f=toolgui-wails/go.mod
+          sed -i "s|^\(\s*github.com/voilelab/toolgui\) v[^ ]*|\1 $VERSION|" "$f"
+          grep -q "github.com/voilelab/toolgui $VERSION" "$f"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -127,17 +140,22 @@ jobs:
 
       - name: Commit assets and tag
         run: |
-          git add toolgui/tgframe/version.go
+          git add toolgui/tgframe/version.go toolgui-wails/go.mod
           # All three are gitignored on dev; -f includes them for the release
           # only.
           git add -f toolgui-web/app/build toolgui-wails/frontend/dist \
             toolgui-web/wasm/build
           git commit -m "Build assets and stamp version for $VERSION"
           git tag -a "$VERSION" -m "$VERSION"
+          # Go resolves a module in a subdirectory through a tag named after
+          # it. Without this one, `go get` on the desktop module falls back to
+          # dev's head, where the embedded assets are gitignored.
+          git tag -a "toolgui-wails/$VERSION" -m "toolgui-wails $VERSION"
 
-      - name: Push tag and main
+      - name: Push tags and main
         run: |
-          git push origin "refs/tags/$VERSION"
+          git push origin "refs/tags/$VERSION" \
+            "refs/tags/toolgui-wails/$VERSION"
           # A fast-forward now that main's head is an ancestor; --force only
           # covers main having drifted.
           git push --force origin "HEAD:refs/heads/main"
