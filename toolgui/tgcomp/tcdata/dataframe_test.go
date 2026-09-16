@@ -1,9 +1,11 @@
 package tcdata
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -213,5 +215,234 @@ func TestDataFrameDoesNotWriteBackToTheCallersConf(t *testing.T) {
 
 	if conf.PageSize != 0 || conf.Sortable != nil || conf.Searchable != nil {
 		t.Errorf("conf = %+v, want it left alone", conf)
+	}
+}
+
+// selectableHead and selectableRows are the table the selection tests share.
+var (
+	selectableHead = []string{"host", "region"}
+	selectableRows = [][]string{{"web-1", "APAC"}, {"web-2", "EMEA"}, {"db-1", "NA"}}
+)
+
+// defaultDataFrameID is the id a selectable DataFrame derives when its conf
+// names none. Computed rather than written out so the test says what the id is
+// made of -- the head -- instead of pinning a hash.
+func defaultDataFrameID(head []string) string {
+	return tcutil.HashedID(dataFrameComponentName,
+		[]byte(strings.Join(head, "\x00")))
+}
+
+// dataFrameSelection runs a DataFrame against state and returns the rows it
+// hands back, which is the whole point of a selectable table.
+func dataFrameSelection(state *tgframe.State, conf *DataFrameConf) []int {
+	container := tgframe.NewContainer("test", state, func(tgframe.NotifyPack) {})
+	return DataFrame(container, selectableHead, selectableRows, conf)
+}
+
+func TestDataFrameSelectionProps(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mode SelectionMode
+		want string
+	}{
+		{"none", SelectionModeNone, "none"},
+		{"single", SelectionModeSingle, "single"},
+		{"multi", SelectionModeMulti, "multi"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			props := addComponent(t, func(c *tgframe.Container) {
+				DataFrame(c, selectableHead, selectableRows,
+					&DataFrameConf{Selection: tc.mode})
+			})
+
+			if props["selection"] != tc.want {
+				t.Errorf("selection = %v, want %v", props["selection"], tc.want)
+			}
+		})
+	}
+}
+
+// A DataFrame is unpickable unless its conf says otherwise, so a table written
+// before selection existed keeps carrying no state and no id.
+func TestDataFrameSelectionDefaultsToNone(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, selectableRows)
+	})
+
+	if props["selection"] != "none" {
+		t.Errorf("selection = %v, want none", props["selection"])
+	}
+
+	if props["id"] != "" {
+		t.Errorf("id = %v, want empty", props["id"])
+	}
+}
+
+// The id is derived from the head and not the rows, so a selection survives
+// the data being refreshed under it.
+func TestDataFrameSelectionDerivesIDFromHead(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, selectableRows,
+			&DataFrameConf{Selection: SelectionModeMulti})
+	})
+
+	want := defaultDataFrameID(selectableHead)
+	if props["id"] != want {
+		t.Errorf("id = %v, want %v", props["id"], want)
+	}
+
+	// Different rows, same head: the same id, so the pick is not lost.
+	other := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, [][]string{{"db-9", "APAC"}},
+			&DataFrameConf{Selection: SelectionModeMulti})
+	})
+
+	if other["id"] != want {
+		t.Errorf("id after a data change = %v, want %v", other["id"], want)
+	}
+
+	// A different head is a different table, so it gets its own id.
+	renamed := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, []string{"host", "zone"}, selectableRows,
+			&DataFrameConf{Selection: SelectionModeMulti})
+	})
+
+	if renamed["id"] == want {
+		t.Errorf("id of another head = %v, want it to differ", renamed["id"])
+	}
+}
+
+// Two selectable tables sharing a head would collide, which is what Conf.ID
+// is for; it wins over the derived one.
+func TestDataFrameSelectionConfIDWins(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, selectableRows, &DataFrameConf{
+			ID:        "hosts",
+			Selection: SelectionModeMulti,
+		})
+	})
+
+	if props["id"] != "dataframe_component_hosts" {
+		t.Errorf("id = %v, want dataframe_component_hosts", props["id"])
+	}
+}
+
+// Without a selection mode the return says so whatever the conf asks for, and
+// nothing reaches the client either.
+func TestDataFrameReturnsNothingWithoutSelection(t *testing.T) {
+	got := dataFrameSelection(tgframe.NewState(),
+		&DataFrameConf{DefaultSelection: []int{1}})
+
+	if got == nil {
+		t.Fatal("DataFrame = nil, want an empty slice")
+	}
+
+	if len(got) != 0 {
+		t.Fatalf("DataFrame = %v, want empty", got)
+	}
+
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, selectableRows,
+			&DataFrameConf{DefaultSelection: []int{1}})
+	})
+
+	if def, ok := props["default_selection"].([]any); !ok || len(def) != 0 {
+		t.Errorf("default_selection = %v, want empty", props["default_selection"])
+	}
+}
+
+func TestDataFrameDefaultSelection(t *testing.T) {
+	got := dataFrameSelection(tgframe.NewState(), &DataFrameConf{
+		Selection:        SelectionModeMulti,
+		DefaultSelection: []int{2, 0, 2},
+	})
+
+	if !slices.Equal(got, []int{0, 2}) {
+		t.Fatalf("DataFrame = %v, want [0 2]", got)
+	}
+}
+
+// SelectionModeSingle takes one row, so a default naming more is trimmed
+// rather than handed back as a selection the table cannot show.
+func TestDataFrameSingleSelectionKeepsOneRow(t *testing.T) {
+	got := dataFrameSelection(tgframe.NewState(), &DataFrameConf{
+		Selection:        SelectionModeSingle,
+		DefaultSelection: []int{2, 1},
+	})
+
+	if !slices.Equal(got, []int{1}) {
+		t.Fatalf("DataFrame = %v, want [1]", got)
+	}
+}
+
+// The state holds float64s once the selection has been through JSON, which is
+// how it arrives from a real frontend.
+func TestDataFrameReadsSelection(t *testing.T) {
+	state := tgframe.NewState()
+	state.Set(defaultDataFrameID(selectableHead), []float64{2, 0})
+
+	got := dataFrameSelection(state, &DataFrameConf{Selection: SelectionModeMulti})
+	if !slices.Equal(got, []int{0, 2}) {
+		t.Fatalf("DataFrame = %v, want [0 2]", got)
+	}
+}
+
+// A selection left over from a longer table is dropped rather than clamped,
+// the way Select and Multiselect drop one: the row it named is gone.
+func TestDataFrameDropsSelectionOutsideRows(t *testing.T) {
+	state := tgframe.NewState()
+	state.Set(defaultDataFrameID(selectableHead), []int{1, 99, -1})
+
+	got := dataFrameSelection(state, &DataFrameConf{Selection: SelectionModeMulti})
+	if !slices.Equal(got, []int{1}) {
+		t.Fatalf("DataFrame = %v, want [1]", got)
+	}
+}
+
+// The default only stands in until the app user has answered, and clearing
+// the selection is an answer.
+func TestDataFrameEmptySelectionBeatsDefault(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventSelect{
+		ID:     defaultDataFrameID(selectableHead),
+		Values: []int{},
+	}).ApplyState(state)
+
+	got := dataFrameSelection(state, &DataFrameConf{
+		Selection:        SelectionModeMulti,
+		DefaultSelection: []int{1},
+	})
+
+	if len(got) != 0 {
+		t.Fatalf("DataFrame = %v, want empty", got)
+	}
+}
+
+// A call that cannot draw its table still hands back a slice, so a caller
+// ranging over the result does not have to check the run failed first.
+func TestDataFrameSelectionIsNeverNil(t *testing.T) {
+	container := tgframe.NewContainer("test", tgframe.NewState(),
+		func(tgframe.NotifyPack) {})
+
+	got := DataFrame(container, nil, nil, &DataFrameConf{
+		Selection: SelectionModeMulti,
+	})
+
+	if got == nil {
+		t.Fatal("DataFrame = nil, want an empty slice")
+	}
+}
+
+// The conf a caller reuses across runs is left alone, the selection included.
+func TestDataFrameDoesNotWriteBackTheSelection(t *testing.T) {
+	conf := &DataFrameConf{
+		Selection:        SelectionModeSingle,
+		DefaultSelection: []int{2, 1},
+	}
+
+	dataFrameSelection(tgframe.NewState(), conf)
+
+	if !slices.Equal(conf.DefaultSelection, []int{2, 1}) {
+		t.Errorf("DefaultSelection = %v, want it left alone", conf.DefaultSelection)
 	}
 }
