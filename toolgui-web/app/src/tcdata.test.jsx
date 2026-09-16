@@ -236,8 +236,9 @@ describe('TDataFrame selection', () => {
   const textAt = (n) => within(bodyRow(n)).getAllByRole('cell')
     .map(c => c.textContent).filter(t => t !== '')
 
-  // sent is the values of the last select event, which is what the page
-  // function is about to be rerun with.
+  // sent is the last event, which is what the page function is about to be
+  // rerun with. Its value carries both the indices and, for a keyed table,
+  // the names of the rows they were read off.
   const sent = () => {
     const calls = RENDER_PROPS.update.mock.calls
     return calls[calls.length - 1][0]
@@ -246,13 +247,17 @@ describe('TDataFrame selection', () => {
   const search = (value) => fireEvent.change(
     screen.getByLabelText('search the table'), { target: { value } })
 
-  test('sends the picked row as a select event', () => {
+  test('sends the picked row back to the server', () => {
     mountHosts()
 
     fireEvent.click(checkboxAt(1))
 
     expect(RENDER_PROPS.update).toHaveBeenCalledTimes(1)
-    expect(sent()).toEqual({ type: 'select', id: 'hosts', values: [1] })
+    expect(sent()).toEqual({
+      type: 'custom',
+      id: 'hosts',
+      value: { indices: [1], keys: [] },
+    })
   })
 
   // A row can be picked without aiming at its checkbox.
@@ -261,7 +266,7 @@ describe('TDataFrame selection', () => {
 
     fireEvent.click(within(bodyRow(2)).getAllByRole('cell')[1])
 
-    expect(sent().values).toEqual([2])
+    expect(sent().value.indices).toEqual([2])
   })
 
   // The checkbox toggles the row once, not twice: its click must not also
@@ -281,7 +286,7 @@ describe('TDataFrame selection', () => {
     fireEvent.click(checkboxAt(2))
     fireEvent.click(checkboxAt(0))
 
-    expect(sent().values).toEqual([0, 2])
+    expect(sent().value.indices).toEqual([0, 2])
   })
 
   test('drops a row picked a second time', () => {
@@ -290,7 +295,7 @@ describe('TDataFrame selection', () => {
     fireEvent.click(checkboxAt(1))
     fireEvent.click(checkboxAt(1))
 
-    expect(sent().values).toEqual([])
+    expect(sent().value.indices).toEqual([])
     expect(checkboxAt(1)).not.toBeChecked()
   })
 
@@ -303,7 +308,7 @@ describe('TDataFrame selection', () => {
     expect(textAt(0)).toEqual(['db-1', 'NA'])
 
     fireEvent.click(checkboxAt(0))
-    expect(sent().values).toEqual([2])
+    expect(sent().value.indices).toEqual([2])
   })
 
   test('sends the server row index after a search', () => {
@@ -313,7 +318,7 @@ describe('TDataFrame selection', () => {
     expect(textAt(0)).toEqual(['db-1', 'NA'])
 
     fireEvent.click(checkboxAt(0))
-    expect(sent().values).toEqual([2])
+    expect(sent().value.indices).toEqual([2])
   })
 
   // A pick is a property of the row, so putting the row back on screen finds
@@ -337,7 +342,7 @@ describe('TDataFrame selection', () => {
     search('web')
     fireEvent.click(screen.getByLabelText('select every row'))
 
-    expect(sent().values).toEqual([0, 1])
+    expect(sent().value.indices).toEqual([0, 1])
   })
 
   test('the head checkbox gives back only what it took', () => {
@@ -350,10 +355,10 @@ describe('TDataFrame selection', () => {
 
     // db-1 was picked by hand before the search, so clearing the web rows
     // leaves it alone.
-    expect(sent().values).toEqual([0, 1, 2])
+    expect(sent().value.indices).toEqual([0, 1, 2])
 
     fireEvent.click(screen.getByLabelText('select every row'))
-    expect(sent().values).toEqual([])
+    expect(sent().value.indices).toEqual([])
   })
 
   test('the head checkbox is indeterminate on a partial pick', () => {
@@ -399,10 +404,10 @@ describe('TDataFrame selection', () => {
       mountSingle()
 
       fireEvent.click(bodyRow(0))
-      expect(sent().values).toEqual([0])
+      expect(sent().value.indices).toEqual([0])
 
       fireEvent.click(bodyRow(2))
-      expect(sent().values).toEqual([2])
+      expect(sent().value.indices).toEqual([2])
       expect(bodyRow(0)).toHaveAttribute('aria-selected', 'false')
     })
 
@@ -412,7 +417,7 @@ describe('TDataFrame selection', () => {
       fireEvent.click(bodyRow(1))
       fireEvent.click(bodyRow(1))
 
-      expect(sent().values).toEqual([])
+      expect(sent().value.indices).toEqual([])
       expect(bodyRow(1)).toHaveAttribute('aria-selected', 'false')
     })
 
@@ -430,7 +435,7 @@ describe('TDataFrame selection', () => {
 
       fireEvent.keyDown(bodyRow(2), { key })
 
-      expect(sent().values).toEqual([2])
+      expect(sent().value.indices).toEqual([2])
       expect(bodyRow(2)).toHaveAttribute('aria-selected', 'true')
     })
 
@@ -440,7 +445,7 @@ describe('TDataFrame selection', () => {
       fireEvent.keyDown(bodyRow(1), { key: 'Enter' })
       fireEvent.keyDown(bodyRow(1), { key: 'Enter' })
 
-      expect(sent().values).toEqual([])
+      expect(sent().value.indices).toEqual([])
     })
 
     // Space scrolls the page and Enter submits a surrounding form, so both
@@ -500,7 +505,7 @@ describe('TDataFrame selection', () => {
 
       fireEvent.click(checkboxAt(0))
       fireEvent.click(checkboxAt(2))
-      expect(sent().values).toEqual([0, 2])
+      expect(sent().value.indices).toEqual([0, 2])
 
       // Go caps single at the lowest index, so the table must draw the same.
       rerenderAs(rerender, 'single')
@@ -535,6 +540,97 @@ describe('TDataFrame selection', () => {
       // The selection was only ever narrowed for drawing, never thrown away,
       // which is what the Go side does with the state too.
       expect(selectedRows()).toEqual(['true', 'false', 'true'])
+    })
+  })
+
+  // Without a row key the browser has the same staleness the server does, so
+  // resolving by name has to happen here too, against the rows there are now.
+  describe('a row key', () => {
+    const keyed = (rows, rest) => ({
+      head: ['host', 'region'],
+      rows,
+      columns: [column(), column()],
+      id: 'hosts',
+      selection: 'single',
+      default_selection: [],
+      row_key: 0,
+      ...rest,
+    })
+
+    const abc = [['A', '1'], ['B', '2'], ['C', '3']]
+
+    const rerenderRows = (rerender, rows, rest) => rerender(
+      <TDataFrame node={nodeFor(keyed(rows, rest))} {...RENDER_PROPS} />)
+
+    const pickedNames = () => screen.getAllByRole('row').slice(1)
+      .filter(r => r.getAttribute('aria-selected') === 'true')
+      .map(r => within(r).getAllByRole('cell')[0].textContent)
+
+    test('sends the name of the picked row alongside its index', () => {
+      mount(keyed(abc))
+
+      fireEvent.click(bodyRow(1))
+
+      expect(sent().value).toEqual({ indices: [1], keys: ['B'] })
+    })
+
+    test('keeps the pick on its row when a row above it goes', () => {
+      const { rerender } = mount(keyed(abc))
+
+      fireEvent.click(bodyRow(1))
+      expect(pickedNames()).toEqual(['B'])
+
+      // B is index 0 now, not 1.
+      rerenderRows(rerender, [['B', '2'], ['C', '3']])
+      expect(pickedNames()).toEqual(['B'])
+    })
+
+    test('keeps the pick on its row when the rows are reordered', () => {
+      const { rerender } = mount(keyed(abc))
+
+      fireEvent.click(bodyRow(1))
+      rerenderRows(rerender, [['C', '3'], ['B', '2'], ['A', '1']])
+
+      expect(pickedNames()).toEqual(['B'])
+    })
+
+    test('drops the pick when its row goes', () => {
+      const { rerender } = mount(keyed(abc))
+
+      fireEvent.click(bodyRow(1))
+      rerenderRows(rerender, [['A', '1'], ['C', '3']])
+
+      expect(pickedNames()).toEqual([])
+    })
+
+    // The counterpart, so the difference a row key makes is pinned rather
+    // than asserted only of the keyed case.
+    test('without one, the pick stays on the position', () => {
+      const { rerender } = mount(keyed(abc, { row_key: null }))
+
+      fireEvent.click(bodyRow(1))
+      expect(pickedNames()).toEqual(['B'])
+
+      rerender(<TDataFrame
+        node={nodeFor(keyed([['A', '1'], ['C', '3']], { row_key: null }))}
+        {...RENDER_PROPS} />)
+
+      // Index 1 is C now, and that is what stays drawn as picked.
+      expect(pickedNames()).toEqual(['C'])
+    })
+
+    test('a pick dropped with its row is not carried back in', () => {
+      const { rerender } = mount(keyed(abc, { selection: 'multi' }))
+
+      fireEvent.click(checkboxAt(0))
+      fireEvent.click(checkboxAt(1))
+      expect(sent().value).toEqual({ indices: [0, 1], keys: ['A', 'B'] })
+
+      // B goes; picking C must send A and C, not the stale index B held.
+      rerenderRows(rerender, [['A', '1'], ['C', '3']], { selection: 'multi' })
+      fireEvent.click(checkboxAt(1))
+
+      expect(sent().value).toEqual({ indices: [0, 1], keys: ['A', 'C'] })
     })
   })
 

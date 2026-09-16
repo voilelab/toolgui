@@ -187,6 +187,22 @@ type DataFrameConf struct {
 	// pointing outside rows are dropped, and SelectionModeSingle keeps only
 	// the lowest one.
 	DefaultSelection []int
+
+	// RowKey is the column whose cells name the rows, so that a selection is
+	// remembered by the row it was made on rather than by where that row sat.
+	// Left unset, a selection is a position: see [DataFrame]. Set it with
+	// SetRowKey.
+	//
+	// The column has to hold a different value in every row, and to be one of
+	// head's; neither failing draws the table.
+	RowKey *int
+}
+
+// SetRowKey sets RowKey from a column index, which is a pointer so that the
+// first column is not what leaving it out means.
+func (c *DataFrameConf) SetRowKey(v int) *DataFrameConf {
+	c.RowKey = &v
+	return c
 }
 
 // SetSortable sets Sortable, which is a pointer so that leaving it out means
@@ -224,6 +240,10 @@ type dataFrameComponent struct {
 
 	Selection        string `json:"selection"`
 	DefaultSelection []int  `json:"default_selection"`
+
+	// RowKey is the column the client reads a row's name out of, null when
+	// the selection is positional.
+	RowKey *int `json:"row_key"`
 }
 
 // boolOr reports what an unset conf toggle means.
@@ -280,7 +300,69 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 		Selection:  conf.Selection.String(),
 		DefaultSelection: normalizeRowSelection(
 			conf.DefaultSelection, len(rows), conf.Selection),
+		RowKey: conf.RowKey,
 	}
+}
+
+// storedSelection is the selection as it sits in the state between runs. The
+// browser sends both shapes at once: the keys are what a keyed table is read
+// back by, and the indices are what an unkeyed one is, so a table that gains
+// or loses a RowKey has the other shape already there to fall back on.
+type storedSelection struct {
+	Indices []int    `json:"indices"`
+	Keys    []string `json:"keys"`
+}
+
+// readStoredSelection reads what the state holds under id. A plain list of
+// indices is read as well as the object the browser sends, because a page
+// function is free to write a widget's key itself to seed it, and indices are
+// the shape it would reach for -- the same one DataFrameConf.DefaultSelection
+// has.
+func readStoredSelection(state *tgframe.State, id string) storedSelection {
+	var sel storedSelection
+	if state.GetObject(id, &sel) == nil {
+		return sel
+	}
+
+	var idxes []int
+	if state.GetObject(id, &idxes) == nil {
+		return storedSelection{Indices: idxes}
+	}
+
+	return storedSelection{}
+}
+
+// resolveRowKeys turns the names of the picked rows into indices into the rows
+// there are now. A name no longer in the table is dropped, which is what
+// carrying names rather than positions is for: the row it meant is gone, so
+// nothing takes its place.
+func resolveRowKeys(keys []string, rows [][]string, col int, mode SelectionMode) []int {
+	out := []int{}
+	if mode == SelectionModeNone {
+		return out
+	}
+
+	// The keys are unique, which DataFrame refuses to draw a table without,
+	// so the first row holding one is the only row holding it.
+	at := make(map[string]int, len(rows))
+	for i, row := range rows {
+		at[row[col]] = i
+	}
+
+	for _, key := range keys {
+		if idx, ok := at[key]; ok {
+			out = append(out, idx)
+		}
+	}
+
+	slices.Sort(out)
+	out = slices.Compact(out)
+
+	if max := mode.maxSelected(); max > 0 && len(out) > max {
+		out = out[:max]
+	}
+
+	return out
 }
 
 // normalizeRowSelection puts a selection into the shape DataFrame promises:
@@ -325,12 +407,15 @@ func normalizeRowSelection(idxes []int, rowCount int, mode SelectionMode) []int 
 // in, and they come back sorted and without duplicates. The result is empty
 // rather than nil when nothing is picked.
 //
-// An index is a position and not a row identity, the same contract [Select]
-// and [Multiselect] have with their items: when rows changes between runs, an
-// index picked against the old data is read against the new one, and only an
-// index past the end is dropped. Hand it rows whose order is stable between
-// runs, or a fresh [DataFrameConf.ID] when the data is replaced, before acting
-// on a selection destructively.
+// Left to itself an index is a position and not a row identity, the same
+// contract [Select] and [Multiselect] have with their items: when rows changes
+// between runs, an index picked against the old data is read against the new
+// one, and only an index past the end is dropped.
+//
+// [DataFrameConf.RowKey] is the way out of that. Point it at the column that
+// names the rows and a selection is remembered by the row it was made on: one
+// that has moved is still picked, and one that is gone is dropped rather than
+// handed to whatever took its place.
 //
 // [Table] is the static counterpart: reach for it when the rows are few and
 // already in the order they should be read in.
@@ -362,6 +447,29 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 		}
 	}
 
+	if cf.RowKey != nil {
+		if *cf.RowKey < 0 || *cf.RowKey >= len(head) {
+			c.Fail(tgutil.Errorf(
+				"row key should be a column of head, got %d", *cf.RowKey))
+			return []int{}
+		}
+
+		// A column that names two rows names neither, so picking one of them
+		// would pick both. Refused here rather than resolved arbitrarily.
+		seen := make(map[string]int, len(rows))
+		for i, row := range rows {
+			key := row[*cf.RowKey]
+			if first, dup := seen[key]; dup {
+				c.Fail(tgutil.Errorf(
+					"row key column %d should be unique, rows %d and %d are both %q",
+					*cf.RowKey, first, i, key))
+				return []int{}
+			}
+
+			seen[key] = i
+		}
+	}
+
 	comp := newDataFrameComponent(head, rows, cf)
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
@@ -370,20 +478,20 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 		return []int{}
 	}
 
-	// The state holds whatever the select event landed, a []int written from
-	// Go but a []float64 once it has been through JSON; GetObject reads both,
-	// and leaves idxes nil for a key holding neither.
-	var idxes []int
-	if c.State.GetObject(comp.ID, &idxes) != nil {
-		idxes = nil
+	sel := readStoredSelection(c.State, comp.ID)
+
+	// A keyed table is read back by name, so a row that has moved is still
+	// the row that was picked and one that has gone takes nothing with it.
+	if cf.RowKey != nil && sel.Keys != nil {
+		return resolveRowKeys(sel.Keys, rows, *cf.RowKey, cf.Selection)
 	}
 
-	if idxes == nil {
-		// Untouched, so the default stands in. Normalized a second time
-		// rather than handing back comp.DefaultSelection: the component is
-		// about to be serialized, and the caller owns what it gets back.
-		return normalizeRowSelection(cf.DefaultSelection, len(rows), cf.Selection)
+	if sel.Indices != nil {
+		return normalizeRowSelection(sel.Indices, len(rows), cf.Selection)
 	}
 
-	return normalizeRowSelection(idxes, len(rows), cf.Selection)
+	// Untouched, so the default stands in. Normalized a second time rather
+	// than handing back comp.DefaultSelection: the component is about to be
+	// serialized, and the caller owns what it gets back.
+	return normalizeRowSelection(cf.DefaultSelection, len(rows), cf.Selection)
 }

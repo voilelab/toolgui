@@ -56,6 +56,11 @@ type DataFrameConf struct {
 	// DefaultSelection is what is picked before the user first touches the
 	// table, as indices into rows.
 	DefaultSelection []int
+
+	// RowKey is the column whose cells name the rows, so a selection is
+	// remembered by the row rather than by its position. Set it with
+	// SetRowKey.
+	RowKey *int
 }
 ```
 
@@ -161,27 +166,58 @@ and is only read until then: clearing the selection is an answer, and beats
 the default from that point on. Indices pointing outside `rows` are dropped,
 and `SelectionModeSingle` keeps only the lowest one.
 
-#### A selection is a position, not a row
+#### RowKey: naming the rows
 
-If `rows` changes between runs, an index picked against the old data is read
-against the new one. Pick `rows[1]` out of `[A, B, C]`, drop `B`, and the
-selection is still `1` — which is now `C`, a row the user never picked. Only
-an index past the end of `rows` is dropped.
+Left to itself a selection is a **position**. If `rows` changes between runs,
+an index picked against the old data is read against the new one: pick
+`rows[1]` out of `[A, B, C]`, drop `B`, and the selection is still `1` — which
+is now `C`, a row the user never picked. Only an index past the end of `rows`
+is dropped. That is the positional contract
+[Select](../input/select.md) and [Multiselect](../input/multiselect.md) have
+with their `items`, and it is fine for a table whose rows keep their order.
 
-This is the positional contract [Select](../input/select.md) and
-[Multiselect](../input/multiselect.md) already have with their `items`, and
-the id being derived from `head` keeps the selection across a rerun rather
-than making it safe across a change of data. So before acting on a selection
-destructively — deleting, submitting, sending — either hand the table rows
-whose order is stable between runs, or give it a fresh `ID` when the data is
-replaced, which drops the selection with the old id.
+`RowKey` is the way out. Point it at the column that names the rows and a
+selection is remembered by the row it was made on:
+
+```go
+selected := tgcomp.DataFrame(p.Main, head, queues,
+	(&tgcomp.DataFrameConf{
+		ID:        "queues",
+		Selection: tgcomp.SelectionModeSingle,
+	}).SetRowKey(0))
+```
+
+| What happens to the picked row | Positional | With `RowKey` |
+| --- | --- | --- |
+| a row above it is removed | slides onto its neighbour | stays on the row |
+| the rows are reordered | stays on the position | stays on the row |
+| its other cells change | stays on the row | stays on the row |
+| the row itself is removed | slides onto whatever took the index | dropped |
+
+It is a pointer so that leaving it out does not mean the first column; set it
+through `SetRowKey`. The column has to be one of `head`'s and has to hold a
+different value in every row — a column naming two rows names neither, and
+picking one of them would pick both, so the run fails and draws an error
+placeholder rather than resolving it arbitrarily.
+
+The return is still indices into the current `rows` either way. `RowKey`
+changes what is *remembered*, not what is handed back, so `rows[selected[0]]`
+stays the way to read the picked row.
+
+`DefaultSelection` stays positional even with a `RowKey` set: the page
+function writes it fresh against the rows it just supplied, so there is no
+older data for it to be read against.
+
+So: reach for `RowKey` whenever the rows are re-queried, filtered by another
+widget, or refreshed, and especially before acting on a selection
+destructively — deleting, submitting, sending.
 
 #### Identity
 
 A pickable `DataFrame` holds state, so it needs an id. It derives one from
-`head` when the conf names none — from the head rather than the rows, so a
-selection survives the data being refreshed underneath it. Two pickable tables
-sharing a head on one page would collide, which is what `ID` is for.
+`head` when the conf names none — from the head rather than the rows, so the
+selection is not thrown away every time the data is refreshed. Two pickable
+tables sharing a head on one page would collide, which is what `ID` is for.
 
 An unpickable `DataFrame` holds no state and carries no id at all, so any
 number of them can sit on a page.

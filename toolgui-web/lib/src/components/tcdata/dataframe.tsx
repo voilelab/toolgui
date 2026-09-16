@@ -31,6 +31,15 @@ interface Sort {
 
 type Selection = "none" | "single" | "multi"
 
+// Saved is the selection as it is remembered between runs, and is what goes
+// back to the server. Both shapes travel together: the keys are what a keyed
+// table is read back by, the indices what an unkeyed one is, so a table that
+// gains or loses a row key has the other already there to fall back on.
+interface Saved {
+  indices: number[]
+  keys: string[]
+}
+
 // sortKey reads a cell as the value its column type says it holds. Cells that
 // do not parse come back as null and are kept together at the end, so a
 // stray "-" never lands in the middle of the numbers.
@@ -111,30 +120,46 @@ export function TDataFrame({ node, update }: Props) {
   const [sort, setSort] = useState<Sort | null>(null)
   const [page, setPage] = useState(1)
 
+  // The column the rows are named by, null when a selection is a position.
+  const rowKey: number | null = node.props.row_key ?? null
+
   // Nothing is picked until the table is first touched, which is when the
   // default stands in — the same rule Go applies to the state. Kept in
   // stateValues so the pick survives the re-render the server answer brings.
-  const [selected, setSelected] = useState<number[]>(
-    stateValues[node.props.id] || node.props.default_selection || [])
+  const [saved, setSaved] = useState<Saved>(
+    stateValues[node.props.id]
+    || { indices: node.props.default_selection || [], keys: [] })
   const pickable = selection !== "none"
 
-  // What is drawn as picked is the selection with the current mode applied,
-  // mirroring what the Go side hands the page function. The mode can change
-  // between runs while this component stays mounted, so a selection made
-  // under a wider one must not go on being drawn under a narrower one:
-  // dropped outright when the rows are no longer pickable, and trimmed to
-  // the lowest index -- selected is kept sorted -- under single.
+  const rows: Row[] = useMemo(
+    () => (node.props.rows || []).map((cells: string[], index: number) =>
+      ({ cells, index })), [node.props.rows])
+
+  // What is drawn as picked is the selection resolved against the rows there
+  // are now, with the current mode applied, which is what the Go side hands
+  // the page function. Both have to be applied here rather than at the point
+  // the pick was made: the rows and the mode can change between runs while
+  // this component stays mounted, and the hook state does not run again.
   const picked = useMemo(() => {
     if (!pickable) {
       return new Set<number>()
     }
 
-    return new Set(selection === "single" ? selected.slice(0, 1) : selected)
-  }, [selected, selection, pickable])
+    let idxes: number[]
+    if (rowKey !== null && saved.keys.length !== 0) {
+      // A name no longer in the table is dropped, rather than leaving its
+      // position picked for whatever row moved into it.
+      const at = new Map(rows.map(row => [row.cells[rowKey], row.index]))
+      idxes = saved.keys
+        .map(key => at.get(key))
+        .filter((idx): idx is number => idx !== undefined)
+        .sort((a, b) => a - b)
+    } else {
+      idxes = saved.indices.filter(idx => idx >= 0 && idx < rows.length)
+    }
 
-  const rows: Row[] = useMemo(
-    () => (node.props.rows || []).map((cells: string[], index: number) =>
-      ({ cells, index })), [node.props.rows])
+    return new Set(selection === "single" ? idxes.slice(0, 1) : idxes)
+  }, [saved, selection, pickable, rows, rowKey])
 
   const shown = useMemo(
     () => head.map((_, i) => i).filter(i => !columns[i].hidden), [head, columns])
@@ -185,12 +210,20 @@ export function TDataFrame({ node, update }: Props) {
 
   // commit is the only thing here that talks to the server. The indices are
   // sorted so the page function reads them in row order whatever order they
-  // were picked in, which is what the Go side hands back.
+  // were picked in, which is what the Go side hands back. The names go with
+  // them, read off the rows as they are now, which is the only place they can
+  // be read: by the next run these indices may mean other rows.
   const commit = (indices: number[]) => {
     const next = [...new Set(indices)].sort((a, b) => a - b)
-    stateValues[node.props.id] = next
-    setSelected(next)
-    update({ type: "select", id: node.props.id, values: next })
+    const saving: Saved = {
+      indices: next,
+      keys: rowKey === null ? []
+        : next.map(idx => rows[idx].cells[rowKey]),
+    }
+
+    stateValues[node.props.id] = saving
+    setSaved(saving)
+    update({ type: "custom", id: node.props.id, value: saving })
   }
 
   const toggleRow = (index: number) => {
@@ -201,9 +234,11 @@ export function TDataFrame({ node, update }: Props) {
       return
     }
 
+    // Built from picked rather than from what was saved, so a pick that the
+    // rows or the mode have since dropped is not carried back in.
     commit(picked.has(index)
-      ? selected.filter(i => i !== index)
-      : [...selected, index])
+      ? [...picked].filter(i => i !== index)
+      : [...picked, index])
   }
 
   // In single mode the row is the only control there is, so it has to be
@@ -234,11 +269,11 @@ export function TDataFrame({ node, update }: Props) {
     const inView = sorted.map(row => row.index)
     if (allPicked) {
       const drop = new Set(inView)
-      commit(selected.filter(i => !drop.has(i)))
+      commit([...picked].filter(i => !drop.has(i)))
       return
     }
 
-    commit([...selected, ...inView])
+    commit([...picked, ...inView])
   }
 
   return (

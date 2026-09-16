@@ -379,7 +379,23 @@ func TestDataFrameSingleSelectionKeepsOneRow(t *testing.T) {
 // how it arrives from a real frontend.
 func TestDataFrameReadsSelection(t *testing.T) {
 	state := tgframe.NewState()
-	state.Set(defaultDataFrameID(selectableHead), []float64{2, 0})
+	state.Set(defaultDataFrameID(selectableHead), map[string]any{
+		"indices": []float64{2, 0},
+		"keys":    []string{},
+	})
+
+	got := dataFrameSelection(state, &DataFrameConf{Selection: SelectionModeMulti})
+	if !slices.Equal(got, []int{0, 2}) {
+		t.Fatalf("DataFrame = %v, want [0 2]", got)
+	}
+}
+
+// A page function is free to seed a widget's key itself, and a bare list of
+// indices is the shape it would reach for -- the one DefaultSelection has. It
+// is read as well as the object the browser sends.
+func TestDataFrameReadsSelectionWrittenFromGo(t *testing.T) {
+	state := tgframe.NewState()
+	state.Set(defaultDataFrameID(selectableHead), []int{2, 0})
 
 	got := dataFrameSelection(state, &DataFrameConf{Selection: SelectionModeMulti})
 	if !slices.Equal(got, []int{0, 2}) {
@@ -403,9 +419,9 @@ func TestDataFrameDropsSelectionOutsideRows(t *testing.T) {
 // the selection is an answer.
 func TestDataFrameEmptySelectionBeatsDefault(t *testing.T) {
 	state := tgframe.NewState()
-	(&tgframe.EventSelect{
-		ID:     defaultDataFrameID(selectableHead),
-		Values: []int{},
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(selectableHead),
+		Value: map[string]any{"indices": []int{}, "keys": []string{}},
 	}).ApplyState(state)
 
 	got := dataFrameSelection(state, &DataFrameConf{
@@ -444,5 +460,205 @@ func TestDataFrameDoesNotWriteBackTheSelection(t *testing.T) {
 
 	if !slices.Equal(conf.DefaultSelection, []int{2, 1}) {
 		t.Errorf("DefaultSelection = %v, want it left alone", conf.DefaultSelection)
+	}
+}
+
+// keyedHead names its rows in column 0, so a selection can be remembered by
+// the row rather than by where the row sat.
+var keyedHead = []string{"host", "region"}
+
+// pickKeyed runs a keyed DataFrame over rows against state.
+func pickKeyed(state *tgframe.State, rows [][]string, conf *DataFrameConf) []int {
+	c := tgframe.NewContainer("test", state, func(tgframe.NotifyPack) {})
+	return DataFrame(c, keyedHead, rows, conf)
+}
+
+// keyedConf is a keyed single-select table, which is the shape the identity
+// question is sharpest in: one row, and it had better be the right one.
+func keyedConf() *DataFrameConf {
+	return (&DataFrameConf{Selection: SelectionModeSingle}).SetRowKey(0)
+}
+
+// TestDataFrameRowKeyFollowsTheRow is the case that motivated RowKey: pick B
+// out of [A B C], drop B's neighbour, and the selection must still be B --
+// where a positional selection would have slid onto whatever took the index.
+func TestDataFrameRowKeyFollowsTheRow(t *testing.T) {
+	abc := [][]string{{"A", "1"}, {"B", "2"}, {"C", "3"}}
+	state := tgframe.NewState()
+
+	pickKeyed(state, abc, keyedConf())
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{1}, "keys": []string{"B"}},
+	}).ApplyState(state)
+
+	for _, tc := range []struct {
+		name string
+		rows [][]string
+		want string
+	}{
+		{"unchanged", abc, "B"},
+		{"a row above it removed", [][]string{{"B", "2"}, {"C", "3"}}, "B"},
+		{"reordered", [][]string{{"C", "3"}, {"B", "2"}, {"A", "1"}}, "B"},
+		{"a row added above it", [][]string{{"Z", "0"}, {"A", "1"}, {"B", "2"}}, "B"},
+		{"its cells changed but not its name",
+			[][]string{{"A", "1"}, {"B", "9"}, {"C", "3"}}, "B"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := pickKeyed(state, tc.rows, keyedConf())
+			if len(got) != 1 {
+				t.Fatalf("DataFrame = %v, want one row", got)
+			}
+
+			if name := tc.rows[got[0]][0]; name != tc.want {
+				t.Errorf("picked %q, want %q", name, tc.want)
+			}
+		})
+	}
+}
+
+// The row is gone, so nothing takes its place -- which is the whole point of
+// carrying the name rather than the position.
+func TestDataFrameRowKeyDropsAVanishedRow(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{1}, "keys": []string{"B"}},
+	}).ApplyState(state)
+
+	got := pickKeyed(state, [][]string{{"A", "1"}, {"C", "3"}}, keyedConf())
+	if len(got) != 0 {
+		t.Fatalf("DataFrame = %v, want nothing picked", got)
+	}
+}
+
+// Without a row key the same data change moves the selection onto another
+// row. Pinned so that the difference RowKey makes is a test rather than a
+// claim in the docs.
+func TestDataFrameWithoutRowKeyMovesWithThePosition(t *testing.T) {
+	state := tgframe.NewState()
+	state.Set(defaultDataFrameID(keyedHead), []int{1})
+
+	rows := [][]string{{"A", "1"}, {"C", "3"}}
+	got := pickKeyed(state, rows, &DataFrameConf{Selection: SelectionModeSingle})
+	if len(got) != 1 || rows[got[0]][0] != "C" {
+		t.Fatalf("DataFrame = %v, want the row at index 1", got)
+	}
+}
+
+func TestDataFrameRowKeyMulti(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{0, 2}, "keys": []string{"A", "C"}},
+	}).ApplyState(state)
+
+	// C moved to the front and A to the back; B is new.
+	rows := [][]string{{"C", "3"}, {"B", "2"}, {"A", "1"}}
+	got := pickKeyed(state, rows, (&DataFrameConf{
+		Selection: SelectionModeMulti,
+	}).SetRowKey(0))
+
+	// Row order, as always -- C is index 0 now, A is index 2.
+	if !slices.Equal(got, []int{0, 2}) {
+		t.Fatalf("DataFrame = %v, want [0 2]", got)
+	}
+
+	for _, idx := range got {
+		if name := rows[idx][0]; name != "A" && name != "C" {
+			t.Errorf("picked %q, want only A and C", name)
+		}
+	}
+}
+
+// A keyed table still caps single at one row, and the row it keeps is the one
+// sitting lowest now rather than the one that was lowest when it was picked.
+func TestDataFrameRowKeyAppliesTheMode(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventCustom{
+		ID:    defaultDataFrameID(keyedHead),
+		Value: map[string]any{"indices": []int{0, 2}, "keys": []string{"A", "C"}},
+	}).ApplyState(state)
+
+	rows := [][]string{{"C", "3"}, {"A", "1"}}
+	got := pickKeyed(state, rows, keyedConf())
+	if len(got) != 1 || rows[got[0]][0] != "C" {
+		t.Fatalf("DataFrame = %v, want the lowest row, C", got)
+	}
+}
+
+// The wire carries the column so the client reads names out of the same one.
+func TestDataFrameRowKeyProp(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, keyedHead, [][]string{{"A", "1"}},
+			(&DataFrameConf{Selection: SelectionModeSingle}).SetRowKey(1))
+	})
+
+	if props["row_key"] != float64(1) {
+		t.Errorf("row_key = %v, want 1", props["row_key"])
+	}
+
+	unkeyed := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, keyedHead, [][]string{{"A", "1"}},
+			&DataFrameConf{Selection: SelectionModeSingle})
+	})
+
+	if unkeyed["row_key"] != nil {
+		t.Errorf("row_key = %v, want none", unkeyed["row_key"])
+	}
+}
+
+// A conf a caller reuses across runs is left alone, the row key included.
+func TestDataFrameSetRowKey(t *testing.T) {
+	conf := (&DataFrameConf{}).SetRowKey(2)
+	if conf.RowKey == nil || *conf.RowKey != 2 {
+		t.Fatalf("RowKey = %v, want 2", conf.RowKey)
+	}
+}
+
+// A table whose key column does not name its rows is refused rather than
+// resolved arbitrarily: picking one of two rows sharing a name would pick
+// both, and a column out of range names nothing at all.
+func TestDataFrameRowKeyFails(t *testing.T) {
+	rows := [][]string{{"A", "1"}, {"B", "2"}}
+
+	for _, tc := range []struct {
+		name string
+		want string
+		conf *DataFrameConf
+		rows [][]string
+	}{
+		{"past the head", "should be a column of head",
+			(&DataFrameConf{}).SetRowKey(2), rows},
+		{"negative", "should be a column of head",
+			(&DataFrameConf{}).SetRowKey(-1), rows},
+		{"a column that names two rows", "should be unique",
+			(&DataFrameConf{}).SetRowKey(1),
+			[][]string{{"A", "same"}, {"B", "same"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			msg := failMessage(t, func(c *tgframe.Container) {
+				DataFrame(c, keyedHead, tc.rows, tc.conf)
+			})
+
+			if !strings.Contains(msg, tc.want) {
+				t.Errorf("message = %q, want it to contain %q", msg, tc.want)
+			}
+		})
+	}
+}
+
+// The duplicate message names both rows, so the caller knows where to look.
+func TestDataFrameRowKeyDuplicateNamesTheRows(t *testing.T) {
+	msg := failMessage(t, func(c *tgframe.Container) {
+		DataFrame(c, keyedHead, [][]string{
+			{"A", "1"}, {"B", "2"}, {"A", "3"},
+		}, (&DataFrameConf{}).SetRowKey(0))
+	})
+
+	for _, want := range []string{"rows 0 and 2", `"A"`} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("message = %q, want it to contain %q", msg, want)
+		}
 	}
 }

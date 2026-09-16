@@ -355,6 +355,44 @@ func DataPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	dfKeyedCompCol, dfKeyedCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe_row_key"})
+	tgcomp.Echo(dfKeyedCodeCol, code, func() {
+		all := [][]string{
+			{"queue-1", "APAC", "draining"},
+			{"queue-2", "EMEA", "healthy"},
+			{"queue-3", "NA", "healthy"},
+			{"queue-4", "LATAM", "healthy"},
+		}
+
+		// The rows really do change under the table, which is what RowKey is
+		// for: the pick has to name the queue rather than the position.
+		dropped := p.State.Default("demo_queues_dropped", 0)
+		if tgcomp.Button(dfKeyedCompCol, "Drop the first queue") &&
+			*dropped < len(all) {
+			*dropped++
+		}
+
+		queues := all[*dropped:]
+
+		selected := tgcomp.DataFrame(dfKeyedCompCol,
+			[]string{"Queue", "Region", "Status"}, queues,
+			(&tgcomp.DataFrameConf{
+				ID:        "demo_queues",
+				Selection: tgcomp.SelectionModeSingle,
+			}).SetRowKey(0))
+
+		picked := "none"
+		if len(selected) != 0 {
+			picked = queues[selected[0]][0]
+		}
+
+		tgcomp.Text(dfKeyedCompCol, "Queue: "+picked,
+			&tgcomp.TextConf{ID: "dataframe_row_key_result"})
+	})
+
+	tgcomp.Divider(p.Main)
+
 	lineCompCol, lineCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_line_chart"})
 	tgcomp.Echo(lineCodeCol, code, func() {

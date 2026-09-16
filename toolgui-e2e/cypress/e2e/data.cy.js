@@ -271,6 +271,35 @@ describe('DataFrame selection', () => {
     cy.get(`${dfBuilds} thead th`).should('have.length', 3)
   })
 
+  // RowKey remembers a pick by the row it was made on. The demo drops rows
+  // from the front, so a positional selection would slide onto its neighbour.
+  it('keeps a keyed pick on its row when the rows change underneath it', () => {
+    const df = '#dataframe_component_demo_queues'
+    const result = () => cy.get('#text_component_dataframe_row_key_result')
+
+    cy.get(`${df} tbody tr`).should('have.length', 4)
+    result().should('have.text', 'Queue: none')
+
+    // queue-3 sits at index 2 to begin with.
+    cy.get(`${df} tbody tr`).eq(2).find('td').eq(0).click()
+    result().should('have.text', 'Queue: queue-3')
+
+    // Dropping the first row moves it to index 1, and it stays picked.
+    cy.contains('button', 'Drop the first queue').click()
+    cy.get(`${df} tbody tr`).should('have.length', 3)
+    cy.get(`${df} tbody tr`).eq(1).find('td').eq(0)
+      .should('have.text', 'queue-3')
+    result().should('have.text', 'Queue: queue-3')
+    cy.get(`${df} tbody tr`).eq(1).should('have.attr', 'aria-selected', 'true')
+
+    // And once its own row goes, the pick goes with it rather than landing
+    // on whatever took the position.
+    cy.contains('button', 'Drop the first queue').click()
+    cy.contains('button', 'Drop the first queue').click()
+    cy.get(`${df} tbody tr`).should('have.length', 1)
+    result().should('have.text', 'Queue: none')
+  })
+
   // The counterpart of the DataFrame block's last test: this is the one
   // interaction that is meant to reach the server.
   it('talks to the server when a row is picked', () => {
