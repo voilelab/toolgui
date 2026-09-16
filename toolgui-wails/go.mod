@@ -3,7 +3,7 @@ module github.com/voilelab/toolgui/toolgui-wails
 go 1.27.1
 
 require (
-	github.com/voilelab/toolgui v0.0.0
+	github.com/voilelab/toolgui v0.0.0 // stamped at release; see the replace below
 	github.com/wailsapp/wails/v2 v2.15.0
 )
 
@@ -107,8 +107,9 @@ require (
 	howett.net/plist v1.0.2-0.20250314012144-ee69052608d9 // indirect
 )
 
-// toolgui has no tags yet, so the parent module is used straight from the
-// working tree. Swap this for a released version once one exists.
+// In-repo development builds against the working tree. A replace is ignored
+// once this module is a dependency, so the require above is what consumers
+// resolve; release.yml stamps it with the version being tagged.
 replace github.com/voilelab/toolgui => ../
 
 tool github.com/wailsapp/wails/v2/cmd/wails

@@ -20,13 +20,25 @@ is the same `@toolgui-web/lib` components with a different adapter around them.
 Wails needs cgo, GTK and WebKit. Keeping it in its own module means people who
 only build web apps never pull any of that in.
 
-The module uses the parent from the working tree:
+In-repo development builds against the working tree:
 
 ```
 replace github.com/voilelab/toolgui => ../
 ```
 
-toolgui has no tags yet, so there is no released version to require instead.
+A replace only applies in the main module, so it does not follow the module to
+anyone depending on it. What they resolve is the `require` above it, which
+`release.yml` stamps with the version being tagged.
+
+## Installing it
+
+```shell
+go get github.com/voilelab/toolgui/toolgui-wails
+```
+
+Being a module in a subdirectory, it is tagged `toolgui-wails/vX.Y.Z` rather
+than `vX.Y.Z`; `go get` finds that on its own. Desktop builds still need the
+webview dependencies below.
 
 ## What crosses the boundary
 

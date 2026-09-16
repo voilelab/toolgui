@@ -135,3 +135,8 @@ workflow`), with a `vX.Y.Z` version as input. It builds the web assets from
 `toolgui-web/app/build` — that is the only reason the built assets live in git
 at all. `main` is a CI-owned mirror of the latest release commit; do not commit
 to it by hand.
+
+Each release moves two tags. `toolgui-wails` is its own module, and Go resolves
+a module in a subdirectory through a tag named after that directory, so the
+workflow also pushes `toolgui-wails/vX.Y.Z`. Without it `go get` on the desktop
+module falls back to dev's head, where the embedded assets are gitignored.
