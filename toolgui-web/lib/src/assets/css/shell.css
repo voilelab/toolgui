@@ -36,9 +36,32 @@
   display: none;
 }
 
-/* Only shown above the mobile breakpoint, where the burger is hidden. */
+/* Only shown above the mobile breakpoint, where the burger is hidden.
+   Faded until it is wanted: the column's job is the page list, and a control
+   that never changes should not hold the eye. Hover and keyboard focus bring
+   it back to full strength. */
 .toolgui-nav-collapse {
   display: none;
+  opacity: 0.55;
+  transition: opacity 150ms ease;
+}
+
+.toolgui-nav-collapse:hover,
+.toolgui-nav-collapse:focus-visible {
+  opacity: 1;
+}
+
+/* Anywhere in the column counts: reaching for the button means crossing the
+   column first, so it is already at full strength by the time it is aimed at
+   rather than a faded target to hunt for. */
+.toolgui-nav:hover .toolgui-nav-collapse {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolgui-nav-collapse {
+    transition: none;
+  }
 }
 
 /* The drag handle, a sibling of the column rather than a child: the column
@@ -119,8 +142,11 @@ body.toolgui-resizing {
     padding-inline: 0.5rem;
   }
 
+  /* The strip is nothing but this button, so it carries the column on its
+     own: centred, and never faded, or the collapsed edge looks broken. */
   .toolgui-nav.is-collapsed .toolgui-nav-collapse {
     align-self: center;
+    opacity: 1;
   }
 
   /* display:none, not unmounting: the page's own sidebar keeps its state. */
