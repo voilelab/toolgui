@@ -149,6 +149,47 @@ func TestDefaultValue(t *testing.T) {
 		ptr(time.Date(2026, 9, 8, 9, 30, 0, 0, time.UTC)))
 }
 
+// TestClearingIsAnAnswer pins the other half of the Default rule, which is
+// easy to state backwards: Default stands in only until the app user has
+// answered, and emptying an input is an answer. Clearing does not put the
+// default back — on any of these, which is what makes the rule one rule.
+func TestClearingIsAnAnswer(t *testing.T) {
+	// Mantine hands an emptied number box back as "", which reaches the state
+	// as the 0 that Number() makes of it.
+	t.Run("number", func(t *testing.T) {
+		state := tgframe.NewState()
+		state.Set("number_component_Count", 0.0)
+
+		got := tcinput.Number(defaultContainer(state), "Count",
+			&tcinput.NumberConf[int]{Default: 10})
+		if got != 0 {
+			t.Errorf("cleared Number = %v, want 0 rather than the default", got)
+		}
+	})
+
+	t.Run("textbox", func(t *testing.T) {
+		state := tgframe.NewState()
+		state.Set("textbox_component_Name", "")
+
+		got := tcinput.Textbox(defaultContainer(state), "Name",
+			&tcinput.TextboxConf{Default: "toolgui"})
+		if got != "" {
+			t.Errorf("cleared Textbox = %q, want empty rather than the default", got)
+		}
+	})
+
+	t.Run("datepicker", func(t *testing.T) {
+		state := tgframe.NewState()
+		state.Set("datepicker_component_When", "")
+
+		got := tcinput.Datepicker(defaultContainer(state), "When",
+			(&tcinput.DatepickerConf{}).SetDefault(date(2026, 1, 2)))
+		if got != nil {
+			t.Errorf("cleared Datepicker = %v, want nil rather than the default", *got)
+		}
+	})
+}
+
 // date is what a [tcinput.Datepicker] hands back for a day: midnight UTC.
 func date(year int, month time.Month, day int) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)

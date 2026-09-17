@@ -71,11 +71,15 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T]
 An integral `T` cannot step by 0, so an explicit zero step means 1. The value
 comes back from the client as a JSON number, so an integral `T` truncates it.
 
-There is no "nothing entered" state to report: an input nobody has typed in,
-and one that has been emptied, both read as `Default`. A zero `Default` is also "no default" — the box
-starts empty either way, and an empty box is zero, exactly as an empty
+There is no "nothing entered" state to report: an input nobody has typed in
+reads as `Default`. A zero `Default` is also "no default" — the box starts empty
+either way, and an empty box is zero, exactly as an empty
 [Textbox](textbox.md) is `""`. `Min`, `Max` and `Step` stay pointers, because
 there a zero is a bound and an absent one is not.
+
+Emptying the box afterwards is an answer of zero, not a return to `Default`:
+the same rule [Textbox](textbox.md) and the pickers follow, where clearing
+reads as `""` and as nil rather than putting the default back.
 
 ## Example
 

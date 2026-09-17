@@ -52,10 +52,14 @@ func newNumberComponent[T Numeric](label string) *numberComponent[T] {
 type NumberConf[T Numeric] struct {
 	tgframe.Base
 
-	// Default is what the input reads as before the app user types in it,
-	// and what it reads as again once they empty it. The zero value is both
-	// "no default" and a default of zero: the box starts empty either way,
-	// and an empty box is zero, exactly as an empty [Textbox] is "".
+	// Default is what the input reads as before the app user has typed in it.
+	// The zero value is both "no default" and a default of zero: the box
+	// starts empty either way, and an empty box is zero, exactly as an empty
+	// [Textbox] is "".
+	//
+	// Emptying the box afterwards is an answer of zero, not a return to
+	// Default — the same way clearing a [Textbox] reads as "" and clearing a
+	// [Datepicker] reads as nil.
 	Default T
 
 	// Min is the minimum value of the number component.
@@ -94,8 +98,8 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 
 // Number create a number input and return its value.
 //
-// There is no "nothing entered" state to report: an input nobody has typed in,
-// and one that has been emptied, both read as Conf.Default.
+// There is no "nothing entered" state to report: an input nobody has typed in
+// reads as Conf.Default, and one the app user has emptied reads as zero.
 func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
 	cf := tgframe.OneConf("Number", conf)
 
