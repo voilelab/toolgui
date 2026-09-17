@@ -890,6 +890,46 @@ func InputPage(p *tgframe.Params) error {
 			fmt.Sprintf("threshold = %d, enabled = %v", threshold, enabled))
 	})
 
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "19"})
+
+	buttonFormCompCol, buttonFormCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_button_form"})
+	tgcomp.Echo(buttonFormCodeCol, code, func() {
+		var keyword string
+		var searched bool
+
+		// No submit button of its own: the Search button inside sends the
+		// form, so the page offers one button rather than two.
+		tgcomp.Form(buttonFormCompCol, &tgcomp.FormConf{
+			ID: "search_form", HideSubmit: true}).
+			With(func(c *tgframe.Container) {
+				keyword = tgcomp.Textbox(c, "keyword")
+				searched = tgcomp.Button(c, "Search")
+			})
+
+		if searched {
+			tgcomp.Text(buttonFormCompCol, "Searched: "+keyword)
+		} else {
+			tgcomp.Text(buttonFormCompCol, "Not searched yet")
+		}
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "20"})
+
+	labelFormCompCol, labelFormCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_label_form"})
+	tgcomp.Echo(labelFormCodeCol, code, func() {
+		var city string
+
+		tgcomp.Form(labelFormCompCol, &tgcomp.FormConf{
+			ID: "label_form", SubmitLabel: "Apply"}).
+			With(func(c *tgframe.Container) {
+				city = tgcomp.Textbox(c, "city")
+			})
+
+		tgcomp.Text(labelFormCompCol, "Applied: "+city)
+	})
+
 	return nil
 }
 
