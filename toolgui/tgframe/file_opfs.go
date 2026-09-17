@@ -59,7 +59,19 @@ const (
 	// opfsSweepGrace is how long a state directory is taken to be one still
 	// being set up, and left alone whatever is or is not in it.
 	opfsSweepGrace = time.Minute
+
+	// opfsRemoveTries is how many times a state's directory is asked for
+	// after the first refusal. The browser will not remove a directory
+	// holding a file something still has open, and after a page switch that
+	// can be the page itself, writing an upload the session that asked for it
+	// no longer has. It stops of its own accord, so the removal is worth
+	// asking for again.
+	opfsRemoveTries = 24
 )
+
+// opfsRemoveGap is how long to leave between those tries. It is a variable so
+// a test does not have to sit through them.
+var opfsRemoveGap = 5 * time.Second
 
 // opfsCreate and opfsRecursive are the option objects the directory calls
 // take. They are never written to, so one of each is enough.
@@ -590,6 +602,54 @@ func (b *opfsBodies) newBody() (fileBody, error) {
 	return body, nil
 }
 
+// reserve names an empty file for the page to write into, and takes it into
+// the set destroy closes and removes. Nothing is opened here: the browser gives
+// a file to a sync access handle or to a writable stream and never to both, so
+// a handle taken now would be the very thing stopping the write. One arrives
+// the other way round, through [opfsBody.adopt], once the page is finished.
+//
+// The pool is not touched. A pooled file comes with a handle already open,
+// which is what an upload the Go side writes needs and what one the page writes
+// must not have.
+func (b *opfsBodies) reserve() (*opfsBody, error) {
+	// No wait, for the reason take does not wait either: an upload arrives on
+	// the JavaScript callback stack, where the event loop the setup needs is
+	// stopped. The directory is open within a few turns of it after the state
+	// is made, long before a user can have picked a file.
+	select {
+	case <-b.ready:
+	default:
+		return nil, tgutil.NewError("no file storage yet: the state's" +
+			" directory is still being opened")
+	}
+
+	if b.err != nil {
+		return nil, tgutil.Errorf("%w", b.err)
+	}
+
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	if b.destroyed {
+		return nil, tgutil.NewError("the state's files are gone")
+	}
+
+	b.seq++
+
+	body := &opfsBody{bodies: b, name: strconv.Itoa(b.seq)}
+	b.live[body] = struct{}{}
+
+	return body, nil
+}
+
+// dirPath is where the state's directory is, from the origin private file
+// system's root. A reserved file is the page's to create and write, and the
+// path is the only way it can walk to it: everything else about this layout is
+// private to the package.
+func (b *opfsBodies) dirPath() []string {
+	return []string{opfsRootName, b.name}
+}
+
 // take hands out a file run has already created and opened. It answers at once
 // whenever one is pooled, which is what stands in for the promise it cannot
 // await.
@@ -711,6 +771,14 @@ func (b *opfsBodies) drainPool() {
 // made the directory and then failed leaves one too, and it goes the same way:
 // the sweep runs once at startup and not again, so a tab that hit this on every
 // page switch would pile them up for the rest of its life.
+//
+// It asks more than once. Everything of this program's own inside is closed by
+// now, but an upload the page is still writing is not: a page switch mid-upload
+// leaves a writable stream open on a file in here, and the browser will not
+// remove a directory holding one. That ends by itself -- the write finishes or
+// fails, and the handover that follows finds no session and closes what it was
+// given -- so asking again gets it, where giving up would leave the file and
+// the directory against the origin's quota for the life of the tab.
 func (b *opfsBodies) removeDir() {
 	<-b.stopped
 
@@ -719,7 +787,9 @@ func (b *opfsBodies) removeDir() {
 		return
 	}
 
-	// There may be no lock, if that is where setup stopped.
+	// There may be no lock, if that is where setup stopped. It is released
+	// before the first try rather than after the last: a directory this fails
+	// to remove is one the next startup's sweep has to be able to judge.
 	if b.lock.Truthy() {
 		if _, err := opfsCall(b.lock, "close"); err != nil {
 			slog.Error("release a state directory lock",
@@ -732,9 +802,27 @@ func (b *opfsBodies) removeDir() {
 		return
 	}
 
-	if _, err := opfsAwaitCall(root, "removeEntry", b.name, opfsRecursive); err != nil {
-		slog.Error("remove a state's file directory", "dir", b.name, "error", err)
+	var last error
+
+	for try := range opfsRemoveTries + 1 {
+		if try > 0 {
+			time.Sleep(opfsRemoveGap)
+		}
+
+		_, last = opfsAwaitCall(root, "removeEntry", b.name, opfsRecursive)
+		if last == nil {
+			return
+		}
+
+		if strings.Contains(last.Error(), "NotFoundError") {
+			// Gone already, which is the outcome this wanted.
+			return
+		}
 	}
+
+	// Still held after all that. The lock is released, so the sweep at the
+	// next startup takes it.
+	slog.Error("remove a state's file directory", "dir", b.name, "error", last)
 }
 
 // opfsBody is one file and the handle it is read and written through. The
@@ -744,6 +832,10 @@ func (b *opfsBodies) removeDir() {
 // Every reader shares that one handle: the browser hands a file's sync access
 // handle out exclusively, so a second one is refused. The offset therefore
 // lives in the reader and the lock is taken for the length of a single read.
+//
+// A reserved body has a name and no handle: the file behind it is the page's
+// to write, and a sync access handle here would be the very thing stopping it.
+// It gets one from [opfsBody.adopt] when the page hands the finished file over.
 type opfsBody struct {
 	bodies *opfsBodies
 	name   string
@@ -758,6 +850,47 @@ type opfsBody struct {
 	// disk build gets that from the kernel, and this build has to count.
 	readers int
 	removed bool
+
+	// done says the body is finished with -- dropped from the store, or closed
+	// because the state took the whole directory with it. It is what says so:
+	// an empty handle no longer does, now that a body can have a file behind it
+	// before it has a handle on it.
+	done bool
+}
+
+// adopt takes over the sync access handle the page opened on a reserved file,
+// and answers with what the file holds. Everything here is synchronous, which
+// is the whole point: the page opens the handle on the other side of the
+// boundary, where a promise can be awaited, and hands it over already open --
+// so taking it costs an upload on the JavaScript callback stack nothing.
+//
+// The page has to have closed its writable stream first. The two are exclusive
+// holds on the same file, and asking for this one while the write is open gets
+// NoModificationAllowedError.
+func (b *opfsBody) adopt(handle js.Value) (int64, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	if b.done {
+		return 0, tgutil.NewError("the file is gone")
+	}
+
+	if b.handle.Truthy() {
+		return 0, tgutil.NewError("the file is open already")
+	}
+
+	if !handle.Truthy() {
+		return 0, tgutil.NewError("no file handle")
+	}
+
+	b.handle = handle
+
+	size, err := opfsCall(handle, "getSize")
+	if err != nil {
+		return 0, tgutil.Errorf("%w", err)
+	}
+
+	return int64(size.Float()), nil
 }
 
 func (b *opfsBody) open() (FileReader, error) {
@@ -765,7 +898,7 @@ func (b *opfsBody) open() (FileReader, error) {
 	defer b.lock.Unlock()
 
 	if !b.handle.Truthy() {
-		return nil, tgutil.NewError("the file is closed")
+		return nil, tgutil.Errorf("%w", b.noHandle())
 	}
 
 	size, err := opfsCall(b.handle, "getSize")
@@ -785,7 +918,7 @@ func (b *opfsBody) write(r io.Reader, atEnd bool) (int64, error) {
 	defer b.lock.Unlock()
 
 	if !b.handle.Truthy() {
-		return 0, tgutil.NewError("the file is closed")
+		return 0, tgutil.Errorf("%w", b.noHandle())
 	}
 
 	at, err := b.writeStart(atEnd)
@@ -869,6 +1002,18 @@ func (b *opfsBody) writeChunk(bs []byte, off int64) error {
 	return nil
 }
 
+// noHandle says why there is nothing to read or write through. It must be
+// called with the lock held. A reservation the page has not handed back is
+// not the same as a file that is over, and a page that reads one wants to be
+// told which it hit.
+func (b *opfsBody) noHandle() error {
+	if b.done {
+		return tgutil.NewError("the file is closed")
+	}
+
+	return tgutil.NewError("the file has not been handed over yet")
+}
+
 // remove drops the file. A reader already open goes on reading it: the handle
 // is shared, so closing it here would break one mid-read, and a page that held
 // a reader across the upload that replaced its file would get an error where
@@ -909,12 +1054,19 @@ func (b *opfsBody) release() {
 // drop closes the handle and removes the file. It must be called with the lock
 // held. The handle goes first: the browser refuses to remove a file something
 // still holds one for.
+//
+// A reservation the page never filled goes the same way. The file may not be
+// there -- the page creates it, and may have failed before it did -- and the
+// browser answers NotFoundError for one that is not, which is logged and is
+// the end of it.
 func (b *opfsBody) drop() {
-	if !b.handle.Truthy() {
-		// Already shut, which means destroy took the whole directory with it.
+	if b.done {
+		// Dropped already, or closed because the state took the whole
+		// directory with it.
 		return
 	}
 
+	b.done = true
 	b.shut()
 	b.bodies.forget(b)
 
@@ -935,6 +1087,7 @@ func (b *opfsBody) close() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	b.done = true
 	b.shut()
 }
 

@@ -113,8 +113,10 @@ them — so a page function that takes a while leaves the UI responsive.
 * No timezone database unless the app imports `time/tzdata`.
 * Uploaded files are kept in the origin private file system rather than the
   tab's memory, and go with the session. Storage there is per origin and
-  bounded, so an upload can fail for want of room. Arriving is still a single
-  hop, so a file has to fit in the tab on the way in however it is stored.
+  bounded, so an upload can fail for want of room. Getting there is a stream:
+  the worker copies the picked file straight into storage and hands Go a handle
+  on it, so an upload is bounded by the origin's room for it and not by the
+  tab's memory.
 * The binary is public, like any other static asset. No secrets in it.
 * `SetManifest` and `SetAssets` are `WebExecutor` settings, so the browser
   build does without them. A static site can carry a `manifest.json` and its
