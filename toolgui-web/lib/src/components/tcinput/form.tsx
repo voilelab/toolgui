@@ -3,6 +3,8 @@ import { Button } from "@mantine/core"
 
 import { Props } from "../component_interface"
 import { TComponent } from "../factory"
+import { stateGeneration } from "../state"
+import { FormSubmitContext } from "./form_context"
 
 import { UpdateEvent } from "../../app/UpdateEvent"
 
@@ -12,36 +14,45 @@ export function TForm({ node, update, upload, theme }: Props) {
   // whatever is around the form would take the held values with it.
   const collectEvent = useRef<UpdateEvent[]>([])
 
+  // Outliving a render also means outliving a server session reset, which
+  // clears everything else the client holds. Those values belong to a session
+  // that is gone, so the queue is dropped rather than replayed into the new
+  // one.
+  const generation = useRef(stateGeneration)
+  const queue = () => {
+    if (generation.current !== stateGeneration) {
+      generation.current = stateGeneration
+      collectEvent.current = []
+    }
+
+    return collectEvent.current
+  }
+
   const submit = () => {
     update({
       type: "form",
-      events: collectEvent.current,
+      events: queue(),
     })
 
     collectEvent.current = []
   }
 
   const handleUpdate = (event: UpdateEvent) => {
-    collectEvent.current.push(event)
-
-    // A click inside a form submits it, so a form can carry its own button
-    // instead of a second, hardwired one. The click goes last, after the
-    // inputs it was made with, which is the order the server replays them in.
-    if (event.type === "click") {
-      submit()
-    }
+    queue().push(event)
   }
 
   return (
     <div id={node.props.id || undefined}>
-      {
-        node.children.map(child =>
-          <TComponent key={child.reactKey} node={child}
-            update={handleUpdate}
-            upload={upload}
-            theme={theme} />
-        )
-      }
+      <FormSubmitContext.Provider value={submit}>
+        {
+          node.children.map(child =>
+            <TComponent key={child.reactKey} node={child}
+              update={handleUpdate}
+              upload={upload}
+              theme={theme} />
+          )
+        }
+      </FormSubmitContext.Provider>
 
       {!node.props.hide_submit &&
         <Button variant="default" onClick={submit}>

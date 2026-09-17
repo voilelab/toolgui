@@ -544,6 +544,12 @@ describe('Input', () => {
     cy.get(keyword).blur()
     result().contains('Not searched yet').should('exist')
 
+    // Nor does a download button in the same form. It reports its press with
+    // the same click event a Button sends, and handing someone a file is not
+    // submitting.
+    result().contains('button', 'Save query').click()
+    result().contains('Not searched yet').should('exist')
+
     // The click sends the held input along with itself, so the run that sees
     // the click is the one that reads the new value.
     result().contains('button', 'Search').click()

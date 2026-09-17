@@ -905,6 +905,12 @@ func InputPage(p *tgframe.Params) error {
 			With(func(c *tgframe.Container) {
 				keyword = tgcomp.Textbox(c, "keyword")
 				searched = tgcomp.Button(c, "Search")
+
+				// Only a Button sends the form. A download button reports its
+				// press the same way, and handing someone a file is not
+				// submitting.
+				tgcomp.DownloadButton(c, "Save query", []byte("q"),
+					&tgcomp.DownloadButtonConf{Filename: "query.txt"})
 			})
 
 		if searched {
