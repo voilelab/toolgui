@@ -5,7 +5,7 @@ import { Props } from "../component_interface"
 import { TComponent } from "../factory"
 import { useEscapeToClose, useOverlay } from "./overlay_stack"
 
-export function TPopover({ node, update, upload, theme }: Props) {
+export function TPopover({ node, update, upload, download, theme }: Props) {
   // The client owns whether this is open: the server only says what the
   // dropdown holds, so a rerun the dropdown itself triggered leaves it open.
   const [opened, setOpened] = useState(false)
@@ -43,6 +43,7 @@ export function TPopover({ node, update, upload, theme }: Props) {
             <TComponent key={child.reactKey} node={child}
               update={update}
               upload={upload}
+              download={download}
               theme={theme} />
           )
         }

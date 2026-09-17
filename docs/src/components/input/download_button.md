@@ -37,6 +37,18 @@ type DownloadButtonConf struct {
 }
 ```
 
+## Size
+
+The content travels in the component, as a `data:` URI: base64, so a third
+larger again than the bytes, and it is sent on every run that draws the button
+and held in the tab as a string for as long as it is on screen. That is the
+right trade below a few hundred kilobytes, where the round trip it saves is
+worth more than the transport it costs.
+
+Above that, use [`DownloadFile`](download_file.md), which keeps the bytes in the
+state's file storage and puts a token in the component instead. Its page has the
+comparison in full.
+
 ## Example
 
 ```go

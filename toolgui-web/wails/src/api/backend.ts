@@ -1,4 +1,4 @@
-import { AppConf, UpdateEvent, UploadResult } from "@toolgui-web/lib"
+import { AppConf, DownloadResult, UpdateEvent, UploadResult } from "@toolgui-web/lib"
 
 // Backend is the Go struct Wails binds. Every bound method returns a promise.
 // Payloads cross as JSON strings, the same ones the websocket transport
@@ -72,6 +72,19 @@ export async function uploadFile(file: File, componentID: string): Promise<Uploa
     return { ok: true }
   } catch (e) {
     return { ok: false, error: String(e) }
+  }
+}
+
+// downloadFile is what the desktop build has instead of GET /api/files, which
+// is nothing: there is no HTTP endpoint here and no origin private file system
+// either, and how a bound method should hand a file of any size to the webview
+// is not settled. So DownloadFile draws and fails to save, and the component
+// is one the desktop build does not carry yet; DownloadButton works here, as
+// it always has.
+export async function downloadFile(_token: string): Promise<DownloadResult> {
+  return {
+    ok: false,
+    error: 'the desktop build cannot fetch a download yet; use DownloadButton',
   }
 }
 

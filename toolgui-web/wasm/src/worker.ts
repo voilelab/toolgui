@@ -14,6 +14,7 @@ interface Bridge {
   onPack(callback: (packJSON: string) => void): void
   start(pageName: string): void
   update(eventJSON: string): void
+  downloadFile(token: string): string
   newUpload(): string
   uploadFile(componentID: string, name: string, slot: string,
     handle: FileSystemSyncAccessHandle): string
@@ -28,6 +29,11 @@ interface UploadSlot {
   name?: string
   error?: string
 }
+
+// DownloadSlot is where the file behind a download token is, as downloadFile
+// answers it. Same shape as an upload's: the two are the halves of one
+// filesystem, read the same way.
+type DownloadSlot = UploadSlot
 
 // The synchronous side of the origin private file system, which the dom lib
 // does not describe: it exists in a dedicated worker and nowhere else, and it
@@ -72,6 +78,10 @@ ctx.onmessage = (event: MessageEvent) => {
 
     case 'upload':
       upload(msg.id, msg.componentID, msg.file)
+      break
+
+    case 'download':
+      download(msg.id, msg.token)
       break
 
     default:
@@ -151,7 +161,7 @@ async function upload(id: number, componentID: string, file: File) {
   }
 
   try {
-    const target = await slotFile(slot)
+    const target = await slotFile(slot, true)
 
     // pipeTo closes the writable when the file ends, and aborts it on a
     // failure anywhere -- which leaves the file as it was rather than holding
@@ -172,15 +182,60 @@ async function upload(id: number, componentID: string, file: File) {
   }
 }
 
-// slotFile walks to the file Go reserved and creates it. Go named it and never
-// opened it: the file is this side's to write until it is handed back.
-async function slotFile(slot: UploadSlot): Promise<SyncFileHandle> {
+// download hands back the file a token names, as a File the main thread can
+// make a blob URL of.
+//
+// Nothing is copied. getFile answers a blob backed by what is in the origin
+// private file system, and a structured clone of one carries that backing
+// rather than the bytes -- so a download of any size costs this worker and the
+// message nothing, which is the whole point of not putting it in the pack.
+//
+// Go holds a sync access handle on the file. That is exclusive against a
+// second handle and against a writable stream, not against this read, and Go
+// wrote the file before it handed the token out.
+async function download(id: number, token: string) {
+  if (!bridge) {
+    ctx.postMessage({ kind: 'return', id, error: 'the wasm program is not running' })
+    return
+  }
+
+  let slot: DownloadSlot
+  try {
+    slot = JSON.parse(bridge.downloadFile(token))
+  } catch (e) {
+    ctx.postMessage({ kind: 'return', id, error: String(e) })
+    return
+  }
+
+  if (slot.error || !slot.name || !slot.dir) {
+    ctx.postMessage({
+      kind: 'return', id,
+      error: slot.error || 'nowhere to read the download from',
+    })
+    return
+  }
+
+  try {
+    const handle = await slotFile(slot, false)
+    ctx.postMessage({ kind: 'return', id, value: await handle.getFile() })
+  } catch (e) {
+    ctx.postMessage({ kind: 'return', id, error: String(e) })
+  }
+}
+
+// slotFile walks to the file a slot names. An upload's is created here -- Go
+// named it and deliberately never opened it, so the file is this side's to
+// write until it is handed back -- while a download's is Go's own and has to
+// be there already: creating one would answer an empty file where a token
+// naming nothing belongs.
+async function slotFile(slot: UploadSlot | DownloadSlot,
+  create: boolean): Promise<SyncFileHandle> {
   let dir = await navigator.storage.getDirectory()
   for (const name of slot.dir) {
     dir = await dir.getDirectoryHandle(name)
   }
 
-  return await dir.getFileHandle(slot.name, { create: true }) as SyncFileHandle
+  return await dir.getFileHandle(slot.name, { create }) as SyncFileHandle
 }
 
 function call(id: number, fn: keyof Bridge, args: any[]) {

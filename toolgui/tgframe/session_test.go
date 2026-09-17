@@ -3,6 +3,8 @@ package tgframe
 import (
 	"context"
 	"errors"
+	"fmt"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -121,10 +123,18 @@ func TestSessionInterruptsRunningPage(t *testing.T) {
 			return nil
 		}
 
-		// Keep sending until an event interrupts us.
+		// Keep sending until an event interrupts us. An id of its own per
+		// component: two sharing one fails the run on a duplicated id, and a
+		// first run that got all the way through would report that failure
+		// where the test below reads the second run's result.
 		started <- struct{}{}
 		for i := 0; i < spinCount; i++ {
-			addTestComponent(p, "spin")
+			addTestComponent(p, fmt.Sprintf("spin-%d", i))
+
+			// js/wasm has no async preemption: a run that never yields keeps
+			// the one thread, so the event meant to cut this one could not
+			// arrive and the run would finish instead of being cut.
+			runtime.Gosched()
 		}
 		return nil
 	})

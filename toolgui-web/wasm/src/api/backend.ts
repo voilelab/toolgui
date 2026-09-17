@@ -1,4 +1,4 @@
-import { AppConf, UpdateEvent, UploadResult } from "@toolgui-web/lib"
+import { AppConf, DownloadResult, UpdateEvent, UploadResult } from "@toolgui-web/lib"
 
 // Backend drives the wasm program in its worker. Calls go out as messages and
 // come back by id; packs arrive on their own, the way the websocket transport
@@ -101,6 +101,21 @@ export class Backend {
     try {
       await this.send({ kind: 'upload', componentID, file })
       return { ok: true }
+    } catch (e) {
+      return { ok: false, error: String(e) }
+    }
+  }
+
+  // downloadFile is the browser counterpart of GET /api/files.
+  //
+  // Nothing crosses but the token and, coming back, the file the worker read
+  // out of the origin private file system: a structured clone of it carries
+  // the blob's backing rather than its bytes, so a download costs this thread
+  // nothing whatever it weighs.
+  async downloadFile(token: string): Promise<DownloadResult> {
+    try {
+      const file = await this.send({ kind: 'download', token })
+      return { ok: true, blob: file }
     } catch (e) {
       return { ok: false, error: String(e) }
     }

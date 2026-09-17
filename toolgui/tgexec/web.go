@@ -5,6 +5,8 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"mime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -464,6 +466,75 @@ func writeUploadError(w http.ResponseWriter, err error) {
 	slog.Error("Store upload", "error", err)
 }
 
+// handleDownload serves a file a run offered through
+// [github.com/voilelab/toolgui/toolgui/tgcomp/tcinput.DownloadFile].
+//
+// Two things name what is served, and neither alone is enough. The state id is
+// the connection's, the same one an upload carries, and the token is one this
+// state's own run handed out: a token is looked up in that state's downloads
+// and nowhere else, so it is not a bearer of anything on its own and it cannot
+// reach another page's output. Both travel as headers rather than in the URL,
+// where a link, a log line or a Referer would carry them further than the
+// fetch that needs them.
+func (e *WebExecutor) handleDownload(w http.ResponseWriter, req *http.Request) {
+	stateID := req.Header.Get("STATE_ID")
+	state, alive := e.stateMap.Get(stateID)
+	if state == nil || !alive {
+		http.Error(w, "State ID is invalid or not alive", http.StatusForbidden)
+		return
+	}
+
+	token := req.Header.Get("DOWNLOAD_TOKEN")
+	if token == "" {
+		http.Error(w, "Download token is missing", http.StatusBadRequest)
+		return
+	}
+
+	download := state.GetDownload(token)
+	if download == nil {
+		// A token of another state, or one a later run replaced. Neither is
+		// told apart from a token that never existed.
+		http.Error(w, "No such download", http.StatusNotFound)
+		return
+	}
+
+	fp, err := download.Open()
+	if err != nil {
+		http.Error(w, "Read download failed", http.StatusInternalServerError)
+		slog.Error("Open download", "error", err)
+		return
+	}
+	defer fp.Close()
+
+	w.Header().Set("Content-Type", download.MIME())
+	w.Header().Set("Content-Length", strconv.FormatInt(download.Size(), 10))
+
+	// The client saves the file through a blob URL of its own and takes the
+	// name from the pack, so these are for whatever fetches the endpoint
+	// directly: a name to save under, the type as given and no sniffing
+	// around it, and nothing kept in a cache a token is stale in.
+	disposition := mime.FormatMediaType("attachment", map[string]string{
+		"filename": download.Name(),
+	})
+	if disposition == "" {
+		// A name no header can carry. Saving it under one the browser chooses
+		// beats serving the file inline.
+		disposition = "attachment"
+	}
+
+	w.Header().Set("Content-Disposition", disposition)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Cache-Control", "no-store")
+
+	// Straight from the file to the connection, through the copy buffer and
+	// nothing larger: what the endpoint is for is a file too big to hold.
+	if _, err := io.Copy(w, fp); err != nil {
+		// Whatever is sent is sent -- the status went out with the headers --
+		// so all that is left is to say why it stopped.
+		slog.Error("Send download", "error", err)
+	}
+}
+
 func (e *WebExecutor) handlePage(resp http.ResponseWriter, req *http.Request) {
 	pageName := req.PathValue("name")
 	body, isRootAssets := e.rootAssets[pageName]
@@ -565,6 +636,7 @@ func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 		Handshake: e.checkUpdateOrigin,
 	})
 	mux.HandleFunc("POST /api/files", e.handleUpload)
+	mux.HandleFunc("GET /api/files", e.handleDownload)
 	mux.HandleFunc("GET /api/app", e.handleAppConf)
 	mux.HandleFunc("GET /api/health", e.handleHealth)
 
