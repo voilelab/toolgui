@@ -32,3 +32,37 @@ export function initialNavCollapsed(): boolean {
 export function storeNavCollapsed(collapsed: boolean) {
   setStoredValue(STORAGE_KEY, collapsed ? 'true' : 'false')
 }
+
+const WIDTH_KEY = 'sidenav_width'
+
+// The width the column has always had, and what a reset goes back to.
+export const NAV_DEFAULT_WIDTH = 240
+
+// Narrow enough to hand the page real room, wide enough for a page list to
+// stay readable. Past the upper bound the column stops being a side column.
+export const NAV_MIN_WIDTH = 180
+export const NAV_MAX_WIDTH = 480
+
+// The step an arrow key moves. Home and End go straight to the bounds.
+export const NAV_WIDTH_STEP = 16
+
+export function clampNavWidth(px: number): number {
+  return Math.min(NAV_MAX_WIDTH, Math.max(NAV_MIN_WIDTH, Math.round(px)))
+}
+
+// initialNavWidth is the width to mount in, read before the first paint for
+// the same reason initialNavCollapsed is. Number('') is 0 and
+// Number(undefined) is NaN, so an unset or corrupt value falls back here
+// rather than mounting a zero-width column.
+export function initialNavWidth(): number {
+  const stored = Number(getStoredValue(WIDTH_KEY))
+  if (!Number.isFinite(stored) || stored <= 0) {
+    return NAV_DEFAULT_WIDTH
+  }
+
+  return clampNavWidth(stored)
+}
+
+export function storeNavWidth(px: number) {
+  setStoredValue(WIDTH_KEY, String(px))
+}
