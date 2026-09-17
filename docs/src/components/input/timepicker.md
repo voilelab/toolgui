@@ -58,4 +58,8 @@ tgcomp.TimePicker(p.Main, "TimePicker",
 		time.Date(0, time.January, 1, 9, 30, 0, 0, time.UTC)))
 ```
 
+<div data-toolgui-demo="timepicker" data-toolgui-demo-height="440">
+
 ![timepicker component](timepicker.png)
+
+</div>

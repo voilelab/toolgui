@@ -60,4 +60,8 @@ tgcomp.MultiSelect(p.Main, "Pick", items)
 tgcomp.MultiSelect(p.Main, "Pick", items, &tgcomp.MultiSelectConf{ID: "second_pick"})
 ```
 
+<div data-toolgui-demo="multiselect" data-toolgui-demo-height="640">
+
 ![multiselect component](multiselect.png)
+
+</div>

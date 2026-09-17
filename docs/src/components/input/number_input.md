@@ -106,3 +106,5 @@ app user actually typed. A float no `T` can hold — a pasted `1e20` is no
 ```go
 {{#include ../../../demos/number_input.go:demo}}
 ```
+
+<div data-toolgui-demo="number_input" data-toolgui-demo-height="640"></div>

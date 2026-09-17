@@ -70,4 +70,8 @@ defer fp.Close()
 img, err := jpeg.Decode(fp)
 ```
 
+<div data-toolgui-demo="fileupload" data-toolgui-demo-height="640">
+
 ![fileupload component](fileupload.png)
+
+</div>

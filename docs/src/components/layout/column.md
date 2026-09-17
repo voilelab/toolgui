@@ -52,3 +52,5 @@ they carry none, and the components inside are still placed by position.
 ```go
 left, right := tgcomp.EqColumn2(p.Main, &tgcomp.ColumnConf{ID: "summary"})
 ```
+
+<div data-toolgui-demo="column"></div>

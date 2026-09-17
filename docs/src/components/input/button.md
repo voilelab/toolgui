@@ -39,7 +39,11 @@ tgcomp.Button(p.Main, "Save")
 tgcomp.Button(p.Main, "Save", &tgcomp.ButtonConf{ID: "save_all"})
 ```
 
+<div data-toolgui-demo="button">
+
 ![button component](button.png)
+
+</div>
 
 ## Asking before the button is drawn
 

@@ -38,4 +38,8 @@ type TextareaConf struct {
 {{#include ../../../demos/textarea.go:demo}}
 ```
 
+<div data-toolgui-demo="textarea">
+
 ![textarea component](textarea.png)
+
+</div>

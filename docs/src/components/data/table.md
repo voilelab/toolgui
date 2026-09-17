@@ -34,4 +34,8 @@ type TableConf struct {
 {{#include ../../../demos/table.go:demo}}
 ```
 
+<div data-toolgui-demo="table">
+
 ![table component](table.png)
+
+</div>

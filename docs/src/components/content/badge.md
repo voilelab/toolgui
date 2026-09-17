@@ -35,4 +35,8 @@ type BadgeConf struct {
 {{#include ../../../demos/badge.go:demo}}
 ```
 
+<div data-toolgui-demo="badge">
+
 ![badge component](badge.png)
+
+</div>

@@ -10,6 +10,7 @@ same pull request.
 ```shell
 cargo install mdbook mdbook-mermaid   # or grab binaries from their releases
 mdbook-mermaid install .              # once, writes the gitignored mermaid runtime
+task build_docs_demo                  # once, writes the gitignored demo into src/demo
 mdbook serve                          # http://localhost:3000, reloads on save
 mdbook build                          # static site, into book/
 ```
@@ -38,6 +39,45 @@ an `{{#include}}` in the component's page. `go test ./cmd/toolgui-demo` checks
 the two ends still meet: an include with no anchor behind it, or an anchor
 nothing shows, fails there rather than silently in the built page — mdBook
 leaves an unresolved include in the page as the directive it was written as.
+
+## Live demos
+
+A component page embeds that same page of the demo app, so the reader can
+operate the component instead of looking at a picture of it. The page says
+where and which:
+
+```html
+<div data-toolgui-demo="button">
+
+![button component](button.png)
+
+</div>
+```
+
+`demo-embed.js` turns that into an iframe onto
+`demo/index.html?embed#/button` — `loading="lazy"`, so a reader who never
+scrolls that far never downloads the wasm behind it — and `demo-embed.css`
+styles it; `book.toml` loads both. That is the whole of the embedding: a new
+component page writes the attribute and nothing else. A demo taller than the
+default 320px says so with `data-toolgui-demo-height`, which is a fixed
+height: the frame cannot ask the app how tall it is, and one that comes up
+short scrolls.
+
+What the `<div>` holds is the fallback. With JavaScript or WebAssembly off the
+iframe never arrives, and the screenshot stays with a line of text under it,
+so the page is never an empty box — which is what the screenshots under
+`src/components/` are for now.
+
+One page embeds one demo: each frame is a worker with a copy of the wasm
+binary in it, and a component's page in the demo app already shows every
+example it has. `go test ./cmd/toolgui-demo` holds the book to that, and to
+embedding the component whose code the page includes.
+
+The demo is built, not committed. `task build_docs_demo` writes it to
+`src/demo`, which mdBook copies into `book/demo` on every build — `book/` is
+wiped and rebuilt, so nothing survives there. Publishing does the same thing
+in `.github/workflows/docs.yml`, and fails the run if `book/demo/app.wasm` is
+not there afterwards.
 
 ## Diagrams
 

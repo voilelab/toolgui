@@ -51,4 +51,8 @@ tgcomp.DatePicker(p.Main, "DatePicker",
 Clearing the picker is an answer of "no date": the return goes back to nil and
 stays there, rather than falling back to `Default`.
 
+<div data-toolgui-demo="datepicker" data-toolgui-demo-height="440">
+
 ![datepicker component](datepicker.png)
+
+</div>

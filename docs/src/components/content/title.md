@@ -27,4 +27,8 @@ type TitleConf struct {
 {{#include ../../../demos/title.go:demo}}
 ```
 
+<div data-toolgui-demo="title">
+
 ![title component](title.png)
+
+</div>

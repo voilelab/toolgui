@@ -1,0 +1,59 @@
+/* The live demo on a component page, and what stands in for it.
+
+   A page writes `<div data-toolgui-demo="button">` with its screenshot inside;
+   demo-embed.js swaps that for an iframe onto the demo app. Until it does --
+   and for a reader with JavaScript or WebAssembly off, where it never does --
+   the screenshot and the note below are what shows, so the box is never
+   empty. */
+
+[data-toolgui-demo] {
+  margin: 1rem 0;
+}
+
+[data-toolgui-demo]::after {
+  content: "This example runs live in the book where JavaScript and "
+    "WebAssembly are on.";
+  display: block;
+  font-size: 0.85em;
+  font-style: italic;
+  opacity: 0.75;
+}
+
+/* The iframe says it itself, and says it by running. */
+[data-toolgui-demo][data-toolgui-demo-state="live"]::after {
+  content: none;
+}
+
+/* Fixed height, set on the element by the script. The border marks where the
+   book stops and the app begins; popup-border is the theme's line around a
+   raised surface, which is what this is. */
+.toolgui-demo-frame {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--theme-popup-border);
+  border-radius: 4px;
+
+  /* The demo is light-themed whatever the book is (theme sync is its own
+     change), so the frame is white before it paints rather than a flash of
+     the page behind it. */
+  background: #ffffff;
+}
+
+/* The demo app lays an example out in two columns, what it drew beside the
+   code it was drawn from, and folds them into one below 769px. The book's
+   text column is narrower than that, so where the page has room to spare the
+   frame takes some of it and the demo reads the way the demo site does. Only
+   the live frame: a screenshot belongs in the text column with everything
+   else. */
+@media screen and (min-width: 1200px) {
+  [data-toolgui-demo][data-toolgui-demo-state="live"] {
+    width: calc(100% + 140px);
+    margin-left: -70px;
+  }
+}
+
+.toolgui-demo-link {
+  display: block;
+  font-size: 0.85em;
+  margin-top: 0.35rem;
+}

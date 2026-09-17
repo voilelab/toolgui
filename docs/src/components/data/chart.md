@@ -55,8 +55,6 @@ has to name it, or when the page draws two charts you want to tell apart.
 {{#include ../../../demos/chart.go:line}}
 ```
 
-![chart component](chart.png)
-
 ### Bar
 
 ```go
@@ -68,6 +66,12 @@ has to name it, or when the page draws two charts you want to tell apart.
 ```go
 {{#include ../../../demos/chart.go:area}}
 ```
+
+<div data-toolgui-demo="chart" data-toolgui-demo-height="800">
+
+![chart component](chart.png)
+
+</div>
 
 ## Notes
 

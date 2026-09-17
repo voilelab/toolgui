@@ -48,4 +48,8 @@ type TextboxConf struct {
 {{#include ../../../demos/textbox.go:demo}}
 ```
 
+<div data-toolgui-demo="textbox">
+
 ![textbox component](textbox.png)
+
+</div>

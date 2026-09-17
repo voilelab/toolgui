@@ -76,6 +76,8 @@ d.With(func(c *tgframe.Container) {
 })
 ```
 
+<div data-toolgui-demo="dialog" data-toolgui-demo-height="800"></div>
+
 ## Handle the trigger first, then `With`
 
 `With` is what draws the body, so whatever opens the dialog has to be handled

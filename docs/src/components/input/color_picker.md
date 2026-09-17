@@ -46,4 +46,8 @@ dragged over the picker.
 {{#include ../../../demos/color_picker.go:demo}}
 ```
 
+<div data-toolgui-demo="color_picker">
+
 ![color picker component](color_picker.png)
+
+</div>

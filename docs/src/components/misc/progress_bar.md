@@ -58,3 +58,5 @@ for i := 0; i <= 100; i++ {
 
 bar.SetLabel("Completed")
 ```
+
+<div data-toolgui-demo="progress_bar" data-toolgui-demo-height="440"></div>

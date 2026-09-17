@@ -46,4 +46,8 @@ tgcomp.DateTimePicker(p.Main, "DateTimePicker",
 The wire carries minutes, so a `Default` with seconds on it is read to the
 minute — the same value a pick of that minute gives.
 
+<div data-toolgui-demo="datetimepicker" data-toolgui-demo-height="440">
+
 ![datetimepicker component](datetimepicker.png)
+
+</div>

@@ -28,4 +28,8 @@ type LinkConf struct {
 {{#include ../../../demos/link.go:demo}}
 ```
 
+<div data-toolgui-demo="link">
+
 ![link component](link.png)
+
+</div>

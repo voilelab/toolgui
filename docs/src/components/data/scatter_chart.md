@@ -32,7 +32,11 @@ func ScatterChart(c *tgframe.Container, series []ChartSeries, conf ...*ChartConf
 {{#include ../../../demos/scatter_chart.go:demo}}
 ```
 
+<div data-toolgui-demo="scatter_chart" data-toolgui-demo-height="440">
+
 ![scatter chart component](scatter_chart.png)
+
+</div>
 
 Axis titles and a height come from the conf, the same as the other kinds:
 

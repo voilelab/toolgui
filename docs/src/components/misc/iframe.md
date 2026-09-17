@@ -109,3 +109,5 @@ becomes visible.
 ```go
 {{#include ../../../demos/iframe.go:render}}
 ```
+
+<div data-toolgui-demo="iframe" data-toolgui-demo-height="800"></div>

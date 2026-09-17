@@ -44,4 +44,8 @@ tgcomp.Radio(p.Main, "Radio", []string{"Value3", "Value4"},
 	(&tgcomp.RadioConf{}).SetDefault(1))
 ```
 
+<div data-toolgui-demo="radio" data-toolgui-demo-height="440">
+
 ![radio component](radio.png)
+
+</div>

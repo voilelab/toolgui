@@ -58,4 +58,8 @@ tgcomp.Select(p.Main, "Pick", items)
 tgcomp.Select(p.Main, "Pick", items, &tgcomp.SelectConf{ID: "second_pick"})
 ```
 
+<div data-toolgui-demo="select" data-toolgui-demo-height="440">
+
 ![select component](select.png)
+
+</div>

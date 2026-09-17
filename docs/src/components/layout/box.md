@@ -32,3 +32,5 @@ carries none, and the components inside are still placed by position.
 ```go
 box := tgcomp.Box(boxCompCol, &tgcomp.BoxConf{ID: "summary"})
 ```
+
+<div data-toolgui-demo="box"></div>

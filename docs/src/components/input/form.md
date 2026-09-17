@@ -71,3 +71,5 @@ hands it over on submit rather than on the drag or the click:
 ```go
 {{#include ../../../demos/form.go:label}}
 ```
+
+<div data-toolgui-demo="form" data-toolgui-demo-height="800"></div>

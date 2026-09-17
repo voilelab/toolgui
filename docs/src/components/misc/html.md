@@ -26,3 +26,5 @@ type HTMLConf struct {
 ```go
 {{#include ../../../demos/html.go:demo}}
 ```
+
+<div data-toolgui-demo="html"></div>

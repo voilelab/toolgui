@@ -35,4 +35,8 @@ type CheckboxConf struct {
 {{#include ../../../demos/checkbox.go:demo}}
 ```
 
+<div data-toolgui-demo="checkbox">
+
 ![checkbox component](checkbox.png)
+
+</div>
