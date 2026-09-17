@@ -64,12 +64,21 @@ type downloadStore struct {
 	lock    sync.Mutex
 	byOwner map[string]*Download
 	byToken map[string]*Download
+
+	// shown is what each component offered the run before, kept fetchable
+	// because that is the button the client still has on screen until the
+	// replacement pack lands. Without it a click in that window -- the length
+	// of a run, plus the pack's trip -- would find its token already gone.
+	// One generation back and no further: two files per download is a bound,
+	// the whole history is not.
+	shown map[string]*Download
 }
 
 func newDownloadStore() *downloadStore {
 	return &downloadStore{
 		byOwner: make(map[string]*Download),
 		byToken: make(map[string]*Download),
+		shown:   make(map[string]*Download),
 	}
 }
 
@@ -79,19 +88,29 @@ func newDownloadStore() *downloadStore {
 // A rerun that offers the same file again gets the same download back, bytes
 // and token both: the component's pack then doesn't change, and the token the
 // client already holds goes on working. Different bytes are a different file
-// and a different token, and the one before them stops being fetchable.
+// under a new token, with the run before it left fetchable -- see
+// [downloadStore.shown] -- and the run before that dropped.
 func (s *downloadStore) set(files *fileStore, owner, name, mime string,
 	bs []byte) (*Download, error) {
 	sum := sha256.Sum256(bs)
 
 	s.lock.Lock()
-	defer s.lock.Unlock()
+	cur := s.byOwner[owner]
+	s.lock.Unlock()
 
-	if cur := s.byOwner[owner]; cur != nil && cur.sum == sum &&
-		cur.name == name && cur.mime == mime {
+	if cur != nil && cur.sum == sum && cur.name == name && cur.mime == mime {
 		return cur, nil
 	}
 
+	// Written before the lock is taken again. A page may offer a file of any
+	// size, and every fetch this state serves looks its token up under that
+	// same lock: none of them should wait on the write of a file they are not
+	// asking for.
+	//
+	// A new file rather than the old one rewritten, so a fetch reading the
+	// file this replaces reads all of what it opened, the way a reader of an
+	// unlinked file does, instead of the bytes of a run it knows nothing
+	// about.
 	file, err := files.newFile(name)
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
@@ -102,12 +121,6 @@ func (s *downloadStore) set(files *fileStore, owner, name, mime string,
 		return nil, tgutil.Errorf("%w", err)
 	}
 
-	// A new file rather than the old one rewritten: a fetch already reading
-	// the file this replaces reads all of what it opened, the way a reader of
-	// an unlinked file does, instead of the bytes of a run it knows nothing
-	// about.
-	s.drop(owner)
-
 	download := &Download{
 		token: rand.Text(),
 		name:  name,
@@ -116,10 +129,33 @@ func (s *downloadStore) set(files *fileStore, owner, name, mime string,
 		sum:   sum,
 	}
 
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.retire(owner)
+
+	if current := s.byOwner[owner]; current != nil {
+		s.shown[owner] = current
+	}
+
 	s.byOwner[owner] = download
 	s.byToken[download.token] = download
 
 	return download, nil
+}
+
+// retire drops the generation before the one on screen, which nothing should
+// still be fetching. It must be called with the lock held.
+func (s *downloadStore) retire(owner string) {
+	old := s.shown[owner]
+	if old == nil {
+		return
+	}
+
+	delete(s.shown, owner)
+	delete(s.byToken, old.token)
+
+	old.file.body.remove()
 }
 
 // remove drops what owner offered, its token and its bytes with it. It is how
@@ -133,9 +169,11 @@ func (s *downloadStore) remove(owner string) {
 	s.drop(owner)
 }
 
-// drop forgets what owner offered and takes its bytes with it. It must be
-// called with the lock held.
+// drop forgets everything owner offered, both generations of it, and takes
+// their bytes with them. It must be called with the lock held.
 func (s *downloadStore) drop(owner string) {
+	s.retire(owner)
+
 	old := s.byOwner[owner]
 	if old == nil {
 		return

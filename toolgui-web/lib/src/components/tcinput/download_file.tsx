@@ -25,13 +25,6 @@ export function TDownloadFile({ node, update, download }: Props) {
   // page until the form is submitted.
   const inForm = useContext(FormSubmitContext) !== null
 
-  const report = () => {
-    update({
-      type: "click",
-      id: node.props.id,
-    })
-  }
-
   // When the click is reported depends on what reporting does. On its own it
   // reruns the page, and a rerun that offers a different file retires this
   // token, so the bytes are fetched first and the click follows them. In a
@@ -39,11 +32,24 @@ export function TDownloadFile({ node, update, download }: Props) {
   // would strand it behind a submit the user makes while the file is still on
   // its way, and it would only go out with the submit after that.
   const save = async () => {
+    // Read before the await, not after. A node keeps its identity across runs
+    // and has its props replaced in place, so a rerun that lands while the
+    // fetch is out would otherwise save these bytes under the next run's
+    // filename, or report the click under whatever id now sits here.
+    const { token, filename, id } = node.props
+
+    const report = () => {
+      update({
+        type: "click",
+        id: id,
+      })
+    }
+
     if (inForm) {
       report()
     }
 
-    const res = await download(node.props.token)
+    const res = await download(token)
     if (!res.ok || !res.blob) {
       console.error('download', res.error)
       return
@@ -52,7 +58,7 @@ export function TDownloadFile({ node, update, download }: Props) {
     const url = URL.createObjectURL(res.blob)
 
     const link = document.createElement('a')
-    link.setAttribute('download', node.props.filename)
+    link.setAttribute('download', filename)
     link.href = url
     document.body.appendChild(link)
     link.click()

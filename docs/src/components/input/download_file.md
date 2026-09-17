@@ -111,8 +111,14 @@ fetches nothing on another, and a token alone fetches nothing at all.
 It is also the run's, not the component's. A rerun that offers the same file
 again keeps the token, so the pack does not change and a client holding one goes
 on using it; a rerun that offers different bytes writes a new file under a new
-token and retires the one before it. What a token names is the output of the run
-that handed it out.
+token. What a token names is the output of the run that handed it out.
 
-The file lives as long as the state does, like an upload, and a state that goes
-away takes its downloads with it.
+The token from the run before stays fetchable, because that is the button the
+app user still has on screen until the replacement reaches them: a click in
+that window saves what it was offering rather than failing. One run back and no
+further, so a page that offers a new file on every run holds two of them per
+button and not a history.
+
+A download lives as long as the component offering it: clear it off the screen
+and its bytes and its token go with it, and a state that goes away takes
+whatever is left.

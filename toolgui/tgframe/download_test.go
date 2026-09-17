@@ -84,10 +84,11 @@ func TestSetDownloadSameBytesKeepsTheToken(t *testing.T) {
 	}
 }
 
-// TestSetDownloadNewBytesRetireTheToken checks different bytes are a different
-// file: the new token serves them and the old one is not fetchable, so a token
-// names the run's output rather than whatever the component holds later.
-func TestSetDownloadNewBytesRetireTheToken(t *testing.T) {
+// TestSetDownloadNewBytesKeepTheShownToken checks what a client holding a
+// token can rely on: different bytes are a new file under a new token, and the
+// token of the run before stays fetchable -- that is the button still on the
+// screen until the replacement pack lands.
+func TestSetDownloadNewBytesKeepTheShownToken(t *testing.T) {
 	s := NewState()
 	defer s.Destroy()
 
@@ -105,12 +106,46 @@ func TestSetDownloadNewBytesRetireTheToken(t *testing.T) {
 		t.Fatal("expect a new token for new bytes")
 	}
 
-	if got := s.GetDownload(first.Token()); got != nil {
-		t.Error("expect the old token to be retired")
+	if got := s.GetDownload(second.Token()); got == nil {
+		t.Fatal("expect the new token to serve")
+	} else if content := readDownload(t, got); content != "new" {
+		t.Errorf("content = %q, want new", content)
 	}
 
-	if got := readDownload(t, second); got != "new" {
-		t.Errorf("content = %q, want new", got)
+	// The click that was on screen when the rerun landed still saves what it
+	// was offering.
+	if got := s.GetDownload(first.Token()); got == nil {
+		t.Error("expect the token of the run before to still serve")
+	} else if content := readDownload(t, got); content != "old" {
+		t.Errorf("content = %q, want old", content)
+	}
+}
+
+// TestSetDownloadKeepsOneGenerationOnly checks the other end of that: a third
+// run retires the first, so a page reoffering on every run holds two files per
+// download rather than a history of them.
+func TestSetDownloadKeepsOneGenerationOnly(t *testing.T) {
+	s := NewState()
+	defer s.Destroy()
+
+	tokens := make([]string, 0, 3)
+	for _, body := range []string{"one", "two", "three"} {
+		d, err := s.SetDownload("comp", "a.txt", "text/plain", []byte(body))
+		if err != nil {
+			t.Fatalf("SetDownload %q: %v", body, err)
+		}
+
+		tokens = append(tokens, d.Token())
+	}
+
+	if got := s.GetDownload(tokens[0]); got != nil {
+		t.Error("expect the token two runs back to be retired")
+	}
+
+	for _, token := range tokens[1:] {
+		if got := s.GetDownload(token); got == nil {
+			t.Errorf("expect %q to still serve", token)
+		}
 	}
 }
 

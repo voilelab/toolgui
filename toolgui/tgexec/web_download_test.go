@@ -275,10 +275,10 @@ func TestDownloadAcrossStates(t *testing.T) {
 	}
 }
 
-// TestDownloadOfARetiredToken checks a run that offers a different file
-// retires the token before it: what a token names is one run's output, not
-// whatever the component holds later.
-func TestDownloadOfARetiredToken(t *testing.T) {
+// TestDownloadOfAShownToken checks what a client can rely on: the button that
+// was on screen when a rerun replaced its file still saves what it was
+// offering, rather than answering 404 for the length of the pack's trip.
+func TestDownloadOfAShownToken(t *testing.T) {
 	runs := 0
 	srv, _ := newDownloadServer(t, func() []byte {
 		runs++
@@ -297,10 +297,46 @@ func TestDownloadOfARetiredToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("download: %v", err)
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("StatusCode = %d, want 200 for the token still on screen",
+			resp.StatusCode)
+	}
+
+	var got bytes.Buffer
+	if _, err := got.ReadFrom(resp.Body); err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	if got.String() != "run" {
+		t.Errorf("served %q, want what that button was offering", got.String())
+	}
+}
+
+// TestDownloadOfARetiredToken checks the other end: a token two runs back is
+// not on anyone's screen any more, and is not fetchable either.
+func TestDownloadOfARetiredToken(t *testing.T) {
+	runs := 0
+	srv, _ := newDownloadServer(t, func() []byte {
+		runs++
+		return []byte(strings.Repeat("run", runs))
+	})
+
+	ws, stateID := openDownloadPage(t, srv)
+	token := drawDownloadPage(t, ws)
+
+	drawDownloadPage(t, ws)
+	drawDownloadPage(t, ws)
+
+	resp, err := srv.Client().Do(downloadRequest(t, srv, stateID, token))
+	if err != nil {
+		t.Fatalf("download: %v", err)
+	}
 	resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNotFound {
-		t.Errorf("StatusCode = %d, want 404 for the token of the run before",
+		t.Errorf("StatusCode = %d, want 404 for a token two runs back",
 			resp.StatusCode)
 	}
 }

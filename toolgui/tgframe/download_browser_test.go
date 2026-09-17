@@ -130,15 +130,16 @@ func waitGone(t *testing.T, dir []string, name string) {
 	t.Error("expect the file to be removed")
 }
 
-// TestBrowserDownloadReplacedTakesItsFile checks a run that offers different
-// bytes leaves nothing behind: the file the token before it named is gone,
-// rather than held against the origin's quota for the life of the tab.
+// TestBrowserDownloadReplacedTakesItsFile checks a page that keeps offering
+// leaves nothing behind: the file two runs back is gone -- the run before is
+// kept, because that button is still on the screen -- rather than a history of
+// them held against the origin's quota for the life of the tab.
 func TestBrowserDownloadReplacedTakesItsFile(t *testing.T) {
 	s, bodies := opfsState(t)
 	defer s.Destroy()
 	opfsPooled(t, bodies)
 
-	first, err := s.SetDownload("comp", "a.txt", "text/plain", []byte("old"))
+	first, err := s.SetDownload("comp", "a.txt", "text/plain", []byte("one"))
 	if err != nil {
 		t.Fatalf("SetDownload: %v", err)
 	}
@@ -148,9 +149,11 @@ func TestBrowserDownloadReplacedTakesItsFile(t *testing.T) {
 		t.Fatalf("BrowserLocation: %v", err)
 	}
 
-	if _, err := s.SetDownload("comp", "a.txt", "text/plain",
-		[]byte("new")); err != nil {
-		t.Fatalf("SetDownload again: %v", err)
+	for _, body := range []string{"two", "three"} {
+		if _, err := s.SetDownload("comp", "a.txt", "text/plain",
+			[]byte(body)); err != nil {
+			t.Fatalf("SetDownload %q: %v", body, err)
+		}
 	}
 
 	waitGone(t, dir, name)
