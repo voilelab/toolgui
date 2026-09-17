@@ -1,15 +1,22 @@
 describe('Misc', () => {
-  // The message is shown in an alert, not dropped into the page as text.
+  // The message is shown in an alert, not dropped into the page as text. What
+  // the page function returned is the page talking to its user, so it arrives
+  // whole rather than masked.
   it('Error handling', () => {
     cy.visit('/misc')
     cy.contains('Show error').click()
     cy.get('[role=alert]').contains('new error').should('exist')
   })
 
+  // A panic is the framework's failure, not the page's: the browser is told
+  // the kind of error and an id to look the server log line up by, never what
+  // the app panicked with.
   it('Panic handling', () => {
     cy.visit('/misc')
     cy.contains('Show panic').click()
-    cy.get('[role=alert]').contains('show panic').should('exist')
+    cy.get('[role=alert]').contains('internal error').should('exist')
+    cy.get('[role=alert]').contains(/error id: \w+/).should('exist')
+    cy.get('[role=alert]').contains('show panic').should('not.exist')
   })
 
   it('HTML component', () => {
