@@ -74,6 +74,12 @@ interface AppProps {
   // and navigating moves the browser.
   pageName?: string
   onNavigate?: (name: string) => void
+
+  // embed drops the app's own chrome -- the page list, the controls, the
+  // version line -- and leaves the page itself. For an iframe, where the
+  // document around it is the navigation and the width is someone else's to
+  // spend.
+  embed?: boolean
 }
 
 interface AppState {
@@ -211,19 +217,20 @@ export class App extends Component<AppProps, AppState> {
 
         <ThemeModeSync>
           {(themeMode) =>
-            <div className="toolgui-shell">
-              <AppSideNav
-                appConf={this.props.appConf}
-                forest={this.state.forest}
-                running={this.state.running}
-                pageFound={this.state.pageFound}
-                pageName={this.state.pageName}
-                onNavigate={this.props.onNavigate}
-                rerun={() => { this.props.update({}) }}
-                update={(e) => { this.props.update(e) }}
-                upload={async (f, id) => await this.props.upload(f, id)}
-                download={async (token) => await this.props.download(token)}
-                themeMode={themeMode} />
+            <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
+              {this.props.embed ? '' :
+                <AppSideNav
+                  appConf={this.props.appConf}
+                  forest={this.state.forest}
+                  running={this.state.running}
+                  pageFound={this.state.pageFound}
+                  pageName={this.state.pageName}
+                  onNavigate={this.props.onNavigate}
+                  rerun={() => { this.props.update({}) }}
+                  update={(e) => { this.props.update(e) }}
+                  upload={async (f, id) => await this.props.upload(f, id)}
+                  download={async (token) => await this.props.download(token)}
+                  themeMode={themeMode} />}
 
               <main className="toolgui-main">
                 <AppBody

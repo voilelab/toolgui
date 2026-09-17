@@ -19,9 +19,24 @@ function pageNameFromHash(appConf: AppConf): string {
   return appConf.page_names.length > 0 ? appConf.page_names[0] : ''
 }
 
+// embedFromSearch reads the embed flag off the URL. embed is a display mode of
+// the front end rather than something the app declares, so it lives in the
+// address: the same binary serves a site and an iframe.
+function embedFromSearch(search: string): boolean {
+  const value = new URLSearchParams(search).get('embed')
+
+  // Bare `?embed` counts. The two spellings that do not are the ones a caller
+  // building the URL from a boolean would produce for "no".
+  return value !== null && value !== '0' && value !== 'false'
+}
+
 export class WasmApp extends Component<{}, WasmAppState> {
   appEle: React.RefObject<App>
   backend: Backend
+
+  // Read once: the query string cannot change without a page load, while the
+  // hash changes on every page.
+  embed: boolean = embedFromSearch(window.location.search)
 
   constructor(props: {}) {
     super(props)
@@ -99,6 +114,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
         ref={this.appEle}
         appConf={this.state.appConf}
         pageName={this.state.pageName}
+        embed={this.embed}
         onNavigate={(name) => { this.jumpToPage(name) }}
         update={(event: UpdateEvent) => {
           this.backend.update(event).catch((e) => { console.error(e) })

@@ -127,6 +127,13 @@ body.toolgui-resizing {
   padding: 1.5rem 1rem;
 }
 
+/* Embed mode leaves the page alone in the shell -- no column, no controls, no
+   version line -- and the padding comes down with them: the document holding
+   the iframe supplies its own margin, and a narrow frame has none to spare. */
+.toolgui-shell.is-embed .toolgui-main {
+  padding: 0.75rem;
+}
+
 /* Above the tablet breakpoint the column can collapse to just its handle,
    handing the 240px back to .toolgui-main. Scoped to the breakpoint so a
    column left collapsed cannot fight the burger on a narrow viewport. */
