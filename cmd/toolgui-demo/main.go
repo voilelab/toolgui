@@ -1233,12 +1233,13 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 		return nil, err
 	}
 
-	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
+	// The key names the function as well as the file, so moving these two
+	// calls around does not change what they read.
+	key := fmt.Sprintf("getFiles_%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
 
-	v := p.State.GetFuncCache(key)
-	if v != nil {
+	if v, ok := p.State.GetFuncCache[[]string](key); ok {
 		slog.Info("cache found")
-		return v.([]string), nil
+		return v, nil
 	}
 
 	// zip reads at an offset, which it can do straight against the file.

@@ -140,12 +140,12 @@ func Slider[T Numeric](
 
 	// The client sends every number back as a JSON number, so the state holds
 	// a float64 whatever T is; T(*val) truncates it back for an integral T.
-	val := c.State.GetFloat(comp.ID)
-	if val == nil {
+	val, ok := c.State.GetNumber[float64](comp.ID)
+	if !ok {
 		return comp.Default
 	}
 
-	return T(*val)
+	return T(val)
 }
 
 // defaultStep is the step a conf that names none gets: whole numbers for an

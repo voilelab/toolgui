@@ -23,7 +23,7 @@ func testContainer(state *tgframe.State, packs *[]tgframe.NotifyPack) *tgframe.C
 // TestNumberAcceptsEveryTypeInTheSet checks the constraint widened from
 // `float64 | int64` to `~int | ~int64 | ~float64` really instantiates, and
 // that the round trip through the state survives it: the client sends a JSON
-// number, so [tgframe.State.GetFloat] hands back a float64 whatever T is.
+// number, so [tgframe.State.GetNumber] reads a float64 whatever T is.
 func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 	const id = "number_component_n"
 

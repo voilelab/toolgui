@@ -68,21 +68,21 @@ func Select(c *tgframe.Container, label string, items []string, conf ...*SelectC
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
-	idx := c.State.GetInt(comp.ID)
-	if idx == nil {
+	idx, ok := c.State.GetNumber[int](comp.ID)
+	if !ok {
 		// Untouched, so the default stands in — as its own pointer, which
 		// the caller then owns.
 		return normalizeIndex(cf.Default, len(items))
 	}
 
-	if *idx == 0 {
+	if idx == 0 {
 		return nil
 	}
 
 	// A selection left over from a longer list is dropped rather than
 	// clamped, the way [MultiSelect] drops one.
-	*idx--
-	return normalizeIndex(idx, len(items))
+	idx--
+	return normalizeIndex(&idx, len(items))
 }
 
 // normalizeIndex copies an index that points at an item and drops one that

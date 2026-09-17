@@ -5,7 +5,7 @@ import (
 	"io"
 	"maps"
 	"math"
-	"runtime"
+	"reflect"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
@@ -15,7 +15,7 @@ import (
 // State is the state of a user's session.
 type State struct {
 	values    map[string]any
-	funcCache map[string]map[string]any
+	funcCache map[string]any
 
 	// files is shared with the states cloned from this one, so no two of them
 	// can hand out the same path. On a server its directory waits for the
@@ -45,7 +45,7 @@ func NewState() *State {
 		values:    make(map[string]any),
 		files:     newFileStore(),
 		downloads: newDownloadStore(),
-		funcCache: make(map[string]map[string]any),
+		funcCache: make(map[string]any),
 	}
 }
 
@@ -122,7 +122,16 @@ func (s *State) Delete(key string) {
 	s.downloads.remove(key)
 }
 
-// GetObject gets the value of a key and unmarshals it to the out object.
+// GetObject reads what key holds through a JSON round trip, into out.
+//
+// It is kept alongside [State.Get] because the two answer different
+// questions. Get is a type assertion: it reads a value back as the type it
+// was stored as, and nothing else. GetObject re-decodes it, so a value that
+// arrived from the frontend as a map or a []float64 reads back into the Go
+// struct or []int it stands for. Reach for Get for a value the page itself
+// wrote, and for GetObject for one the client sent.
+//
+// A missing key is not an error: out is left as it was.
 func (s *State) GetObject(key string, out any) error {
 	s.rwLock.RLock()
 	val, ok := s.values[key]
@@ -145,37 +154,36 @@ func (s *State) GetObject(key string, out any) error {
 	return nil
 }
 
-// toNumber reads any numeric type as a float64, so a default written from Go
-// reads back like the float64 the frontend's JSON lands. A string is not one.
-func toNumber(val any) (float64, bool) {
-	switch v := val.(type) {
-	case float64:
+// numberOf reads what a key holds as a number, whatever numeric type it was
+// stored as. It goes by kind rather than by concrete type, so a page's own
+// domain type -- a `type Count int` -- is a number here, the way [Numeric]
+// says one is. A string is not one, and neither is a uintptr.
+func numberOf(val any) (reflect.Value, bool) {
+	if val == nil {
+		return reflect.Value{}, false
+	}
+
+	v := reflect.ValueOf(val)
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64, reflect.Float32, reflect.Float64:
 		return v, true
-	case float32:
-		return float64(v), true
-	case int:
-		return float64(v), true
-	case int8:
-		return float64(v), true
-	case int16:
-		return float64(v), true
-	case int32:
-		return float64(v), true
-	case int64:
-		return float64(v), true
-	case uint:
-		return float64(v), true
-	case uint8:
-		return float64(v), true
-	case uint16:
-		return float64(v), true
-	case uint32:
-		return float64(v), true
-	case uint64:
-		return float64(v), true
-	default:
+	}
+
+	return reflect.Value{}, false
+}
+
+// narrowInt64 converts i to an integral T, false when T cannot hold it. T may
+// be narrower than an int64 -- int on a 32-bit platform -- and a conversion
+// between integer types is a defined truncation, so the round trip settles it.
+func narrowInt64[T Numeric](i int64) (T, bool) {
+	t := T(i)
+	if int64(t) != i {
 		return 0, false
 	}
+
+	return t, true
 }
 
 // Get returns the value under key as a T, false when it is missing or another
@@ -203,59 +211,81 @@ func (s *State) Default[T any](key string, v T) *T {
 	return &v
 }
 
-// GetString reads a string, nil when the key holds none.
-func (s *State) GetString(key string) *string {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
-
-	ss, ok := s.values[key].(string)
-	if !ok {
-		return nil
-	}
-
-	return &ss
+// Numeric is the value type [State.GetNumber] reads a number back as. The
+// tildes let a user's own named type be one, so a page can keep its domain
+// type all the way in.
+type Numeric interface {
+	~int | ~int64 | ~float64
 }
 
-// GetFloat reads any numeric type as a float64, nil when there is none.
-func (s *State) GetFloat(key string) *float64 {
+// GetNumber returns the number under key as a T, false when the key holds
+// nothing numeric, or a number T cannot hold.
+//
+// Numbers are the one place [State.Get] is too literal to be useful. The
+// frontend sends every number as JSON, so an event lands a float64 whatever
+// the component's own type is, while a default written from Go carries
+// whichever integer type was at hand; this reads either, so Set(key, 30),
+// Set(key, int64(30)) and Set(key, 30.0) are the same value. A string is
+// still not a number.
+//
+// An integer is read exactly: a stored id past 2^53 comes back as it went
+// in, rather than rounded through a float64 on the way out. A float read as
+// an integral T truncates, as the number components do, and a number T cannot
+// hold is absent rather than whatever the conversion happened to produce.
+func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	f, ok := toNumber(s.values[key])
+	v, ok := numberOf(s.values[key])
 	if !ok {
-		return nil
+		return 0, false
 	}
 
-	return &f
-}
+	// Written as arithmetic rather than a type switch because a named type's
+	// dynamic type is itself, not the type it is defined from.
+	integral := T(1)/T(2) == T(0)
 
-// GetInt is [State.GetFloat] truncated to an int, nil when an int cannot hold it.
-func (s *State) GetInt(key string) *int {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
+	switch v.Kind() {
+	case reflect.Float32, reflect.Float64:
+		f := v.Float()
+		if !integral {
+			// A floating point T holds every number a float64 can, NaN and
+			// the infinities included.
+			return T(f), true
+		}
 
-	f, ok := toNumber(s.values[key])
-	if !ok {
-		return nil
+		// Go leaves a float-to-integer conversion unspecified outside the
+		// target's range, and the platforms disagree on what they do there:
+		// amd64 wraps to MinInt64, wasm saturates at MaxInt64. So the range
+		// is checked in float64 first, against bounds that are exact -- 2^63
+		// has a float64, math.MaxInt64 does not.
+		if math.IsNaN(f) || f < float64(math.MinInt64) || f >= -float64(math.MinInt64) {
+			return 0, false
+		}
+
+		return narrowInt64[T](int64(f))
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64:
+		u := v.Uint()
+		if !integral {
+			return T(u), true
+		}
+
+		if u > math.MaxInt64 {
+			return 0, false
+		}
+
+		return narrowInt64[T](int64(u))
+
+	default:
+		i := v.Int()
+		if !integral {
+			return T(i), true
+		}
+
+		return narrowInt64[T](i)
 	}
-
-	// Bounds as float64: math.MaxInt has no exact one, so comparing against it
-	// would let 2^63 through.
-	if math.IsNaN(f) || f < float64(math.MinInt) || f >= -float64(math.MinInt) {
-		return nil
-	}
-
-	i := int(f)
-	return &i
-}
-
-// GetBool reads a bool, false when the key holds none.
-func (s *State) GetBool(key string) bool {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
-
-	b, _ := s.values[key].(bool)
-	return b
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
@@ -329,63 +359,26 @@ func (s *State) GetDownload(token string) *Download {
 	return s.downloads.get(token)
 }
 
-// SetFuncCache sets the value of a key in the function cache.
-func (s *State) SetFuncCache(key string, value any) {
-	funcName := ""
-	pc, _, _, ok := runtime.Caller(1)
-	if ok {
-		funcName = runtime.FuncForPC(pc).Name()
-	}
-	s.SetFuncCacheWithFuncName(key, value, funcName)
-}
-
-// SetFuncCacheWithFuncName sets the value of a key in the function cache with a specific function name.
-func (s *State) SetFuncCacheWithFuncName(key string, value any, funcName string) {
-	if funcName == "" {
-		pc, _, _, ok := runtime.Caller(1)
-		if ok {
-			funcName = runtime.FuncForPC(pc).Name()
-		}
-	}
-
+// SetFuncCache stores value in the function cache under key, a place for what
+// a run computed and the next run would rather not compute again.
+//
+// The key is the whole of the namespace: two calls naming the same key read
+// and write the same entry, wherever in the page they are written. So a key
+// has to say what the value was computed from -- the inputs, or a hash of
+// them -- or a later run reads back a result for inputs it no longer has.
+func (s *State) SetFuncCache[T any](key string, value T) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
 
-	_, ok := s.funcCache[funcName]
-	if !ok {
-		s.funcCache[funcName] = make(map[string]any)
-	}
-
-	s.funcCache[funcName][key] = value
+	s.funcCache[key] = value
 }
 
-// GetFuncCache gets the value of a key in the function cache.
-func (s *State) GetFuncCache(key string) any {
-	funcName := ""
-	pc, _, _, ok := runtime.Caller(1)
-	if ok {
-		funcName = runtime.FuncForPC(pc).Name()
-	}
-
-	return s.GetFuncCacheWithFuncName(key, funcName)
-}
-
-// GetFuncCacheWithFuncName gets the value of a key in the function cache with a specific function name.
-func (s *State) GetFuncCacheWithFuncName(key string, funcName string) any {
-	if funcName == "" {
-		pc, _, _, ok := runtime.Caller(1)
-		if ok {
-			funcName = runtime.FuncForPC(pc).Name()
-		}
-	}
-
+// GetFuncCache returns the value under key in the function cache as a T,
+// false when the key holds nothing or holds another type.
+func (s *State) GetFuncCache[T any](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	cache, ok := s.funcCache[funcName]
-	if !ok {
-		return nil
-	}
-
-	return cache[key]
+	v, ok := s.funcCache[key].(T)
+	return v, ok
 }

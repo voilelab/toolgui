@@ -445,12 +445,8 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 	values := make(chan string, 2)
 	app := tgframe.NewApp()
 	runFunc := func(p *tgframe.Params) error {
-		value := p.State.GetString("field")
-		if value == nil {
-			values <- ""
-			return nil
-		}
-		values <- *value
+		value, _ := p.State.Get[string]("field")
+		values <- value
 		return nil
 	}
 	app.AddPage("first", "First", runFunc)

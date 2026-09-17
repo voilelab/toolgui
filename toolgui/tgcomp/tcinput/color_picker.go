@@ -72,12 +72,12 @@ func ColorPicker(c *tgframe.Container, label string, conf ...*ColorPickerConf) s
 	// The client is asked for "#rrggbb", but the state can also have been
 	// written from Go, so anything that is not one reads as unpicked rather
 	// than reaching the page as a color it cannot use.
-	val := c.State.GetString(comp.ID)
-	if val == nil || !isHexColor(*val) {
+	val, ok := c.State.Get[string](comp.ID)
+	if !ok || !isHexColor(val) {
 		return comp.Default
 	}
 
-	return strings.ToLower(*val)
+	return strings.ToLower(val)
 }
 
 // isHexColor reports whether s is an "#rrggbb" color, in either case.
