@@ -1,6 +1,7 @@
 package tgframe
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"log"
@@ -32,6 +33,14 @@ func realSidebarContainerID() string {
 }
 
 type Params struct {
+	// Context is cancelled when the run is cut short: a new event arrived, or
+	// the session closed. Hand it to whatever the page does slowly — a request,
+	// a query — and that work stops as soon as the user moves on, instead of
+	// running until the page next draws something.
+	//
+	// It is never nil.
+	Context context.Context
+
 	State   *State
 	Main    *Container
 	Sidebar *Container
@@ -186,25 +195,56 @@ func (app *App) AppConf() *AppConf {
 	}
 }
 
-// Run run a page which named `name` with state.
-// Return a error wrap with ErrPanic if encounter panic.
+// RunWithHandlingPanic run a page which named `name` with state, with a
+// context that is never cancelled. See [App.RunContextWithHandlingPanic].
 func (app *App) RunWithHandlingPanic(
+	name string, state *State, notifyFunc SendNotifyPackFunc) error {
+
+	return app.RunContextWithHandlingPanic(
+		context.Background(), name, state, notifyFunc)
+}
+
+// RunContextWithHandlingPanic run a page which named `name` with state and ctx.
+// Return a error wrap with ErrPanic if encounter panic. A panicked error keeps
+// its chain, so errors.Is still finds [ErrUpdateInterrupt] under [ErrPanic].
+func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 	name string, state *State, notifyFunc SendNotifyPackFunc) (err error) {
 
 	defer func() {
 		r := recover()
-		if r != nil {
+		if r == nil {
+			return
+		}
+
+		rErr, ok := r.(error)
+		if !ok {
 			log.Println("Panic", r)
 			err = tgutil.Errorf("%w: %v", ErrPanic, r)
+			return
+		}
+
+		err = tgutil.Errorf("%w: %w", ErrPanic, rErr)
+
+		// An interrupt is how a cut run unwinds, not a failure worth a line.
+		if !errors.Is(rErr, ErrUpdateInterrupt) {
+			log.Println("Panic", r)
 		}
 	}()
 
-	err = app.Run(name, state, notifyFunc)
+	err = app.RunContext(ctx, name, state, notifyFunc)
 	return
 }
 
-// Run run a page which named `name` with state.
+// Run run a page which named `name` with state, with a context that is never
+// cancelled. See [App.RunContext].
 func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) error {
+	return app.RunContext(context.Background(), name, state, notifyFunc)
+}
+
+// RunContext run a page which named `name` with state, and hands ctx to the
+// page func as [Params.Context].
+func (app *App) RunContext(ctx context.Context,
+	name string, state *State, notifyFunc SendNotifyPackFunc) error {
 	pageFunc, ok := app.pageFuncs[name]
 	if !ok {
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
@@ -224,15 +264,24 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 	run.registerID(newSidebar)
 
 	err := pageFunc(&Params{
+		Context: ctx,
 		State:   state,
 		Main:    newMain,
 		Sidebar: newSidebar,
 	})
 
+	// A cut run stopped partway, so the run before it is still what the
+	// client is looking at. Leave that run's ids and released ids alone, or a
+	// click or an upload naming one of its components would be turned away as
+	// a name the page never drew. A run cut short at a notify pack panics out
+	// before this, and one watching the context returns here.
+	if ctx.Err() != nil {
+		return err
+	}
+
 	// The page function returned, so what it claimed is what is on the screen.
 	// Record it: an upload names a component id, and the state is where that
-	// name is checked. A run cut short panics instead, and leaves the ids of
-	// the run that did finish in place.
+	// name is checked.
 	if state != nil {
 		state.setRunIDs(run.ids)
 	}

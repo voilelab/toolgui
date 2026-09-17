@@ -1,6 +1,7 @@
 package tgframe
 
 import (
+	"context"
 	"log/slog"
 	"sync"
 	"sync/atomic"
@@ -52,8 +53,14 @@ type Session struct {
 	// sendLock serializes the calls to send.
 	sendLock sync.Mutex
 
-	// stopUpdating tells the running page func to interrupt itself.
-	stopUpdating atomic.Bool
+	// ctx is cancelled by Close. Every run derives its context from it, so
+	// closing stops whatever is running.
+	ctx    context.Context
+	cancel context.CancelFunc
+
+	// cancelRun cuts the run in flight. It's replaced under handling by each
+	// new run.
+	cancelRun context.CancelFunc
 
 	// running is held while a page func is running. It's locked before a run
 	// is launched and unlocked by the runner goroutine.
@@ -69,11 +76,16 @@ func NewSession(app *App, pageName string, state *State, send SendPackFunc) (*Se
 		return nil, tgutil.Errorf("%w: `%s`", ErrPageNotFound, pageName)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &Session{
 		app:      app,
 		pageName: pageName,
 		state:    state,
 		send:     send,
+
+		ctx:    ctx,
+		cancel: cancel,
 	}, nil
 }
 
@@ -118,8 +130,13 @@ func (s *Session) HandleEvent(event Event) {
 	s.state.SetClickID("")
 	event.ApplyState(s.state)
 
+	runCtx, cancelRun := context.WithCancel(s.ctx)
+	s.cancelRun = cancelRun
+
 	sendNotifyPack := func(pack NotifyPack) {
-		if s.stopUpdating.Load() {
+		// A page func that never looks at its context is still cut here, at
+		// the next thing it draws.
+		if runCtx.Err() != nil {
 			panic(ErrUpdateInterrupt)
 		}
 
@@ -129,11 +146,21 @@ func (s *Session) HandleEvent(event Event) {
 		}
 	}
 
-	s.stopUpdating.Store(false)
 	go func() {
+		defer cancelRun()
 		defer s.endRun()
 
-		err := s.app.RunWithHandlingPanic(s.pageName, s.state, sendNotifyPack)
+		err := s.app.RunContextWithHandlingPanic(
+			runCtx, s.pageName, s.state, sendNotifyPack)
+
+		// Cancelled means the run was cut, so what it came back with is how
+		// it unwound, not a failure, and the run replacing it is about to
+		// paint the screen anyway. Asking the context and not the error is
+		// what leaves an app's own context.Canceled a reportable error.
+		if runCtx.Err() != nil {
+			return
+		}
+
 		if err != nil {
 			s.sendResult(&ResultPack{Error: err.Error()})
 			slog.Error("run err", "error", err)
@@ -151,6 +178,7 @@ func (s *Session) Close() {
 	defer s.handling.Unlock()
 
 	s.closed.Store(true)
+	s.cancel()
 	s.beginRun()
 	s.endRun()
 }
@@ -173,9 +201,12 @@ func (s *Session) sendResult(pack *ResultPack) {
 	}
 }
 
-// beginRun send the stop signal and wait for the running page func.
+// beginRun cut the running page func and wait for it.
 func (s *Session) beginRun() {
-	s.stopUpdating.Store(true)
+	if s.cancelRun != nil {
+		s.cancelRun()
+	}
+
 	s.running.Lock()
 }
 
