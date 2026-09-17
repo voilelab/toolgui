@@ -15,6 +15,7 @@ interface Backend {
 // WailsRuntime is the slice of window.runtime this adapter uses.
 interface WailsRuntime {
   EventsOn(eventName: string, callback: (...data: any[]) => void): () => void
+  BrowserOpenURL(url: string): void
 }
 
 declare global {
@@ -31,6 +32,12 @@ export function backend(): Backend {
 
 export function onEvent(eventName: string, callback: (data: string) => void) {
   window.runtime.EventsOn(eventName, callback)
+}
+
+// openURL hands a url to the system's default browser. The window stays
+// where it is, which is the point: see src/external_link.ts.
+export function openURL(url: string) {
+  window.runtime.BrowserOpenURL(url)
 }
 
 // getAppConf is the desktop counterpart of GET /api/app.
