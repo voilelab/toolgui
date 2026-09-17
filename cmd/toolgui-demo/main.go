@@ -634,7 +634,7 @@ func InputPage(p *tgframe.Params) error {
 		dateValue := tgcomp.Datepicker(datepickerCompCol, "Datepicker")
 		val := ""
 		if dateValue != nil {
-			val = fmt.Sprintf("%04d-%02d-%02d", dateValue.Year, dateValue.Month, dateValue.Day)
+			val = dateValue.Format("2006-01-02")
 		}
 
 		tgcomp.Text(datepickerCompCol, "Value: "+val,
@@ -649,7 +649,7 @@ func InputPage(p *tgframe.Params) error {
 		timeValue := tgcomp.Timepicker(timepickerCompCol, "Timepicker")
 		val := ""
 		if timeValue != nil {
-			val = fmt.Sprintf("%02d:%02d", timeValue.Hour, timeValue.Min)
+			val = timeValue.Format("15:04")
 		}
 
 		tgcomp.Text(timepickerCompCol, "Value: "+val,
@@ -676,17 +676,13 @@ func InputPage(p *tgframe.Params) error {
 	numberCompCol, numberCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_number"})
 	tgcomp.Echo(numberCodeCol, code, func() {
-		numberValue := tgcomp.Number[float64](numberCompCol, "Number", (&tcinput.NumberConf[float64]{
+		numberValue := tgcomp.Number(numberCompCol, "Number", (&tcinput.NumberConf[float64]{
 			Placeholder: "input the value here",
 			Color:       tcutil.ColorSuccess,
-		}).SetDefault(10).SetMin(10).SetMax(20).SetStep(2))
+			Default:     10,
+		}).SetMin(10).SetMax(20).SetStep(2))
 
-		valStr := ""
-		if numberValue != nil {
-			valStr = fmt.Sprint(*numberValue)
-		}
-
-		tgcomp.Text(numberCompCol, "Value: "+valStr,
+		tgcomp.Text(numberCompCol, fmt.Sprint("Value: ", numberValue),
 			&tgcomp.TextConf{ID: "number_result"})
 	})
 
@@ -695,7 +691,7 @@ func InputPage(p *tgframe.Params) error {
 	formCompCol, formCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_form"})
 	tgcomp.Echo(formCodeCol, code, func() {
-		var a, b *float64
+		var a, b float64
 		var ops []int
 		opItems := []string{"sum", "product"}
 		tgcomp.Form(formCompCol, &tgcomp.FormConf{ID: "form"}).With(func(c *tgframe.Container) {
@@ -705,18 +701,16 @@ func InputPage(p *tgframe.Params) error {
 				&tgcomp.MultiselectConf{Placeholder: "pick the operations"})
 		})
 
-		if a != nil && b != nil {
-			// Named rather than numbered, so adding an item to opItems cannot
-			// silently turn into one of the operations already here.
-			for _, op := range ops {
-				switch opItems[op] {
-				case "sum":
-					tgcomp.Text(formCompCol,
-						fmt.Sprintf("int(a) + int(b) = %d", int(*a)+int(*b)))
-				case "product":
-					tgcomp.Text(formCompCol,
-						fmt.Sprintf("int(a) * int(b) = %d", int(*a)*int(*b)))
-				}
+		// Named rather than numbered, so adding an item to opItems cannot
+		// silently turn into one of the operations already here.
+		for _, op := range ops {
+			switch opItems[op] {
+			case "sum":
+				tgcomp.Text(formCompCol,
+					fmt.Sprintf("int(a) + int(b) = %d", int(a)+int(b)))
+			case "product":
+				tgcomp.Text(formCompCol,
+					fmt.Sprintf("int(a) * int(b) = %d", int(a)*int(b)))
 			}
 		}
 	})
@@ -745,8 +739,8 @@ func InputPage(p *tgframe.Params) error {
 			(&tcinput.SliderConf[int64]{}).SetMin(0).SetMax(100).SetStep(10).
 				SetDefault(50))
 
-		// A slider always sits somewhere, so the pointer is never nil.
-		tgcomp.Text(sliderCompCol, fmt.Sprint("Value: ", *sliderValue),
+		// A slider always sits somewhere, so there is always a value.
+		tgcomp.Text(sliderCompCol, fmt.Sprint("Value: ", sliderValue),
 			&tgcomp.TextConf{ID: "slider_result"})
 	})
 
@@ -758,7 +752,7 @@ func InputPage(p *tgframe.Params) error {
 		sizes := []string{"S", "M", "L"}
 		selIdx := tgcomp.SelectSlider(selectSliderCompCol, "SelectSlider", sizes)
 
-		tgcomp.Text(selectSliderCompCol, "Value: "+sizes[*selIdx],
+		tgcomp.Text(selectSliderCompCol, "Value: "+sizes[selIdx],
 			&tgcomp.TextConf{ID: "select_slider_result"})
 	})
 
@@ -794,7 +788,7 @@ func InputPage(p *tgframe.Params) error {
 	widgetFormCompCol, widgetFormCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_widget_form"})
 	tgcomp.Echo(widgetFormCodeCol, code, func() {
-		var threshold *int64
+		var threshold int64
 		var enabled bool
 
 		tgcomp.Form(widgetFormCompCol, &tgcomp.FormConf{ID: "widget_form"}).
@@ -805,7 +799,7 @@ func InputPage(p *tgframe.Params) error {
 			})
 
 		tgcomp.Text(widgetFormCompCol,
-			fmt.Sprintf("threshold = %d, enabled = %v", *threshold, enabled))
+			fmt.Sprintf("threshold = %d, enabled = %v", threshold, enabled))
 	})
 
 	return nil

@@ -11,7 +11,7 @@ type Numeric interface {
 	~int | ~int64 | ~float64
 }
 
-func Slider[T Numeric](c *tgframe.Container, label string, conf ...*SliderConf[T]) *T
+func Slider[T Numeric](c *tgframe.Container, label string, conf ...*SliderConf[T]) T
 ```
 
 ### Parameters
@@ -19,7 +19,7 @@ func Slider[T Numeric](c *tgframe.Container, label string, conf ...*SliderConf[T
 * `c` is Parent container.
 * `label` is the label of the slider.
 * `conf` is an optional configuration, at most one.
-* Return the value the slider sits at. Never nil.
+* Return the value the slider sits at.
 
 `Slider` shares its constraint with [Number](number_input.md), so the type
 comes from the conf or from an explicit instantiation:
@@ -29,9 +29,10 @@ threshold := tgcomp.Slider[int](p.Main, "Threshold")
 ratio := tgcomp.Slider(p.Main, "Ratio", &tcinput.SliderConf[float64]{})
 ```
 
-A slider always sits somewhere in its range, so unlike `Number` it has no
-"nothing entered" state and the returned pointer is never nil. It is the value
-the app user left it at, else `Default`, else `Min`.
+A slider always sits somewhere in its range, so it always has a value to hand
+back — no pointer, nothing to check: the value the app user left it at, else
+`Default`, else `Min`. `Default` stays a pointer in the conf because an unset
+one means `Min`, which need not be zero.
 
 `SliderConf` is generic, so `tgcomp.SliderConf` is an alias you can name but
 the methods below live on `tcinput.SliderConf`.
@@ -89,8 +90,8 @@ threshold := tgcomp.Slider(p.Main, "Threshold",
 	(&tcinput.SliderConf[int64]{}).SetMin(0).SetMax(100).SetStep(10).
 		SetDefault(50))
 
-// Never nil, so there is nothing to check first.
-tgcomp.Text(p.Main, fmt.Sprint("Value: ", *threshold),
+// Always a value, so there is nothing to check first.
+tgcomp.Text(p.Main, fmt.Sprint("Value: ", threshold),
 	&tgcomp.TextConf{ID: "slider_result"})
 ```
 

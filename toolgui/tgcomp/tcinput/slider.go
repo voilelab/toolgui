@@ -91,8 +91,8 @@ func orDefault[T Numeric](v *T, def T) T {
 
 // Slider create a slider over a numeric range and return its value.
 //
-// A slider always sits somewhere in its range, so the return is never nil: it
-// is the value the app user left it at, else Default, else Min.
+// A slider always sits somewhere in its range, so it always has a value to
+// hand back: the one the app user left it at, else Default, else Min.
 //
 // The value is reported when the handle is released rather than on every tick
 // of a drag, so a drag across the range is one rerun rather than one per step.
@@ -100,7 +100,7 @@ func orDefault[T Numeric](v *T, def T) T {
 // A range whose Min is above its Max, or a negative Step, is a mistake in the
 // caller rather than a value to correct, and panics.
 func Slider[T Numeric](
-	c *tgframe.Container, label string, conf ...*SliderConf[T]) *T {
+	c *tgframe.Container, label string, conf ...*SliderConf[T]) T {
 
 	cf := tgframe.OneConf("Slider", conf)
 
@@ -142,11 +142,10 @@ func Slider[T Numeric](
 	// a float64 whatever T is; T(*val) truncates it back for an integral T.
 	val := c.State.GetFloat(comp.ID)
 	if val == nil {
-		return &comp.Default
+		return comp.Default
 	}
 
-	v := T(*val)
-	return &v
+	return T(*val)
 }
 
 // defaultStep is the step a conf that names none gets: whole numbers for an

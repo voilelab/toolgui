@@ -31,7 +31,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 2.5)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[float64](testContainer(state, &packs), "n")
-		if got == nil || *got != 2.5 {
+		if got != 2.5 {
 			t.Fatalf("got %v, want 2.5", got)
 		}
 	})
@@ -41,7 +41,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[int64](testContainer(state, &packs), "n")
-		if got == nil || *got != 7 {
+		if got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
 	})
@@ -52,7 +52,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[int](testContainer(state, &packs), "n")
-		if got == nil || *got != 7 {
+		if got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
 	})
@@ -62,7 +62,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 4.0)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[Rating](testContainer(state, &packs), "n")
-		if got == nil || *got != Rating(4) {
+		if got != Rating(4) {
 			t.Fatalf("got %v, want Rating(4)", got)
 		}
 	})
@@ -77,7 +77,7 @@ func TestNumberTruncatesTowardsTheIntegralType(t *testing.T) {
 
 	var packs []tgframe.NotifyPack
 	got := tcinput.Number[int](testContainer(state, &packs), "n")
-	if got == nil || *got != 2 {
+	if got != 2 {
 		t.Fatalf("got %v, want 2", got)
 	}
 }
@@ -168,16 +168,16 @@ func TestNumberInfersTFromExplicitInstantiation(t *testing.T) {
 	c := testContainer(state, &packs)
 
 	// No conf, T from the instantiation.
-	if got := tcinput.Number[int](c, "n"); got == nil || *got != 3 {
+	if got := tcinput.Number[int](c, "n"); got != 3 {
 		t.Errorf("Number[int] = %v, want 3", got)
 	}
-	if got := tcinput.Number[Rating](c, "n"); got == nil || *got != Rating(3) {
+	if got := tcinput.Number[Rating](c, "n"); got != Rating(3) {
 		t.Errorf("Number[Rating] = %v, want Rating(3)", got)
 	}
 
 	// And with a conf, T can instead be inferred from the conf alone.
 	got := tcinput.Number(c, "n", &tcinput.NumberConf[int64]{})
-	if got == nil || *got != 3 {
+	if got != 3 {
 		t.Errorf("Number(conf) = %v, want 3", got)
 	}
 }
@@ -195,7 +195,7 @@ func TestNumberConfEmbedsBase(t *testing.T) {
 
 	var packs []tgframe.NotifyPack
 	got := tcinput.Number(testContainer(state, &packs), "n", conf)
-	if got == nil || *got != 5 {
+	if got != 5 {
 		t.Fatalf("got %v, want 5 read under the conf's id", got)
 	}
 }

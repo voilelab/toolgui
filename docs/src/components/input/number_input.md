@@ -11,7 +11,7 @@ type Numeric interface {
 	~int | ~int64 | ~float64
 }
 
-func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T
+func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) T
 ```
 
 ### Parameters
@@ -40,8 +40,9 @@ Import it from `github.com/voilelab/toolgui/toolgui/tgcomp/tcinput`.
 type NumberConf[T Numeric] struct {
 	tgframe.Base // ID
 
-	// Default is the default value of the number component.
-	Default *T
+	// Default is what the input reads as before the app user types in it,
+	// and what it reads as again once they empty it.
+	Default T
 
 	// Min is the minimum value of the number component.
 	Min *T
@@ -62,7 +63,6 @@ type NumberConf[T Numeric] struct {
 	Disabled bool
 }
 
-func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T]
 func (c *NumberConf[T]) SetMin(v T) *NumberConf[T]
 func (c *NumberConf[T]) SetMax(v T) *NumberConf[T]
 func (c *NumberConf[T]) SetStep(v T) *NumberConf[T]
@@ -71,6 +71,12 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T]
 An integral `T` cannot step by 0, so an explicit zero step means 1. The value
 comes back from the client as a JSON number, so an integral `T` truncates it.
 
+There is no "nothing entered" state to report: an input nobody has typed in,
+and one that has been emptied, both read as `Default`. A zero `Default` is also "no default" — the box
+starts empty either way, and an empty box is zero, exactly as an empty
+[Textbox](textbox.md) is `""`. `Min`, `Max` and `Step` stay pointers, because
+there a zero is a bound and an absent one is not.
+
 ## Example
 
 ```go
@@ -78,13 +84,9 @@ numberValue := tgcomp.Number(numberCompCol, "Number",
 	(&tcinput.NumberConf[float64]{
 		Placeholder: "input the value here",
 		Color:       tcutil.ColorSuccess,
+		Default:     10,
 	}).SetMin(10).SetMax(20).SetStep(2))
 
-valStr := ""
-if numberValue != nil {
-	valStr = fmt.Sprint(*numberValue)
-}
-
-tgcomp.Text(numberCompCol, "Value: "+valStr,
+tgcomp.Text(numberCompCol, fmt.Sprint("Value: ", numberValue),
 	&tgcomp.TextConf{ID: "number_result"})
 ```

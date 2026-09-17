@@ -9,7 +9,7 @@ of the one it sits on.
 
 ```go
 func SelectSlider(c *tgframe.Container, label string, items []string,
-	conf ...*SelectSliderConf) *int
+	conf ...*SelectSliderConf) int
 ```
 
 ### Parameters
@@ -19,11 +19,11 @@ func SelectSlider(c *tgframe.Container, label string, items []string,
 * `items` is the list of options, drawn as marks along the track.
 * `conf` is an optional configuration, at most one.
 * Return the index of the item the slider sits on, 0-indexed as
-  [Select](select.md)'s is. Never nil.
+  [Select](select.md)'s is.
 
 The handle is always on an item, so unlike `Select` there is no "nothing
-selected" state and the returned pointer is never nil: it is the index the app
-user left it at, else `Default`.
+selected" state and nothing to check: the index is the one the app user left it
+at, else `Default`.
 
 ```go
 // SelectSliderConf is the configuration for the SelectSlider component.
@@ -47,7 +47,7 @@ rather than while it is being dragged.
 sizes := []string{"S", "M", "L"}
 selIdx := tgcomp.SelectSlider(p.Main, "Size", sizes)
 
-tgcomp.Text(p.Main, "Value: "+sizes[*selIdx],
+tgcomp.Text(p.Main, "Value: "+sizes[selIdx],
 	&tgcomp.TextConf{ID: "select_slider_result"})
 ```
 

@@ -14,14 +14,10 @@ func multiselect(state *tgframe.State, conf ...*tcinput.MultiselectConf) []int {
 	return tcinput.Multiselect(defaultContainer(state), "Env", multiselectItems, conf...)
 }
 
+// Nothing selected is nil, the same "nothing" [tcinput.Select] hands back.
 func TestMultiselectNothingSelected(t *testing.T) {
-	got := multiselect(tgframe.NewState())
-	if got == nil {
-		t.Fatal("Multiselect = nil, want an empty slice")
-	}
-
-	if len(got) != 0 {
-		t.Fatalf("Multiselect = %v, want empty", got)
+	if got := multiselect(tgframe.NewState()); got != nil {
+		t.Fatalf("Multiselect = %v, want nil", got)
 	}
 }
 
@@ -42,8 +38,8 @@ func TestMultiselectEmptySelectionBeatsDefault(t *testing.T) {
 	}).ApplyState(state)
 
 	got := multiselect(state, &tcinput.MultiselectConf{Default: []int{1}})
-	if len(got) != 0 {
-		t.Fatalf("Multiselect = %v, want empty", got)
+	if got != nil {
+		t.Fatalf("Multiselect = %v, want nil", got)
 	}
 }
 
