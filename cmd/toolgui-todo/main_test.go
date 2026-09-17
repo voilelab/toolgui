@@ -32,6 +32,12 @@ func newRunner(t *testing.T) *runner {
 
 	r.session = session
 	t.Cleanup(session.Close)
+
+	// Draw the page once, the way a client does the moment it connects. The
+	// events after this name components of that first draw, and the session
+	// only takes an event naming a component the page is showing.
+	r.run(t, map[string]any{})
+
 	return r
 }
 

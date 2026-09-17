@@ -22,6 +22,11 @@ type ResultPack struct {
 	Error   string `json:"error,omitzero"`
 	Success bool   `json:"success"`
 
+	// ErrorID names the log line carrying what really went wrong, for an
+	// error the client is only told the kind of. It is empty for an error
+	// whose message is already the whole of it.
+	ErrorID string `json:"error_id,omitzero"`
+
 	// Fatal marks an error the same request would run into again, such as a
 	// page name the app doesn't have. A client is meant to give up on it
 	// rather than reconnect.
@@ -99,7 +104,7 @@ func (s *Session) HandleRawEvent(bs []byte) error {
 
 	event, err := ParseEvent(bs)
 	if err != nil {
-		s.sendResult(&ResultPack{Error: err.Error()})
+		s.sendResult(ReportError("parse event", err))
 		return tgutil.Errorf("%w", err)
 	}
 
@@ -110,11 +115,26 @@ func (s *Session) HandleRawEvent(bs []byte) error {
 // HandleEvent apply the event to the state and rerun the page.
 // A running page func is interrupted first, so the caller doesn't have to
 // wait for it. It does nothing on a closed session.
+//
+// An event writing under an id the page is not showing is reported to the
+// client and dropped: neither the state nor the run in flight is touched by
+// it.
 func (s *Session) HandleEvent(event Event) {
 	s.handling.Lock()
 	defer s.handling.Unlock()
 
 	if s.closed.Load() {
+		return
+	}
+
+	// The client fills in the ids an event writes, so they are checked against
+	// what the page drew before anything is applied. A key belonging to no
+	// component is one no run ever reads and no released slot ever deletes, so
+	// taking it would let a client grow the state without bound. Checking
+	// before beginRun also keeps a made-up id from cutting a healthy run.
+	if err := validateEvent(event, s.state); err != nil {
+		s.sendResult(&ResultPack{Error: err.Error()})
+		slog.Warn("reject event", "error", err)
 		return
 	}
 
@@ -162,8 +182,7 @@ func (s *Session) HandleEvent(event Event) {
 		}
 
 		if err != nil {
-			s.sendResult(&ResultPack{Error: err.Error()})
-			slog.Error("run err", "error", err)
+			s.sendResult(ReportError("run err", err))
 			return
 		}
 

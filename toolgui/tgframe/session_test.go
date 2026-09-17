@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -276,6 +277,131 @@ func TestSessionInterruptedRunKeepsComponentIDs(t *testing.T) {
 	}
 }
 
+// TestSessionUnknownComponentIDRejected checks an event writing under an id
+// the page never drew is turned away: nothing lands in the state, the client
+// is told why, and the page is not rerun for it.
+func TestSessionUnknownComponentIDRejected(t *testing.T) {
+	var runs atomic.Int32
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		runs.Add(1)
+		addTestComponent(p, "comp")
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+	if result := <-recorder.results; !result.Success {
+		t.Fatalf("expect the first run to succeed, got %q", result.Error)
+	}
+
+	for _, event := range []Event{
+		&EventInput{ID: "made_up", Value: "typed"},
+		&EventSelect{ID: "made_up", Value: 1},
+		&EventSelect{ID: "made_up", Values: []int{1}},
+		&EventCustom{ID: "made_up", Value: "sent"},
+		&EventForm{Events: []Event{
+			&EventInput{ID: "comp", Value: "fine"},
+			&EventInput{ID: "made_up", Value: "not fine"},
+		}},
+	} {
+		session.HandleEvent(event)
+
+		result := <-recorder.results
+		if result.Success {
+			t.Fatalf("%T: expect the event to be rejected", event)
+		}
+
+		if !strings.Contains(result.Error, "made_up") {
+			t.Errorf("%T: expect the id in the error, got %q", event, result.Error)
+		}
+	}
+
+	if _, ok := session.state.Get[string]("made_up"); ok {
+		t.Error("expect a rejected event to write nothing")
+	}
+
+	// The form was rejected whole, so the event beside the unknown one did
+	// not land either.
+	if _, ok := session.state.Get[string]("comp"); ok {
+		t.Error("expect a rejected form to write none of its events")
+	}
+
+	if got := runs.Load(); got != 1 {
+		t.Errorf("expect no rerun for a rejected event, ran %d times", got)
+	}
+}
+
+// TestSessionKnownComponentIDApplied checks the whitelist only turns away what
+// the page is not showing: the components it drew write their state as before.
+func TestSessionKnownComponentIDApplied(t *testing.T) {
+	session, recorder := newTestSession(t, func(p *Params) error {
+		addTestComponent(p, "text")
+		addTestComponent(p, "choice")
+		addTestComponent(p, "guest")
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+	if result := <-recorder.results; !result.Success {
+		t.Fatalf("expect the first run to succeed, got %q", result.Error)
+	}
+
+	session.HandleEvent(&EventForm{Events: []Event{
+		&EventInput{ID: "text", Value: "typed"},
+		&EventSelect{ID: "choice", Value: 2},
+		&EventCustom{ID: "guest", Value: "sent"},
+	}})
+
+	if result := <-recorder.results; !result.Success {
+		t.Fatalf("expect the form to be applied, got %q", result.Error)
+	}
+
+	if got, ok := session.state.Get[string]("text"); !ok || got != "typed" {
+		t.Errorf("text = %v, %v, want %q", got, ok, "typed")
+	}
+
+	if got, ok := session.state.Get[int]("choice"); !ok || got != 2 {
+		t.Errorf("choice = %v, %v, want 2", got, ok)
+	}
+
+	if got, ok := session.state.Get[string]("guest"); !ok || got != "sent" {
+		t.Errorf("guest = %v, %v, want %q", got, ok, "sent")
+	}
+}
+
+// TestSessionEventBeforeFirstRunRejected pins what happens to an event that
+// names an id before anything has been drawn: the page is showing nothing, so
+// there is no id to accept. The rerun event a client opens with names none, so
+// it goes through and the draw it asks for is what makes the ids known.
+func TestSessionEventBeforeFirstRunRejected(t *testing.T) {
+	session, recorder := newTestSession(t, func(p *Params) error {
+		addTestComponent(p, "comp")
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventInput{ID: "comp", Value: "typed"})
+	if result := <-recorder.results; result.Success {
+		t.Fatal("expect an event before the first draw to be rejected")
+	}
+
+	session.HandleEvent(&EventEmpty{})
+	if result := <-recorder.results; !result.Success {
+		t.Fatalf("expect the rerun event to go through, got %q", result.Error)
+	}
+
+	session.HandleEvent(&EventInput{ID: "comp", Value: "typed"})
+	if result := <-recorder.results; !result.Success {
+		t.Fatalf("expect the event after the draw to be applied, got %q", result.Error)
+	}
+
+	if got, ok := session.state.Get[string]("comp"); !ok || got != "typed" {
+		t.Errorf("comp = %v, %v, want %q", got, ok, "typed")
+	}
+}
+
 // TestSessionCloseCancelsRunContext checks Close cuts the run in flight
 // through its context, not only at the next thing it draws.
 func TestSessionCloseCancelsRunContext(t *testing.T) {
@@ -410,5 +536,130 @@ func TestResultPackOmitsZeroFields(t *testing.T) {
 				t.Errorf("marshal = %s, want %s", bs, tc.want)
 			}
 		})
+	}
+}
+
+// TestSessionMasksPanicContent checks what a page panicked with never leaves
+// the process. A panic value carries whatever the app was holding when it
+// broke -- a file path, a query, a connection string -- and the browser, which
+// nothing authenticates, is the one place it must not go.
+func TestSessionMasksPanicContent(t *testing.T) {
+	const secret = "user=admin password=hunter2"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		panic(errors.New(secret))
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if result.Success {
+		t.Fatalf("expect a failure, got %#v", result)
+	}
+
+	if strings.Contains(result.Error, secret) {
+		t.Errorf("Error = %q, carries the panic value", result.Error)
+	}
+
+	// The package path the framework's own errors are prefixed with is as
+	// much of the server's inside as the panic value is.
+	if strings.Contains(result.Error, "tgframe") {
+		t.Errorf("Error = %q, carries a function path", result.Error)
+	}
+
+	if result.Error != InternalErrorMessage {
+		t.Errorf("Error = %q, want %q", result.Error, InternalErrorMessage)
+	}
+
+	// Masked, not lost: the id is what ties the report to the log line.
+	if result.ErrorID == "" {
+		t.Error("expect an error id to look the report up by")
+	}
+}
+
+// TestSessionMasksPanicValue checks a page that panicked with something other
+// than an error is masked too. That one is formatted with %v, so whatever it
+// holds ends up in the message.
+func TestSessionMasksPanicValue(t *testing.T) {
+	const secret = "/srv/toolgui/secrets.yaml"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		panic(secret)
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if strings.Contains(result.Error, secret) {
+		t.Errorf("Error = %q, carries the panic value", result.Error)
+	}
+}
+
+// TestSessionShowsPageError checks the other side of it: an error the page
+// function returned is the page talking to its user, so it arrives whole.
+func TestSessionShowsPageError(t *testing.T) {
+	const message = "this file needs a header row"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		return errors.New(message)
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if result.Success {
+		t.Fatalf("expect a failure, got %#v", result)
+	}
+
+	if result.Error != message {
+		t.Errorf("Error = %q, want %q", result.Error, message)
+	}
+
+	// Nothing was hidden, so there is no log line to point at.
+	if result.ErrorID != "" {
+		t.Errorf("ErrorID = %q, want none", result.ErrorID)
+	}
+}
+
+// TestSessionShowsFailedComponentError checks a failure the page reported with
+// Container.Fail reaches the user the same way. It is the page's own report,
+// not the framework's.
+func TestSessionShowsFailedComponentError(t *testing.T) {
+	const message = "row 3 does not match the head"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		p.Main.Fail(errors.New(message))
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if result.Error != message {
+		t.Errorf("Error = %q, want %q", result.Error, message)
+	}
+}
+
+// TestSessionMasksParseError checks an event the parser refused is reported as
+// the framework's own error, not with the parser's message.
+func TestSessionMasksParseError(t *testing.T) {
+	session, recorder := newTestSession(t, func(p *Params) error { return nil })
+	defer session.Close()
+
+	if err := session.HandleRawEvent([]byte(`{"type":"unknown"}`)); err == nil {
+		t.Fatal("expect a parse error")
+	}
+
+	result := <-recorder.results
+	if result.Error != InternalErrorMessage {
+		t.Errorf("Error = %q, want %q", result.Error, InternalErrorMessage)
+	}
+
+	if result.ErrorID == "" {
+		t.Error("expect an error id to look the report up by")
 	}
 }

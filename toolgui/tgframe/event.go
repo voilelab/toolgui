@@ -7,11 +7,54 @@ import (
 	"log"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 // Event is the state change made by app user
 type Event interface {
 	ApplyState(state *State)
+}
+
+// ErrUnknownComponentID is what an event writing under an id no component on
+// the page owns is turned away with.
+var ErrUnknownComponentID = errors.New("unknown component id")
+
+// stateWriter is an event that writes the state under an id the client fills
+// in. [Session] checks the id before applying the event, so the ids a client
+// may write to are the page's own rather than whatever it cares to name.
+type stateWriter interface {
+	// validateState returns an error when the event writes under an id the
+	// page is not showing.
+	validateState(state *State) error
+}
+
+// validateEvent reports whether event may be applied to state. An event that
+// writes nothing the client names -- a click, a rerun -- is always fine.
+func validateEvent(event Event, state *State) error {
+	writer, ok := event.(stateWriter)
+	if !ok {
+		return nil
+	}
+
+	return writer.validateState(state)
+}
+
+// validateComponentID returns an error unless id names a component the last
+// finished run drew.
+//
+// Before any run finishes the set is empty, so every id is turned away. That
+// is the right answer rather than a gap: a client has been shown nothing to
+// write to yet, and the first event a frontend sends on connect is the empty
+// rerun event, which names no id. Letting unknown ids through until the first
+// run finishes would also leave the hole this check closes wide open, since
+// an event arriving before the run it started has finished cuts that run, and
+// a cut run records no ids.
+func validateComponentID(state *State, id string) error {
+	if state.HasComponentID(id) {
+		return nil
+	}
+
+	return tgutil.Errorf("%w: `%s`", ErrUnknownComponentID, id)
 }
 
 // EventType is the type of event
@@ -25,8 +68,9 @@ const (
 	EventFormName   EventType = "form"
 
 	// EventCustomName is what a component that renders itself sends its value
-	// back with. The frontend fills the id in with the component's own id, so
-	// such a component can only write to its own state.
+	// back with. The frontend fills the id in with the component's own id, and
+	// the server only takes an id the page drew, so such a component writes
+	// its own state and nothing else.
 	EventCustomName EventType = "custom"
 
 	// EventIframeName is the name the custom event was introduced under.
@@ -154,6 +198,10 @@ func (e *EventInput) ApplyState(state *State) {
 	state.Set(e.ID, e.Value)
 }
 
+func (e *EventInput) validateState(state *State) error {
+	return validateComponentID(state, e.ID)
+}
+
 // EventSelect is the event of a select event
 // it's used for select/radio/multiselect component
 type EventSelect struct {
@@ -178,6 +226,10 @@ func (e *EventSelect) ApplyState(state *State) {
 	state.Set(e.ID, e.Value)
 }
 
+func (e *EventSelect) validateState(state *State) error {
+	return validateComponentID(state, e.ID)
+}
+
 // EventForm is the event of a form event
 // it's used for form component
 type EventForm struct {
@@ -190,10 +242,24 @@ func (e *EventForm) ApplyState(state *State) {
 	}
 }
 
+// validateState turns the whole form away when one of its events names an id
+// the page is not showing. A form is applied in one go, so it is checked in
+// one go too: half a form written is a state no submit ever produced.
+func (e *EventForm) validateState(state *State) error {
+	for _, event := range e.Events {
+		if err := validateEvent(event, state); err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+	}
+
+	return nil
+}
+
 // EventCustom carries an arbitrary value from a component that renders
 // itself, such as an iframe or a plugin. The ID is filled in by the frontend
-// with the component's own id, so the component can only write to its own
-// state key and cannot forge events for other components.
+// with the component's own id, and the server takes only the ids the page
+// drew, so such a component writes its own state key and cannot make up one
+// of its own.
 type EventCustom struct {
 	ID    string `json:"id"`
 	Value any    `json:"value"`
@@ -201,6 +267,10 @@ type EventCustom struct {
 
 func (e *EventCustom) ApplyState(state *State) {
 	state.Set(e.ID, e.Value)
+}
+
+func (e *EventCustom) validateState(state *State) error {
+	return validateComponentID(state, e.ID)
 }
 
 // EventIframe is the name [EventCustom] was introduced under.
