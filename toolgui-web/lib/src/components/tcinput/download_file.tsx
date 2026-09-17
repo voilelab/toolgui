@@ -1,8 +1,9 @@
-import React from "react"
+import React, { useContext } from "react"
 import { Button } from "@mantine/core"
 
 import { Props } from '../component_interface'
 import { mantineColor } from "../../util/color"
+import { FormSubmitContext } from "./form_context"
 
 // How long the blob URL is left alive after the click. The browser resolves it
 // while the click is dispatched and holds what it needs from there on, but not
@@ -20,11 +21,28 @@ const REVOKE_DELAY_MS = 10000
 export function TDownloadFile({ node, update, download }: Props) {
   const color = mantineColor(node.props.color)
 
-  // The click is reported after the bytes are in hand, not before. A rerun is
-  // what the report causes, and a rerun may offer a different file -- which
-  // retires this token -- so fetching first is what keeps the click from
-  // cancelling its own download.
+  // Null outside a form. Inside one, an update only queues: nothing reruns the
+  // page until the form is submitted.
+  const inForm = useContext(FormSubmitContext) !== null
+
+  const report = () => {
+    update({
+      type: "click",
+      id: node.props.id,
+    })
+  }
+
+  // When the click is reported depends on what reporting does. On its own it
+  // reruns the page, and a rerun that offers a different file retires this
+  // token, so the bytes are fetched first and the click follows them. In a
+  // form it reruns nothing, so the click is queued at once -- waiting there
+  // would strand it behind a submit the user makes while the file is still on
+  // its way, and it would only go out with the submit after that.
   const save = async () => {
+    if (inForm) {
+      report()
+    }
+
     const res = await download(node.props.token)
     if (!res.ok || !res.blob) {
       console.error('download', res.error)
@@ -42,10 +60,9 @@ export function TDownloadFile({ node, update, download }: Props) {
 
     setTimeout(() => { URL.revokeObjectURL(url) }, REVOKE_DELAY_MS)
 
-    update({
-      type: "click",
-      id: node.props.id,
-    })
+    if (!inForm) {
+      report()
+    }
   }
 
   return (

@@ -122,6 +122,17 @@ func (s *downloadStore) set(files *fileStore, owner, name, mime string,
 	return download, nil
 }
 
+// remove drops what owner offered, its token and its bytes with it. It is how
+// a download is released when the component offering it leaves the page for
+// good: the file can be as large as the page liked, and waiting for the state
+// to end would hold it against the disk or the origin's quota until then.
+func (s *downloadStore) remove(owner string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	s.drop(owner)
+}
+
 // drop forgets what owner offered and takes its bytes with it. It must be
 // called with the lock held.
 func (s *downloadStore) drop(owner string) {

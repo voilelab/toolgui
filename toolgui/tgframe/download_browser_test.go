@@ -112,10 +112,27 @@ func TestBrowserDownloadIsReadableByThePage(t *testing.T) {
 	pageReadsDownload(t, d)
 }
 
+// waitGone waits for a file to leave the origin private file system. The
+// removal is asked for without waiting -- the store's methods may run where
+// nothing can -- so it lands within a few turns of the event loop rather than
+// at once.
+func waitGone(t *testing.T, dir []string, name string) {
+	t.Helper()
+
+	for range 400 {
+		if _, err := opfsAwaitCall(opfsWalk(t, dir), "getFileHandle", name); err != nil {
+			return
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	t.Error("expect the file to be removed")
+}
+
 // TestBrowserDownloadReplacedTakesItsFile checks a run that offers different
-// bytes leaves nothing behind: the file the token before it named is gone from
-// the origin private file system, rather than held against the origin's quota
-// for the life of the tab.
+// bytes leaves nothing behind: the file the token before it named is gone,
+// rather than held against the origin's quota for the life of the tab.
 func TestBrowserDownloadReplacedTakesItsFile(t *testing.T) {
 	s, bodies := opfsState(t)
 	defer s.Destroy()
@@ -136,16 +153,33 @@ func TestBrowserDownloadReplacedTakesItsFile(t *testing.T) {
 		t.Fatalf("SetDownload again: %v", err)
 	}
 
-	// The removal is asked for without waiting -- the store's methods may run
-	// where nothing can -- so the file goes within a few turns of the event
-	// loop rather than at once.
-	for range 400 {
-		if _, err := opfsAwaitCall(opfsWalk(t, dir), "getFileHandle", name); err != nil {
-			return
-		}
+	waitGone(t, dir, name)
+}
 
-		time.Sleep(5 * time.Millisecond)
+// TestBrowserDownloadReleasedTakesItsFile checks the same for a component
+// cleared off the screen, which is what [State.Delete] ends up doing: the
+// origin's quota is the whole reason a browser build cannot wait for the
+// session to end.
+func TestBrowserDownloadReleasedTakesItsFile(t *testing.T) {
+	s, bodies := opfsState(t)
+	defer s.Destroy()
+	opfsPooled(t, bodies)
+
+	d, err := s.SetDownload("comp", "a.txt", "text/plain", []byte("gone"))
+	if err != nil {
+		t.Fatalf("SetDownload: %v", err)
 	}
 
-	t.Error("expect the replaced file to be removed")
+	dir, name, err := d.BrowserLocation()
+	if err != nil {
+		t.Fatalf("BrowserLocation: %v", err)
+	}
+
+	s.Delete("comp")
+
+	if s.GetDownload(d.Token()) != nil {
+		t.Error("expect the released token to be retired")
+	}
+
+	waitGone(t, dir, name)
 }

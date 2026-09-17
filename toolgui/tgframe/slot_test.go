@@ -263,3 +263,81 @@ func TestStatusRewritesItselfOnEveryChange(t *testing.T) {
 		}
 	}
 }
+
+// downloadTokenOf runs one page on state and returns the token the download
+// component it drew put in its pack, which is the only place the client reads
+// one from.
+func downloadTokenOf(t *testing.T, state *tgframe.State,
+	page tgframe.RunFunc) string {
+	t.Helper()
+
+	app := tgframe.NewApp()
+	app.AddPage("index", "Index", page)
+
+	token := ""
+	err := app.RunWithHandlingPanic("index", state,
+		func(notify tgframe.NotifyPack) {
+			bs, err := tgjson.Marshal(notify)
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+
+			var out struct {
+				Component struct {
+					Name  string `json:"name"`
+					Token string `json:"token"`
+				} `json:"component"`
+			}
+			if err := tgjson.Unmarshal(bs, &out); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+
+			if out.Component.Name == "download_file_component" {
+				token = out.Component.Token
+			}
+		})
+	if err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	return token
+}
+
+// TestClearedDownloadIsReleased is the ghost state above for a file a run
+// offered: the token stops working and the bytes go when the button offering
+// them is cleared off the screen. A download can be as large as the page
+// liked, so holding it until the state ends is not good enough.
+func TestClearedDownloadIsReleased(t *testing.T) {
+	state := tgframe.NewState()
+	defer state.Destroy()
+
+	offer := func(c *tgframe.Container) {
+		tgcomp.DownloadFile(c, "Report", []byte("a,b\n1,2\n"),
+			&tgcomp.DownloadFileConf{ID: "report"})
+	}
+
+	token := downloadTokenOf(t, state, func(p *tgframe.Params) error {
+		tgcomp.Empty(p.Main).With(offer)
+		return nil
+	})
+
+	if token == "" {
+		t.Fatal("expect a token in the pack")
+	}
+
+	if state.GetDownload(token) == nil {
+		t.Fatal("expect the run's download on the state")
+	}
+
+	// Cleared off the screen, it does not stay fetchable.
+	downloadTokenOf(t, state, func(p *tgframe.Params) error {
+		slot := tgcomp.Empty(p.Main)
+		slot.With(offer)
+		slot.Clear()
+		return nil
+	})
+
+	if state.GetDownload(token) != nil {
+		t.Error("expect a cleared download to be released")
+	}
+}

@@ -189,3 +189,37 @@ func TestCloneSharesDownloads(t *testing.T) {
 		t.Fatal("expect the run's download on the state it was cloned from")
 	}
 }
+
+// TestDeleteReleasesTheDownload is what a cleared slot ends up calling: a
+// download whose component has left the page goes with it, token and bytes
+// both, rather than being held until the state ends.
+func TestDeleteReleasesTheDownload(t *testing.T) {
+	s := NewState()
+	defer s.Destroy()
+
+	d, err := s.SetDownload("comp", "a.txt", "text/plain", []byte("gone"))
+	if err != nil {
+		t.Fatalf("SetDownload: %v", err)
+	}
+
+	s.Delete("comp")
+
+	if got := s.GetDownload(d.Token()); got != nil {
+		t.Error("expect the token of a released component to be retired")
+	}
+
+	// The next component to land on that id offers its own file, rather than
+	// finding the one before it.
+	again, err := s.SetDownload("comp", "a.txt", "text/plain", []byte("gone"))
+	if err != nil {
+		t.Fatalf("SetDownload again: %v", err)
+	}
+
+	if again.Token() == d.Token() {
+		t.Error("expect a token of its own after the release")
+	}
+
+	if got := readDownload(t, again); got != "gone" {
+		t.Errorf("content = %q, want gone", got)
+	}
+}

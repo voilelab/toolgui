@@ -110,14 +110,16 @@ func (s *State) Set(key string, v any) {
 	s.values[key] = v
 }
 
-// Delete drops what key holds, value and uploaded file alike. It is how a
-// widget's state is released when the widget leaves the page for good.
+// Delete drops what key holds -- value, uploaded file and offered download
+// alike. It is how a widget's state is released when the widget leaves the
+// page for good.
 func (s *State) Delete(key string) {
 	s.rwLock.Lock()
 	delete(s.values, key)
 	s.rwLock.Unlock()
 
 	s.files.remove(key)
+	s.downloads.remove(key)
 }
 
 // GetObject gets the value of a key and unmarshals it to the out object.
