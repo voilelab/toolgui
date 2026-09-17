@@ -1,13 +1,16 @@
-/* App shell: a fixed-width left column beside the page content. */
+/* App shell: a resizable left column beside the page content. */
 .toolgui-shell {
   display: flex;
   align-items: stretch;
   min-height: 100vh;
 }
 
+/* --tg-nav-width comes in as an inline style on the column. A variable, not
+   an inline width: the collapsed and mobile rules below still need to win,
+   and an inline width would beat every one of them. */
 .toolgui-nav {
-  flex: 0 0 240px;
-  width: 240px;
+  flex: 0 0 var(--tg-nav-width, 240px);
+  width: var(--tg-nav-width, 240px);
   display: flex;
   flex-direction: column;
   padding: 1rem 0.75rem;
@@ -36,6 +39,41 @@
 /* Only shown above the mobile breakpoint, where the burger is hidden. */
 .toolgui-nav-collapse {
   display: none;
+}
+
+/* The drag handle, a sibling of the column rather than a child: the column
+   scrolls its own overflow, and a handle inside it would scroll away with
+   the page list. Sits on the border it moves, hence the negative margin. */
+.toolgui-nav-resizer {
+  flex: 0 0 auto;
+  width: 6px;
+  margin-inline-start: -3px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 1;
+  cursor: col-resize;
+  background-color: transparent;
+  /* Without this a touch drag scrolls the page instead of moving the edge. */
+  touch-action: none;
+}
+
+.toolgui-nav-resizer:hover,
+.toolgui-nav-resizer:focus-visible,
+.toolgui-nav-resizer.is-dragging {
+  background-color: var(--mantine-primary-color-filled);
+}
+
+/* Nothing to resize once the column is down to its handle. */
+.toolgui-nav.is-collapsed + .toolgui-nav-resizer {
+  display: none;
+}
+
+/* A drag that leaves the handle must not select the page it passes over, and
+   the cursor stays col-resize wherever the pointer ends up. */
+body.toolgui-resizing {
+  user-select: none;
+  cursor: col-resize;
 }
 
 /* Pins the rerun and theme controls to the bottom of the column. */
@@ -110,6 +148,11 @@
   .toolgui-nav-burger {
     display: inline-flex;
     align-self: flex-start;
+  }
+
+  /* The column is a top bar here, so its width is the viewport's. */
+  .toolgui-nav-resizer {
+    display: none;
   }
 
   .toolgui-nav-body {

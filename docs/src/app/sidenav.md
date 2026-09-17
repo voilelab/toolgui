@@ -20,6 +20,21 @@ It holds four parts, top to bottom:
 
 On a narrow screen the column collapses behind a `Menu` button.
 
+## Width
+
+Drag the column's right edge to resize it, between 180px and 480px. The handle
+is also a keyboard control: focus it and the arrow keys move the edge in 16px
+steps, `Home` and `End` go to the bounds, and `Enter` — or a double click —
+puts it back to the default 240px.
+
+The button at the top of the column collapses it to just that button, handing
+the whole width to the page; the page's Sidebar container keeps its state while
+hidden. Both the width and the collapsed state are remembered in the browser,
+so they survive moving between pages.
+
+Neither applies on a narrow screen, where the column is a bar across the top
+and the `Menu` button owns it.
+
 ## Version
 
 The version line reads the module version out of the binary's build info, so an
