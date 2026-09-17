@@ -39,6 +39,25 @@ func DownloadButtonClicked(s *tgframe.State, id string) bool {
 	return tcinput.DownloadButtonClicked(s, id)
 }
 
+// DownloadFile create a button that hands the app user a file to download,
+// fetched by token rather than carried in the pack.
+func DownloadFile(
+	c *tgframe.Container, text string, body []byte,
+	conf ...*DownloadFileConf) bool {
+
+	return tcinput.DownloadFile(c, text, body, conf...)
+}
+
+// DownloadFileConf is the configuration for the DownloadFile component.
+type DownloadFileConf = tcinput.DownloadFileConf
+
+// DownloadFileClicked reports whether the click this run is handling is the
+// one on the download file button with the given id, and can be asked before
+// the button is drawn.
+func DownloadFileClicked(s *tgframe.State, id string) bool {
+	return tcinput.DownloadFileClicked(s, id)
+}
+
 // Checkbox create a checkbox and return true if it's checked.
 func Checkbox(c *tgframe.Container, label string, conf ...*CheckboxConf) bool {
 	return tcinput.Checkbox(c, label, conf...)

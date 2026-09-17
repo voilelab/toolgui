@@ -24,6 +24,11 @@ type State struct {
 	// there has to be ready before one can arrive.
 	files *fileStore
 
+	// downloads is shared with the states cloned from this one, like files:
+	// the token a run hands the client is fetched back through the state the
+	// transport holds, which is not the clone the run drew on.
+	downloads *downloadStore
+
 	clickID string
 
 	// runIDs is the set of component ids the last run of the page drew. An
@@ -39,6 +44,7 @@ func NewState() *State {
 	return &State{
 		values:    make(map[string]any),
 		files:     newFileStore(),
+		downloads: newDownloadStore(),
 		funcCache: make(map[string]any),
 	}
 }
@@ -56,6 +62,7 @@ func (s *State) Clone() *State {
 	return &State{
 		values:    maps.Clone(s.values),
 		files:     s.files,
+		downloads: s.downloads,
 		funcCache: maps.Clone(s.funcCache),
 		runIDs:    maps.Clone(s.runIDs),
 		clickID:   s.clickID,
@@ -103,14 +110,16 @@ func (s *State) Set(key string, v any) {
 	s.values[key] = v
 }
 
-// Delete drops what key holds, value and uploaded file alike. It is how a
-// widget's state is released when the widget leaves the page for good.
+// Delete drops what key holds -- value, uploaded file and offered download
+// alike. It is how a widget's state is released when the widget leaves the
+// page for good.
 func (s *State) Delete(key string) {
 	s.rwLock.Lock()
 	delete(s.values, key)
 	s.rwLock.Unlock()
 
 	s.files.remove(key)
+	s.downloads.remove(key)
 }
 
 // GetObject reads what key holds through a JSON round trip, into out.
@@ -324,6 +333,30 @@ func (s *State) SetFile(key, name string, bs []byte) (*File, error) {
 // GetFile returns the file stored under key, nil when there is none.
 func (s *State) GetFile(key string) *File {
 	return s.files.get(key)
+}
+
+// SetDownload offers bs to the app user as a file to fetch. owner is the id of
+// the component offering it, name the filename to offer it under and mime what
+// to serve it as. The bytes go where the build keeps files, and what the
+// component puts in its pack is [Download.Token].
+//
+// A rerun that offers the same file again gets the same download back, so the
+// token the client holds keeps working and nothing is written twice. Different
+// bytes replace it, and the token before them stops being fetchable.
+func (s *State) SetDownload(owner, name, mime string, bs []byte) (*Download, error) {
+	download, err := s.downloads.set(s.files, owner, name, mime, bs)
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
+
+	return download, nil
+}
+
+// GetDownload returns the download token names, nil when this state offers
+// none under it. Only this state's own: a token made for another state is not
+// found here, which is what keeps one page's output out of another's reach.
+func (s *State) GetDownload(token string) *Download {
+	return s.downloads.get(token)
 }
 
 // SetFuncCache stores value in the function cache under key, a place for what

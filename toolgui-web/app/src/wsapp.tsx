@@ -67,7 +67,8 @@ export class WSApp extends Component<{}, WSState> {
       <App appConf={this.state.appConf}
         ref={this.appEle}
         update={(pack) => { this.state.conn.send(pack) }}
-        upload={(f, id) => { return this.state.conn.uploadFile(f, id) }} />
+        upload={(f, id) => { return this.state.conn.uploadFile(f, id) }}
+        download={(token) => { return this.state.conn.downloadFile(token) }} />
     )
   }
 }

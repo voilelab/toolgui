@@ -15,6 +15,7 @@ import { TToggle } from "./tcinput/toggle"
 import { TColorPicker } from "./tcinput/color_picker"
 import { TForm } from "./tcinput/form"
 import { TDownloadButton } from "./tcinput/download_button"
+import { TDownloadFile } from "./tcinput/download_file"
 
 import { TContainer } from "./tclayout/container"
 import { TBox } from "./tclayout/box"
@@ -73,6 +74,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   color_picker_component: TColorPicker,
   form_component: TForm,
   download_button_component: TDownloadButton,
+  download_file_component: TDownloadFile,
 
   container_component: TContainer,
   box_component: TBox,

@@ -23,6 +23,10 @@ var ErrNoSession = tgutil.NewError("no session, call start first")
 // for a session that is over.
 var ErrNoUpload = tgutil.NewError("no such upload")
 
+// ErrNoDownload is returned for a download token this state's runs never
+// handed out, or one a later run replaced.
+var ErrNoDownload = tgutil.NewError("no such download")
+
 // bridge is what the page talks to. It holds one session, because a tab is
 // one user: there is nothing to key a session map by.
 //
@@ -64,6 +68,7 @@ func (b *bridge) install() {
 		"onPack":       js.FuncOf(b.jsOnPack),
 		"start":        js.FuncOf(b.jsStart),
 		"update":       js.FuncOf(b.jsUpdate),
+		"downloadFile": js.FuncOf(b.jsDownloadFile),
 		"newUpload":    js.FuncOf(b.jsNewUpload),
 		"uploadFile":   js.FuncOf(b.jsUploadFile),
 		"cancelUpload": js.FuncOf(b.jsCancelUpload),
@@ -149,6 +154,50 @@ func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
 	}
 
 	return nil
+}
+
+// downloadSlot is where a download's bytes are, as jsDownloadFile answers it:
+// the directory from the origin private file system's root down and the file
+// inside it, or why there is nothing to read.
+type downloadSlot struct {
+	Dir   []string `json:"dir,omitempty"`
+	Name  string   `json:"name,omitempty"`
+	Error string   `json:"error,omitempty"`
+}
+
+// jsDownloadFile answer where the file behind a download token is, as JSON. It
+// is the browser counterpart of GET /api/files.
+//
+// No bytes cross. The page opens the file it names and reads it with getFile,
+// which hands the tab a blob backed by what is on disk rather than a copy of
+// it -- so a download costs the same whether it is a kilobyte or a gigabyte.
+//
+// The token is looked up in this state's downloads and nowhere else, the same
+// as on the server, so one that a later run replaced or that belongs to a page
+// that has since been left reads as no such download.
+func (b *bridge) jsDownloadFile(this js.Value, args []js.Value) any {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	if b.state == nil {
+		return marshalDownloadSlot(&downloadSlot{Error: ErrNoSession.Error()})
+	}
+
+	if len(args) == 0 {
+		return marshalDownloadSlot(&downloadSlot{Error: ErrNoDownload.Error()})
+	}
+
+	download := b.state.GetDownload(args[0].String())
+	if download == nil {
+		return marshalDownloadSlot(&downloadSlot{Error: ErrNoDownload.Error()})
+	}
+
+	dir, name, err := download.BrowserLocation()
+	if err != nil {
+		return marshalDownloadSlot(&downloadSlot{Error: err.Error()})
+	}
+
+	return marshalDownloadSlot(&downloadSlot{Dir: dir, Name: name})
 }
 
 // uploadSlot is where the page writes one upload, as jsNewUpload answers it.
@@ -290,6 +339,18 @@ func closeHandle(handle js.Value) {
 // uploadFailed is the answer to a reservation that could not be made.
 func uploadFailed(err error) string {
 	return marshalSlot(&uploadSlot{Error: err.Error()})
+}
+
+// marshalDownloadSlot renders a download slot as JSON, the way marshalSlot
+// does an upload's.
+func marshalDownloadSlot(slot *downloadSlot) string {
+	bs, err := tgjson.Marshal(slot)
+	if err != nil {
+		slog.Error("marshal a download slot", "error", err)
+		return `{"error":"cannot describe where the download is"}`
+	}
+
+	return string(bs)
 }
 
 // marshalSlot renders a slot as JSON. The slot is plain data, so the only way

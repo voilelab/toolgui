@@ -1,7 +1,7 @@
 import React, { Component } from "react"
 
 import { App, AppConf, dispatchPack, UpdateEvent } from "@toolgui-web/lib"
-import { backend, getAppConf, onEvent, sendEvent, uploadFile } from "./api/backend"
+import { backend, downloadFile, getAppConf, onEvent, sendEvent, uploadFile } from "./api/backend"
 
 // packEventName is the Wails event carrying every pack. One event name keeps
 // create/update/delete/result in the order the page produced them.
@@ -74,7 +74,8 @@ export class WailsApp extends Component<{}, WailsAppState> {
         update={(event: UpdateEvent) => {
           sendEvent(event).catch((e) => { console.error(e) })
         }}
-        upload={(file, id) => uploadFile(file, id)} />
+        upload={(file, id) => uploadFile(file, id)}
+        download={(token) => downloadFile(token)} />
     )
   }
 }
