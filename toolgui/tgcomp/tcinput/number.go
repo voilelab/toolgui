@@ -28,7 +28,7 @@ type numberComponent[T Numeric] struct {
 	*tgframe.BaseComponent
 
 	Label       string       `json:"label"`
-	Default     *T           `json:"default,omitzero"`
+	Default     T            `json:"default,omitzero"`
 	Min         *T           `json:"min,omitzero"`
 	Max         *T           `json:"max,omitzero"`
 	Step        *T           `json:"step,omitzero"`
@@ -52,8 +52,15 @@ func newNumberComponent[T Numeric](label string) *numberComponent[T] {
 type NumberConf[T Numeric] struct {
 	tgframe.Base
 
-	// Default is the default value of the number component.
-	Default *T
+	// Default is what the input reads as before the app user has typed in it.
+	// The zero value is both "no default" and a default of zero: the box
+	// starts empty either way, and an empty box is zero, exactly as an empty
+	// [Textbox] is "".
+	//
+	// Emptying the box afterwards is an answer of zero, not a return to
+	// Default — the same way clearing a [Textbox] reads as "" and clearing a
+	// [Datepicker] reads as nil.
+	Default T
 
 	// Min is the minimum value of the number component.
 	Min *T
@@ -74,11 +81,6 @@ type NumberConf[T Numeric] struct {
 	Disabled bool
 }
 
-func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T] {
-	c.Default = &v
-	return c
-}
-
 func (c *NumberConf[T]) SetMin(v T) *NumberConf[T] {
 	c.Min = &v
 	return c
@@ -95,7 +97,10 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 }
 
 // Number create a number input and return its value.
-func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
+//
+// There is no "nothing entered" state to report: an input nobody has typed in
+// reads as Conf.Default, and one the app user has emptied reads as zero.
+func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
 	cf := tgframe.OneConf("Number", conf)
 
 	comp := newNumberComponent[T](label)
@@ -125,6 +130,5 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 		return cf.Default
 	}
 
-	v := T(*val)
-	return &v
+	return T(*val)
 }

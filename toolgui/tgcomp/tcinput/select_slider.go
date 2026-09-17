@@ -44,11 +44,11 @@ type SelectSliderConf struct {
 // SelectSlider create a slider over a list of discrete items and return the
 // index of the one it sits on, 0-indexed as [Select]'s is.
 //
-// The handle is always on an item, so the return is never nil: it is the index
-// the app user left it at, else Default. An empty items, or a Default outside
-// it, is a mistake in the caller and panics.
+// The handle is always on an item, so it always has an index to hand back: the
+// one the app user left it at, else Default. An empty items, or a Default
+// outside it, is a mistake in the caller and panics.
 func SelectSlider(c *tgframe.Container, label string, items []string,
-	conf ...*SelectSliderConf) *int {
+	conf ...*SelectSliderConf) int {
 
 	cf := tgframe.OneConf("SelectSlider", conf)
 
@@ -74,8 +74,8 @@ func SelectSlider(c *tgframe.Container, label string, items []string,
 	// than clamped, so the value never disagrees with the handle.
 	idx := c.State.GetInt(comp.ID)
 	if idx == nil || *idx < 0 || *idx >= len(items) {
-		return &comp.Default
+		return comp.Default
 	}
 
-	return idx
+	return *idx
 }

@@ -69,7 +69,7 @@ To have both, write the key and set the conf:
 
 ```go
 p.State.Set("number_component_Age", 30)
-age := tgcomp.Number(p.Main, "Age", (&tgcomp.NumberConf[int64]{}).SetDefault(30))
+age := tgcomp.Number(p.Main, "Age", &tgcomp.NumberConf[int64]{Default: 30})
 ```
 
 Every input that has a value to start on takes a `Default` in its conf, so

@@ -6,7 +6,12 @@ import { Props } from "../component_interface"
 import { inputBorderStyles } from "../../util/color"
 
 export function TNumber({ node, update }: Props) {
-  const [value, setValue] = useState<number>(stateValues[node.props.id] || node.props.default)
+  // `??` rather than `||`: a stored 0 is a value the app user entered, and the
+  // default only stands in until they have. Undefined when there is neither,
+  // which is the empty box Mantine wants — not '', which would read as 0 and
+  // trip the range check below.
+  const [value, setValue] = useState<number>(
+    stateValues[node.props.id] ?? node.props.default)
 
   const outOfRange =
     node.props.min !== undefined && value < node.props.min ||
