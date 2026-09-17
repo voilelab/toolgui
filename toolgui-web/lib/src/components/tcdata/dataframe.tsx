@@ -97,6 +97,7 @@ function SortButton({ label, sort, onSort }: {
 
 export function TDataFrame({ node, update }: Props) {
   const head: string[] = node.props.head
+  const rowCells: string[][] = node.props.rows
   const columns: Column[] = node.props.columns
   const sortable: boolean = node.props.sortable
   const searchable: boolean = node.props.searchable
@@ -115,7 +116,7 @@ export function TDataFrame({ node, update }: Props) {
   // default stands in — the same rule Go applies to the state. Kept in
   // stateValues so the pick survives the re-render the server answer brings.
   const [selected, setSelected] = useState<number[]>(
-    stateValues[node.props.id] || node.props.default_selection || [])
+    stateValues[node.props.id] || node.props.default_selection)
   const pickable = selection !== "none"
 
   // What is drawn as picked is the selection with the current mode applied,
@@ -133,8 +134,7 @@ export function TDataFrame({ node, update }: Props) {
   }, [selected, selection, pickable])
 
   const rows: Row[] = useMemo(
-    () => (node.props.rows || []).map((cells: string[], index: number) =>
-      ({ cells, index })), [node.props.rows])
+    () => rowCells.map((cells, index) => ({ cells, index })), [rowCells])
 
   const shown = useMemo(
     () => head.map((_, i) => i).filter(i => !columns[i].hidden), [head, columns])

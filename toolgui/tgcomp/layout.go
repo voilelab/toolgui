@@ -65,6 +65,12 @@ var Expand = tclayout.Expand
 // ExpandConf is the configuration for the Expand component.
 type ExpandConf = tclayout.ExpandConf
 
+// Popover create a button with a floating panel behind it.
+var Popover = tclayout.Popover
+
+// PopoverConf is the configuration for the Popover component.
+type PopoverConf = tclayout.PopoverConf
+
 // Dialog creates a dialog, closed until something opens it, and hands back a
 // handle to open, close and fill it. The body is only computed while it is
 // open, so handle what opens the dialog before calling DialogContainer.With.

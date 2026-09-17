@@ -461,6 +461,19 @@ func LayoutPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	popoverCompCol, popoverCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_popover"})
+	tgcomp.Echo(popoverCodeCol, code, func() {
+		pop := tgcomp.Popover(popoverCompCol, "Advanced options")
+		tgcomp.Checkbox(pop, "Show hidden columns")
+		if tgcomp.Button(pop, "Reset options") {
+			tgcomp.Text(popoverCompCol, "Options reset.",
+				&tgcomp.TextConf{ID: "popover_reset"})
+		}
+	})
+
+	tgcomp.Divider(p.Main)
+
 	dialogCompCol, dialogCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_dialog"})
 	tgcomp.Echo(dialogCodeCol, code, func() {
