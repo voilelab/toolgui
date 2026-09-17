@@ -80,7 +80,8 @@ build/
 └── app.wasm        your app
 ```
 
-Four static files. Any file server serves them; there is no backend.
+Four static files. Any file server serves them; there is no backend. It does
+have to be an `https` one, though, or `localhost` — see the hosting notes.
 
 The CLI does nothing a shell cannot:
 
@@ -121,6 +122,12 @@ them — so a page function that takes a while leaves the UI responsive.
 
 ## Hosting notes
 
+* Serve it over `https`. Uploads go to the origin private file system, and that
+  belongs to a [secure context], so on plain `http` from anything but
+  `localhost` there is nowhere to put one and every upload fails. It says so
+  rather than falling back to the tab's memory, which would put the files back
+  where this build stopped keeping them without anyone noticing. GitHub Pages,
+  Netlify and the like are `https` already.
 * Serve `.wasm` as `application/wasm`, so the browser can compile it while it
   downloads.
 * Compress it. A small app is around 5 MB, about 1.4 MB gzipped; the component
@@ -129,3 +136,5 @@ them — so a page function that takes a while leaves the UI responsive.
   `index.html`.
 * The build uses relative asset URLs, so it works at a site root and under a
   project path like `/toolgui/` without rebuilding.
+
+[secure context]: https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts

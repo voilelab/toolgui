@@ -259,6 +259,18 @@ func opfsOpenRoot() (js.Value, error) {
 				" dedicated Web Worker")
 	}
 
+	// The origin private file system belongs to a secure context, so a build
+	// served over plain http from anything but localhost has none. That is a
+	// hosting requirement rather than something to degrade around: falling
+	// back to the heap would quietly put every upload back where this build
+	// stopped keeping them, and the page would have no way to know.
+	if secure := js.Global().Get("isSecureContext"); secure.Type() == js.TypeBoolean &&
+		!secure.Bool() {
+		return js.Undefined(), tgutil.NewError(
+			"no origin private file system: this is not a secure context, so" +
+				" the site has to be served over https, or from localhost")
+	}
+
 	storage := js.Global().Get("navigator").Get("storage")
 	if !storage.Truthy() || storage.Get("getDirectory").Type() != js.TypeFunction {
 		return js.Undefined(), tgutil.NewError("no origin private file system")
@@ -407,8 +419,10 @@ func opfsNames(dir js.Value) ([]string, error) {
 // because none of that can be awaited where newBody is called from.
 type opfsBodies struct {
 	// ready is closed once the directory and its lock are in place, or the
-	// attempt to make them has failed. dir, lock and err are written before
-	// it closes and only read after.
+	// attempt to make them has failed. dir, lock and err are written before it
+	// closes and only read after; dir is set as soon as the directory exists,
+	// so that a setup which fails after that still has it to remove, and lock
+	// stays undefined when setup stopped before taking one.
 	ready chan struct{}
 	name  string
 	dir   js.Value
@@ -518,6 +532,10 @@ func (b *opfsBodies) setup() error {
 		return tgutil.Errorf("%w", err)
 	}
 
+	// Kept before the rest of setup can fail, so that destroy has something to
+	// remove either way. Nothing reads it while err is set.
+	b.dir = dir
+
 	lockFile, err := opfsAwaitCall(dir, "getFileHandle", opfsLockName, opfsCreate)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
@@ -528,7 +546,6 @@ func (b *opfsBodies) setup() error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	b.dir = dir
 	b.lock = lock
 
 	return nil
@@ -690,16 +707,24 @@ func (b *opfsBodies) drainPool() {
 	}
 }
 
-// removeDir drops the state's directory once run is out of it.
+// removeDir drops the state's directory once run is out of it. A setup that
+// made the directory and then failed leaves one too, and it goes the same way:
+// the sweep runs once at startup and not again, so a tab that hit this on every
+// page switch would pile them up for the rest of its life.
 func (b *opfsBodies) removeDir() {
 	<-b.stopped
 
-	if b.err != nil {
+	if !b.dir.Truthy() {
+		// setup never got as far as making one.
 		return
 	}
 
-	if _, err := opfsCall(b.lock, "close"); err != nil {
-		slog.Error("release a state directory lock", "dir", b.name, "error", err)
+	// There may be no lock, if that is where setup stopped.
+	if b.lock.Truthy() {
+		if _, err := opfsCall(b.lock, "close"); err != nil {
+			slog.Error("release a state directory lock",
+				"dir", b.name, "error", err)
+		}
 	}
 
 	root, err := opfsStateRoot.get()

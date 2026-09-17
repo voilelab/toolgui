@@ -10,6 +10,8 @@ import (
 	"syscall/js"
 	"testing"
 	"time"
+
+	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
 // These need a browser: the origin private file system exists nowhere else, and
@@ -416,6 +418,44 @@ func TestStateDestroyRemovesDirectory(t *testing.T) {
 	if _, err := s.WriteFile("comp", "b.txt", strings.NewReader("new")); err == nil {
 		t.Error("expect WriteFile to fail on a destroyed state")
 	}
+}
+
+// TestStateDirectoryGoesAfterAPartialSetup checks a state whose setup made its
+// directory and then failed still takes the directory with it. Nothing else
+// would: the sweep runs once at startup and not again, so a tab that hit this
+// on every page switch would pile them up for the rest of its life.
+func TestStateDirectoryGoesAfterAPartialSetup(t *testing.T) {
+	root, err := opfsStateRoot.get()
+	if err != nil {
+		t.Fatalf("open the state root: %v", err)
+	}
+
+	name := opfsStateName()
+
+	dir, err := opfsAwaitCall(root, "getDirectoryHandle", name, opfsCreate)
+	if err != nil {
+		t.Fatalf("make %q: %v", name, err)
+	}
+
+	// What run leaves behind when it got the directory and then failed at the
+	// lock -- out of quota, say. There is no lock handle to close, and err is
+	// set, and the directory still has to go.
+	bodies := &opfsBodies{
+		ready:   make(chan struct{}),
+		pool:    make(chan *opfsBody, opfsPoolSize),
+		done:    make(chan struct{}),
+		stopped: make(chan struct{}),
+		live:    map[*opfsBody]struct{}{},
+		name:    name,
+		dir:     dir,
+		err:     tgutil.NewError("setup failed after the directory was made"),
+	}
+	close(bodies.ready)
+	close(bodies.stopped)
+
+	bodies.destroy()
+
+	opfsWaitGone(t, root, name, true)
 }
 
 // TestOPFSSweep checks startup clears what a crashed tab left behind without

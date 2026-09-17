@@ -31,7 +31,11 @@ Two reasons, and only the first is a hard one:
 
 * Uploads are kept in the origin private file system -- where they go once they
   arrive; getting there is still one base64 string, so a file has to fit in the
-  tab to cross. The only way to read and write one without awaiting a promise is
+  tab to cross. That file system is a secure context's, so the site has to be
+  served over `https` or from `localhost`; on plain `http` anywhere else there
+  is nowhere to store an upload and the store says so rather than quietly
+  falling back to the heap. The only way to read and write one without awaiting
+  a promise is
   `FileSystemFileHandle.createSyncAccessHandle`, which exists in a dedicated
   worker and nowhere else. The store cannot await anything — `uploadFile`
   arrives on the JavaScript callback stack, where a Go function that blocks
