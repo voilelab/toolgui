@@ -528,6 +528,67 @@ describe('Input', () => {
     result().contains('threshold = 25, enabled = true').should('exist')
   })
 
+  it('Form is submitted by a button inside it', () => {
+    cy.visit('/input')
+
+    const result = () => cy.get('div[id=column_component_show_button_form]')
+    const keyword = 'input[id=textbox_component_keyword]'
+
+    // This form carries no submit button of its own, so the only button on
+    // screen is the page's own.
+    result().contains('Not searched yet').should('exist')
+    result().contains('button', 'Submit').should('not.exist')
+
+    // Typing still doesn't reach Go: a form holds its inputs until it is sent.
+    cy.get(keyword).type('toolgui')
+    cy.get(keyword).blur()
+    result().contains('Not searched yet').should('exist')
+
+    // Nor does a download button in the same form. It reports its press with
+    // the same click event a Button sends, and handing someone a file is not
+    // submitting.
+    result().contains('button', 'Save query').click()
+    result().contains('Not searched yet').should('exist')
+
+    // The click sends the held input along with itself, so the run that sees
+    // the click is the one that reads the new value.
+    result().contains('button', 'Search').click()
+    result().contains('Searched: toolgui').should('exist')
+  })
+
+  it('Form can name its submit button', () => {
+    cy.visit('/input')
+
+    const result = () => cy.get('div[id=column_component_show_label_form]')
+
+    result().contains('button', 'Apply').should('exist')
+    result().contains('button', 'Submit').should('not.exist')
+
+    cy.get('input[id=textbox_component_city]').type('Taipei')
+    result().contains('Applied: Taipei').should('not.exist')
+
+    result().contains('button', 'Apply').click()
+    result().contains('Applied: Taipei').should('exist')
+  })
+
+  it('Form holds its inputs across a re-render', () => {
+    cy.visit('/input')
+
+    const result = () => cy.get('div[id=column_component_show_label_form]')
+
+    cy.get('input[id=textbox_component_city]').type('Kyoto')
+    cy.get('input[id=textbox_component_city]').blur()
+
+    // A rerun anywhere on the page re-renders the form with it. What the form
+    // is holding lives nowhere else, so a queue rebuilt by that render takes
+    // the typed value with it and Submit sends an empty form.
+    cy.contains('Rerun').click()
+    result().contains('Applied: Kyoto').should('not.exist')
+
+    result().contains('button', 'Apply').click()
+    result().contains('Applied: Kyoto').should('exist')
+  })
+
   const downloadsFolder = Cypress.config('downloadsFolder');
 
   it('Download Button works', () => {
