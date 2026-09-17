@@ -893,6 +893,12 @@ func InputPage(p *tgframe.Params) error {
 	return nil
 }
 
+// pickedColor is what the colorpicker plugin sends through
+// window.toolgui.update.
+type pickedColor struct {
+	Color string `json:"color"`
+}
+
 func PluginPage(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Plugin")
 	tgcomp.Text(p.Main, "A plugin is a script the app serves, running in a sandboxed frame.")
@@ -902,30 +908,37 @@ func PluginPage(p *tgframe.Params) error {
 	pluginCompCol, pluginCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_plugin"})
 	tgcomp.Echo(pluginCodeCol, code, func() {
-		var value struct {
-			Color string `json:"color"`
+		src := tgframe.PluginAssetURL("colorpicker", "colorpicker.js")
+		conf := &tgcomp.PluginConf{
+			ID:     "color_picker",
+			Style:  tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
+			Height: "auto",
 		}
 
-		// Nothing is selected until the plugin sends its first value, which
-		// is not an error to read.
-		_ = tgcomp.PluginValue(p.State, "color_picker", &value)
+		// The plugin keeps no state of its own, so what is selected has to be
+		// read before it is drawn. Nothing is until it sends its first value.
+		selected := ""
+		if v := tgcomp.PluginValue[pickedColor](pluginCompCol, src, conf); v != nil {
+			selected = v.Color
+		}
 
-		tgcomp.Plugin(pluginCompCol,
-			tgframe.PluginAssetURL("colorpicker", "colorpicker.js"),
-			&tgcomp.PluginConf{
-				ID:    "color_picker",
-				Style: tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
-				Props: map[string]any{
-					"colors":   pickerColors,
-					"selected": value.Color,
-				},
-				Height: "auto",
-			})
+		conf.Props = map[string]any{
+			"colors":   pickerColors,
+			"selected": selected,
+		}
 
-		tgcomp.Text(pluginCompCol, "Selected: "+value.Color)
+		tgcomp.Plugin(pluginCompCol, src, conf)
+
+		tgcomp.Text(pluginCompCol, "Selected: "+selected)
 	})
 
 	return nil
+}
+
+// clickedValue is what the interactive iframe sends through
+// window.toolgui.update.
+type clickedValue struct {
+	Clicked bool `json:"clicked"`
 }
 
 func MiscPage(p *tgframe.Params) error {
@@ -1064,32 +1077,30 @@ func MiscPage(p *tgframe.Params) error {
 	iframeInteractiveCompCol, iframeInteractiveCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_iframe_interactive"})
 	tgcomp.Echo(iframeInteractiveCodeCol, code, func() {
-		tgcomp.Iframe(
-			iframeInteractiveCompCol,
-			`<button id="btn">Click me to update</button>
+		html := `<button id="btn">Click me to update</button>
 			<script>
 				const btn = document.getElementById('btn');
 				btn.addEventListener('click', (event) => {
 					window.toolgui.update({clicked: true});
 				});
-			</script>`,
-			&tgcomp.IframeConf{
-				Script: true,
-				Height: "60px",
-				ID:     "iframe_with_interactive",
-			})
+			</script>`
+		conf := &tgcomp.IframeConf{
+			Script: true,
+			Height: "60px",
+			ID:     "iframe_with_interactive",
+		}
+
+		tgcomp.Iframe(iframeInteractiveCompCol, html, conf)
 
 		tgcomp.Text(iframeInteractiveCompCol, time.Now().Format("2006-01-02 15:04:05"))
 
-		var value struct {
-			Clicked bool `json:"clicked"`
-		}
-		err := tgcomp.IframeValue(p.State, "iframe_with_interactive", &value)
-		if err != nil {
-			return
+		// nil until the guest clicks for the first time.
+		clicked := false
+		if v := tgcomp.IframeValue[clickedValue](iframeInteractiveCompCol, html, conf); v != nil {
+			clicked = v.Clicked
 		}
 
-		tgcomp.Text(iframeInteractiveCompCol, fmt.Sprintf("Status: %v", value.Clicked))
+		tgcomp.Text(iframeInteractiveCompCol, fmt.Sprintf("Status: %v", clicked))
 	})
 
 	tgcomp.Divider(p.Main)

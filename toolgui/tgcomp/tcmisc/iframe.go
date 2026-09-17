@@ -57,9 +57,34 @@ type IframeConf struct {
 }
 
 // Iframe shows HTML in a sandboxed iframe.
+//
+// Read what its guest sends back with [IframeValue].
 func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
-	cf := tgframe.OneConf("Iframe", conf)
+	c.AddComponent(iframeComponentFor(html, tgframe.OneConf("Iframe", conf)))
+}
 
+// IframeValue returns the latest value the guest of the iframe html and conf
+// describe sent through window.toolgui.update. It reads the value, it does not
+// draw the iframe: give it the same html and conf the [Iframe] call gets.
+//
+// It returns nil while the guest has sent nothing, so a page tells "no value
+// yet" apart from a value that is the zero T:
+//
+//	if v := tcmisc.IframeValue[picked](c, html, conf); v != nil {
+//		use(*v)
+//	}
+//
+// The frontend keys the value by the iframe's own component id, so a guest can
+// only write to its own state.
+func IframeValue[T any](c *tgframe.Container, html string, conf ...*IframeConf) *T {
+	comp := iframeComponentFor(html, tgframe.OneConf("IframeValue", conf))
+
+	return frameValue[T](c, "iframe", comp.ID)
+}
+
+// iframeComponentFor builds the component html and conf describe. Both entry
+// points go through it, so the id IframeValue reads is the one Iframe draws.
+func iframeComponentFor(html string, cf *IframeConf) *iframeComponent {
 	comp := newIframeComponent(html, cf.Script)
 
 	if cf.Width != "" {
@@ -72,15 +97,5 @@ func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 
 	tgframe.SetConfID(comp, cf)
 
-	c.AddComponent(comp)
-}
-
-// IframeValue unmarshals the latest value the iframe with the given id sent
-// through window.update into out. The id is the one passed as
-// [IframeConf.ID].
-//
-// The frontend keys the value by the iframe's own component id, so an iframe
-// can only write to its own state.
-func IframeValue(s *tgframe.State, id string, out any) error {
-	return s.GetObject(tcutil.NormalID(iframeComponentName, id), out)
+	return comp
 }

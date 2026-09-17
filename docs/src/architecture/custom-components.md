@@ -168,29 +168,36 @@ type GaugeConf struct {
 	tgframe.Base
 }
 
+// gaugeValue is what the gauge's guest sends back.
+type gaugeValue struct {
+	Value float64 `json:"value"`
+}
+
 // Gauge draws a dial, and reports the value the user leaves it on.
 func Gauge(c *tgframe.Container, value float64, conf ...*GaugeConf) float64 {
 	cf := tgframe.OneConf("Gauge", conf)
 
-	tgcomp.Iframe(c, gaugeHTML, &tgcomp.IframeConf{
+	iframeConf := &tgcomp.IframeConf{
 		ID:     cf.ID,
 		Script: true,
 		Height: "auto",
-	})
-
-	var out struct {
-		Value float64 `json:"value"`
-	}
-	if err := tgcomp.IframeValue(c.State, cf.ID, &out); err != nil {
-		return value
 	}
 
-	return out.Value
+	tgcomp.Iframe(c, gaugeHTML, iframeConf)
+
+	// Until the guest sends one, the value the caller passed in stands.
+	if v := tgcomp.IframeValue[gaugeValue](c, gaugeHTML, iframeConf); v != nil {
+		return v.Value
+	}
+
+	return value
 }
 ```
 
 An interactive iframe needs an explicit `ID`: without one its id is a hash of
-the HTML, which is not something a caller can name.
+the HTML, which is not something a caller can name. `IframeValue` reads the
+value rather than drawing a second iframe, so it takes the same `html` and
+`conf` the `Iframe` call got.
 
 [`Plugin`](../components/misc/plugin.md) is the same frame with the guest
 shipped as files instead of a string. Register the files on the app and name

@@ -22,8 +22,7 @@ type Base struct {
 	// "button_component_save". That prefixed value is what [State.GetClickID]
 	// returns and what the state is keyed by, so this id does not match
 	// either as written. Ask through the component package instead —
-	// tcinput.ButtonClicked, tcmisc.IframeValue and the like take the id as
-	// given here.
+	// tcinput.ButtonClicked and the like take the id as given here.
 	ID string
 }
 

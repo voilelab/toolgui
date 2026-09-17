@@ -29,6 +29,10 @@ func newPluginComponent(src string) *pluginComponent {
 	return &pluginComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: pluginComponentName,
+			// The src stands in for an id the conf did not give, so a plugin
+			// still claims a state key of its own and its value can be read
+			// back. Two plugins running the same script need a conf id.
+			ID: tcutil.HashedID(pluginComponentName, []byte(src)),
 		},
 		Src:    src,
 		Width:  defaultPluginWidth,
@@ -65,12 +69,39 @@ type PluginConf struct {
 // cookies or its storage; it talks to the app through window.toolgui, the same
 // bridge [Iframe] gives its html.
 //
-// [PluginConf.ID] names the plugin's state: it is the key [PluginValue] reads
-// and the id the frontend stamps on every value the plugin sends. A plugin
-// with no id renders, but cannot send anything back.
+// Read what it sends back with [PluginValue].
 func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
-	cf := tgframe.OneConf("Plugin", conf)
+	c.AddComponent(pluginComponentFor(src, tgframe.OneConf("Plugin", conf)))
+}
 
+// PluginValue returns the latest value the plugin src and conf describe sent
+// through window.toolgui.update. It reads the value, it does not draw the
+// plugin: give it the same src and conf the [Plugin] call gets, and read
+// before drawing when the props depend on the value.
+//
+//	conf := &tcmisc.PluginConf{ID: "color_picker"}
+//	selected := ""
+//	if v := tcmisc.PluginValue[color](c, src, conf); v != nil {
+//		selected = v.Color
+//	}
+//
+//	conf.Props = map[string]any{"selected": selected}
+//	tcmisc.Plugin(c, src, conf)
+//
+// It returns nil while the plugin has sent nothing, so a page tells "no value
+// yet" apart from a value that is the zero T.
+//
+// The frontend keys the value by the plugin's own component id, so a plugin
+// can only write to its own state.
+func PluginValue[T any](c *tgframe.Container, src string, conf ...*PluginConf) *T {
+	comp := pluginComponentFor(src, tgframe.OneConf("PluginValue", conf))
+
+	return frameValue[T](c, "plugin", comp.ID)
+}
+
+// pluginComponentFor builds the component src and conf describe. Both entry
+// points go through it, so the id PluginValue reads is the one Plugin draws.
+func pluginComponentFor(src string, cf *PluginConf) *pluginComponent {
 	comp := newPluginComponent(src)
 	comp.Props = cf.Props
 	comp.Style = cf.Style
@@ -85,15 +116,5 @@ func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
 
 	tgframe.SetConfID(comp, cf)
 
-	c.AddComponent(comp)
-}
-
-// PluginValue unmarshals the latest value the plugin with the given id sent
-// through window.toolgui.update into out. The id is the one passed as
-// [PluginConf.ID].
-//
-// The frontend keys the value by the plugin's own component id, so a plugin
-// can only write to its own state.
-func PluginValue(s *tgframe.State, id string, out any) error {
-	return s.GetObject(tcutil.NormalID(pluginComponentName, id), out)
+	return comp
 }

@@ -18,12 +18,18 @@ func (app *tgframe.App) AddPluginAssets(name string, fsys fs.FS) error
 func tgframe.PluginAssetURL(name, file string) string
 
 func Plugin(c *tgframe.Container, src string, conf ...*PluginConf)
-func PluginValue(s *tgframe.State, id string, out any) error
+func PluginValue[T any](c *tgframe.Container, src string, conf ...*PluginConf) *T
 ```
 
 * `c` is the container to add the plugin to.
 * `src` is the url of the plugin script.
 * `conf` is an optional configuration, at most one.
+
+`PluginValue` reads the plugin's value, it does not draw the plugin: give it
+the same `src` and `conf` the `Plugin` call gets. It returns `nil` until the
+plugin sends its first value, which is not the same as a value that happens to
+be the zero `T`, and it fails the run rather than return a silent zero when
+what the plugin sent does not fit `T`.
 
 `PluginConf`:
 
@@ -36,8 +42,9 @@ func PluginValue(s *tgframe.State, id string, out any) error
 | `Height` | CSS height of the frame, or `auto`.                  | `150px`  |
 
 `ID` is the key `PluginValue` reads, and the id the frontend stamps on every
-value the plugin sends. A plugin with no id renders, but cannot send anything
-back.
+value the plugin sends. A plugin with no `ID` derives one from its `src`, so it
+can still send values back; two plugins running the same script need an `ID`
+each.
 
 ## Shipping a plugin
 
@@ -105,27 +112,35 @@ reconnect.
 The demo's colour picker takes the colours and the current selection from Go,
 and sends back the one the user clicks.
 
+The selection is what the plugin draws from, so it is read before the plugin
+is drawn.
+
 ```go
-var value struct {
+type pickedColor struct {
 	Color string `json:"color"`
 }
 
+src := tgframe.PluginAssetURL("colorpicker", "colorpicker.js")
+conf := &tgcomp.PluginConf{
+	ID:     "color_picker",
+	Style:  tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
+	Height: "auto",
+}
+
 // Nothing is selected until the plugin sends its first value.
-_ = tgcomp.PluginValue(p.State, "color_picker", &value)
+selected := ""
+if v := tgcomp.PluginValue[pickedColor](p.Main, src, conf); v != nil {
+	selected = v.Color
+}
 
-tgcomp.Plugin(p.Main,
-	tgframe.PluginAssetURL("colorpicker", "colorpicker.js"),
-	&tgcomp.PluginConf{
-		ID:    "color_picker",
-		Style: tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
-		Props: map[string]any{
-			"colors":   []string{"#ff3860", "#ffdd57", "#23d160"},
-			"selected": value.Color,
-		},
-		Height: "auto",
-	})
+conf.Props = map[string]any{
+	"colors":   []string{"#ff3860", "#ffdd57", "#23d160"},
+	"selected": selected,
+}
 
-tgcomp.Text(p.Main, "Selected: "+value.Color)
+tgcomp.Plugin(p.Main, src, conf)
+
+tgcomp.Text(p.Main, "Selected: "+selected)
 ```
 
 ```js
