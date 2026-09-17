@@ -11,11 +11,20 @@ var Button = tcinput.Button
 // ButtonConf is the configuration for the Button component.
 type ButtonConf = tcinput.ButtonConf
 
+// ButtonClicked reports whether the click this run is handling is the one on
+// the button with the given id, and can be asked before the button is drawn.
+var ButtonClicked = tcinput.ButtonClicked
+
 // DownloadButton create a download button component.
 var DownloadButton = tcinput.DownloadButton
 
 // DownloadButtonConf is the configuration for the DownloadButton component.
 type DownloadButtonConf = tcinput.DownloadButtonConf
+
+// DownloadButtonClicked reports whether the click this run is handling is the
+// one on the download button with the given id, and can be asked before the
+// button is drawn.
+var DownloadButtonClicked = tcinput.DownloadButtonClicked
 
 // Checkbox create a checkbox and return true if it's checked.
 var Checkbox = tcinput.Checkbox

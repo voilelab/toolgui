@@ -45,3 +45,14 @@ tgcomp.DownloadButton(p.Main, "Download", []byte("123"),
 ```
 
 ![download button component](download_button.png)
+
+## Asking before the button is drawn
+
+```go
+func DownloadButtonClicked(s *tgframe.State, id string) bool
+```
+
+[`ButtonClicked`](button.md#asking-before-the-button-is-drawn) for a download
+button: it reports the same click, read off the run's state rather than the
+component, so a page can ask before the button is written. `id` is the string
+the button's `DownloadButtonConf.ID` carries.

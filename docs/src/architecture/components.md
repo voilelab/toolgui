@@ -171,6 +171,42 @@ from theirs.
 
 An id given this way is also the element's id in the DOM.
 
+### The name in front of the id
+
+A component does not take the conf id as-is: it prefixes it with its own name,
+so `&tgcomp.ButtonConf{ID: "save"}` is the component `button_component_save`.
+That is what keeps a `Button` and an `Expand` given the same `"save"` apart.
+
+It matters as soon as Go code asks about a component by id, because the
+prefixed value — not the one written in the conf — is what the state is keyed
+by and what `State.GetClickID()` returns:
+
+```go
+// Never true: GetClickID returns "button_component_save".
+if p.State.GetClickID() == "save" {
+```
+
+Each component package hands out the getter that adds the prefix for you, and
+they all take the id exactly as the conf was given it:
+
+```go
+if tgcomp.ButtonClicked(p.State, "save") {
+```
+
+`ButtonClicked` — and `DownloadButtonClicked`, `IframeValue`, `PluginValue` —
+read the run's state rather than the component, so they can be asked *before*
+the component is drawn. That is what a page needs when the button sits below
+the content it changes: handle the click first, then write the new content
+once, instead of sending the old content out and rewriting the whole slot.
+
+The click id comes from the client, and a getter asked before the page has
+written anything has nothing of this run to check it against. So the two
+`Clicked` getters check it against the ids the *last* run drew: a click naming
+a button that was not on the screen is not a click. `Button` needs no such
+check — it reports a click only where the button is actually written — which
+is why asking by hand, with `GetClickID()` and a prefix of your own, is not
+the same thing.
+
 ## Writing one place more than once
 
 A page function normally writes each place once per run. A slot — what
