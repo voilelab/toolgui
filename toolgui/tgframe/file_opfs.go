@@ -59,7 +59,19 @@ const (
 	// opfsSweepGrace is how long a state directory is taken to be one still
 	// being set up, and left alone whatever is or is not in it.
 	opfsSweepGrace = time.Minute
+
+	// opfsRemoveTries is how many times a state's directory is asked for
+	// after the first refusal. The browser will not remove a directory
+	// holding a file something still has open, and after a page switch that
+	// can be the page itself, writing an upload the session that asked for it
+	// no longer has. It stops of its own accord, so the removal is worth
+	// asking for again.
+	opfsRemoveTries = 24
 )
+
+// opfsRemoveGap is how long to leave between those tries. It is a variable so
+// a test does not have to sit through them.
+var opfsRemoveGap = 5 * time.Second
 
 // opfsCreate and opfsRecursive are the option objects the directory calls
 // take. They are never written to, so one of each is enough.
@@ -759,6 +771,14 @@ func (b *opfsBodies) drainPool() {
 // made the directory and then failed leaves one too, and it goes the same way:
 // the sweep runs once at startup and not again, so a tab that hit this on every
 // page switch would pile them up for the rest of its life.
+//
+// It asks more than once. Everything of this program's own inside is closed by
+// now, but an upload the page is still writing is not: a page switch mid-upload
+// leaves a writable stream open on a file in here, and the browser will not
+// remove a directory holding one. That ends by itself -- the write finishes or
+// fails, and the handover that follows finds no session and closes what it was
+// given -- so asking again gets it, where giving up would leave the file and
+// the directory against the origin's quota for the life of the tab.
 func (b *opfsBodies) removeDir() {
 	<-b.stopped
 
@@ -767,7 +787,9 @@ func (b *opfsBodies) removeDir() {
 		return
 	}
 
-	// There may be no lock, if that is where setup stopped.
+	// There may be no lock, if that is where setup stopped. It is released
+	// before the first try rather than after the last: a directory this fails
+	// to remove is one the next startup's sweep has to be able to judge.
 	if b.lock.Truthy() {
 		if _, err := opfsCall(b.lock, "close"); err != nil {
 			slog.Error("release a state directory lock",
@@ -780,9 +802,27 @@ func (b *opfsBodies) removeDir() {
 		return
 	}
 
-	if _, err := opfsAwaitCall(root, "removeEntry", b.name, opfsRecursive); err != nil {
-		slog.Error("remove a state's file directory", "dir", b.name, "error", err)
+	var last error
+
+	for try := range opfsRemoveTries + 1 {
+		if try > 0 {
+			time.Sleep(opfsRemoveGap)
+		}
+
+		_, last = opfsAwaitCall(root, "removeEntry", b.name, opfsRecursive)
+		if last == nil {
+			return
+		}
+
+		if strings.Contains(last.Error(), "NotFoundError") {
+			// Gone already, which is the outcome this wanted.
+			return
+		}
 	}
+
+	// Still held after all that. The lock is released, so the sweep at the
+	// next startup takes it.
+	slog.Error("remove a state's file directory", "dir", b.name, "error", last)
 }
 
 // opfsBody is one file and the handle it is read and written through. The

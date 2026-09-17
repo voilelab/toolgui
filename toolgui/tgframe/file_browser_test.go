@@ -7,6 +7,7 @@ import (
 	"strings"
 	"syscall/js"
 	"testing"
+	"time"
 )
 
 // These need a browser, like the rest of the origin private file system's
@@ -448,4 +449,60 @@ func browserBigBlob(t *testing.T) js.Value {
 	}
 
 	return js.Global().Get("Blob").New(parts)
+}
+
+// TestBrowserUploadOutlivingItsStateIsCleanedUp checks a state whose directory
+// the page is still writing in is removed once the page lets go, rather than
+// left for the origin's quota to carry.
+//
+// A page switch mid-upload is where this happens: the session goes, its
+// directory is removed, and the browser refuses because a writable stream is
+// still open on a file inside. The refusal is temporary -- the write ends one
+// way or the other -- so the removal asks again.
+func TestBrowserUploadOutlivingItsStateIsCleanedUp(t *testing.T) {
+	// Short enough for a test to sit through a try or two.
+	gap := opfsRemoveGap
+	opfsRemoveGap = 20 * time.Millisecond
+	t.Cleanup(func() { opfsRemoveGap = gap })
+
+	root, err := opfsStateRoot.get()
+	if err != nil {
+		t.Fatalf("open the state root: %v", err)
+	}
+
+	s, bodies := opfsState(t)
+
+	upload, err := s.NewBrowserUpload()
+	if err != nil {
+		t.Fatalf("NewBrowserUpload: %v", err)
+	}
+
+	file := browserFile(t, upload)
+
+	writable, err := opfsAwaitCall(file, "createWritable",
+		map[string]any{"keepExistingData": false})
+	if err != nil {
+		t.Fatalf("open a writable stream: %v", err)
+	}
+
+	if _, err := opfsAwaitCall(writable, "write", js.ValueOf("half a f")); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	// The page switch: the session is gone while the page is still writing.
+	s.Destroy()
+
+	// Long enough for a removal that only tried once to have tried and given
+	// up, so this fails rather than passes by being slow.
+	time.Sleep(10 * opfsRemoveGap)
+
+	if !opfsEntry(t, root, bodies.name, true) {
+		t.Fatal("expect the directory to survive while the page is writing in it")
+	}
+
+	if _, err := opfsAwaitCall(writable, "abort"); err != nil {
+		t.Fatalf("abort the writable stream: %v", err)
+	}
+
+	opfsWaitGone(t, root, bodies.name, true)
 }

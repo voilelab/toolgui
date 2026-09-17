@@ -359,7 +359,9 @@ func (b *bridge) closeSession() {
 	b.session = nil
 	b.state = nil
 
-	// The reservations go with the state that made them: destroying it takes
-	// the whole directory, so there is nothing left for Discard to remove.
+	// The reservations go with the state that made them, so a handover that
+	// arrives after this finds no slot and closes what it was given. The
+	// directory removal the destroy started chases what the page is still
+	// writing until it lets go, which is what takes the file with it.
 	clear(b.uploads)
 }
