@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net"
 	"net/http"
@@ -998,8 +999,8 @@ func TestUpdateRefusesOversizedMessage(t *testing.T) {
 	}
 
 	pack := waitResult(t, ws)
-	if !strings.Contains(pack.Error, "exceeds limit") {
-		t.Errorf("Error = %q, want the size limit", pack.Error)
+	if pack.Error != "message too large" {
+		t.Errorf("Error = %q, want the size report", pack.Error)
 	}
 
 	// The next message is read as usual, so one oversized message does not
@@ -1035,8 +1036,8 @@ func TestUpdateMessageSizeIsSettable(t *testing.T) {
 		t.Fatalf("send event: %v", err)
 	}
 
-	if pack := waitResult(t, ws); !strings.Contains(pack.Error, "exceeds limit") {
-		t.Errorf("Error = %q, want the size limit", pack.Error)
+	if pack := waitResult(t, ws); pack.Error != "message too large" {
+		t.Errorf("Error = %q, want the size report", pack.Error)
 	}
 }
 
@@ -1066,5 +1067,160 @@ func TestUpdateRefusesDeeplyNestedForm(t *testing.T) {
 
 	if pack := waitResult(t, ws); pack.Error == "" {
 		t.Errorf("%#v, want the message refused", pack)
+	}
+}
+
+// syncBuffer is a Writer a test reads while the server is still writing to it.
+type syncBuffer struct {
+	lock sync.Mutex
+	buf  bytes.Buffer
+}
+
+func (b *syncBuffer) Write(p []byte) (int, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	return b.buf.Write(p)
+}
+
+func (b *syncBuffer) String() string {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	return b.buf.String()
+}
+
+// captureLog points the default logger at a buffer for the rest of the test.
+func captureLog(t *testing.T) *syncBuffer {
+	t.Helper()
+
+	buf := &syncBuffer{}
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(buf, nil)))
+	t.Cleanup(func() { slog.SetDefault(old) })
+
+	return buf
+}
+
+// waitLog waits for want to show up in the captured log.
+func waitLog(t *testing.T, buf *syncBuffer, want string) string {
+	t.Helper()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		if got := buf.String(); strings.Contains(got, want) {
+			return got
+		}
+
+		if time.Now().After(deadline) {
+			t.Fatalf("expect a log line containing %q, got %q", want,
+				buf.String())
+		}
+
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+// A state another connection is holding is not handed out twice, and the line
+// the server logs about it does not carry the id. The id is the whole of what
+// a connection needs to take a state over, so a log carrying it -- or a log
+// aggregator holding it -- is a way into someone else's page and its uploads.
+func TestUpdateAliveStateIsNotTakenOver(t *testing.T) {
+	srv, _ := newTestServer(t)
+	logs := captureLog(t)
+
+	ws := dialUpdate(t, srv, "index")
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var pack stateIDPack
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
+		t.Fatalf("receive state id: %v", err)
+	}
+
+	second := dialUpdate(t, srv, "index")
+	if err := jsonCodec.Send(second, pack); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	if result := waitResult(t, second); result.Error != "state id already alive" {
+		t.Errorf("Error = %q, want the take-over refused", result.Error)
+	}
+
+	got := waitLog(t, logs, "state id already alive")
+	if strings.Contains(got, pack.StateID) {
+		t.Errorf("the log carries the state id: %s", got)
+	}
+}
+
+// The other side of it: a state its connection let go of is taken over on the
+// reconnect, with what the page put in it.
+func TestUpdateIdleStateIsTakenOver(t *testing.T) {
+	srv, e := newTestServer(t)
+
+	ws, conn := dialUpdateRaw(t, srv)
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var pack stateIDPack
+	if err := jsonCodec.Receive(ws, &pack); err != nil {
+		t.Fatalf("receive state id: %v", err)
+	}
+
+	state, _ := e.stateMap.Get(pack.StateID)
+	state.Set("key", "value")
+
+	if err := conn.SetLinger(0); err != nil {
+		t.Fatalf("set linger: %v", err)
+	}
+	conn.Close()
+
+	waitNotAlive(t, e, pack.StateID)
+
+	second := dialUpdate(t, srv, "index")
+	if err := jsonCodec.Send(second, pack); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	// The reconnect keeps the id it came with, so the server sends no new one
+	// and the next event runs the page as usual.
+	if err := websocket.Message.Send(second, []byte(`{}`)); err != nil {
+		t.Fatalf("send event: %v", err)
+	}
+
+	if result := waitResult(t, second); !result.Success {
+		t.Fatalf("after a reconnect: %#v, want a run", result)
+	}
+
+	back, alive := e.stateMap.Get(pack.StateID)
+	if back != state {
+		t.Error("expect the reconnect to take the same state over")
+	}
+
+	if !alive {
+		t.Error("expect the state to be alive again")
+	}
+}
+
+// A connection that says nothing the server can read is told the kind of error
+// it was, not the library message underneath.
+func TestUpdateMasksStateIDError(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	ws := dialUpdate(t, srv, "index")
+	if err := websocket.Message.Send(ws, []byte(`not json`)); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	result := waitResult(t, ws)
+	if result.Error != tgframe.InternalErrorMessage {
+		t.Errorf("Error = %q, want %q", result.Error,
+			tgframe.InternalErrorMessage)
+	}
+
+	if result.ErrorID == "" {
+		t.Error("expect an error id to look the report up by")
 	}
 }

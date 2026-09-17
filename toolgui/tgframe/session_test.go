@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -410,5 +411,130 @@ func TestResultPackOmitsZeroFields(t *testing.T) {
 				t.Errorf("marshal = %s, want %s", bs, tc.want)
 			}
 		})
+	}
+}
+
+// TestSessionMasksPanicContent checks what a page panicked with never leaves
+// the process. A panic value carries whatever the app was holding when it
+// broke -- a file path, a query, a connection string -- and the browser, which
+// nothing authenticates, is the one place it must not go.
+func TestSessionMasksPanicContent(t *testing.T) {
+	const secret = "user=admin password=hunter2"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		panic(errors.New(secret))
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if result.Success {
+		t.Fatalf("expect a failure, got %#v", result)
+	}
+
+	if strings.Contains(result.Error, secret) {
+		t.Errorf("Error = %q, carries the panic value", result.Error)
+	}
+
+	// The package path the framework's own errors are prefixed with is as
+	// much of the server's inside as the panic value is.
+	if strings.Contains(result.Error, "tgframe") {
+		t.Errorf("Error = %q, carries a function path", result.Error)
+	}
+
+	if result.Error != InternalErrorMessage {
+		t.Errorf("Error = %q, want %q", result.Error, InternalErrorMessage)
+	}
+
+	// Masked, not lost: the id is what ties the report to the log line.
+	if result.ErrorID == "" {
+		t.Error("expect an error id to look the report up by")
+	}
+}
+
+// TestSessionMasksPanicValue checks a page that panicked with something other
+// than an error is masked too. That one is formatted with %v, so whatever it
+// holds ends up in the message.
+func TestSessionMasksPanicValue(t *testing.T) {
+	const secret = "/srv/toolgui/secrets.yaml"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		panic(secret)
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if strings.Contains(result.Error, secret) {
+		t.Errorf("Error = %q, carries the panic value", result.Error)
+	}
+}
+
+// TestSessionShowsPageError checks the other side of it: an error the page
+// function returned is the page talking to its user, so it arrives whole.
+func TestSessionShowsPageError(t *testing.T) {
+	const message = "this file needs a header row"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		return errors.New(message)
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if result.Success {
+		t.Fatalf("expect a failure, got %#v", result)
+	}
+
+	if result.Error != message {
+		t.Errorf("Error = %q, want %q", result.Error, message)
+	}
+
+	// Nothing was hidden, so there is no log line to point at.
+	if result.ErrorID != "" {
+		t.Errorf("ErrorID = %q, want none", result.ErrorID)
+	}
+}
+
+// TestSessionShowsFailedComponentError checks a failure the page reported with
+// Container.Fail reaches the user the same way. It is the page's own report,
+// not the framework's.
+func TestSessionShowsFailedComponentError(t *testing.T) {
+	const message = "row 3 does not match the head"
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		p.Main.Fail(errors.New(message))
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+
+	result := <-recorder.results
+	if result.Error != message {
+		t.Errorf("Error = %q, want %q", result.Error, message)
+	}
+}
+
+// TestSessionMasksParseError checks an event the parser refused is reported as
+// the framework's own error, not with the parser's message.
+func TestSessionMasksParseError(t *testing.T) {
+	session, recorder := newTestSession(t, func(p *Params) error { return nil })
+	defer session.Close()
+
+	if err := session.HandleRawEvent([]byte(`{"type":"unknown"}`)); err == nil {
+		t.Fatal("expect a parse error")
+	}
+
+	result := <-recorder.results
+	if result.Error != InternalErrorMessage {
+		t.Errorf("Error = %q, want %q", result.Error, InternalErrorMessage)
+	}
+
+	if result.ErrorID == "" {
+		t.Error("expect an error id to look the report up by")
 	}
 }

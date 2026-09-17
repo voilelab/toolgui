@@ -11,6 +11,14 @@ import (
 // holds as many items as it may.
 var ErrUUIDMapFull = errors.New("uuidmap is full")
 
+// ErrUUIDNotFound is the error [UUIDMap.Acquire] returns when the map holds
+// nothing under the id.
+var ErrUUIDNotFound = errors.New("uuidmap: id not found")
+
+// ErrUUIDAlive is the error [UUIDMap.Acquire] returns when something else
+// already holds the id.
+var ErrUUIDAlive = errors.New("uuidmap: id already alive")
+
 // UUIDMap provide a goroutine-safe mapping from UUID to T.
 type UUIDMap[T any] interface {
 	// New create a (id -> T) mapping and return id. It returns
@@ -20,6 +28,13 @@ type UUIDMap[T any] interface {
 
 	// Get return (T, alive) by id, return nil if id does not exist.
 	Get(id string) (*T, bool)
+
+	// Acquire take the item under id and mark it alive, in one step. It
+	// returns [ErrUUIDNotFound] when the map holds nothing under id, and
+	// [ErrUUIDAlive] when something else already holds it. Two callers
+	// racing for the same idle id, only one of them comes away with the
+	// item: the other is told it is alive.
+	Acquire(id string) (*T, error)
 
 	// Del delete uuid.
 	Del(id string)
@@ -89,6 +104,9 @@ func (ss *uuidmap[T]) SetMaxSize(size int) {
 
 // Size return the number of item.
 func (ss *uuidmap[T]) Size() int {
+	ss.lock.RLock()
+	defer ss.lock.RUnlock()
+
 	return len(ss.data)
 }
 
@@ -146,8 +164,9 @@ func (ss *uuidmap[T]) New() (string, error) {
 
 // SetAlive flag of id
 func (ss *uuidmap[T]) SetAlive(id string, alive bool) {
-	ss.lock.RLock()
-	defer ss.lock.RUnlock()
+	// The write lock, not the read one: this writes to the pair.
+	ss.lock.Lock()
+	defer ss.lock.Unlock()
 
 	d, ok := ss.data[id]
 	if !ok {
@@ -160,8 +179,9 @@ func (ss *uuidmap[T]) SetAlive(id string, alive bool) {
 
 // Get return T by id, return nil if id does not exist.
 func (ss *uuidmap[T]) Get(id string) (*T, bool) {
-	ss.lock.RLock()
-	defer ss.lock.RUnlock()
+	// The write lock, not the read one: this refreshes the timestamp.
+	ss.lock.Lock()
+	defer ss.lock.Unlock()
 
 	d, ok := ss.data[id]
 	if !ok {
@@ -170,6 +190,28 @@ func (ss *uuidmap[T]) Get(id string) (*T, bool) {
 
 	d.timestamp = time.Now()
 	return d.value, d.alive
+}
+
+// Acquire take the item under id and mark it alive, in one step.
+func (ss *uuidmap[T]) Acquire(id string) (*T, error) {
+	ss.lock.Lock()
+	defer ss.lock.Unlock()
+
+	d, ok := ss.data[id]
+	if !ok {
+		return nil, ErrUUIDNotFound
+	}
+
+	// Checking and claiming under one lock is the point: between a Get that
+	// reports an idle item and a SetAlive that claims it, a second caller
+	// reads the same idle item and both end up sharing one value.
+	if d.alive {
+		return nil, ErrUUIDAlive
+	}
+
+	d.timestamp = time.Now()
+	d.alive = true
+	return d.value, nil
 }
 
 // Del delete uuid.
