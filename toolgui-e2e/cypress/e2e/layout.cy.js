@@ -39,6 +39,29 @@ describe('Layout spec', () => {
     cy.contains('Expand').should('exist')
   })
 
+  it('Popover opens, survives a rerun, and closes on an outside click', () => {
+    cy.visit('/layout')
+    const inner = () => cy.get('.toolgui-popover-dropdown')
+      .contains('button', 'Reset options')
+
+    // The dropdown holds its contents from the start, hidden until the
+    // trigger is clicked.
+    inner().should('not.be.visible')
+
+    cy.contains('button', 'Advanced options').click()
+    inner().should('be.visible')
+
+    // A widget inside the popover reruns the page. The client owns whether
+    // the popover is open, so the new props leave it open.
+    inner().click()
+    cy.get('#text_component_popover_reset').should('exist')
+    inner().should('be.visible')
+
+    // Anything outside the dropdown closes it.
+    cy.get('.toolgui-box').contains('A box!').click()
+    inner().should('not.be.visible')
+  })
+
   // The slot is written three times in one run, and what it holds at the end
   // is the only thing on the screen. Everything is scoped to the component
   // column: the column beside it shows the source, which names the same text.

@@ -51,6 +51,7 @@ import { TTab } from "./tclayout/tab"
 import { TLatex } from "./tccontent/latex"
 import { TExpand } from "./tclayout/expand"
 import { TEmpty } from "./tclayout/empty"
+import { TPopover } from "./tclayout/popover"
 import { TSpinner } from "./tcmisc/spinner"
 
 const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
@@ -77,6 +78,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   tab_component: TTab,
   expand_component: TExpand,
   empty_component: TEmpty,
+  popover_component: TPopover,
 
   title_component: TTitle,
   subtitle_component: TSubtitle,

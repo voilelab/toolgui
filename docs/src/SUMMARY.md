@@ -80,6 +80,7 @@
     * [Empty](components/layout/empty.md)
     * [Column](components/layout/column.md)
     * [Expand](components/layout/expand.md)
+    * [Popover](components/layout/popover.md)
     * [Tab](components/layout/tab.md)
 
 * [Misc Components](components/misc/index.md)
