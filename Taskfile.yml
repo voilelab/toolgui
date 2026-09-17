@@ -124,3 +124,18 @@ tasks:
       - task: asset_lib
       - task: asset_wasm
       - go run ./cmd/toolgui-wasm serve -o cmd/toolgui-demo/build ./cmd/toolgui-demo
+
+  # The end to end tests of the browser build, against the demo as a static
+  # site. They are a run of their own rather than more specs in the web one:
+  # the pages are the same and the transport underneath is not, so what runs
+  # here is the half that differs -- above all an upload far larger than the
+  # tab could hold, which is what the streaming transport is for.
+  #
+  # Run `task run_wasm_demo` in another shell first, or serve the build some
+  # other way at 127.0.0.1:3000. It has to be localhost: the origin private
+  # file system uploads go into belongs to a secure context.
+  test_e2e_wasm:
+    dir: ./toolgui-e2e
+    cmds:
+      - yarn
+      - yarn cypress run --browser chrome --config-file cypress-wasm.config.js

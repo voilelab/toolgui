@@ -29,20 +29,18 @@ binary itself has to do the same.
 
 Two reasons, and only the first is a hard one:
 
-* Uploads are kept in the origin private file system -- where they go once they
-  arrive; getting there is still one base64 string, so a file has to fit in the
-  tab to cross. That file system is a secure context's, so the site has to be
-  served over `https` or from `localhost`; on plain `http` anywhere else there
-  is nowhere to store an upload and the store says so rather than quietly
-  falling back to the heap. The only way to read and write one without awaiting
-  a promise is
-  `FileSystemFileHandle.createSyncAccessHandle`, which exists in a dedicated
-  worker and nowhere else. The store cannot await anything — `uploadFile`
-  arrives on the JavaScript callback stack, where a Go function that blocks
-  holds the event loop the promise is waiting on — so on the page's thread
-  every upload fails. `tgframe` says as much rather than guessing: *no
-  synchronous file access here: the Go program has to run in a dedicated Web
-  Worker*.
+* Uploads are kept in the origin private file system, and read back through
+  `FileSystemFileHandle.createSyncAccessHandle`. That file system is a secure
+  context's, so the site has to be served over `https` or from `localhost`; on
+  plain `http` anywhere else there is nowhere to store an upload and the store
+  says so rather than quietly falling back to the heap. A sync access handle is
+  the only way to read and write one without awaiting a promise, and it exists
+  in a dedicated worker and nowhere else. The store cannot await anything —
+  `uploadFile` arrives on the JavaScript callback stack, where a Go function
+  that blocks holds the event loop the promise is waiting on — so on the
+  page's thread every upload fails. `tgframe` says as much rather than
+  guessing: *no synchronous file access here: the Go program has to run in a
+  dedicated Web Worker*.
 * Off the page's thread, a page function that takes a while leaves the UI
   responsive. Go's wasm is single-threaded and never touches the DOM, so it has
   no reason to share the browser's thread anyway.
@@ -55,7 +53,7 @@ The worker publishes `globalThis.toolgui`:
 | --- | --- |
 | `GET /api/app` | `toolgui.appConf()` |
 | update websocket | `toolgui.update(eventJSON)` + the `toolgui.onPack` callback |
-| `POST /api/files` | `toolgui.uploadFile(componentID, name, base64)` |
+| `POST /api/files` | `toolgui.newUpload()`, then `toolgui.uploadFile(componentID, name, slot, handle)` or `toolgui.cancelUpload(slot)` |
 | a page load | `toolgui.start(pageName)` |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both
@@ -63,20 +61,44 @@ transports share a wire format.
 
 Every call returns at once. A call into Go that blocks hands control back to
 JavaScript before its work is done, so results come back as packs instead of
-return values; only `uploadFile`, which cannot block, answers with an error
-string.
+return values; only the upload calls, which cannot block, answer with a value.
 
 Because it cannot block, the file store keeps a few files created and open
-ahead of demand, and an upload takes one of those rather than waiting for the
-promises that make one. There are always some by the time a user can have
-picked a file: the pool fills while the page is still being drawn.
+ahead of demand, and a file the Go side writes takes one of those rather than
+waiting for the promises that make one. There are always some by the time a
+user can have picked a file: the pool fills while the page is still being
+drawn.
 
 Once it has filled, taking a file never waits again — it fails instead. A
 callback that took more than the pool holds would be waiting on promises that
 cannot settle until it returns, so the store gives up with an error rather than
-stopping the tab. One `uploadFile` takes one file and the browser sends them one
-per task, so nothing on the transport comes near the limit; a callback of your
-own that stores a stack of files at once would.
+stopping the tab. Nothing on the transport comes near that limit; a callback of
+your own that stores a stack of files at once would.
+
+## An upload is written by the page and read by Go
+
+No bytes cross the boundary. `newUpload` answers with a directory and a file
+name, the page streams the picked file into that file with
+`file.stream().pipeTo(writable)`, and `uploadFile` hands over a component ID,
+the name the user's file had, and a sync access handle already open on what was
+written. A page that gave up calls `cancelUpload` instead, and nothing half
+written is left in the file system or reaches a component.
+
+The split is the browser's doing, not a preference:
+
+* A writable stream is the only way to copy a picked file without the whole of
+  it passing through the tab's heap, and it is the page's to open. This used to
+  be one `readAsDataURL` string handed to Go to decode — several copies of the
+  file at once, two of them a third larger again — which is what stopped a
+  large upload dead.
+* A sync access handle is the only way to read a file back without awaiting a
+  promise, which is what the store needs and cannot have on the callback stack.
+
+The two are exclusive holds on the same file, so neither side can do both, and
+the order is fixed: the page closes its writable stream, opens the handle, and
+only then calls `uploadFile`. Asking for the handle while the write is still
+open is `NoModificationAllowedError`. `TestBrowserUploadHoldsAreExclusive` pins
+it.
 
 ## Building
 

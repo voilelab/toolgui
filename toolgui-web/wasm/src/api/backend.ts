@@ -53,22 +53,27 @@ export class Backend {
     })
   }
 
-  private async call(fn: string, ...args: any[]): Promise<any> {
+  // send posts one message the worker answers by id, whatever it is.
+  private async send(msg: any): Promise<any> {
     await this.ready
 
     const id = this.nextID++
     return new Promise((resolve, reject) => {
-      this.pending.set(id, (msg) => {
-        if (msg.error) {
-          reject(new Error(msg.error))
+      this.pending.set(id, (answer) => {
+        if (answer.error) {
+          reject(new Error(answer.error))
           return
         }
 
-        resolve(msg.value)
+        resolve(answer.value)
       })
 
-      this.worker.postMessage({ kind: 'call', id, fn, args })
+      this.worker.postMessage({ ...msg, id })
     })
+  }
+
+  private call(fn: string, ...args: any[]): Promise<any> {
+    return this.send({ kind: 'call', fn, args })
   }
 
   // appConf is the browser counterpart of GET /api/app.
@@ -86,11 +91,16 @@ export class Backend {
   }
 
   // uploadFile is the browser counterpart of POST /api/files.
+  //
+  // The File itself crosses, not its content. A structured clone of one hands
+  // the worker the same blob this thread holds -- the browser has it on disk
+  // already -- so nothing is copied here and nothing this size is ever a
+  // string. The worker streams it into the file system the wasm program reads
+  // uploads from; see worker.ts.
   async uploadFile(file: File, componentID: string): Promise<UploadResult> {
     try {
-      const error = await this.call('uploadFile', componentID, file.name,
-        await toBase64(file))
-      return error ? { ok: false, error } : { ok: true }
+      await this.send({ kind: 'upload', componentID, file })
+      return { ok: true }
     } catch (e) {
       return { ok: false, error: String(e) }
     }
@@ -99,17 +109,4 @@ export class Backend {
 
 function assetURL(name: string): string {
   return new URL(name, document.baseURI).href
-}
-
-// toBase64 drops the "data:<type>;base64," prefix FileReader adds.
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      resolve(result.slice(result.indexOf(',') + 1))
-    }
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
 }

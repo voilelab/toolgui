@@ -150,3 +150,64 @@ jobs:
           name: cypress-screenshots
           path: toolgui-e2e/cypress/screenshots
           if-no-files-found: ignore
+
+  # The same demo as a static site, driven through the wasm bridge instead of
+  # HTTP. It is a job of its own because the build is: the browser build has
+  # its own frontend and compiles the app into the page.
+  e2e-wasm:
+    name: E2E (wasm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: |
+            toolgui-web/yarn.lock
+            toolgui-e2e/yarn.lock
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build web assets
+        working-directory: toolgui-web
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace @toolgui-web/lib build
+          yarn workspace @toolgui-web/wasm build
+
+      # 127.0.0.1 rather than a hostname: the origin private file system the
+      # uploads go into belongs to a secure context, which localhost is and
+      # anything else on plain http is not.
+      - name: Start the static site
+        run: |
+          go run ./cmd/toolgui-wasm build -o /tmp/wasm-demo ./cmd/toolgui-demo
+          nohup go run ./cmd/toolgui-wasm serve -addr 127.0.0.1:3000 \
+            -o /tmp/wasm-demo ./cmd/toolgui-demo > /tmp/wasm-demo.log 2>&1 &
+
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          working-directory: toolgui-e2e
+          config-file: cypress-wasm.config.js
+          browser: chrome
+          wait-on: http://127.0.0.1:3000
+          wait-on-timeout: 60
+
+      - name: Dump the static site log
+        if: failure()
+        run: cat /tmp/wasm-demo.log
+
+      - name: Upload Cypress screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots-wasm
+          path: toolgui-e2e/cypress/screenshots
+          if-no-files-found: ignore
