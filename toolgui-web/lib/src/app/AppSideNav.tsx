@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { ActionIcon, Burger, Button, Divider, Group, Loader, NavLink, Text } from "@mantine/core";
+import { ActionIcon, Burger, Button, Divider, Group, Loader, NavLink, Text, Tooltip } from "@mantine/core";
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from "@tabler/icons-react";
 
 import { ThemeModeButton } from './ThemeModeButton';
@@ -226,6 +226,10 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     const hasSidebar = sidebarNode.children.length > 0
 
     const collapsed = this.state.collapsed
+    // One string for the tooltip and the accessible name: a tooltip that says
+    // something else is what a screen reader and a voice command disagree over.
+    const collapseLabel = collapsed ?
+      'Expand the side column' : 'Collapse the side column'
 
     return <>
       <aside className={`toolgui-nav ${collapsed ? 'is-collapsed' : ''}`}
@@ -236,17 +240,26 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
           opened={this.state.open}
           onClick={() => { this.setState((prev) => ({ open: !prev.open })) }} />
 
-        {/* Stays in the column when collapsed, so the strip keeps a handle. */}
-        <ActionIcon className="toolgui-nav-collapse"
-          variant="subtle" size="lg"
-          aria-label={collapsed ? 'Expand the side column' : 'Collapse the side column'}
-          aria-expanded={!collapsed}
-          aria-controls={navBodyID}
-          onClick={() => { this.toggleCollapsed() }}>
-          {collapsed ?
-            <IconLayoutSidebarLeftExpand size={18} /> :
-            <IconLayoutSidebarLeftCollapse size={18} />}
-        </ActionIcon>
+        {/* Stays in the column when collapsed, so the strip keeps a handle.
+            Grey rather than the primary colour: it is chrome, and the one
+            thing in the column that should be loud is the current page. */}
+        {/* Hover only, which is all Mantine's tooltip does here: its
+            events.focus has no effect in 9.6.1, even on a focus-visible
+            button. A keyboard gets the same words from the aria-label, and
+            the focus ring to say where it is. */}
+        <Tooltip label={collapseLabel}
+          position="right" openDelay={400} withArrow>
+          <ActionIcon className="toolgui-nav-collapse"
+            variant="subtle" color="gray" size="lg"
+            aria-label={collapseLabel}
+            aria-expanded={!collapsed}
+            aria-controls={navBodyID}
+            onClick={() => { this.toggleCollapsed() }}>
+            {collapsed ?
+              <IconLayoutSidebarLeftExpand size={18} /> :
+              <IconLayoutSidebarLeftCollapse size={18} />}
+          </ActionIcon>
+        </Tooltip>
 
         <div id={navBodyID}
           className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
