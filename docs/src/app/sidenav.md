@@ -18,6 +18,10 @@ It holds four parts, top to bottom:
    * A spinner, shown while the app is running the Page Func.
 4. The toolgui version the app was built against.
 
+The page list is the part that scrolls: an app with more pages than the
+column is tall gets a scrollbar on the list, and the sidebar, the controls
+and the version line under it keep their place.
+
 On a narrow screen the column collapses behind a `Menu` button.
 
 ## Width
