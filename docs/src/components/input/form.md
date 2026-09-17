@@ -27,13 +27,14 @@ type FormConf struct {
 ## Example
 
 ```go
-var a, b *float64
+var a, b float64
 tgcomp.Form(formCompCol).With(func(c *tgframe.Container) {
 	a = tgcomp.Number[float64](c, "a")
 	b = tgcomp.Number[float64](c, "b")
 })
 
-if a != nil && b != nil {
-	tgcomp.Text(formCompCol, fmt.Sprintf("int(a) + int(b) = %d", int(*a)+int(*b)))
-}
+tgcomp.Text(formCompCol, fmt.Sprintf("int(a) + int(b) = %d", int(a)+int(b)))
 ```
+
+An untouched field reads as its `Default`, so the fields hold zero until the
+app user fills them in and hits Submit — there is nothing to nil-check.

@@ -32,7 +32,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 2.5)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[float64](testContainer(state, &packs), "n")
-		if got == nil || *got != 2.5 {
+		if got != 2.5 {
 			t.Fatalf("got %v, want 2.5", got)
 		}
 	})
@@ -42,7 +42,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[int64](testContainer(state, &packs), "n")
-		if got == nil || *got != 7 {
+		if got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
 	})
@@ -53,7 +53,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 7.0)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[int](testContainer(state, &packs), "n")
-		if got == nil || *got != 7 {
+		if got != 7 {
 			t.Fatalf("got %v, want 7", got)
 		}
 	})
@@ -63,7 +63,7 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 		state.Set(id, 4.0)
 		var packs []tgframe.NotifyPack
 		got := tcinput.Number[Rating](testContainer(state, &packs), "n")
-		if got == nil || *got != Rating(4) {
+		if got != Rating(4) {
 			t.Fatalf("got %v, want Rating(4)", got)
 		}
 	})
@@ -78,7 +78,7 @@ func TestNumberTruncatesTowardsTheIntegralType(t *testing.T) {
 
 	var packs []tgframe.NotifyPack
 	got := tcinput.Number[int](testContainer(state, &packs), "n")
-	if got == nil || *got != 2 {
+	if got != 2 {
 		t.Fatalf("got %v, want 2", got)
 	}
 }
@@ -169,16 +169,16 @@ func TestNumberInfersTFromExplicitInstantiation(t *testing.T) {
 	c := testContainer(state, &packs)
 
 	// No conf, T from the instantiation.
-	if got := tcinput.Number[int](c, "n"); got == nil || *got != 3 {
+	if got := tcinput.Number[int](c, "n"); got != 3 {
 		t.Errorf("Number[int] = %v, want 3", got)
 	}
-	if got := tcinput.Number[Rating](c, "n"); got == nil || *got != Rating(3) {
+	if got := tcinput.Number[Rating](c, "n"); got != Rating(3) {
 		t.Errorf("Number[Rating] = %v, want Rating(3)", got)
 	}
 
 	// And with a conf, T can instead be inferred from the conf alone.
 	got := tcinput.Number(c, "n", &tcinput.NumberConf[int64]{})
-	if got == nil || *got != 3 {
+	if got != 3 {
 		t.Errorf("Number(conf) = %v, want 3", got)
 	}
 }
@@ -196,7 +196,7 @@ func TestNumberConfEmbedsBase(t *testing.T) {
 
 	var packs []tgframe.NotifyPack
 	got := tcinput.Number(testContainer(state, &packs), "n", conf)
-	if got == nil || *got != 5 {
+	if got != 5 {
 		t.Fatalf("got %v, want 5 read under the conf's id", got)
 	}
 }
@@ -252,11 +252,11 @@ func TestNumberOmitsUnsetBounds(t *testing.T) {
 	}
 }
 
-// TestNumberRefusesAValueOutOfRange pins the answer to the bug this range
-// check is for: the client sends whatever the user typed, so a value outside
-// Min/Max has to be reported as no value. Handing back the last legal one --
-// or the Default -- is what let a page save a number nobody had entered.
-func TestNumberRefusesAValueOutOfRange(t *testing.T) {
+// TestNumberAppliesTheRangeToWhatArrives pins the answer to the bug this is
+// for: the client sends whatever the app user typed, so a value outside
+// Min/Max arrives and is pulled to the bound. Leaving the last value that was
+// inside the range is what let a page save a number nobody had entered.
+func TestNumberAppliesTheRangeToWhatArrives(t *testing.T) {
 	const id = "number_component_n"
 
 	bounded := func() *tcinput.NumberConf[int] {
@@ -267,84 +267,82 @@ func TestNumberRefusesAValueOutOfRange(t *testing.T) {
 		name string
 		sent float64
 		conf *tcinput.NumberConf[int]
-		want *int
+		want int
 	}{
-		{"below min", 9, bounded(), nil},
-		{"above max", 21, bounded(), nil},
-		{"at min", 10, bounded(), ptr(10)},
-		{"at max", 20, bounded(), ptr(20)},
-		{"within", 15, bounded(), ptr(15)},
+		{"below min", 9, bounded(), 10},
+		{"above max", 21, bounded(), 20},
+		{"at min", 10, bounded(), 10},
+		{"at max", 20, bounded(), 20},
+		{"within", 15, bounded(), 15},
 
-		// The Default is not a fallback for a refused value: it is as stale
-		// as the last legal one, and the box is not showing it.
-		{"out of range with a default", 99, bounded().SetDefault(12), nil},
+		// The Default is not where an out-of-range value falls back to: it is
+		// as stale as the last value inside the range, and the box is not
+		// showing it either.
+		{"out of range with a default", 99, &tcinput.NumberConf[int]{Default: 12, Min: ptr(10), Max: ptr(20)}, 20},
 
-		// Only the bound that is set is judged.
-		{"min only", 99, (&tcinput.NumberConf[int]{}).SetMin(10), ptr(99)},
-		{"max only", -99, (&tcinput.NumberConf[int]{}).SetMax(20), ptr(-99)},
+		// Only the bound that is set applies.
+		{"min only", 99, (&tcinput.NumberConf[int]{}).SetMin(10), 99},
+		{"max only", -99, (&tcinput.NumberConf[int]{}).SetMax(20), -99},
 
-		// No bounds, no check: this is the Number that behaves as it always
-		// did.
-		{"no bounds", 9999, &tcinput.NumberConf[int]{}, ptr(9999)},
+		// No bounds, nothing to apply: this is the Number that behaves as it
+		// always did.
+		{"no bounds", 9999, &tcinput.NumberConf[int]{}, 9999},
 
-		// The range is judged on what the page is handed, so an integral T is
-		// truncated first: 20.9 is the 20 that is in range, not the 20.9 that
-		// is not.
-		{"truncated into range", 20.9, bounded(), ptr(20)},
+		// The bounds are compared before the truncation, on the number that
+		// was typed: 20.9 is over a Max of 20, so it comes back as the bound
+		// rather than as the 20 it would have truncated to.
+		{"truncated at the bound", 20.9, bounded(), 20},
+
+		// And under a Max of 21 the same 20.9 is in range, so it truncates.
+		{"truncated inside the range", 20.9, (&tcinput.NumberConf[int]{}).SetMax(21), 20},
 
 		// A float an integral T cannot hold converts to an
-		// implementation-defined value, which on amd64 is math.MinInt -- a
-		// number below every Min and above no Max, so it used to slip past a
-		// conf with only one bound, or with none, as a value the user had
-		// supposedly typed.
-		{"beyond the type", 1e20, bounded(), nil},
-		{"beyond the type, max only", 1e20, (&tcinput.NumberConf[int]{}).SetMax(20), nil},
-		{"beyond the type, min only", -1e20, (&tcinput.NumberConf[int]{}).SetMin(10), nil},
-		{"beyond the type, no bounds", 1e20, &tcinput.NumberConf[int]{}, nil},
+		// implementation-defined value -- on amd64, math.MinInt. Comparing
+		// the bounds first is what keeps that number out of the result: it is
+		// below every Min and above no Max, so converting first would slip it
+		// past a conf with only a Max.
+		{"beyond the type", 1e20, bounded(), 20},
+		{"beyond the type, max only", 1e20, (&tcinput.NumberConf[int]{}).SetMax(20), 20},
+		{"beyond the type, min only", -1e20, (&tcinput.NumberConf[int]{}).SetMin(10), 10},
+
+		// With no bound to be pulled to there is nothing to report, so the
+		// Default stands.
+		{"beyond the type, no bounds", 1e20, &tcinput.NumberConf[int]{Default: 7}, 7},
 
 		// The far edge of what it can hold is still a value.
-		{"at the type's edge", math.MinInt, &tcinput.NumberConf[int]{}, ptr(math.MinInt)},
+		{"at the type's edge", math.MinInt, &tcinput.NumberConf[int]{}, math.MinInt},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			state := tgframe.NewState()
 			state.Set(id, tc.sent)
 
 			var packs []tgframe.NotifyPack
-			got := tcinput.Number(testContainer(state, &packs), "n", tc.conf)
-
-			switch {
-			case tc.want == nil && got != nil:
-				t.Fatalf("got %v, want nil", *got)
-			case tc.want != nil && got == nil:
-				t.Fatalf("got nil, want %v", *tc.want)
-			case tc.want != nil && *got != *tc.want:
-				t.Fatalf("got %v, want %v", *got, *tc.want)
+			if got := tcinput.Number(testContainer(state, &packs), "n", tc.conf); got != tc.want {
+				t.Fatalf("got %v, want %v", got, tc.want)
 			}
 		})
 	}
 }
 
 // TestNumberFallsBackToTheDefaultWithNothingSent keeps the untouched box
-// apart from the refused one: with no value in the state at all the Default
-// still stands, bounds or no bounds.
+// apart from the clamped one: with no value in the state at all the Default
+// stands, bounds or no bounds.
 func TestNumberFallsBackToTheDefaultWithNothingSent(t *testing.T) {
-	conf := (&tcinput.NumberConf[int]{}).SetMin(10).SetMax(20).SetDefault(12)
+	conf := (&tcinput.NumberConf[int]{Default: 12}).SetMin(10).SetMax(20)
 
 	var packs []tgframe.NotifyPack
-	got := tcinput.Number(testContainer(tgframe.NewState(), &packs), "n", conf)
-	if got == nil || *got != 12 {
+	if got := tcinput.Number(testContainer(tgframe.NewState(), &packs), "n", conf); got != 12 {
 		t.Fatalf("got %v, want 12", got)
 	}
 }
 
-// TestNumberRefusesWhatTheTypeCannotHold covers the cases the table above
-// cannot: a float64 T holds everything a float64 can, so only NaN is refused,
-// and an int64 has a different edge from the int the table uses.
-func TestNumberRefusesWhatTheTypeCannotHold(t *testing.T) {
+// TestNumberWithAFloatTheTypeCannotHold covers what the table above cannot: a
+// float64 T holds everything a float64 can, and an int64 has a different edge
+// from the int the table uses.
+func TestNumberWithAFloatTheTypeCannotHold(t *testing.T) {
 	const id = "number_component_n"
 
-	read := func(t *testing.T, sent float64, call func(*tgframe.Container) bool) bool {
-		t.Helper()
+	read := func(sent float64, call func(*tgframe.Container) float64) float64 {
 		state := tgframe.NewState()
 		state.Set(id, sent)
 
@@ -352,40 +350,37 @@ func TestNumberRefusesWhatTheTypeCannotHold(t *testing.T) {
 		return call(testContainer(state, &packs))
 	}
 
-	nilFloat := func(c *tgframe.Container) bool {
-		return tcinput.Number[float64](c, "n") == nil
+	// Default 7, so falling back to it is visible rather than being the zero
+	// everything else could also be.
+	asFloat := func(c *tgframe.Container) float64 {
+		return tcinput.Number(c, "n", &tcinput.NumberConf[float64]{Default: 7})
 	}
-	nilInt64 := func(c *tgframe.Container) bool {
-		return tcinput.Number[int64](c, "n") == nil
+	asInt64 := func(c *tgframe.Container) float64 {
+		return float64(tcinput.Number(c, "n", &tcinput.NumberConf[int64]{Default: 7}))
 	}
 
 	// NaN is nobody's value, whatever T is. It cannot arrive as JSON, but the
 	// state is not only fed by the client.
-	if !read(t, math.NaN(), nilFloat) {
-		t.Error("NaN reported a value for a float64 T")
+	if got := read(math.NaN(), asFloat); got != 7 {
+		t.Errorf("NaN for a float64 T = %v, want the default 7", got)
 	}
-	if !read(t, math.NaN(), nilInt64) {
-		t.Error("NaN reported a value for an int64 T")
+	if got := read(math.NaN(), asInt64); got != 7 {
+		t.Errorf("NaN for an int64 T = %v, want the default 7", got)
 	}
 
-	// An infinity is a float64, so only the integral T refuses it -- and a
-	// bounded float64 refuses it on the bound, which is the case above.
-	if read(t, math.Inf(1), nilFloat) {
-		t.Error("+Inf reported no value for an unbounded float64 T")
+	// An infinity is a float64, so only the integral T has to refuse it.
+	if got := read(math.Inf(1), asFloat); !math.IsInf(got, 1) {
+		t.Errorf("+Inf for an unbounded float64 T = %v, want +Inf", got)
 	}
-	if !read(t, math.Inf(1), nilInt64) {
-		t.Error("+Inf reported a value for an int64 T")
+	if got := read(math.Inf(1), asInt64); got != 7 {
+		t.Errorf("+Inf for an int64 T = %v, want the default 7", got)
 	}
 
 	// 1e20 is a perfectly good float64 and no int64 at all.
-	if read(t, 1e20, nilFloat) {
-		t.Error("1e20 reported no value for a float64 T")
+	if got := read(1e20, asFloat); got != 1e20 {
+		t.Errorf("1e20 for a float64 T = %v, want 1e20", got)
 	}
-	if !read(t, 1e20, nilInt64) {
-		t.Error("1e20 reported a value for an int64 T")
+	if got := read(1e20, asInt64); got != 7 {
+		t.Errorf("1e20 for an int64 T = %v, want the default 7", got)
 	}
-}
-
-func ptr[T any](v T) *T {
-	return &v
 }

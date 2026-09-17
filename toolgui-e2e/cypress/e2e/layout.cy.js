@@ -1,3 +1,8 @@
+// A Mantine Modal and a Mantine Popover dropdown both carry role=dialog, and
+// this page has one of each. aria-modal is what tells them apart: only the
+// Modal sets it.
+const DIALOG = '[role=dialog][aria-modal=true]'
+
 describe('Layout spec', () => {
   it('Column works', () => {
     cy.visit('/layout')
@@ -70,6 +75,112 @@ describe('Layout spec', () => {
     // Anything outside the dropdown closes it.
     cy.get('.toolgui-box').contains('A box!').click()
     trigger().should('have.attr', 'aria-expanded', 'false')
+  })
+
+  // Text assertions here are scoped to the dialog itself: the column beside
+  // the component shows the source, which names the same strings.
+  it('Dialog draws nothing until something opens it', () => {
+    cy.visit('/layout')
+    cy.get(DIALOG).should('not.exist')
+
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get(DIALOG).contains('Delete the 3 selected rows?')
+      .should('be.visible')
+  })
+
+  it('Dialog closes from a button inside it', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get(DIALOG).contains('Yes, delete').click()
+
+    // Closed by the run that handled the click, and the run after it does not
+    // write the body again.
+    cy.get(DIALOG).should('not.exist')
+    cy.contains('button', 'Rerun').click()
+    cy.get(DIALOG).should('not.exist')
+  })
+
+  it('Dialog closed with ESC stays closed on the next run', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get(DIALOG).should('be.visible')
+
+    cy.get('body').type('{esc}')
+    cy.get(DIALOG).should('not.exist')
+
+    // Whether it is open is kept by the page, so this is also the check that
+    // the dismissal reached the server rather than only the client.
+    cy.contains('button', 'Rerun').click()
+    cy.get(DIALOG).should('not.exist')
+  })
+
+  it('A dialog opened from another one stacks over it', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get(DIALOG).contains('What does this do?').click()
+
+    cy.get(DIALOG).should('have.length', 2)
+
+    // Visible is not the same as on top, so ask the document what is at the
+    // middle of the second dialog. It is the one the page writes FIRST, so
+    // this fails unless being on top follows the order they opened.
+    cy.contains(DIALOG, 'The rows are removed for good.').then(($d) => {
+      const box = $d[0].getBoundingClientRect()
+      cy.document().then((doc) => {
+        const at = doc.elementFromPoint(
+          box.x + box.width / 2, box.y + box.height / 2)
+        expect(at.closest(DIALOG)).to.contain.text('removed for good')
+      })
+    })
+
+    cy.get(DIALOG).contains('Got it').click()
+    cy.get(DIALOG).should('have.length', 1)
+    cy.get(DIALOG).contains('Delete the 3 selected rows?')
+      .should('be.visible')
+  })
+
+  // Mantine gives every Modal its own window key handler with no notion of a
+  // stack, so leaving closeOnEscape on closed the whole stack at once. The
+  // dialog this closes is the one drawn on top, which is why the same stack
+  // drives the z-index.
+  it('ESC closes the top dialog only', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get(DIALOG).contains('What does this do?').click()
+    cy.get(DIALOG).should('have.length', 2)
+
+    cy.get('body').type('{esc}')
+    cy.get(DIALOG).should('have.length', 1)
+
+    // The ESC sent an input event, so the page reran and re-sent both dialogs
+    // with its own idea of open. The parent still being here after that round
+    // trip says the page did not close it either.
+    cy.get(DIALOG).contains('Delete the 3 selected rows?')
+      .should('be.visible')
+
+    cy.get('body').type('{esc}')
+    cy.get(DIALOG).should('not.exist')
+  })
+
+  it('Dialog written into the sidebar still covers the window', () => {
+    cy.visit('/layout')
+    cy.contains('button', 'Open the sidebar dialog').click()
+
+    cy.get(DIALOG).contains('Declared in the sidebar')
+      .should('be.visible')
+
+    // A portal: drawn at the top of the document, not inside the side column
+    // the page wrote it into.
+    cy.get(`#container_component_container_sidebar ${DIALOG}`)
+      .should('not.exist')
+
+    // Dismissible is off on this one: no X, and ESC leaves it alone.
+    cy.get(DIALOG).find('[aria-label="Close dialog"]').should('not.exist')
+    cy.get('body').type('{esc}')
+    cy.get(DIALOG).should('be.visible')
+
+    cy.contains('button', 'Close the sidebar dialog').click()
+    cy.get(DIALOG).should('not.exist')
   })
 
   // The slot is written three times in one run, and what it holds at the end

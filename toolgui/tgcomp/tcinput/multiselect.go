@@ -55,7 +55,8 @@ type MultiselectConf struct {
 // the indices of the selected ones, 0-indexed.
 //
 // The result is ordered by items rather than by the order they were picked in,
-// and is empty rather than nil when nothing is selected.
+// and is nil when nothing is selected — the same "nothing" [Select] hands back,
+// so one test reads both.
 func Multiselect(c *tgframe.Container, label string, items []string,
 	conf ...*MultiselectConf) []int {
 
@@ -89,11 +90,12 @@ func Multiselect(c *tgframe.Container, label string, items []string,
 }
 
 // normalizeSelection puts a selection into the shape the component promises:
-// item order, no duplicates, nothing pointing outside items, and never nil.
-// The cap is applied here too — the frontend is what keeps the app user from
-// exceeding it, but a payload that did anyway is trimmed rather than trusted.
+// item order, no duplicates, nothing pointing outside items, and nil once
+// nothing is left. The cap is applied here too — the frontend is what keeps
+// the app user from exceeding it, but a payload that did anyway is trimmed
+// rather than trusted.
 func normalizeSelection(idxes []int, itemCount, maxSelections int) []int {
-	out := []int{}
+	var out []int
 	for _, idx := range idxes {
 		if idx < 0 || idx >= itemCount {
 			continue

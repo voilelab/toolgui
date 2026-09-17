@@ -35,13 +35,6 @@ var ColorPicker = tcinput.ColorPicker
 // ColorPickerConf is the configuration for the ColorPicker component.
 type ColorPickerConf = tcinput.ColorPickerConf
 
-// Date is a date a [Datepicker] hands back, and the type its Default takes.
-type Date = tcinput.Date
-
-// Time is a time of day a [Timepicker] hands back, and the type its Default
-// takes.
-type Time = tcinput.Time
-
 // Datepicker create a datepicker and return its selected date.
 var Datepicker = tcinput.Datepicker
 
@@ -110,13 +103,13 @@ type Numeric = tcinput.Numeric
 // NumberConf is the configuration for the Number component.
 type NumberConf[T tcinput.Numeric] = tcinput.NumberConf[T]
 
-// Number create a number input and return its value, nil when the input holds
-// nothing the page can use -- see [tcinput.Number].
+// Number create a number input and return its value, always within Conf.Min
+// and Conf.Max -- see [tcinput.Number].
 //
 // A generic function cannot be forwarded by a var, so this is a wrapper rather
 // than an alias like its neighbours.
 func Number[T tcinput.Numeric](
-	c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
+	c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
 
 	return tcinput.Number[T](c, label, conf...)
 }
@@ -129,7 +122,7 @@ type SliderConf[T tcinput.Numeric] = tcinput.SliderConf[T]
 // A generic function cannot be forwarded by a var, so this is a wrapper rather
 // than an alias like its neighbours.
 func Slider[T tcinput.Numeric](
-	c *tgframe.Container, label string, conf ...*SliderConf[T]) *T {
+	c *tgframe.Container, label string, conf ...*SliderConf[T]) T {
 
 	return tcinput.Slider[T](c, label, conf...)
 }

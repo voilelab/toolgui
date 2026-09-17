@@ -52,6 +52,7 @@ import { TLatex } from "./tccontent/latex"
 import { TExpand } from "./tclayout/expand"
 import { TEmpty } from "./tclayout/empty"
 import { TPopover } from "./tclayout/popover"
+import { TDialog } from "./tclayout/dialog"
 import { TSpinner } from "./tcmisc/spinner"
 
 const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
@@ -79,6 +80,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   expand_component: TExpand,
   empty_component: TEmpty,
   popover_component: TPopover,
+  dialog_component: TDialog,
 
   title_component: TTitle,
   subtitle_component: TSubtitle,

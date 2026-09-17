@@ -81,6 +81,7 @@
     * [Column](components/layout/column.md)
     * [Expand](components/layout/expand.md)
     * [Popover](components/layout/popover.md)
+    * [Dialog](components/layout/dialog.md)
     * [Tab](components/layout/tab.md)
 
 * [Misc Components](components/misc/index.md)

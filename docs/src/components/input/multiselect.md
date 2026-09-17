@@ -13,11 +13,16 @@ func Multiselect(c *tgframe.Container, label string, items []string, conf ...*Mu
 * `label` is the label for multiselect.
 * `items` is the list of options.
 * `conf` is an optional configuration, at most one.
-* Return the indices of the selected items, 0-indexed. Empty, never nil, when
-  nothing is selected.
+* Return the indices of the selected items, 0-indexed. nil when nothing is
+  selected.
 
 The result is ordered by `items` rather than by the order the app user picked
 them in, so the same selection always reads the same way.
+
+Nothing selected is nil, the same "nothing" [Select](select.md) hands back, so
+one check reads a single pick and a multiple one. Ranging over it is safe
+either way — a nil slice has no elements — so the check is only needed where
+the absence itself matters.
 
 ```go
 // MultiselectConf is the configuration for the Multiselect component.

@@ -26,30 +26,20 @@ func isIntegral[T Numeric]() bool {
 	return T(1)/T(2) == T(0)
 }
 
-// numberValue converts the float the state holds to T, reporting whether T
-// can hold it at all. A float outside an integral T's range converts to an
-// implementation-defined value -- on amd64 a submitted 1e20 lands on
-// math.MinInt -- and the bounds below would then be judging a number nobody
-// typed. The round trip catches it whatever that value is: only one T really
-// holds converts back to the float it was truncated from.
-func numberValue[T Numeric](f float64) (T, bool) {
-	if math.IsNaN(f) {
-		return 0, false
-	}
-
-	v := T(f)
-	if isIntegral[T]() && float64(v) != math.Trunc(f) {
-		return 0, false
-	}
-
-	return v, true
+// holds reports whether T can hold f. A float outside an integral T's range
+// converts to an implementation-defined value -- on amd64 a submitted 1e20
+// lands on math.MinInt -- so a conversion is not enough on its own. The round
+// trip catches it whatever that value is: only a float T really holds
+// converts back to the one it was truncated from.
+func holds[T Numeric](f float64) bool {
+	return !math.IsNaN(f) && (!isIntegral[T]() || float64(T(f)) == math.Trunc(f))
 }
 
 type numberComponent[T Numeric] struct {
 	*tgframe.BaseComponent
 
 	Label       string       `json:"label"`
-	Default     *T           `json:"default,omitzero"`
+	Default     T            `json:"default,omitzero"`
 	Min         *T           `json:"min,omitzero"`
 	Max         *T           `json:"max,omitzero"`
 	Step        *T           `json:"step,omitzero"`
@@ -73,8 +63,15 @@ func newNumberComponent[T Numeric](label string) *numberComponent[T] {
 type NumberConf[T Numeric] struct {
 	tgframe.Base
 
-	// Default is the default value of the number component.
-	Default *T
+	// Default is what the input reads as before the app user has typed in it.
+	// The zero value is both "no default" and a default of zero: the box
+	// starts empty either way, and an empty box is zero, exactly as an empty
+	// [Textbox] is "".
+	//
+	// Emptying the box afterwards is an answer of zero, not a return to
+	// Default — the same way clearing a [Textbox] reads as "" and clearing a
+	// [Datepicker] reads as nil.
+	Default T
 
 	// Min is the minimum value of the number component.
 	Min *T
@@ -95,11 +92,6 @@ type NumberConf[T Numeric] struct {
 	Disabled bool
 }
 
-func (c *NumberConf[T]) SetDefault(v T) *NumberConf[T] {
-	c.Default = &v
-	return c
-}
-
 func (c *NumberConf[T]) SetMin(v T) *NumberConf[T] {
 	c.Min = &v
 	return c
@@ -115,14 +107,18 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 	return c
 }
 
-// Number create a number input and return its value.
+// Number create a number input and return its value, which is always within
+// Conf.Min and Conf.Max.
 //
-// The result is nil when the input holds nothing the page can use: it is
-// empty and the conf set no Default, what the user left in it falls outside
-// Min/Max, or T cannot hold it at all. The input shows the reason beside
-// itself, so a page that refuses a nil is refusing a value the user has
-// already been told about.
-func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
+// The input reports a value outside that range rather than enforcing it, so
+// the app user keeps seeing what they typed, with the message beside it. What
+// they typed is what comes back, so the value here is pulled into the range
+// on arrival -- never the last one that happened to be inside it, which the
+// page would read as what is on screen now.
+//
+// There is no "nothing entered" state to report: an input nobody has typed in
+// reads as Conf.Default, and one the app user has emptied reads as zero.
+func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
 	cf := tgframe.OneConf("Number", conf)
 
 	comp := newNumberComponent[T](label)
@@ -152,21 +148,24 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 		return cf.Default
 	}
 
-	// The client sends what the user typed whether it is in range or not, so
-	// the range is judged here. Out of range reports no value at all rather
-	// than the last legal one, which the page would take for the current one.
-	v, ok := numberValue[T](*val)
-	if !ok {
-		return nil
+	// The bounds are compared in float64, before the truncation: that is the
+	// number the app user typed, and it is the only form an out-of-range one
+	// survives in -- converting first would land on whatever an integral T
+	// does with a value it cannot hold.
+	if comp.Min != nil && *val < float64(*comp.Min) {
+		return *comp.Min
 	}
 
-	if comp.Min != nil && v < *comp.Min {
-		return nil
+	if comp.Max != nil && *val > float64(*comp.Max) {
+		return *comp.Max
 	}
 
-	if comp.Max != nil && v > *comp.Max {
-		return nil
+	// In range, or unbounded. A float no T can hold is left to the Default:
+	// there is no number to report and, with no bound to pull it to, nothing
+	// to pull it to either.
+	if !holds[T](*val) {
+		return cf.Default
 	}
 
-	return &v
+	return T(*val)
 }
