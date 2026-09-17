@@ -1,6 +1,8 @@
 package tcinput
 
 import (
+	"math"
+
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
@@ -22,6 +24,15 @@ type Numeric interface {
 // itself, not the type it is defined from, so a switch would miss it.
 func isIntegral[T Numeric]() bool {
 	return T(1)/T(2) == T(0)
+}
+
+// holds reports whether T can hold f. A float outside an integral T's range
+// converts to an implementation-defined value -- on amd64 a submitted 1e20
+// lands on math.MinInt -- so a conversion is not enough on its own. The round
+// trip catches it whatever that value is: only a float T really holds
+// converts back to the one it was truncated from.
+func holds[T Numeric](f float64) bool {
+	return !math.IsNaN(f) && (!isIntegral[T]() || float64(T(f)) == math.Trunc(f))
 }
 
 type numberComponent[T Numeric] struct {
@@ -96,7 +107,14 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 	return c
 }
 
-// Number create a number input and return its value.
+// Number create a number input and return its value, which is always within
+// Conf.Min and Conf.Max.
+//
+// The input reports a value outside that range rather than enforcing it, so
+// the app user keeps seeing what they typed, with the message beside it. What
+// they typed is what comes back, so the value here is pulled into the range
+// on arrival -- never the last one that happened to be inside it, which the
+// page would read as what is on screen now.
 //
 // There is no "nothing entered" state to report: an input nobody has typed in
 // reads as Conf.Default, and one the app user has emptied reads as zero.
@@ -127,6 +145,25 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 	// a float64 whatever T is; T(*val) truncates it back for an integral T.
 	val := c.State.GetFloat(comp.ID)
 	if val == nil {
+		return cf.Default
+	}
+
+	// The bounds are compared in float64, before the truncation: that is the
+	// number the app user typed, and it is the only form an out-of-range one
+	// survives in -- converting first would land on whatever an integral T
+	// does with a value it cannot hold.
+	if comp.Min != nil && *val < float64(*comp.Min) {
+		return *comp.Min
+	}
+
+	if comp.Max != nil && *val > float64(*comp.Max) {
+		return *comp.Max
+	}
+
+	// In range, or unbounded. A float no T can hold is left to the Default:
+	// there is no number to report and, with no bound to pull it to, nothing
+	// to pull it to either.
+	if !holds[T](*val) {
 		return cf.Default
 	}
 

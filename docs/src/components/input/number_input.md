@@ -1,6 +1,7 @@
 # Number Input
 
-Number create a number input and return its value.
+Number create a number input and return its value, or nil when the input
+holds nothing the page can use.
 
 ## API
 
@@ -81,6 +82,25 @@ Emptying the box afterwards is an answer of zero, not a return to `Default`:
 the same rule [Textbox](textbox.md) and the pickers follow, where clearing
 reads as `""` and as nil rather than putting the default back.
 
+## Min and Max are reported, then applied
+
+The box does not enforce the range: it keeps whatever the app user typed,
+marks itself invalid, shows a message beside itself and sends the value on as
+it is. `Number` applies the range on arrival, so **the value a page gets is
+always within `Min` and `Max`**.
+
+That is the point of sending it. An out-of-range value used to be held back,
+which left the server on the last one that happened to be inside the range —
+so a button pressed while the box was red handed the page a number that was
+no longer on screen, and pages set no `Min`/`Max` at all and clamped in Go by
+hand instead. Now the value moves with what is typed: type 999 over a `Max` of
+24 and the page reads 24, not whatever was there before.
+
+The bounds are compared before an integral `T` truncates, on the number the
+app user actually typed. A float no `T` can hold — a pasted `1e20` is no
+`int` — has no number to report and no bound to be pulled to, so it reads as
+`Default`.
+
 ## Example
 
 ```go
@@ -91,6 +111,11 @@ numberValue := tgcomp.Number(numberCompCol, "Number",
 		Default:     10,
 	}).SetMin(10).SetMax(20).SetStep(2))
 
+// Out of range, numberValue is the bound, not the last value in range.
 tgcomp.Text(numberCompCol, fmt.Sprint("Value: ", numberValue),
 	&tgcomp.TextConf{ID: "number_result"})
+
+if tgcomp.Button(numberCompCol, "Save number") && numberValue != nil {
+	tgcomp.Text(numberCompCol, "Saved: "+valStr)
+}
 ```

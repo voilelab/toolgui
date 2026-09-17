@@ -754,8 +754,19 @@ func InputPage(p *tgframe.Params) error {
 			Default:     10,
 		}).SetMin(10).SetMax(20).SetStep(2))
 
+		// Type 123 and the box goes red while the value here reads 20: out of
+		// range, what arrives is pulled to the bound rather than left on the
+		// last one that was inside it.
 		tgcomp.Text(numberCompCol, fmt.Sprint("Value: ", numberValue),
 			&tgcomp.TextConf{ID: "number_result"})
+
+		// So a button pressed while the box is red cannot act on a number the
+		// app user has already replaced.
+		if tgcomp.Button(numberCompCol, "Save number",
+			&tgcomp.ButtonConf{ID: "save_number"}) {
+			tgcomp.Text(numberCompCol, fmt.Sprint("Saved: ", numberValue),
+				&tgcomp.TextConf{ID: "number_saved"})
+		}
 	})
 
 	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "12"})

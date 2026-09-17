@@ -17,6 +17,16 @@ export function TNumber({ node, update }: Props) {
     node.props.min !== undefined && value < node.props.min ||
     node.props.max !== undefined && value > node.props.max
 
+  // What the app user left in the box goes back as it is, out of range or
+  // not. Holding it back would leave the server on the last value that was in
+  // range, and the page would read that as what is on screen now; sent, it is
+  // the server that pulls it into the range.
+  const send = () => update({
+    type: "input",
+    id: node.props.id,
+    value: stateValues[node.props.id],
+  })
+
   return (
     <NumberInput
       id={node.props.id}
@@ -38,22 +48,11 @@ export function TNumber({ node, update }: Props) {
         stateValues[node.props.id] = val
         setValue(val)
       }}
-      onBlur={() => {
-        const val = stateValues[node.props.id]
-
-        if (node.props.min !== undefined && val < node.props.min) {
-          return
+      onBlur={send}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          send()
         }
-
-        if (node.props.max !== undefined && val > node.props.max) {
-          return
-        }
-
-        update({
-          type: "input",
-          id: node.props.id,
-          value: val,
-        })
       }}
     />
   )
