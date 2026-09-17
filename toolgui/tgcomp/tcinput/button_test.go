@@ -71,13 +71,14 @@ func (r *runner) run(event tgframe.Event) clickRun {
 }
 
 // newButtonRunner is a page that asks about the button under id, then draws
-// it.
+// it — both from the same label and conf, which is the contract.
 func newButtonRunner(t *testing.T, id string) *runner {
 	t.Helper()
 
 	return newRunner(t, func(p *tgframe.Params, seen *clickRun) {
-		seen.before = tcinput.ButtonClicked(p.State, id)
-		seen.drawn = tcinput.Button(p.Main, "Save", &tcinput.ButtonConf{ID: id})
+		conf := &tcinput.ButtonConf{ID: id}
+		seen.before = tcinput.ButtonClicked(p.Main, "Save", conf)
+		seen.drawn = tcinput.Button(p.Main, "Save", conf)
 	})
 }
 
@@ -143,7 +144,8 @@ func TestButtonClickedFalse(t *testing.T) {
 // an action the page never offered.
 func TestButtonClickedNeverDrawn(t *testing.T) {
 	r := newRunner(t, func(p *tgframe.Params, seen *clickRun) {
-		seen.before = tcinput.ButtonClicked(p.State, "delete")
+		seen.before = tcinput.ButtonClicked(p.Main, "Delete",
+			&tcinput.ButtonConf{ID: "delete"})
 	})
 
 	got := r.run(&tgframe.EventClick{ID: "button_component_delete"})
@@ -160,9 +162,10 @@ func TestDownloadButtonClicked(t *testing.T) {
 		t.Helper()
 
 		return newRunner(t, func(p *tgframe.Params, seen *clickRun) {
-			seen.before = tcinput.DownloadButtonClicked(p.State, "report")
-			seen.drawn = tcinput.DownloadButton(p.Main, "Report", []byte("body"),
-				&tcinput.DownloadButtonConf{ID: "report"})
+			conf := &tcinput.DownloadButtonConf{ID: "report"}
+			seen.before = tcinput.DownloadButtonClicked(p.Main, "Report", conf)
+			seen.drawn = tcinput.DownloadButton(p.Main, "Report",
+				[]byte("body"), conf)
 		})
 	}
 
@@ -192,7 +195,8 @@ func TestDownloadButtonClicked(t *testing.T) {
 
 	t.Run("never drawn", func(t *testing.T) {
 		r := newRunner(t, func(p *tgframe.Params, seen *clickRun) {
-			seen.before = tcinput.DownloadButtonClicked(p.State, "secret")
+			seen.before = tcinput.DownloadButtonClicked(p.Main, "Secret",
+				&tcinput.DownloadButtonConf{ID: "secret"})
 		})
 
 		got := r.run(&tgframe.EventClick{ID: "download_button_component_secret"})
@@ -201,4 +205,21 @@ func TestDownloadButtonClicked(t *testing.T) {
 				" drew, want false")
 		}
 	})
+}
+
+// TestClickedDrawsNothing is the other half of reading before the draw: the
+// getters take the same arguments the draw does, and must not put a button on
+// the screen for it.
+func TestClickedDrawsNothing(t *testing.T) {
+	var packs int
+	c := tgframe.NewContainer("test", tgframe.NewState(),
+		func(pack tgframe.NotifyPack) { packs++ })
+
+	_ = tcinput.ButtonClicked(c, "Save", &tcinput.ButtonConf{ID: "save"})
+	_ = tcinput.DownloadButtonClicked(c, "Report")
+	_ = tcinput.DownloadFileClicked(c, "Archive")
+
+	if packs != 0 {
+		t.Errorf("drew %d components, want none", packs)
+	}
 }

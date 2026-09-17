@@ -16,9 +16,10 @@ func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 type ButtonConf = tcinput.ButtonConf
 
 // ButtonClicked reports whether the click this run is handling is the one on
-// the button with the given id, and can be asked before the button is drawn.
-func ButtonClicked(s *tgframe.State, id string) bool {
-	return tcinput.ButtonClicked(s, id)
+// the button the same label and conf would draw, and can be asked before the
+// button is drawn.
+func ButtonClicked(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
+	return tcinput.ButtonClicked(c, label, conf...)
 }
 
 // DownloadButton create a download button component.
@@ -33,10 +34,13 @@ func DownloadButton(
 type DownloadButtonConf = tcinput.DownloadButtonConf
 
 // DownloadButtonClicked reports whether the click this run is handling is the
-// one on the download button with the given id, and can be asked before the
-// button is drawn.
-func DownloadButtonClicked(s *tgframe.State, id string) bool {
-	return tcinput.DownloadButtonClicked(s, id)
+// one on the download button the same text and conf would draw, and can be
+// asked before the button is drawn. It needs no body.
+func DownloadButtonClicked(
+	c *tgframe.Container, text string,
+	conf ...*DownloadButtonConf) bool {
+
+	return tcinput.DownloadButtonClicked(c, text, conf...)
 }
 
 // DownloadFile create a button that hands the app user a file to download,
@@ -52,10 +56,13 @@ func DownloadFile(
 type DownloadFileConf = tcinput.DownloadFileConf
 
 // DownloadFileClicked reports whether the click this run is handling is the
-// one on the download file button with the given id, and can be asked before
-// the button is drawn.
-func DownloadFileClicked(s *tgframe.State, id string) bool {
-	return tcinput.DownloadFileClicked(s, id)
+// one on the download file button the same text and conf would draw, and can
+// be asked before the button is drawn. It needs no body.
+func DownloadFileClicked(
+	c *tgframe.Container, text string,
+	conf ...*DownloadFileConf) bool {
+
+	return tcinput.DownloadFileClicked(c, text, conf...)
 }
 
 // Checkbox create a checkbox and return true if it's checked.

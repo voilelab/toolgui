@@ -38,40 +38,50 @@ type ButtonConf struct {
 
 // Button create a button and return true if it's clicked.
 func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
-	cf := tgframe.OneConf("Button", conf)
-
-	comp := newButtonComponent(label)
-	comp.Color = cf.Color
-	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	comp := buttonComponentFor(label, tgframe.OneConf("Button", conf))
 
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
 }
 
 // ButtonClicked reports whether the click this run is handling is the one on
-// the button with the given id. The id is the one passed as [ButtonConf.ID].
+// the button label and conf describe. It reads the click, it does not draw the
+// button: give it the same label and conf the [Button] call gets.
 //
-// It reads the click off the state rather than off the button, so a page can
-// ask before the button is drawn — the case for a button written below the
+// It reads the click off the run's state rather than off the button, so a page
+// can ask before the button is drawn — the case for a button written below the
 // content it changes, which would otherwise have to send the old content out
 // first and rewrite it.
 //
-// Comparing an id with [tgframe.State.GetClickID] directly does not work:
-// GetClickID returns the button's component id, which carries the component
-// name in front of the conf id.
+//	if tcinput.ButtonClicked(c, "Load details") {
+//		details = load()
+//	}
+//	...
+//	tcinput.Button(c, "Load details")
 //
 // The click id comes from the client, and the page has not drawn anything yet
 // to check it against, so the button the last run put on the screen is what
 // it's checked against — the same guard an upload naming a component id goes
 // through. A click on a button that was not there is not a click.
-func ButtonClicked(s *tgframe.State, id string) bool {
-	return clicked(s, buttonComponentName, id)
+func ButtonClicked(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
+	comp := buttonComponentFor(label, tgframe.OneConf("ButtonClicked", conf))
+
+	return clicked(c, comp.ID)
+}
+
+// buttonComponentFor builds the component label and conf describe. Both entry
+// points go through it, so the id ButtonClicked reads is the one Button draws.
+func buttonComponentFor(label string, cf *ButtonConf) *buttonComponent {
+	comp := newButtonComponent(label)
+	comp.Color = cf.Color
+	comp.Disabled = cf.Disabled
+	tgframe.SetConfID(comp, cf)
+
+	return comp
 }
 
 // clicked reports whether the click this run is handling is the one on the
-// component of componentName with the given conf id.
-func clicked(s *tgframe.State, componentName, id string) bool {
-	compID := tcutil.NormalID(componentName, id)
-	return s.GetClickID() == compID && s.HasComponentID(compID)
+// component with the given component id, and that the last run drew it.
+func clicked(c *tgframe.Container, compID string) bool {
+	return c.State.GetClickID() == compID && c.State.HasComponentID(compID)
 }
