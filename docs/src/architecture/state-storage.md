@@ -14,12 +14,42 @@ Why cache at all:
 
 - Reduced resource usage: By avoiding redundant calculations and external data fetching, the app can conserve resources like CPU and network bandwidth.
 
+## Two paths to the same state: `p.State` and `c.State`
+
+A page function gets the state as `p.State`; a container carries the same
+`*State` as `c.State`. They are the same object — `App.Run` hands one state to
+the page function and to every container of that run — so neither sees
+anything the other does not, and both are kept.
+
+Which one to use follows from what is in hand:
+
+* Page code takes a `*tgframe.Params`, so it reads `p.State`.
+* A [custom component](custom-components.md) takes a `*tgframe.Container` and
+  nothing else, so `c.State` is how it reaches the state at all. That is the
+  reason the field exists: a component has to be callable anywhere a container
+  is — inside a layout, inside a slot — without the page function handing it
+  anything.
+
+A component that reaches for `p.State` has taken a dependency on the page it
+was first written in, and stops working in the next one.
+
+A container built directly with `NewContainer` carries whatever state its
+caller passed, which may be `nil`. A component that has to work there checks
+for it, the way `Dialog` does.
+
 ## Reading a value out of the state
 
 `p.State` holds `any`, so every getter has to answer what happens when the
-value is not the type asked for. None of them panic: `GetString`, `GetFloat`
-and `GetInt` return `nil`, `GetBool` returns `false`, and the generic
-`State.Get[T]` returns the zero value and `false`.
+value is not the type asked for. None of them panic. There are three, and
+they differ in what they mean by "the right type":
+
+| Getter | Reads | Misses as |
+| --- | --- | --- |
+| `Get[T]` | a value stored as a `T`, and nothing else | zero value, `false` |
+| `GetNumber[T]` | any number, as a `T` | zero value, `false` |
+| `GetObject` | anything, through a JSON round trip | leaves `out` alone |
+
+`Get[T]` is a plain type assertion, and the one to reach for by default:
 
 ```go
 name, ok := p.State.Get[string]("name")
@@ -34,12 +64,34 @@ todoList := p.State.Default("todoList", TODOList{})
 todoList.Add("buy milk")
 ```
 
-Numbers are the one place a type is not taken literally. The frontend sends
-every number as JSON, so an event lands a `float64` whatever the component's
-own type is, while a default written from Go code carries whichever integer
-type was at hand. `GetFloat` and `GetInt` read either, so `Set(key, 30)`,
-`Set(key, int64(30))` and `Set(key, 30.0)` are the same value. A string is
-still not a number: `Set(key, "30")` reads back as `nil`.
+Numbers are the one place a type is not taken literally, and `GetNumber[T]` is
+why. The frontend sends every number as JSON, so an event lands a `float64`
+whatever the component's own type is, while a default written from Go code
+carries whichever integer type was at hand. `GetNumber` reads either, so
+`Set(key, 30)`, `Set(key, int64(30))` and `Set(key, 30.0)` are the same value:
+
+```go
+age, ok := p.State.GetNumber[int]("number_component_Age")
+```
+
+An integral `T` truncates, and reports a number it cannot hold as absent
+rather than handing back whatever the conversion produced. A string is still
+not a number: `Set(key, "30")` reads back as `false`.
+
+`GetObject` is the third one, and it is not a getter for a type so much as a
+decoder. It marshals what the key holds and unmarshals it into `out`, so a
+value the client sent as a JSON array reads back into the `[]int` or the
+struct it stands for — which `Get[[]int]` would miss, because what the state
+is holding is a `[]any`:
+
+```go
+var idxes []int
+err := p.State.GetObject("multiselect_component_Fruit", &idxes)
+```
+
+So: `Get[T]` for a value the page itself wrote, `GetNumber[T]` for a number
+from either side, and `GetObject` for a composite value the client sent. A
+missing key is not an error for `GetObject`: `out` is left as it was.
 
 ## Setting an input's initial value
 
@@ -48,7 +100,7 @@ before the component runs is what the page reads back from it:
 
 ```go
 func Main(p *tgframe.Params) error {
-	if p.State.GetFloat("number_component_Age") == nil {
+	if _, ok := p.State.GetNumber[float64]("number_component_Age"); !ok {
 		p.State.Set("number_component_Age", 30)
 	}
 
@@ -58,8 +110,8 @@ func Main(p *tgframe.Params) error {
 ```
 
 The guard matters: `Set` on every run overwrites what the user just typed. Use
-the getter that matches the stored value — `GetFloat` for a numeric key, since
-`Get[float64]` would miss a default the page itself wrote as an `int`.
+the getter that matches the stored value — `GetNumber` for a numeric key,
+since `Get[float64]` would miss a default the page itself wrote as an `int`.
 
 What `Set` does not do is fill in the field on screen. The state lives on the
 server and is never sent to the client; the widget starts from the component's

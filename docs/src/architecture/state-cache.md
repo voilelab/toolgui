@@ -65,7 +65,18 @@ task run_todo
 
 ## Example of function
 
-Here we provide a state-level cache for a function.
+`SetFuncCache` and `GetFuncCache` are a state-level cache for what a run
+computed and the next run would rather not compute again. The value is typed:
+`GetFuncCache[T]` reads back a `T`, and a key holding something else reads as
+a miss rather than panicking the page.
+
+The key is the whole of the namespace. Two calls naming the same key read and
+write the same entry, wherever in the page they are written, so moving a pair
+of calls into a helper function keeps them hitting the same entry. That also
+means a key has to say what the value was computed from — the inputs, or a
+hash of them — or a later run reads back a result for inputs it no longer has.
+Naming the function in the key, as below, keeps two functions that cache on
+the same inputs apart.
 
 ```go
 // getFiles unarchive cbz file and return list of file names,
@@ -84,12 +95,13 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 		return nil, err
 	}
 
-	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
+	// The key is the whole of the namespace, so it names the function as well
+	// as the file it was computed from.
+	key := fmt.Sprintf("getFiles_%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
 
-	v := p.State.GetFuncCache(key)
-	if v != nil {
+	if v, ok := p.State.GetFuncCache[[]string](key); ok {
 		slog.Debug("cache found")
-		return v.([]string), nil
+		return v, nil
 	}
 
 	cbzFp, err := zip.NewReader(fp, int64(f.Size))

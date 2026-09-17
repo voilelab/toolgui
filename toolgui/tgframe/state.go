@@ -5,7 +5,6 @@ import (
 	"io"
 	"maps"
 	"math"
-	"runtime"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
@@ -15,7 +14,7 @@ import (
 // State is the state of a user's session.
 type State struct {
 	values    map[string]any
-	funcCache map[string]map[string]any
+	funcCache map[string]any
 
 	// files is shared with the states cloned from this one, so no two of them
 	// can hand out the same path. On a server its directory waits for the
@@ -39,7 +38,7 @@ func NewState() *State {
 	return &State{
 		values:    make(map[string]any),
 		files:     newFileStore(),
-		funcCache: make(map[string]map[string]any),
+		funcCache: make(map[string]any),
 	}
 }
 
@@ -113,7 +112,16 @@ func (s *State) Delete(key string) {
 	s.files.remove(key)
 }
 
-// GetObject gets the value of a key and unmarshals it to the out object.
+// GetObject reads what key holds through a JSON round trip, into out.
+//
+// It is kept alongside [State.Get] because the two answer different
+// questions. Get is a type assertion: it reads a value back as the type it
+// was stored as, and nothing else. GetObject re-decodes it, so a value that
+// arrived from the frontend as a map or a []float64 reads back into the Go
+// struct or []int it stands for. Reach for Get for a value the page itself
+// wrote, and for GetObject for one the client sent.
+//
+// A missing key is not an error: out is left as it was.
 func (s *State) GetObject(key string, out any) error {
 	s.rwLock.RLock()
 	val, ok := s.values[key]
@@ -194,59 +202,47 @@ func (s *State) Default[T any](key string, v T) *T {
 	return &v
 }
 
-// GetString reads a string, nil when the key holds none.
-func (s *State) GetString(key string) *string {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
-
-	ss, ok := s.values[key].(string)
-	if !ok {
-		return nil
-	}
-
-	return &ss
+// Numeric is the value type [State.GetNumber] reads a number back as. The
+// tildes let a user's own named type be one, so a page can keep its domain
+// type all the way in.
+type Numeric interface {
+	~int | ~int64 | ~float64
 }
 
-// GetFloat reads any numeric type as a float64, nil when there is none.
-func (s *State) GetFloat(key string) *float64 {
+// GetNumber returns the number under key as a T, false when the key holds
+// nothing numeric, or a number T cannot hold.
+//
+// Numbers are the one place [State.Get] is too literal to be useful. The
+// frontend sends every number as JSON, so an event lands a float64 whatever
+// the component's own type is, while a default written from Go carries
+// whichever integer type was at hand; this reads either, so Set(key, 30),
+// Set(key, int64(30)) and Set(key, 30.0) are the same value. A string is
+// still not a number.
+//
+// An integral T truncates, as the number components do, and reports a number
+// outside its range as absent rather than handing back what the conversion
+// happened to produce.
+func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
 	f, ok := toNumber(s.values[key])
 	if !ok {
-		return nil
+		return 0, false
 	}
 
-	return &f
-}
+	// Written as arithmetic rather than a type switch because a named type's
+	// dynamic type is itself, not the type it is defined from.
+	integral := T(1)/T(2) == T(0)
 
-// GetInt is [State.GetFloat] truncated to an int, nil when an int cannot hold it.
-func (s *State) GetInt(key string) *int {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
-
-	f, ok := toNumber(s.values[key])
-	if !ok {
-		return nil
+	// Go leaves the conversion unspecified outside an integral T's range -- on
+	// amd64 a 1e20 lands on math.MinInt -- so the round trip is what catches
+	// it, whatever that value is.
+	if integral && (math.IsNaN(f) || float64(T(f)) != math.Trunc(f)) {
+		return 0, false
 	}
 
-	// Bounds as float64: math.MaxInt has no exact one, so comparing against it
-	// would let 2^63 through.
-	if math.IsNaN(f) || f < float64(math.MinInt) || f >= -float64(math.MinInt) {
-		return nil
-	}
-
-	i := int(f)
-	return &i
-}
-
-// GetBool reads a bool, false when the key holds none.
-func (s *State) GetBool(key string) bool {
-	s.rwLock.RLock()
-	defer s.rwLock.RUnlock()
-
-	b, _ := s.values[key].(bool)
-	return b
+	return T(f), true
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
@@ -296,63 +292,26 @@ func (s *State) GetFile(key string) *File {
 	return s.files.get(key)
 }
 
-// SetFuncCache sets the value of a key in the function cache.
-func (s *State) SetFuncCache(key string, value any) {
-	funcName := ""
-	pc, _, _, ok := runtime.Caller(1)
-	if ok {
-		funcName = runtime.FuncForPC(pc).Name()
-	}
-	s.SetFuncCacheWithFuncName(key, value, funcName)
-}
-
-// SetFuncCacheWithFuncName sets the value of a key in the function cache with a specific function name.
-func (s *State) SetFuncCacheWithFuncName(key string, value any, funcName string) {
-	if funcName == "" {
-		pc, _, _, ok := runtime.Caller(1)
-		if ok {
-			funcName = runtime.FuncForPC(pc).Name()
-		}
-	}
-
+// SetFuncCache stores value in the function cache under key, a place for what
+// a run computed and the next run would rather not compute again.
+//
+// The key is the whole of the namespace: two calls naming the same key read
+// and write the same entry, wherever in the page they are written. So a key
+// has to say what the value was computed from -- the inputs, or a hash of
+// them -- or a later run reads back a result for inputs it no longer has.
+func (s *State) SetFuncCache[T any](key string, value T) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
 
-	_, ok := s.funcCache[funcName]
-	if !ok {
-		s.funcCache[funcName] = make(map[string]any)
-	}
-
-	s.funcCache[funcName][key] = value
+	s.funcCache[key] = value
 }
 
-// GetFuncCache gets the value of a key in the function cache.
-func (s *State) GetFuncCache(key string) any {
-	funcName := ""
-	pc, _, _, ok := runtime.Caller(1)
-	if ok {
-		funcName = runtime.FuncForPC(pc).Name()
-	}
-
-	return s.GetFuncCacheWithFuncName(key, funcName)
-}
-
-// GetFuncCacheWithFuncName gets the value of a key in the function cache with a specific function name.
-func (s *State) GetFuncCacheWithFuncName(key string, funcName string) any {
-	if funcName == "" {
-		pc, _, _, ok := runtime.Caller(1)
-		if ok {
-			funcName = runtime.FuncForPC(pc).Name()
-		}
-	}
-
+// GetFuncCache returns the value under key in the function cache as a T,
+// false when the key holds nothing or holds another type.
+func (s *State) GetFuncCache[T any](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	cache, ok := s.funcCache[funcName]
-	if !ok {
-		return nil
-	}
-
-	return cache[key]
+	v, ok := s.funcCache[key].(T)
+	return v, ok
 }

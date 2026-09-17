@@ -13,11 +13,10 @@ var _ tgframe.Component = &numberComponent[int]{}
 
 var numberComponentName = "number_component"
 
-// Numeric is the value type a [Number] can hold. The tildes let a user's own
-// named type be one, so a page can keep its domain type all the way in.
-type Numeric interface {
-	~int | ~int64 | ~float64
-}
+// Numeric is the value type a [Number] can hold. It is the state's own
+// [tgframe.Numeric]: what a number input holds is what the state reads back,
+// so there is one set of types, not two that have to be kept in step.
+type Numeric = tgframe.Numeric
 
 // isIntegral reports whether T counts in whole numbers. It is written as
 // arithmetic rather than a type switch because a named type's dynamic type is
@@ -143,8 +142,8 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 
 	// The client sends every number back as a JSON number, so the state holds
 	// a float64 whatever T is; T(*val) truncates it back for an integral T.
-	val := c.State.GetFloat(comp.ID)
-	if val == nil {
+	val, ok := c.State.GetNumber[float64](comp.ID)
+	if !ok {
 		return cf.Default
 	}
 
@@ -152,20 +151,20 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 	// number the app user typed, and it is the only form an out-of-range one
 	// survives in -- converting first would land on whatever an integral T
 	// does with a value it cannot hold.
-	if comp.Min != nil && *val < float64(*comp.Min) {
+	if comp.Min != nil && val < float64(*comp.Min) {
 		return *comp.Min
 	}
 
-	if comp.Max != nil && *val > float64(*comp.Max) {
+	if comp.Max != nil && val > float64(*comp.Max) {
 		return *comp.Max
 	}
 
 	// In range, or unbounded. A float no T can hold is left to the Default:
 	// there is no number to report and, with no bound to pull it to, nothing
 	// to pull it to either.
-	if !holds[T](*val) {
+	if !holds[T](val) {
 		return cf.Default
 	}
 
-	return T(*val)
+	return T(val)
 }

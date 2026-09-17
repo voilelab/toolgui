@@ -176,7 +176,7 @@ func Dialog(c *tgframe.Container, title string, conf ...*DialogConf) *DialogCont
 	tgframe.SetConfID(comp, cf)
 
 	if c.State != nil {
-		comp.Opened = c.State.GetBool(comp.ID)
+		comp.Opened, _ = c.State.Get[bool](comp.ID)
 	}
 
 	// Sent whether or not it is open: an Open later in the run addresses the

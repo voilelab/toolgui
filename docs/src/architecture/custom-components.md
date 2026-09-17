@@ -51,7 +51,9 @@ one, as `Metric` passes `cf.ID` to the box. Components that hold no state —
 display-only function may never need to.
 
 **Reading a value back** works the way input components work: the state is
-keyed by id, so read it and return it. The shape does not change for a
+keyed by id, so read it and return it. `c.State` is the same state the page
+function has as `p.State`, and is how a component reaches it without the page
+handing it anything. The shape does not change for a
 component that returns something:
 
 ```go
@@ -69,10 +71,7 @@ func Counter(c *tgframe.Container, conf ...*CounterConf) int {
 		id = "counter"
 	}
 
-	count := 0
-	if v := c.State.GetInt(id); v != nil {
-		count = *v
-	}
+	count, _ := c.State.GetNumber[int](id)
 
 	if tgcomp.Button(c, "+1", &tgcomp.ButtonConf{ID: id + "_button"}) {
 		count++

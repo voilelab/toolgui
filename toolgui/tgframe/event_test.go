@@ -134,9 +134,9 @@ func TestParseEventSelectSingleValue(t *testing.T) {
 	state := NewState()
 	selectEvent.ApplyState(state)
 
-	idx := state.GetInt("select_component_Fruit")
-	if idx == nil || *idx != 2 {
-		t.Fatalf("state = %v, want 2", idx)
+	idx, ok := state.GetNumber[int]("select_component_Fruit")
+	if !ok || idx != 2 {
+		t.Fatalf("state = %v, %v, want 2, true", idx, ok)
 	}
 }
 

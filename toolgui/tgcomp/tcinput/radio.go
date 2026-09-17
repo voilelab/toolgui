@@ -64,8 +64,8 @@ func Radio(c *tgframe.Container, label string, items []string, conf ...*RadioCon
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
-	idx := c.State.GetInt(comp.ID)
-	if idx == nil {
+	idx, ok := c.State.GetNumber[int](comp.ID)
+	if !ok {
 		// Untouched, so the default stands in — as its own pointer, which
 		// the caller then owns.
 		return normalizeIndex(cf.Default, len(items))
@@ -73,5 +73,5 @@ func Radio(c *tgframe.Container, label string, items []string, conf ...*RadioCon
 
 	// As in [Select], a selection left over from a longer list is dropped
 	// rather than clamped.
-	return normalizeIndex(idx, len(items))
+	return normalizeIndex(&idx, len(items))
 }

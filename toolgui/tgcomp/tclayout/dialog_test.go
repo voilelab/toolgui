@@ -233,7 +233,7 @@ func TestDialogOpennessSurvivesTheRun(t *testing.T) {
 
 	// Kept under the dialog's id as a bare bool, which is what the client
 	// writes back through an input event.
-	if !state.GetBool(dialogID) {
+	if opened, _ := state.Get[bool](dialogID); !opened {
 		t.Fatal("Open() did not leave the dialog open in the state")
 	}
 

@@ -72,10 +72,10 @@ func SelectSlider(c *tgframe.Container, label string, items []string,
 	// 0-based on the wire too: there is no unselected position to reserve it
 	// for. An index from an older run of a now shorter list is dropped rather
 	// than clamped, so the value never disagrees with the handle.
-	idx := c.State.GetInt(comp.ID)
-	if idx == nil || *idx < 0 || *idx >= len(items) {
+	idx, ok := c.State.GetNumber[int](comp.ID)
+	if !ok || idx < 0 || idx >= len(items) {
 		return comp.Default
 	}
 
-	return *idx
+	return idx
 }

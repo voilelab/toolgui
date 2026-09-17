@@ -67,10 +67,10 @@ func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
-	val := c.State.GetString(comp.ID)
-	if val == nil {
+	val, ok := c.State.Get[string](comp.ID)
+	if !ok {
 		return comp.Default
 	}
 
-	return *val
+	return val
 }

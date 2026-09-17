@@ -173,18 +173,18 @@ func (p picker) pick(c *tgframe.Container, label string, def *time.Time,
 	tgframe.SetConfID(comp, conf)
 	c.AddComponent(comp)
 
-	str := c.State.GetString(comp.ID)
-	if str == nil {
+	str, ok := c.State.Get[string](comp.ID)
+	if !ok {
 		return def
 	}
 
 	// The app user cleared the picker: a selection of nothing, not a value to
 	// parse, and not a reason to put the default back.
-	if *str == "" {
+	if str == "" {
 		return nil
 	}
 
-	t, err := time.Parse(p.format, *str)
+	t, err := time.Parse(p.format, str)
 	if err != nil {
 		c.Fail(tgutil.Errorf("failed to parse %s: %w", p.noun, err))
 		return nil
