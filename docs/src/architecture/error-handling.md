@@ -174,28 +174,34 @@ process, as it does in any Go program.
 | Error | Meaning |
 | --- | --- |
 | `tgframe.ErrPageNotFound` | `App.Run` or `NewSession` got a name no page is registered under. |
-| `tgframe.ErrPanic` | The page function panicked. Wraps the recovered value. |
+| `tgframe.ErrPanic` | The page function panicked. Wraps the recovered value, keeping its chain when it is an error. |
 | `tgframe.ErrUpdateInterrupt` | The run was cut short by a new event. Not an application error. |
 | `tgframe.ErrDuplicatedID` | Two components of one run claimed the same id. Recorded through the same slot as `Fail`, so the first of the two comes back. |
 
 `ErrUpdateInterrupt` is how an interrupted run unwinds. When an event arrives
-while a page function is still running, the session sets a stop flag, and the
-next component the page func creates panics with `ErrUpdateInterrupt` instead
-of sending its notify pack:
+while a page function is still running, the session cancels that run's context,
+and the next component the page func creates panics with `ErrUpdateInterrupt`
+instead of sending its notify pack:
 
 ```go
 sendNotifyPack := func(pack NotifyPack) {
-    if s.stopUpdating.Load() {
+    if runCtx.Err() != nil {
         panic(ErrUpdateInterrupt)
     }
     ...
 }
 ```
 
-`RunWithHandlingPanic` recovers it like any other panic, so the interrupted
-run does log a `run err` line and does send an error result pack. The client
-then receives the ready pack of the new run, which clears the error before it
-is ever painted. Treat those log lines as noise from a rerun, not as failures.
+A page function that watches [`Params.Context`](../app/page.md#interrupting-a-run)
+does not have to wait for that: it returns as soon as the context is done.
+
+Either way the run is cut, and a cut run is silent — no result pack, no
+`run err` line. The session tells the two apart by the context, not by the
+error: a `context.Canceled` an application produced from a context of its own
+still reaches the client as an error.
+
+An error a page function panicked with keeps its chain under `ErrPanic`, so
+`errors.Is(err, ErrUpdateInterrupt)` holds for an interrupt.
 
 ## Outside the page function
 

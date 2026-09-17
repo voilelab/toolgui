@@ -79,8 +79,10 @@ session.HandleRawEvent(bs)
 
 A `Session` is safe for concurrent use and serializes its runs: a new event
 interrupts the page func still running from the previous one, so the client
-never receives two runs interleaved. The interrupted run panics with
-`ErrUpdateInterrupt`, which the session recovers.
+never receives two runs interleaved. The interrupt travels as a cancelled
+`Params.Context`: a page func watching it returns on its own, and one that
+does not panics with `ErrUpdateInterrupt` at the next thing it draws, which
+the session recovers.
 
 This is why the web executor and the
 [desktop executor](../hello-world/desktop.md) share the whole app logic. They

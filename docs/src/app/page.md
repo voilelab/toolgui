@@ -37,6 +37,8 @@ Where `Params` contains these parameters to operate the page:
 
 ```go
 type Params struct {
+	Context context.Context
+
 	State   *State
 	Main    *Container
 	Sidebar *Container
@@ -56,6 +58,34 @@ The `State` in `Params` provided for
 
 1. The component that need to pass state. For example: the checked state of checkbox.
 2. The state that user need to store. For example: The todo items in the Todo App.
+
+## Interrupting a run
+
+A page function runs again on every event, and the run before it is cut short.
+`Context` is how that reaches the work the page does: it is cancelled when a
+new event arrives, or when the session closes.
+
+Hand it to anything slow, and the user moving on stops the work instead of
+leaving it to finish into a screen nobody is looking at:
+
+```go
+func Main(p *tgframe.Params) error {
+	req, err := http.NewRequestWithContext(p.Context, "GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	...
+}
+```
+
+A page function that ignores `Context` is still interrupted, but only at the
+next component it draws — a run that computes for a while without drawing
+anything holds the next event until it gets there.
+
+Returning the cancellation is fine: a cut run reports nothing to the client,
+since the run replacing it is about to paint the screen anyway.
 
 ## Example for adding a page
 
