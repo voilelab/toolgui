@@ -24,6 +24,12 @@ import (
 // MaxUploadSize limit the size of a file upload request.
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
+// MaxMessageSize is the size cap of one message on an update connection. The
+// whole message is held in memory and parsed, and nothing authenticates a
+// connection, so without a cap one message buys far more work than it took to
+// send.
+const MaxMessageSize = 1024 * 1024
+
 // DefaultMaxStateCount is how many states an executor keeps by default. Every
 // update connection takes one, and nothing authenticates a connection, so
 // without a cap anyone who reaches the service can ask for states until the
@@ -56,10 +62,14 @@ type WebExecutor struct {
 	// maxUploadSize is the size cap of one upload request, guarded by confMu.
 	maxUploadSize int64
 
+	// maxMessageSize is the size cap of one update message, guarded by confMu.
+	maxMessageSize int
+
 	app *tgframe.App
 
-	// confMu guards manifest, assets and maxUploadSize, which the app may set at
-	// any time, including while handlers are already serving requests.
+	// confMu guards manifest, assets, maxUploadSize and maxMessageSize, which
+	// the app may set at any time, including while handlers are already
+	// serving requests.
 	confMu sync.RWMutex
 
 	// manifest is nil until the app sets one, and nil serves the default.
@@ -89,7 +99,8 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 
 		stateMap: stateMap,
 
-		maxUploadSize: MaxUploadSize,
+		maxUploadSize:  MaxUploadSize,
+		maxMessageSize: MaxMessageSize,
 
 		app: app,
 	}
@@ -110,6 +121,17 @@ func (e *WebExecutor) SetMaxUploadSize(n int64) {
 	defer e.confMu.Unlock()
 
 	e.maxUploadSize = n
+}
+
+// SetMaxMessageSize limits the size of one message on an update connection,
+// [MaxMessageSize] by default. A message over it is refused without being
+// read into memory, and the connection carries on. Raise it for an app whose
+// components send values of their own that are larger than that.
+func (e *WebExecutor) SetMaxMessageSize(n int) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
+	e.maxMessageSize = n
 }
 
 // defaultManifest returns the manifest served when the app sets none. The app
@@ -235,6 +257,12 @@ func (e *WebExecutor) Destroy() {
 }
 
 func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
+	// A frame over the cap is turned away by its header, so an oversized
+	// message never reaches memory or the parser.
+	e.confMu.RLock()
+	ws.MaxPayloadBytes = e.maxMessageSize
+	e.confMu.RUnlock()
+
 	pageName := ws.Request().PathValue("name")
 	if !e.app.HasPage(pageName) {
 		jsonCodec.Send(ws, &tgframe.ResultPack{
@@ -360,10 +388,13 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 }
 
 // recoverableReceiveErr reports whether the read loop can carry on after err.
-// Only a frame the codec refused is: the connection is still in step and the
-// next Receive drains what is left of the frame. Anything else -- a closed or
-// reset connection -- comes back the same way every call, so reading on would
-// spin and never hand the state back.
+// Only a frame the codec refused is -- one over
+// [WebExecutor.SetMaxMessageSize] -- and the connection is still in step: the
+// next Receive drains what is left of the frame, which costs a read and no
+// memory, so the client is told why its message was dropped rather than losing
+// the socket over one. Anything else -- a closed or reset connection -- comes
+// back the same way every call, so reading on would spin and never hand the
+// state back.
 func recoverableReceiveErr(err error) bool {
 	return errors.Is(err, websocket.ErrFrameTooLarge)
 }

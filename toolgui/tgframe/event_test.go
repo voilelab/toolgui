@@ -2,7 +2,10 @@ package tgframe
 
 import (
 	"encoding/json/jsontext"
+	"errors"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
@@ -239,5 +242,94 @@ func TestParseEventRejectsMalformed(t *testing.T) {
 				t.Errorf("ParseEvent(%q) = %#v, want an error", tc.data, event)
 			}
 		})
+	}
+}
+
+// nestedFormEvent builds depth forms wrapped around one input, with pad bytes
+// of padding in the input's value.
+func nestedFormEvent(depth, pad int) []byte {
+	event := `{"type":"input","id":"a","value":"` + strings.Repeat("x", pad) + `"}`
+	for range depth {
+		event = `{"type":"form","events":[` + event + `]}`
+	}
+
+	return []byte(event)
+}
+
+// Every level of a form has its subtree unmarshalled again, so a message costs
+// its size times its depth to read. The depth is what a cap has to be put on:
+// without one a single message near the size limit buys orders of magnitude
+// more work than it took to send, and the process is read out of memory.
+func TestParseEventRejectsDeepForm(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		depth int
+		want  bool
+	}{
+		{"at the cap", maxFormDepth, false},
+		{"one past it", maxFormDepth + 1, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := ParseEvent(nestedFormEvent(tc.depth, 0))
+
+			if got := errors.Is(err, ErrFormTooDeep); got != tc.want {
+				t.Errorf("ParseEvent: err = %v, ErrFormTooDeep = %v, want %v",
+					err, got, tc.want)
+			}
+		})
+	}
+}
+
+// What the cap buys, with the size cap the web executor puts on a message: a
+// message as big as one may be, nested as deep as one may be, costs a bounded
+// amount to read. It used to cost its size times its depth, which is how a
+// message well under the size limit read the process out of memory.
+func TestParseEventDeepFormCostIsBounded(t *testing.T) {
+	// The size cap lives in tgexec, which this package cannot import.
+	const maxMessageSize = 1 << 20
+
+	start := time.Now()
+	_, err := ParseEvent(nestedFormEvent(maxFormDepth, maxMessageSize))
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	// Two orders of magnitude over what it measures, so a slow machine does
+	// not fail the test and a return to the old cost does.
+	if elapsed > 10*time.Second {
+		t.Errorf("took %v, want a bounded cost", elapsed)
+	}
+}
+
+// A form is a form of inputs, and the cap is nowhere near what a page draws.
+func TestParseEventForm(t *testing.T) {
+	event, err := ParseEvent([]byte(
+		`{"type":"form","events":[` +
+			`{"type":"input","id":"a","value":"1"},` +
+			`{"type":"select","id":"b","value":2}]}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	formEvent, ok := event.(*EventForm)
+	if !ok {
+		t.Fatalf("got %T, want *EventForm", event)
+	}
+
+	if len(formEvent.Events) != 2 {
+		t.Fatalf("got %d events, want 2", len(formEvent.Events))
+	}
+
+	state := NewState()
+	formEvent.ApplyState(state)
+
+	if got := state.values["a"]; got != "1" {
+		t.Errorf("state[a] = %v, want %q", got, "1")
+	}
+
+	if got := state.values["b"]; got != 2 {
+		t.Errorf("state[b] = %v, want 2", got)
 	}
 }

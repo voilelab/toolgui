@@ -2,6 +2,7 @@ package tgframe
 
 import (
 	"encoding/json/jsontext"
+	"errors"
 	"fmt"
 	"log"
 
@@ -38,7 +39,22 @@ type EventStruct struct {
 	Type EventType `json:"type"`
 }
 
+// maxFormDepth is how deep a form event may nest. Every level has its subtree
+// unmarshalled again, so a message costs its size times its depth to read: a
+// form of forms is what buys an attacker more work than it took to send. A
+// form holds inputs rather than forms, so one level is the real case.
+const maxFormDepth = 32
+
+// ErrFormTooDeep is the error that a form event nests past [maxFormDepth].
+var ErrFormTooDeep = errors.New("form event nested too deep")
+
+// ParseEvent parses an event off the wire.
 func ParseEvent(data []byte) (Event, error) {
+	return parseEvent(data, 0)
+}
+
+// parseEvent parses one event nested depth forms deep.
+func parseEvent(data []byte, depth int) (Event, error) {
 	var event EventStruct
 	err := tgjson.Unmarshal(data, &event)
 	if err != nil {
@@ -70,6 +86,11 @@ func ParseEvent(data []byte) (Event, error) {
 		}
 		return &eventSelect, nil
 	case EventFormName:
+		if depth >= maxFormDepth {
+			return nil, fmt.Errorf("%w: at most %d levels", ErrFormTooDeep,
+				maxFormDepth)
+		}
+
 		var eventForm struct {
 			Events []jsontext.Value `json:"events"`
 		}
@@ -79,8 +100,15 @@ func ParseEvent(data []byte) (Event, error) {
 		}
 		events := []Event{}
 		for _, event := range eventForm.Events {
-			parsedEvent, err := ParseEvent(event)
+			parsedEvent, err := parseEvent(event, depth+1)
 			if err != nil {
+				// A child the parser doesn't understand is dropped, but one
+				// nested too deep condemns the message: what it costs to read
+				// is the tree underneath it, and nothing has to read that.
+				if errors.Is(err, ErrFormTooDeep) {
+					return nil, err
+				}
+
 				log.Printf("failed to parse event: %v", err)
 				continue
 			}
