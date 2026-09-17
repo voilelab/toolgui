@@ -218,6 +218,10 @@ func TestToolGUIUploadFileChunk(t *testing.T) {
 
 	files := make(chan []byte, 1)
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		// A real fileupload draws itself under this id, and the session only
+		// takes an event naming a component the page is showing.
+		addTestComponent(p, componentID)
+
 		file := p.State.GetFile(componentID)
 		if file == nil {
 			files <- nil
@@ -445,6 +449,10 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 	values := make(chan string, 2)
 	app := tgframe.NewApp()
 	runFunc := func(p *tgframe.Params) error {
+		// The input event below names this component, so the page has to be
+		// showing it, the way the component reading the value would draw it.
+		addTestComponent(p, "field")
+
 		value, _ := p.State.Get[string]("field")
 		values <- value
 		return nil
