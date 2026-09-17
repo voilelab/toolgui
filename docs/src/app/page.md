@@ -85,7 +85,9 @@ next component it draws — a run that computes for a while without drawing
 anything holds the next event until it gets there.
 
 Returning the cancellation is fine: a cut run reports nothing to the client,
-since the run replacing it is about to paint the screen anyway.
+since the run replacing it is about to paint the screen anyway, and it leaves
+the components of the last finished run in place — a click or an upload naming
+one of them still lands.
 
 ## Example for adding a page
 

@@ -229,6 +229,43 @@ func TestSessionInterruptedRunSendsNoResult(t *testing.T) {
 	}
 }
 
+// TestSessionInterruptedRunKeepsComponentIDs checks a cut run does not take
+// the screen's component ids with it. The run before it is still what the
+// client is looking at, and a click or an upload naming one of its components
+// has to keep passing State.HasComponentID.
+func TestSessionInterruptedRunKeepsComponentIDs(t *testing.T) {
+	var runs atomic.Int32
+	started := make(chan struct{}, 1)
+
+	session, recorder := newTestSession(t, func(p *Params) error {
+		if runs.Add(1) == 1 {
+			addTestComponent(p, "comp")
+			return nil
+		}
+
+		// Cut before drawing anything, and return rather than panic.
+		started <- struct{}{}
+		<-p.Context.Done()
+		return p.Context.Err()
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+	if result := <-recorder.results; !result.Success {
+		t.Fatalf("expect the first run to succeed, got %q", result.Error)
+	}
+
+	session.HandleEvent(&EventEmpty{})
+	<-started
+
+	// Returns once the cut run has unwound.
+	session.HandleEvent(&EventEmpty{})
+
+	if !session.state.HasComponentID("comp") {
+		t.Fatal("expect the ids of the last finished run to stay on the screen")
+	}
+}
+
 // TestSessionCloseCancelsRunContext checks Close cuts the run in flight
 // through its context, not only at the next thing it draws.
 func TestSessionCloseCancelsRunContext(t *testing.T) {

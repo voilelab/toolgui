@@ -270,10 +270,18 @@ func (app *App) RunContext(ctx context.Context,
 		Sidebar: newSidebar,
 	})
 
+	// A cut run stopped partway, so the run before it is still what the
+	// client is looking at. Leave that run's ids and released ids alone, or a
+	// click or an upload naming one of its components would be turned away as
+	// a name the page never drew. A run cut short at a notify pack panics out
+	// before this, and one watching the context returns here.
+	if ctx.Err() != nil {
+		return err
+	}
+
 	// The page function returned, so what it claimed is what is on the screen.
 	// Record it: an upload names a component id, and the state is where that
-	// name is checked. A run cut short panics instead, and leaves the ids of
-	// the run that did finish in place.
+	// name is checked.
 	if state != nil {
 		state.setRunIDs(run.ids)
 	}
