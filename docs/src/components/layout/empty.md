@@ -48,6 +48,8 @@ has, so take it in the callback rather than keeping it.
 {{#include ../../../demos/empty.go:demo}}
 ```
 
+<div data-toolgui-demo="empty" data-toolgui-demo-height="640"></div>
+
 ## Ids and state
 
 A widget in a slot claims its id the same way it would anywhere else, and

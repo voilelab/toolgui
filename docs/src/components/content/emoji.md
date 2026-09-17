@@ -9,6 +9,8 @@ the emoji it stands for, the same names GitHub and Slack use.
 
 Renders as `Shipped it 🎉`.
 
+<div data-toolgui-demo="emoji"></div>
+
 ## Where it applies
 
 | Expands | Stays literal |

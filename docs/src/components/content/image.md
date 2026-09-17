@@ -48,4 +48,8 @@ type ImageConf struct {
 tgcomp.Image(p.Main, "https://http.cat/100", &tgcomp.ImageConf{Width: "200px"})
 ```
 
+<div data-toolgui-demo="image">
+
 ![image component](image.png)
+
+</div>

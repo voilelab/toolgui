@@ -28,4 +28,8 @@ type CaptionConf struct {
 {{#include ../../../demos/caption.go:demo}}
 ```
 
+<div data-toolgui-demo="caption">
+
 ![caption component](caption.png)
+
+</div>

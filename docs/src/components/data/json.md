@@ -35,4 +35,8 @@ the same value therefore need one of them to be named.
 {{#include ../../../demos/json.go:demo}}
 ```
 
+<div data-toolgui-demo="json" data-toolgui-demo-height="440">
+
 ![JSON component](json.png)
+
+</div>

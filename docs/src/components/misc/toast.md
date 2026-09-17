@@ -90,3 +90,5 @@ Two toasts from one run, one of them left up longer than the default:
 ```go
 {{#include ../../../demos/toast.go:demo}}
 ```
+
+<div data-toolgui-demo="toast"></div>

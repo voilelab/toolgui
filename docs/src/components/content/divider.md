@@ -24,4 +24,8 @@ type DividerConf struct {
 {{#include ../../../demos/divider.go:demo}}
 ```
 
+<div data-toolgui-demo="divider">
+
 ![divider component](divider.png)
+
+</div>

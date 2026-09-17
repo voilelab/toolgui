@@ -261,4 +261,8 @@ Or one row at a time, starting on the first:
 {{#include ../../../demos/dataframe.go:single}}
 ```
 
+<div data-toolgui-demo="dataframe" data-toolgui-demo-height="800">
+
 ![dataframe component](dataframe.png)
+
+</div>

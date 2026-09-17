@@ -38,4 +38,8 @@ written twice shows twice:
 {{#include ../../../demos/text.go:duplicate}}
 ```
 
+<div data-toolgui-demo="text">
+
 ![text component](text.png)
+
+</div>

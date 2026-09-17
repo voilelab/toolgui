@@ -74,6 +74,8 @@ for _, f := range files {
 }
 ```
 
+<div data-toolgui-demo="status" data-toolgui-demo-height="440"></div>
+
 ## How it is built
 
 Status is an [Expand](../layout/expand.md) inside an

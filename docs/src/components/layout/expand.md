@@ -34,6 +34,8 @@ its title. Two expanders with the same title collide; give one of them a
 tgcomp.Expand(c, "Details", false, &tgcomp.ExpandConf{ID: "second_details"})
 ```
 
+<div data-toolgui-demo="expand"></div>
+
 ## Rendering
 
 The contents are built on the first open and then stay rendered, hidden while

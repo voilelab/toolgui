@@ -44,3 +44,5 @@ panic included:
 ```go
 defer tgcomp.Spinner(c, "Loading…")()
 ```
+
+<div data-toolgui-demo="spinner"></div>

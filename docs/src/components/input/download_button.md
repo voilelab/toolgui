@@ -55,7 +55,11 @@ comparison in full.
 {{#include ../../../demos/download_button.go:demo}}
 ```
 
+<div data-toolgui-demo="download_button">
+
 ![download button component](download_button.png)
+
+</div>
 
 ## Asking before the button is drawn
 

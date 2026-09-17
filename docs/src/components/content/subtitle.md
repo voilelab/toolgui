@@ -27,4 +27,8 @@ type SubtitleConf struct {
 {{#include ../../../demos/subtitle.go:demo}}
 ```
 
+<div data-toolgui-demo="subtitle">
+
 ![subtitle component](subtitle.png)
+
+</div>

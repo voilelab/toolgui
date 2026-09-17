@@ -55,3 +55,5 @@ tgcomp.Message(c, "Hello, World!", &tgcomp.MessageConf{
 ```go
 tgcomp.MessageDanger(c, "It broke", &tgcomp.MessageConf{Title: "danger!"})
 ```
+
+<div data-toolgui-demo="message"></div>

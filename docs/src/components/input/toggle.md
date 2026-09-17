@@ -40,4 +40,8 @@ type ToggleConf struct {
 {{#include ../../../demos/toggle.go:demo}}
 ```
 
+<div data-toolgui-demo="toggle">
+
 ![toggle component](toggle.png)
+
+</div>

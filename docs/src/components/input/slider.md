@@ -97,4 +97,8 @@ tgcomp.Slider[int](p.Main, "Weight")
 tgcomp.Slider[int](p.Main, "Weight", &tcinput.SliderConf[int]{ID: "second_weight"})
 ```
 
+<div data-toolgui-demo="slider">
+
 ![slider component](slider.png)
+
+</div>

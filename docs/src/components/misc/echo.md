@@ -19,3 +19,5 @@ func Echo(c *tgframe.Container, code string, lambda func())
 ```go
 {{#include ../../../demos/echo.go:demo}}
 ```
+
+<div data-toolgui-demo="echo"></div>

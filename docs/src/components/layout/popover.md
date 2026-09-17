@@ -39,6 +39,8 @@ pop := tgcomp.Popover(c, "Advanced options",
 	&tgcomp.PopoverConf{ID: "second_advanced", Disabled: true})
 ```
 
+<div data-toolgui-demo="popover"></div>
+
 ## Rendering
 
 The panel holds whatever was written into the returned container, whether the

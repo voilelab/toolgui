@@ -24,3 +24,5 @@ type LatexConf struct {
 ```go
 {{#include ../../../demos/latex.go:demo}}
 ```
+
+<div data-toolgui-demo="latex"></div>

@@ -42,4 +42,8 @@ way, so the direction still reads without the color.
 {{#include ../../../demos/metric.go:demo}}
 ```
 
+<div data-toolgui-demo="metric">
+
 ![metric component](metric.png)
+
+</div>

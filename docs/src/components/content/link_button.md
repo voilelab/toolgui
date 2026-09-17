@@ -40,4 +40,8 @@ type LinkButtonConf struct {
 {{#include ../../../demos/link_button.go:demo}}
 ```
 
+<div data-toolgui-demo="link_button">
+
 ![link button component](link_button.png)
+
+</div>

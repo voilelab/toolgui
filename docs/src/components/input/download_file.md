@@ -48,6 +48,8 @@ It returns whether this run is handling a click on it, the same as
 {{#include ../../../demos/download_file.go:demo}}
 ```
 
+<div data-toolgui-demo="download_file" data-toolgui-demo-height="640"></div>
+
 ## `DownloadFile` or `DownloadButton`
 
 Both draw the same button. What differs is where the bytes travel.

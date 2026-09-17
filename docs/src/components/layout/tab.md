@@ -38,6 +38,8 @@ a `Conf.ID`.
 one, two := tgcomp.Tab2(c, "one", "two", &tgcomp.TabConf{ID: "lower"})
 ```
 
+<div data-toolgui-demo="tab"></div>
+
 ## Rendering
 
 Every tab is rendered and the inactive ones are hidden, so a tab keeps what it

@@ -125,6 +125,16 @@ tasks:
       - task: asset_wasm
       - go run ./cmd/toolgui-wasm serve -o cmd/toolgui-demo/build ./cmd/toolgui-demo
 
+  # The same demo, into the directory the book's component pages embed it
+  # from. docs/src rather than docs/book: mdBook copies what is not a .md out
+  # of src, and wipes anything else it finds in book. So this is built once
+  # and every `mdbook build` or `mdbook serve` after it carries the demo.
+  build_docs_demo:
+    cmds:
+      - task: asset_lib
+      - task: asset_wasm
+      - go run ./cmd/toolgui-wasm build -o docs/src/demo ./cmd/toolgui-demo
+
   # The end to end tests of the browser build, against the demo as a static
   # site. They are a run of their own rather than more specs in the web one:
   # the pages are the same and the transport underneath is not, so what runs
