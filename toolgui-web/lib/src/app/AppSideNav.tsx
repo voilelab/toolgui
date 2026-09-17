@@ -8,6 +8,7 @@ import { Forest } from "./Nodes";
 import { TComponent } from "../components/factory";
 import { UpdateEvent } from "./UpdateEvent";
 import { UploadFunc } from "./Upload";
+import { DownloadFunc } from "./Download";
 import { ThemeMode } from "../util/theme";
 import {
   NAV_DEFAULT_WIDTH, NAV_MAX_WIDTH, NAV_MIN_WIDTH, NAV_WIDTH_STEP,
@@ -28,6 +29,7 @@ interface AppSideNavProps {
   rerun: () => void
   update: (e: UpdateEvent) => void
   upload: UploadFunc
+  download: DownloadFunc
   themeMode: ThemeMode
 }
 
@@ -275,6 +277,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
               <TComponent node={sidebarNode}
                 update={(e) => { this.props.update(e) }}
                 upload={async (f, id) => await this.props.upload(f, id)}
+                download={async (token) => await this.props.download(token)}
                 theme={this.props.themeMode} />
             </div> : ''}
 

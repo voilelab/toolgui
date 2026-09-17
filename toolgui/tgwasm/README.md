@@ -54,6 +54,7 @@ The worker publishes `globalThis.toolgui`:
 | `GET /api/app` | `toolgui.appConf()` |
 | update websocket | `toolgui.update(eventJSON)` + the `toolgui.onPack` callback |
 | `POST /api/files` | `toolgui.newUpload()`, then `toolgui.uploadFile(componentID, name, slot, handle)` or `toolgui.cancelUpload(slot)` |
+| `GET /api/files` | `toolgui.downloadFile(token)` |
 | a page load | `toolgui.start(pageName)` |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both
@@ -99,6 +100,25 @@ the order is fixed: the page closes its writable stream, opens the handle, and
 only then calls `uploadFile`. Asking for the handle while the write is still
 open is `NoModificationAllowedError`. `TestBrowserUploadHoldsAreExclusive` pins
 it.
+
+## A download is written by Go and read by the page
+
+The other direction is the easier half. `DownloadFile` writes the bytes into
+the file store, which in this build is the origin private file system, and puts
+only a token in the component. `downloadFile` turns that token back into a
+directory and a file name, the worker opens the file with `getFile`, and the
+main thread saves the blob that comes back through a URL of its own. No bytes
+cross the boundary here either, and nothing of the file is ever a string in the
+tab.
+
+Go keeps its sync access handle on the file open throughout. That is exclusive
+against a second handle and against a writable stream, but not against
+`getFile`, and the file is written before its token reaches the page --
+`TestBrowserDownloadIsReadableByThePage` pins it.
+
+A token is looked up in the state that offered it and nowhere else, so it stops
+working when a page switch replaces that state, or when a later run offers
+different bytes.
 
 ## Building
 

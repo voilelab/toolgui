@@ -59,6 +59,7 @@
     * [Textbox](components/input/textbox.md)
     * [FileUpload](components/input/fileupload.md)
     * [Download Button](components/input/download_button.md)
+    * [Download File](components/input/download_file.md)
     * [Checkbox](components/input/checkbox.md)
     * [Toggle](components/input/toggle.md)
     * [Button](components/input/button.md)

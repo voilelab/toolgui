@@ -12,7 +12,7 @@ const SIZES: { [width: string]: string } = {
   large: "lg",
 }
 
-export function TDialog({ node, update, upload, theme }: Props) {
+export function TDialog({ node, update, upload, download, theme }: Props) {
   // Closing is shown at once rather than waited for, so the dialog does not
   // hang around for the round trip. What the server says wins the moment it
   // says anything: a new props object is a pack it just sent, whether or not
@@ -64,6 +64,7 @@ export function TDialog({ node, update, upload, theme }: Props) {
         <TComponent key={child.reactKey} node={child}
           update={update}
           upload={upload}
+          download={download}
           theme={theme} />
       )}
     </Modal>

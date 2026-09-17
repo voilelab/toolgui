@@ -6,7 +6,7 @@ import { TComponent } from "../factory"
 
 const ITEM = 'expand'
 
-export function TExpand({ node, update, upload, theme }: Props) {
+export function TExpand({ node, update, upload, download, theme }: Props) {
   const [expanded, setExpanded] = useState(node.props.expanded)
   // Contents are built on the first open and then kept mounted, so an
   // expander that was never opened costs nothing and collapsing one that
@@ -30,6 +30,7 @@ export function TExpand({ node, update, upload, theme }: Props) {
               <TComponent key={child.reactKey} node={child}
                 update={update}
                 upload={upload}
+                download={download}
                 theme={theme} />
             )}
         </Accordion.Panel>
