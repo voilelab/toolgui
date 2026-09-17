@@ -72,6 +72,12 @@ jobs:
       - name: Build app
         run: yarn workspace @toolgui-web/app build
 
+      - name: Typecheck wails
+        run: yarn workspace @toolgui-web/wails typecheck
+
+      - name: Test wails
+        run: yarn workspace @toolgui-web/wails test
+
       - name: Typecheck wasm
         run: yarn workspace @toolgui-web/wasm typecheck
 

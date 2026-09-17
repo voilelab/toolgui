@@ -56,6 +56,16 @@ writes them to disk as they land, and the component sees the file only once
 the last chunk is in. Packs go out on a single event name so
 create/update/delete/result keep the order the page produced them in.
 
+## Links
+
+A desktop window has no tabs and no back button, so letting an external link
+navigate would replace the running app, page state and all. The adapter
+catches clicks on the document and hands `http(s)` urls whose origin is not
+the app's own to `runtime.BrowserOpenURL`, which opens them in the system
+browser. Page navigation and other schemes are left alone, and `tccontent`
+renders the same plain anchors it does on the web — nothing to set on `Link`
+or `LinkButton`.
+
 Wails serves the frontend from its own origin, so the asset server could carry
 the plain HTTP endpoints too. Bound methods handle all four instead, to keep
 this module off `tgexec`, which embeds the whole web bundle.

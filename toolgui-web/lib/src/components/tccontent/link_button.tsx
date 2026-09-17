@@ -9,7 +9,10 @@ export function TLinkButton({ node }: Props) {
   const color = mantineColor(node.props.color)
 
   // An anchor, not a button: it navigates, so it has to open in a new tab on
-  // a middle click and offer a copyable url the way any link does.
+  // a middle click and offer a copyable url the way any link does. The
+  // desktop executor has neither tabs nor a back button, so its adapter
+  // catches the click and opens external urls in the system browser; see
+  // toolgui-web/wails/src/external_link.ts.
   return (
     <Button id={node.props.id || undefined}
       component="a"

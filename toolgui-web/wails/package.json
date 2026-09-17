@@ -12,12 +12,15 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
     "typescript": "^5.5.2",
-    "vite": "^8.2.2"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   },
   "scripts": {
     "prebuild": "yarn workspace @toolgui-web/lib build",
     "build": "vite build",
+    "test": "vitest run",
     "typecheck": "tsc"
   }
 }

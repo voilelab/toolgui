@@ -5,6 +5,11 @@ import ReactDOM from 'react-dom/client'
 // them.
 import { WailsApp } from './WailsApp'
 import './index.css'
+import { openURL } from './api/backend'
+import { installExternalLinkHandler } from './external_link'
+
+// Before the render, so no link can be clicked ahead of it.
+installExternalLinkHandler(document, openURL, window.location.origin)
 
 // Wails injects its runtime and the bindings from the head of this page, so
 // window.go and window.runtime are ready by the time this module runs.
