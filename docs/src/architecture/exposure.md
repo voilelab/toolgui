@@ -37,9 +37,12 @@ Nothing authenticates a connection, so what one can ask for is capped. The
 service holds 1024 states at most, one per open page, and a connection that
 finds no room is refused rather than handed one anyway. One upload is 1 GiB at
 most, and it is stored under a component the page actually drew, so a caller
-cannot keep a file per name it invents. `StartService` also puts deadlines on
-sending a request's headers, on sitting idle between requests, and on naming a
-state once the websocket handshake is done.
+cannot keep a file per name it invents. An event is held to the same rule: it
+writes the state under an id the last finished run drew, so a client cannot
+fill a session with keys no component owns and no run would ever read or
+release. `StartService` also puts deadlines on sending a request's headers, on
+sitting idle between requests, and on naming a state once the websocket
+handshake is done.
 
 A download goes the other way and is capped by nothing, because there is
 nothing to cap: `DownloadFile` serves a file one of the page's own runs offered,
