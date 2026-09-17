@@ -36,6 +36,21 @@ describe('installExternalLinkHandler', () => {
     expect(opened).toEqual(['http://example.com/'])
   })
 
+  // A packaged build serves the page from wails://wails, where the anchor
+  // would resolve this to wails://example.com/docs. Reading it as https is
+  // what keeps the click off the webview there; asserting https rather than
+  // the http jsdom's base would give proves the href was not resolved
+  // against the origin.
+  it('reads a scheme-relative link as https', () => {
+    expect(clickLink('<a href="//example.com/docs">docs</a>')).toBe(true)
+    expect(opened).toEqual(['https://example.com/docs'])
+  })
+
+  it('leaves a malformed scheme-relative link alone', () => {
+    expect(clickLink('<a href="//">nowhere</a>')).toBe(false)
+    expect(opened).toEqual([])
+  })
+
   it('leaves an in-app page link alone', () => {
     // What AppSideNav renders, in both of its forms.
     expect(clickLink('<a href="/other">other</a>')).toBe(false)
