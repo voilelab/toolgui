@@ -1,5 +1,6 @@
-// A desktop webview loads the app from a data: URL, and its opaque origin
-// makes any localStorage access throw. Reading or writing a preference is
+// Every executor serves the app from an ordinary origin, desktop included, so
+// localStorage is normally there. A visitor who blocks site data, or a store
+// out of quota, still makes it throw -- and reading or writing a preference is
 // never worth taking the app down with it.
 
 export function getStoredValue(key: string): string | undefined {
