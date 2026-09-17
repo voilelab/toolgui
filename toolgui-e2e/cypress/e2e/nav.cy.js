@@ -151,7 +151,28 @@ describe('Nav', () => {
 
     cy.get('.toolgui-nav-burger').click()
     cy.get('.toolgui-nav-body').should('be.visible')
-    cy.get('.toolgui-nav-body').contains('Layout').should('be.visible')
+
+    // The list scrolls here as well, so a page far enough down it is reached
+    // by scrolling rather than by the bar growing to hold every link.
+    cy.get('.toolgui-nav-list').contains('Layout')
+      .scrollIntoView().should('be.visible')
+  })
+
+  // The bar the burger opens is a menu, not the page list laid end to end:
+  // it fits the screen it was tapped on, with the controls and the version
+  // line under the list rather than a thousand pixels past the fold.
+  it('The open bar fits the screen on a narrow viewport', () => {
+    cy.viewport(420, 800)
+    cy.visit('/index')
+    cy.get('.toolgui-nav-burger').click()
+
+    cy.get('.toolgui-nav-list').then(([list]) => {
+      expect(list.scrollHeight).to.be.greaterThan(list.clientHeight)
+    })
+
+    cy.get('.toolgui-nav').invoke('outerHeight').should('be.lessThan', 800)
+    cy.get('.toolgui-nav-foot').should('be.visible')
+    cy.get('.toolgui-nav-version').should('be.visible')
   })
 
   it('Rerun and theme controls stay reachable', () => {

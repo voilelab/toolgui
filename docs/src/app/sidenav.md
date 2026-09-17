@@ -22,7 +22,10 @@ The page list is the part that scrolls: an app with more pages than the
 column is tall gets a scrollbar on the list, and the sidebar, the controls
 and the version line under it keep their place.
 
-On a narrow screen the column collapses behind a `Menu` button.
+On a narrow screen the column collapses behind a `Menu` button. What the
+button opens is a bar that fits the screen: the list is capped there too, so
+the controls under it are where they can be reached rather than below every
+link the app has.
 
 ## Width
 

@@ -193,11 +193,14 @@ body.toolgui-resizing {
     border-bottom: 1px solid var(--tg-border-weak);
   }
 
-  /* The bar is as tall as it needs to be here, and the page scrolls behind
-     it, so the list has nothing to scroll inside. */
+  /* The bar has no height of its own here -- it is as tall as it needs to
+     be, with the page scrolling behind it -- so the list is capped rather
+     than fitted to a column: enough of a menu to pick from, with the
+     controls under it still on the screen the burger was tapped on. */
   .toolgui-nav-list {
     flex: none;
-    overflow-y: visible;
+    max-height: 60vh;
+    overflow-y: auto;
   }
 
   .toolgui-nav-burger {
