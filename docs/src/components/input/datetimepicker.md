@@ -32,11 +32,7 @@ func (c *DateTimePickerConf) SetDefault(v time.Time) *DateTimePickerConf
 ## Example
 
 ```go
-dateValue := tgcomp.DateTimePicker(p.Main, "DateTimePicker")
-if dateValue != nil {
-	tgcomp.Text(p.Main, "Value: "+dateValue.Format("2006-01-02 15:04"),
-		&tgcomp.TextConf{ID: "datetimepicker_result"})
-}
+{{#include ../../../demos/datetimepicker.go:demo}}
 ```
 
 Starting on a datetime, until the app user picks another:

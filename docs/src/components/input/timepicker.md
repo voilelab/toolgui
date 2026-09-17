@@ -47,11 +47,7 @@ if day != nil && at != nil {
 ## Example
 
 ```go
-timeValue := tgcomp.TimePicker(p.Main, "TimePicker")
-if timeValue != nil {
-	tgcomp.Text(p.Main, "Value: "+timeValue.Format("15:04"),
-		&tgcomp.TextConf{ID: "timepicker_result"})
-}
+{{#include ../../../demos/timepicker.go:demo}}
 ```
 
 Starting on a time, until the app user picks another:

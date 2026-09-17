@@ -117,31 +117,11 @@ The selection is what the plugin draws from, so it is read before the plugin
 is drawn.
 
 ```go
-type pickedColor struct {
-	Color string `json:"color"`
-}
+{{#include ../../../demos/plugin.go:value}}
+```
 
-src := tgframe.PluginAssetURL("colorpicker", "colorpicker.js")
-conf := &tgcomp.PluginConf{
-	ID:     "color_picker",
-	Style:  tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
-	Height: "auto",
-}
-
-// Nothing is selected until the plugin sends its first value.
-selected := ""
-if v := tgcomp.PluginValue[pickedColor](p.Main, src, conf); v != nil {
-	selected = v.Color
-}
-
-conf.Props = map[string]any{
-	"colors":   []string{"#ff3860", "#ffdd57", "#23d160"},
-	"selected": selected,
-}
-
-tgcomp.Plugin(p.Main, src, conf)
-
-tgcomp.Text(p.Main, "Selected: "+selected)
+```go
+{{#include ../../../demos/plugin.go:demo}}
 ```
 
 ```js

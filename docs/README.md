@@ -19,6 +19,26 @@ mermaid runtime that `book.toml` points at; it is gitignored rather than
 committed, so run it once after cloning or `mdbook build` fails on the missing
 files. Re-run it after upgrading `mdbook-mermaid` to refresh them.
 
+## Examples
+
+`demos/` is a Go package, one file per component, holding the example each
+component's page shows. The book slices a snippet out of it:
+
+```
+{{#include ../../../demos/title.go:demo}}
+```
+
+and `cmd/toolgui-demo` runs the function around that same snippet and prints
+the same slice beside what it drew. So there is one copy of every example, and
+what the book shows is what the demo runs -- `/demo/#/title` is the page for
+the component the reader is looking at.
+
+Adding an example means a file in `demos/`, a line in `demos/registry.go`, and
+an `{{#include}}` in the component's page. `go test ./cmd/toolgui-demo` checks
+the two ends still meet: an include with no anchor behind it, or an anchor
+nothing shows, fails there rather than silently in the built page — mdBook
+leaves an unresolved include in the page as the directive it was written as.
+
 ## Diagrams
 
 Most diagrams are ```` ```mermaid ```` blocks, drawn in the hand-drawn look:

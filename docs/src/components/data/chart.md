@@ -52,12 +52,7 @@ has to name it, or when the page draws two charts you want to tell apart.
 ### Line
 
 ```go
-tgcomp.LineChart(p.Main,
-	[]string{"Mon", "Tue", "Wed", "Thu", "Fri"},
-	[]tgcomp.ChartSeries{
-		{Name: "visits", Values: []float64{12, 19, 9, 24, 17}},
-		{Name: "signups", Values: []float64{3, 7, 4, 9, 6}},
-	})
+{{#include ../../../demos/chart.go:line}}
 ```
 
 ![chart component](chart.png)
@@ -65,27 +60,13 @@ tgcomp.LineChart(p.Main,
 ### Bar
 
 ```go
-tgcomp.BarChart(p.Main,
-	[]string{"Go", "Rust", "Python"},
-	[]tgcomp.ChartSeries{
-		{Name: "stars", Values: []float64{31, 24, 47}},
-	})
+{{#include ../../../demos/chart.go:bar}}
 ```
 
 ### Stacked area
 
 ```go
-tgcomp.AreaChart(p.Main,
-	[]string{"Q1", "Q2", "Q3", "Q4"},
-	[]tgcomp.ChartSeries{
-		{Name: "cloud", Values: []float64{4, 6, 5, 9}},
-		{Name: "desktop", Values: []float64{2, 3, 4, 4}},
-	},
-	&tgcomp.ChartConf{
-		ID:      "revenue",
-		Stacked: true,
-		YLabel:  "revenue",
-	})
+{{#include ../../../demos/chart.go:area}}
 ```
 
 ## Notes

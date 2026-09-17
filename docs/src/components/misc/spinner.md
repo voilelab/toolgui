@@ -35,11 +35,7 @@ back](../../architecture/components.md#what-a-component-hands-back).
 ## Example
 
 ```go
-stop := tgcomp.Spinner(c, "Working…")
-rows := query()
-stop()
-
-tgcomp.Table(c, head, rows)
+{{#include ../../../demos/spinner.go:demo}}
 ```
 
 Call it with `defer` and the spinner is taken down however the work ends, a

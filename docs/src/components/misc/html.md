@@ -24,5 +24,5 @@ type HTMLConf struct {
 ## Example
 
 ```go
-tgcomp.HTML(p.Main, "<b>Hello world gen by html component</b>")
+{{#include ../../../demos/html.go:demo}}
 ```

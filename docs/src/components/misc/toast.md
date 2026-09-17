@@ -88,11 +88,5 @@ leaves again.
 Two toasts from one run, one of them left up longer than the default:
 
 ```go
-if tgcomp.Button(c, "Save") {
-	tgcomp.Toast(c, "Saved to disk", &tgcomp.ToastConf{Icon: "✅"})
-	tgcomp.Toast(c, "Two rows changed", &tgcomp.ToastConf{
-		Icon:     "📝",
-		Duration: 10 * time.Second,
-	})
-}
+{{#include ../../../demos/toast.go:demo}}
 ```

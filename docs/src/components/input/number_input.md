@@ -104,18 +104,5 @@ app user actually typed. A float no `T` can hold — a pasted `1e20` is no
 ## Example
 
 ```go
-numberValue := tgcomp.Number(numberCompCol, "Number",
-	(&tcinput.NumberConf[float64]{
-		Placeholder: "input the value here",
-		Color:       tcutil.ColorSuccess,
-		Default:     10,
-	}).SetMin(10).SetMax(20).SetStep(2))
-
-// Out of range, numberValue is the bound, not the last value in range.
-tgcomp.Text(numberCompCol, fmt.Sprint("Value: ", numberValue),
-	&tgcomp.TextConf{ID: "number_result"})
-
-if tgcomp.Button(numberCompCol, "Save number") && numberValue != nil {
-	tgcomp.Text(numberCompCol, "Saved: "+valStr)
-}
+{{#include ../../../demos/number_input.go:demo}}
 ```

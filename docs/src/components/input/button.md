@@ -28,9 +28,7 @@ type ButtonConf struct {
 ## Example
 
 ```go
-btnClicked := tgcomp.Button(p.Main, "button")
-tgcomp.Text(p.Main, fmt.Sprint("Value: ", btnClicked),
-	&tgcomp.TextConf{ID: "button_result"})
+{{#include ../../../demos/button.go:demo}}
 ```
 
 Two buttons with the same label claim the same id, so one of them needs its

@@ -37,11 +37,7 @@ be compared and added without a conversion in between.
 ## Example
 
 ```go
-dateValue := tgcomp.DatePicker(p.Main, "DatePicker")
-if dateValue != nil {
-	tgcomp.Text(p.Main, "Value: "+dateValue.Format("2006-01-02"),
-		&tgcomp.TextConf{ID: "datepicker_result"})
-}
+{{#include ../../../demos/datepicker.go:demo}}
 ```
 
 Starting on a date, until the app user picks another:

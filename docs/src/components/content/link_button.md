@@ -37,7 +37,7 @@ type LinkButtonConf struct {
 ## Example
 
 ```go
-tgcomp.LinkButton(p.Main, "Link Button", "https://www.example.com/")
+{{#include ../../../demos/link_button.go:demo}}
 ```
 
 ![link button component](link_button.png)

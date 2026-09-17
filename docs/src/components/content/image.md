@@ -41,7 +41,7 @@ type ImageConf struct {
 ## Example
 
 ```go
-tgcomp.Image(p.Main, "https://http.cat/100")
+{{#include ../../../demos/image.go:demo}}
 ```
 
 ```go

@@ -40,12 +40,7 @@ shows.
 ## Example
 
 ```go
-values := []string{"Value1", "Value2"}
-selIndex := tgcomp.Select(p.Main, "Select", values)
-if selIndex != nil {
-	tgcomp.Text(p.Main, fmt.Sprintf("Value: Value%d", *selIndex+1),
-		&tgcomp.TextConf{ID: "select_result"})
-}
+{{#include ../../../demos/select.go:demo}}
 ```
 
 Starting on the second item, until the app user picks another:

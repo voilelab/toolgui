@@ -44,11 +44,7 @@ rather than while it is being dragged.
 ## Example
 
 ```go
-sizes := []string{"S", "M", "L"}
-selIdx := tgcomp.SelectSlider(p.Main, "Size", sizes)
-
-tgcomp.Text(p.Main, "Value: "+sizes[selIdx],
-	&tgcomp.TextConf{ID: "select_slider_result"})
+{{#include ../../../demos/select_slider.go:demo}}
 ```
 
 Use this over [Select](select.md) when the options are ordered — sizes, tiers,

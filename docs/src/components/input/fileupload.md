@@ -55,11 +55,7 @@ to arrive. `Size` is the size of what was stored.
 ## Example
 
 ```go
-fileObj := tgcomp.FileUpload(p.Main, "FileUpload", ".jpg,.png")
-if fileObj != nil {
-    tgcomp.Text(p.Main, "FileUpload filename: "+fileObj.Name)
-    tgcomp.Text(p.Main, fmt.Sprintf("FileUpload bytes length: %d", fileObj.Size))
-}
+{{#include ../../../demos/fileupload.go:demo}}
 ```
 
 Reading the content through a stream:

@@ -24,11 +24,18 @@ type TextConf struct {
 ## Example
 
 ```go
-tgcomp.Text(p.Main, "Text")
+{{#include ../../../demos/text.go:demo}}
 ```
 
 ```go
 tgcomp.Text(p.Main, "Text", &tgcomp.TextConf{ID: "greeting"})
+```
+
+Components are placed by position rather than by identity, so the same text
+written twice shows twice:
+
+```go
+{{#include ../../../demos/text.go:duplicate}}
 ```
 
 ![text component](text.png)

@@ -59,8 +59,12 @@ back](../../architecture/components.md#what-a-component-hands-back).
 ## Example
 
 ```go
-s := tgcomp.Status(c, "Importing…")
+{{#include ../../../demos/status.go:demo}}
+```
 
+`Fail` ends it the other way, for work that did not get there:
+
+```go
 for _, f := range files {
 	s.Write(f)
 	if err := importFile(f); err != nil {
@@ -68,8 +72,6 @@ for _, f := range files {
 		return err
 	}
 }
-
-s.Complete("Imported")
 ```
 
 ## How it is built

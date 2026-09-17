@@ -45,9 +45,7 @@ type TextboxConf struct {
 ## Example
 
 ```go
-textboxValue := tgcomp.Textbox(p.Main, "Textbox")
-tgcomp.Text(p.Main, "Value: "+textboxValue,
-	&tgcomp.TextConf{ID: "textbox_result"})
+{{#include ../../../demos/textbox.go:demo}}
 ```
 
 ![textbox component](textbox.png)

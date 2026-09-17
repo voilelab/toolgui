@@ -45,17 +45,7 @@ has, so take it in the callback rather than keeping it.
 ## Example
 
 ```go
-slot := tgcomp.Empty(p.Main)
-
-slot.With(func(c *tgframe.Container) {
-	tgcomp.Text(c, "Querying…")
-})
-
-head, rows := query()
-
-slot.With(func(c *tgframe.Container) {
-	tgcomp.Table(c, head, rows)
-})
+{{#include ../../../demos/empty.go:demo}}
 ```
 
 ## Ids and state

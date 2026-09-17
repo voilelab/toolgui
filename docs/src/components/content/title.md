@@ -24,7 +24,7 @@ type TitleConf struct {
 ## Example
 
 ```go
-tgcomp.Title(p.Main, "Title")
+{{#include ../../../demos/title.go:demo}}
 ```
 
 ![title component](title.png)

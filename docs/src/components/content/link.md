@@ -25,7 +25,7 @@ type LinkConf struct {
 ## Example
 
 ```go
-tgcomp.Link(p.Main, "Link", "https://www.example.com/")
+{{#include ../../../demos/link.go:demo}}
 ```
 
 ![link component](link.png)

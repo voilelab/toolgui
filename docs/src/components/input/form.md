@@ -42,13 +42,7 @@ type FormConf struct {
 ## Example
 
 ```go
-var a, b float64
-tgcomp.Form(formCompCol).With(func(c *tgframe.Container) {
-	a = tgcomp.Number[float64](c, "a")
-	b = tgcomp.Number[float64](c, "b")
-})
-
-tgcomp.Text(formCompCol, fmt.Sprintf("int(a) + int(b) = %d", int(a)+int(b)))
+{{#include ../../../demos/form.go:demo}}
 ```
 
 An untouched field reads as its `Default`, so the fields hold zero until the
@@ -57,19 +51,23 @@ app user fills them in and hits Submit — there is nothing to nil-check.
 ### Submitting from a button inside the form
 
 ```go
-var keyword string
-var searched bool
-
-tgcomp.Form(c, &tgcomp.FormConf{HideSubmit: true}).
-	With(func(c *tgframe.Container) {
-		keyword = tgcomp.Textbox(c, "keyword")
-		searched = tgcomp.Button(c, "Search")
-	})
-
-if searched {
-	tgcomp.Text(c, "Searching for "+keyword)
-}
+{{#include ../../../demos/form.go:button}}
 ```
 
 `searched` is true on the run the click was sent with, and `keyword` already
 holds what was typed before it.
+
+### Any widget belongs in a form
+
+A slider or a toggle inside a form holds its value like the rest of them, and
+hands it over on submit rather than on the drag or the click:
+
+```go
+{{#include ../../../demos/form.go:widget}}
+```
+
+### Naming the submit button
+
+```go
+{{#include ../../../demos/form.go:label}}
+```

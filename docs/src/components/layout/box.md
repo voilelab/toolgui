@@ -26,8 +26,7 @@ carries none, and the components inside are still placed by position.
 ## Example
 
 ```go
-box := tgcomp.Box(boxCompCol)
-tgcomp.Text(box, "A box!")
+{{#include ../../../demos/box.go:demo}}
 ```
 
 ```go

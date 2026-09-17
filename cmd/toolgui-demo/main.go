@@ -4,19 +4,15 @@ import (
 	"archive/zip"
 	"crypto/md5"
 	"embed"
-	"errors"
 	"fmt"
-	"image/jpeg"
 	"io"
 	"io/fs"
 	"log/slog"
 	"strconv"
-	"strings"
-	"time"
 
+	"github.com/voilelab/toolgui/docs/demos"
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
-	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -28,8 +24,6 @@ var code string
 //
 //go:embed plugins/colorpicker
 var colorPickerAssets embed.FS
-
-var pickerColors = []string{"#ff3860", "#ffdd57", "#23d160", "#3273dc", "#b86bff"}
 
 const readme = `
 # [ToolGUI](https://github.com/voilelab/toolgui)
@@ -86,1137 +80,120 @@ func SidebarPage(p *tgframe.Params) error {
 	return nil
 }
 
-func ContentPage(p *tgframe.Params) error {
-	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
+// headerRow names the two columns every example is laid out in.
+func headerRow(p *tgframe.Params) {
+	compCol, codeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
-	tgcomp.Subtitle(headerCompCol, "Component")
-	tgcomp.Subtitle(headerCodeCol, "Code")
-
-	titleCompCol, titleCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_title"})
-	tgcomp.Echo(titleCodeCol, code, func() {
-		tgcomp.Title(titleCompCol, "Title")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	subtitleCompCol, subtitleCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_subtitle"})
-	tgcomp.Echo(subtitleCodeCol, code, func() {
-		tgcomp.Subtitle(subtitleCompCol, "Subtitle")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	textCompCol, textCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_text"})
-	tgcomp.Echo(textCodeCol, code, func() {
-		tgcomp.Text(textCompCol, "Text")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	captionCompCol, captionCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_caption"})
-	tgcomp.Echo(captionCodeCol, code, func() {
-		tgcomp.Caption(captionCompCol, "Caption")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	// The second metric is a cost, where growing is the bad news, so its
-	// delta is colored the other way round.
-	metricCompCol, metricCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_metric"})
-	tgcomp.Echo(metricCodeCol, code, func() {
-		tgcomp.Metric(metricCompCol, "Revenue", "12.4M",
-			&tgcomp.MetricConf{Delta: "+12%"})
-		tgcomp.Metric(metricCompCol, "Cloud spend", "$3.1k",
-			&tgcomp.MetricConf{Delta: "+8%", DeltaColorInverse: true})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	badgeCompCol, badgeCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_badge"})
-	tgcomp.Echo(badgeCodeCol, code, func() {
-		tgcomp.Badge(badgeCompCol, "Badge")
-		tgcomp.Badge(badgeCompCol, "Shipped",
-			&tgcomp.BadgeConf{Color: tcutil.ColorSuccess})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	imageCompCol, imageCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_image"})
-	tgcomp.Echo(imageCodeCol, code, func() {
-		tgcomp.Image(imageCompCol, "https://http.cat/100",
-			&tgcomp.ImageConf{
-				Width: "200px",
-			})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	dividerCompCol, dividerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_divier"})
-	tgcomp.Echo(dividerCodeCol, code, func() {
-		tgcomp.Divider(dividerCompCol)
-	})
-
-	tgcomp.Divider(p.Main)
-
-	linkCompCol, linkCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_link"})
-	tgcomp.Echo(linkCodeCol, code, func() {
-		tgcomp.Link(linkCompCol, "Link", "https://www.example.com/")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	linkButtonCompCol, linkButtonCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_link_button"})
-	tgcomp.Echo(linkButtonCodeCol, code, func() {
-		tgcomp.LinkButton(linkButtonCompCol, "Link Button",
-			"https://www.example.com/")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	latexCompCol, latexCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_latex"})
-	tgcomp.Echo(latexCodeCol, code, func() {
-		tgcomp.Latex(latexCompCol, "E = mc^2")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	// A shortcode expands wherever text is decoration, and stays literal
-	// wherever it is the thing being shown.
-	emojiCompCol, emojiCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_emoji"})
-	tgcomp.Echo(emojiCodeCol, code, func() {
-		tgcomp.Text(emojiCompCol, "Shipped it :tada:")
-		tgcomp.Markdown(emojiCompCol, "A `:tada:` in code stays as written.")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	// Components are placed by position, so writing the same thing twice
-	// shows it twice.
-	dupCompCol, dupCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_duplicate"})
-	tgcomp.Echo(dupCodeCol, code, func() {
-		tgcomp.Text(dupCompCol, "written twice")
-		tgcomp.Text(dupCompCol, "written twice")
-	})
-
-	return nil
+	tgcomp.Subtitle(compCol, "Component")
+	tgcomp.Subtitle(codeCol, "Code")
 }
 
-// demoOrders is the fake order book the DataFrame demo pages through. It is
-// generated rather than written out so that there is enough of it to sort,
-// search and page.
-func demoOrders() [][]string {
-	regions := []string{"APAC", "EMEA", "LATAM", "NA"}
-	items := []string{"Keyboard", "Monitor", "Mouse", "Laptop", "Dock"}
+// blockRow draws one example: what it renders on the left, and on the right
+// the source it was rendered from -- the same slice of docs/demos the book
+// includes, so the two cannot disagree.
+//
+// A failing example takes the page with it, as it did when the demo wrote its
+// own rows, which is what the error example is there to show.
+func blockRow(p *tgframe.Params, b demos.Block) error {
+	compCol, codeCol := tgcomp.EqColumn2(p.Main, &tgcomp.ColumnConf{ID: b.ID})
 
-	const count = 2000
-	ordered := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
-
-	rows := make([][]string, 0, count)
-	for i := range count {
-		rows = append(rows, []string{
-			fmt.Sprintf("ORD-%04d", i+1),
-			ordered.AddDate(0, 0, i%365).Format(time.RFC3339),
-			regions[i%len(regions)],
-			items[i%len(items)],
-			strconv.Itoa(i + 1),
-		})
+	err := b.Run(&tgframe.Params{
+		Context: p.Context,
+		State:   p.State,
+		Main:    compCol,
+		Sidebar: p.Sidebar,
+	})
+	if err != nil {
+		return err
 	}
 
-	return rows
-}
-
-func DataPage(p *tgframe.Params) error {
-	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
-	tgcomp.Subtitle(headerCompCol, "Component")
-	tgcomp.Subtitle(headerCodeCol, "Code")
-
-	jsonCompCol, jsonCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_json"})
-
-	tgcomp.Echo(jsonCodeCol, code, func() {
-		type DemoJSONHeader struct {
-			Type int
-		}
-
-		type DemoJSON struct {
-			Header   DemoJSONHeader
-			IntValue int
-			URL      string
-			IsOk     bool
-		}
-
-		tgcomp.JSON(jsonCompCol, &DemoJSON{})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	tableCompCol, tableCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_table"})
-	tgcomp.Echo(tableCodeCol, code, func() {
-		tgcomp.Table(tableCompCol, []string{"a", "b"},
-			[][]string{{"1", "2"}, {"3", "4"}})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	dataFrameCompCol, dataFrameCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe"})
-	tgcomp.Echo(dataFrameCodeCol, code, func() {
-		tgcomp.DataFrame(dataFrameCompCol,
-			[]string{"Order", "Ordered", "Region", "Item", "Amount"},
-			demoOrders(),
-			&tgcomp.DataFrameConf{
-				ID:       "demo_orders",
-				PageSize: 10,
-				ColumnConf: []tgcomp.DataFrameColumnConf{
-					{Width: "9rem"},
-					{Type: tgcomp.ColumnTypeDatetime},
-					{},
-					{},
-					{Type: tgcomp.ColumnTypeNumber},
-				},
-			})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	dfMultiCompCol, dfMultiCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe_multi"})
-	tgcomp.Echo(dfMultiCodeCol, code, func() {
-		hosts := [][]string{
-			{"web-1", "APAC", "healthy"},
-			{"web-2", "EMEA", "degraded"},
-			{"db-1", "NA", "healthy"},
-			{"db-2", "LATAM", "down"},
-		}
-
-		selected := tgcomp.DataFrame(dfMultiCompCol,
-			[]string{"Host", "Region", "Status"}, hosts,
-			&tgcomp.DataFrameConf{
-				ID:        "demo_hosts",
-				Selection: tgcomp.SelectionModeMulti,
-			})
-
-		names := []string{}
-		for _, idx := range selected {
-			names = append(names, hosts[idx][0])
-		}
-
-		picked := "none"
-		if len(names) != 0 {
-			picked = strings.Join(names, ", ")
-		}
-
-		tgcomp.Text(dfMultiCompCol, "Selected: "+picked,
-			&tgcomp.TextConf{ID: "dataframe_multi_result"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	dfSingleCompCol, dfSingleCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_dataframe_single"})
-	tgcomp.Echo(dfSingleCodeCol, code, func() {
-		builds := [][]string{
-			{"#41", "Go", "passed"},
-			{"#42", "Rust", "failed"},
-			{"#43", "Python", "passed"},
-		}
-
-		selected := tgcomp.DataFrame(dfSingleCompCol,
-			[]string{"Build", "Language", "Result"}, builds,
-			&tgcomp.DataFrameConf{
-				ID:               "demo_builds",
-				Selection:        tgcomp.SelectionModeSingle,
-				DefaultSelection: []int{0},
-			})
-
-		detail := "none"
-		if len(selected) != 0 {
-			detail = strings.Join(builds[selected[0]], " / ")
-		}
-
-		tgcomp.Text(dfSingleCompCol, "Build: "+detail,
-			&tgcomp.TextConf{ID: "dataframe_single_result"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	lineCompCol, lineCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_line_chart"})
-	tgcomp.Echo(lineCodeCol, code, func() {
-		tgcomp.LineChart(lineCompCol,
-			[]string{"Mon", "Tue", "Wed", "Thu", "Fri"},
-			[]tgcomp.ChartSeries{
-				{Name: "visits", Values: []float64{12, 19, 9, 24, 17}},
-				{Name: "signups", Values: []float64{3, 7, 4, 9, 6}},
-			},
-			&tgcomp.ChartConf{ID: "demo_line"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	barCompCol, barCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_bar_chart"})
-	tgcomp.Echo(barCodeCol, code, func() {
-		tgcomp.BarChart(barCompCol,
-			[]string{"Go", "Rust", "Python"},
-			[]tgcomp.ChartSeries{
-				{Name: "stars", Values: []float64{31, 24, 47}},
-			},
-			&tgcomp.ChartConf{ID: "demo_bar"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	scatterCompCol, scatterCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_scatter_chart"})
-	tgcomp.Echo(scatterCodeCol, code, func() {
-		tgcomp.ScatterChart(scatterCompCol,
-			[]tgcomp.ChartSeries{
-				{Name: "runs", Points: []tgcomp.ChartPoint{
-					{X: 1, Y: 3}, {X: 2, Y: 5}, {X: 3, Y: 4},
-					{X: 4, Y: 8}, {X: 5, Y: 6},
-				}},
-			},
-			&tgcomp.ChartConf{ID: "demo_scatter"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	areaCompCol, areaCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_area_chart"})
-	tgcomp.Echo(areaCodeCol, code, func() {
-		tgcomp.AreaChart(areaCompCol,
-			[]string{"Q1", "Q2", "Q3", "Q4"},
-			[]tgcomp.ChartSeries{
-				{Name: "cloud", Values: []float64{4, 6, 5, 9}},
-				{Name: "desktop", Values: []float64{2, 3, 4, 4}},
-			},
-			&tgcomp.ChartConf{
-				ID:      "demo_area",
-				Stacked: true,
-				YLabel:  "revenue",
-			})
-	})
-
+	tgcomp.Code(codeCol, b.Code)
 	return nil
 }
 
-func LayoutPage(p *tgframe.Params) error {
-	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
-	tgcomp.Subtitle(headerCompCol, "Component")
-	tgcomp.Subtitle(headerCodeCol, "Code")
+// dividers draws the line between two examples. The input page gives each one
+// an id of its own, which is where the "1", "2", ... in its DOM come from.
+type dividers struct {
+	numbered bool
+	drawn    int
+}
 
-	colCompCol, colCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_col"})
-	tgcomp.Echo(colCodeCol, code, func() {
-		cols := tgcomp.Column(colCompCol, 3, &tgcomp.ColumnConf{ID: "cols"})
-		for i, col := range cols {
-			tgcomp.Text(col, fmt.Sprintf("col-%d", i))
-		}
-	})
+func (d *dividers) draw(c *tgframe.Container) {
+	d.drawn++
 
-	tgcomp.Divider(p.Main)
-
-	boxCompCol, boxCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_box"})
-	tgcomp.Echo(boxCodeCol, code, func() {
-		box := tgcomp.Box(boxCompCol, &tgcomp.BoxConf{ID: "box"})
-		tgcomp.Text(box, "A box!")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	tabCompCol, tabCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_tab"})
-	tgcomp.Echo(tabCodeCol, code, func() {
-		tab1, tab2 := tgcomp.Tab2(tabCompCol, "tab1", "tab2")
-		tgcomp.Text(tab1, "A tab!")
-		tgcomp.Text(tab2, "B tab!")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	expandCompCol, expandCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_expand"})
-	tgcomp.Echo(expandCodeCol, code, func() {
-		expand := tgcomp.Expand(expandCompCol, "Expand", true)
-		tgcomp.Text(expand, "A expand!")
-	})
-
-	tgcomp.Divider(p.Main)
-
-	popoverCompCol, popoverCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_popover"})
-	tgcomp.Echo(popoverCodeCol, code, func() {
-		pop := tgcomp.Popover(popoverCompCol, "Advanced options")
-		tgcomp.Checkbox(pop, "Show hidden columns")
-		if tgcomp.Button(pop, "Reset options") {
-			tgcomp.Text(popoverCompCol, "Options reset.",
-				&tgcomp.TextConf{ID: "popover_reset"})
-		}
-	})
-
-	tgcomp.Divider(p.Main)
-
-	dialogCompCol, dialogCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_dialog"})
-	tgcomp.Echo(dialogCodeCol, code, func() {
-		// Written before the dialog that opens it, on purpose: which of two
-		// open dialogs is drawn on top follows the order they opened, not the
-		// order the page writes them.
-		why := tgcomp.Dialog(dialogCompCol, "What deleting does")
-
-		d := tgcomp.Dialog(dialogCompCol, "Delete confirm")
-
-		// The trigger is handled before With, which is what draws the body:
-		// opening after it would open the dialog on an empty run.
-		if tgcomp.Button(dialogCompCol, "Delete") {
-			d.Open()
-		}
-
-		d.With(func(c *tgframe.Container) {
-			// Only reached while the dialog is open, so the count behind the
-			// question is not looked up on every rerun.
-			tgcomp.Text(c, fmt.Sprintf("Delete the %d selected rows?", 3))
-
-			yes, no := tgcomp.EqColumn2(c, &tgcomp.ColumnConf{ID: "delete_confirm"})
-			if tgcomp.Button(yes, "Yes, delete") {
-				d.Close()
-			}
-			if tgcomp.Button(no, "Keep them") {
-				d.Close()
-			}
-
-			if tgcomp.Button(c, "What does this do?") {
-				why.Open()
-			}
-
-			// A popover inside a dialog: ESC reaches whichever was opened
-			// last, so this closes before the dialog around it does.
-			pop := tgcomp.Popover(c, "Delete options")
-			tgcomp.Checkbox(pop, "Also delete the log")
-		})
-
-		why.With(func(c *tgframe.Container) {
-			tgcomp.Text(c, "The rows are removed for good.")
-			if tgcomp.Button(c, "Got it") {
-				why.Close()
-			}
-		})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	emptyCompCol, emptyCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_empty"})
-	tgcomp.Echo(emptyCodeCol, code, func() {
-		slot := tgcomp.Empty(emptyCompCol, &tgcomp.EmptyConf{ID: "query_result"})
-		slot.With(func(c *tgframe.Container) {
-			tgcomp.Text(c, "No query yet.")
-		})
-
-		if tgcomp.Button(emptyCompCol, "Run a slow query") {
-			slot.With(func(c *tgframe.Container) {
-				tgcomp.Text(c, "Querying…")
-			})
-
-			time.Sleep(3 * time.Second)
-
-			slot.With(func(c *tgframe.Container) {
-				tgcomp.Table(c,
-					[]string{"table", "rows"},
-					[][]string{{"users", "1289"}, {"orders", "4021"}})
-			})
-		}
-	})
-
-	// A dialog is a portal wherever it is written, so one declared in the
-	// sidebar covers the whole window rather than the side column.
-	sideDialog := tgcomp.Dialog(p.Sidebar, "From the sidebar",
-		(&tgcomp.DialogConf{Width: tgcomp.DialogWidthMedium}).
-			SetDismissible(false))
-	if tgcomp.Button(p.Sidebar, "Open the sidebar dialog") {
-		sideDialog.Open()
+	if !d.numbered {
+		tgcomp.Divider(c)
+		return
 	}
-	sideDialog.With(func(c *tgframe.Container) {
-		tgcomp.Text(c, "Declared in the sidebar, shown over the page.")
-		if tgcomp.Button(c, "Close the sidebar dialog") {
-			sideDialog.Close()
-		}
-	})
 
-	return nil
+	tgcomp.Divider(c, &tgcomp.DividerConf{ID: strconv.Itoa(d.drawn)})
 }
 
-func InputPage(p *tgframe.Params) error {
-	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
-	tgcomp.Subtitle(headerCompCol, "Component")
-	tgcomp.Subtitle(headerCodeCol, "Code")
+// demoPage is a component's own page, the one /#/<component> lands on.
+func demoPage(d *demos.Demo) tgframe.RunFunc {
+	return func(p *tgframe.Params) error {
+		headerRow(p)
 
-	textareaCompCol, textareaCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_textarea"})
-	tgcomp.Echo(textareaCodeCol, code, func() {
-		textareaValue := tgcomp.Textarea(textareaCompCol, "Textarea",
-			&tgcomp.TextareaConf{
-				Height: 5,
-				Color:  tcutil.ColorWarning,
-			})
-		tgcomp.Text(textareaCompCol, "Value: "+textareaValue,
-			&tgcomp.TextConf{ID: "textarea_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "1"})
-
-	textboxCompCol, textboxCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_textbox"})
-	tgcomp.Echo(textboxCodeCol, code, func() {
-		textboxValue := tgcomp.Textbox(textboxCompCol, "Textbox", &tgcomp.TextboxConf{
-			Placeholder: "input the value here",
-			Color:       tcutil.ColorInfo,
-		})
-		tgcomp.Text(textboxCompCol, "Value: "+textboxValue,
-			&tgcomp.TextConf{ID: "textbox_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "2"})
-
-	fileuploadCompCol, fileuploadCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_fileupload"})
-	tgcomp.Echo(fileuploadCodeCol, code, func() {
-		fileObj := tgcomp.FileUpload(fileuploadCompCol,
-			"FileUpload", ".jpg,.png")
-		if fileObj == nil {
-			return
-		}
-
-		tgcomp.Text(fileuploadCompCol, "FileUpload filename: "+fileObj.Name)
-		tgcomp.Text(fileuploadCompCol, fmt.Sprintf("FileUpload bytes length: %d", fileObj.Size))
-		if strings.HasSuffix(fileObj.Name, ".jpg") {
-			// Decoding reads the upload off disk, so the image never has to
-			// be held twice.
-			fp, err := fileObj.Open()
-			if err != nil {
-				return
+		div := &dividers{}
+		for i, b := range d.Blocks {
+			if i != 0 {
+				div.draw(p.Main)
 			}
-			defer fp.Close()
 
-			img, err := jpeg.Decode(fp)
-			if err == nil {
-				tgcomp.Image(fileuploadCompCol, img)
-			}
-		}
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "3"})
-
-	checkboxCompCol, checkboxCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_checkbox"})
-	tgcomp.Echo(checkboxCodeCol, code, func() {
-		checkboxValue := tgcomp.Checkbox(checkboxCompCol, "Checkbox")
-		tgcomp.Text(checkboxCompCol, fmt.Sprint("Value: ", checkboxValue),
-			&tgcomp.TextConf{ID: "checkbox_result"})
-
-		onValue := tgcomp.Checkbox(checkboxCompCol, "Checkbox default on",
-			&tgcomp.CheckboxConf{Default: true})
-		tgcomp.Text(checkboxCompCol, fmt.Sprint("Default: ", onValue),
-			&tgcomp.TextConf{ID: "checkbox_default_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "4"})
-
-	buttonCompCol, buttonCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_button"})
-	tgcomp.Echo(buttonCodeCol, code, func() {
-		btnClicked := tgcomp.Button(buttonCompCol, "button")
-		tgcomp.Text(buttonCompCol, fmt.Sprint("Value: ", btnClicked),
-			&tgcomp.TextConf{ID: "button_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "5"})
-
-	selectCompCol, selectCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_select"})
-	tgcomp.Echo(selectCodeCol, code, func() {
-		selIdx := tgcomp.Select(selectCompCol, "Select", []string{"Value1", "Value2"})
-
-		selItem := ""
-		if selIdx != nil {
-			selItem = fmt.Sprintf("Value%d", (*selIdx)+1)
-		}
-
-		tgcomp.Text(selectCompCol, "Value: "+selItem,
-			&tgcomp.TextConf{ID: "select_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "6"})
-
-	multiselectCompCol, multiselectCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_multiselect"})
-	tgcomp.Echo(multiselectCodeCol, code, func() {
-		items := []string{"Alpha", "Beta", "Gamma"}
-		selIdxes := tgcomp.MultiSelect(multiselectCompCol, "MultiSelect", items,
-			&tgcomp.MultiSelectConf{
-				Placeholder:   "pick up to two",
-				MaxSelections: 2,
-			})
-
-		selItems := []string{}
-		for _, idx := range selIdxes {
-			selItems = append(selItems, items[idx])
-		}
-
-		tgcomp.Text(multiselectCompCol, "Values: "+strings.Join(selItems, ", "),
-			&tgcomp.TextConf{ID: "multiselect_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "7"})
-
-	radioCompCol, radioCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_radio"})
-	tgcomp.Echo(radioCodeCol, code, func() {
-		selIdx := tgcomp.Radio(radioCompCol,
-			"Radio", []string{"Value3", "Value4"})
-
-		selItem := ""
-		if selIdx != nil {
-			selItem = fmt.Sprintf("Value%d", (*selIdx)+3)
-		}
-
-		tgcomp.Text(radioCompCol, "Value: "+selItem,
-			&tgcomp.TextConf{ID: "radio_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "8"})
-
-	datepickerCompCol, datepickerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_datepicker"})
-	tgcomp.Echo(datepickerCodeCol, code, func() {
-		dateValue := tgcomp.DatePicker(datepickerCompCol, "DatePicker")
-		val := ""
-		if dateValue != nil {
-			val = dateValue.Format("2006-01-02")
-		}
-
-		tgcomp.Text(datepickerCompCol, "Value: "+val,
-			&tgcomp.TextConf{ID: "datepicker_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "9"})
-
-	timepickerCompCol, timepickerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_timepicker"})
-	tgcomp.Echo(timepickerCodeCol, code, func() {
-		timeValue := tgcomp.TimePicker(timepickerCompCol, "TimePicker")
-		val := ""
-		if timeValue != nil {
-			val = timeValue.Format("15:04")
-		}
-
-		tgcomp.Text(timepickerCompCol, "Value: "+val,
-			&tgcomp.TextConf{ID: "timepicker_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "10"})
-
-	datetimepickerCompCol, datetimepickerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_datetimepicker"})
-	tgcomp.Echo(datetimepickerCodeCol, code, func() {
-		datetimeValue := tgcomp.DateTimePicker(datetimepickerCompCol, "DateTimePicker")
-		val := ""
-		if datetimeValue != nil {
-			val = datetimeValue.Format("2006-01-02 15:04")
-		}
-
-		tgcomp.Text(datetimepickerCompCol, "Value: "+val,
-			&tgcomp.TextConf{ID: "datetimepicker_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "11"})
-
-	numberCompCol, numberCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_number"})
-	tgcomp.Echo(numberCodeCol, code, func() {
-		numberValue := tgcomp.Number(numberCompCol, "Number", (&tcinput.NumberConf[float64]{
-			Placeholder: "input the value here",
-			Color:       tcutil.ColorSuccess,
-			Default:     10,
-		}).SetMin(10).SetMax(20).SetStep(2))
-
-		// Type 123 and the box goes red while the value here reads 20: out of
-		// range, what arrives is pulled to the bound rather than left on the
-		// last one that was inside it.
-		tgcomp.Text(numberCompCol, fmt.Sprint("Value: ", numberValue),
-			&tgcomp.TextConf{ID: "number_result"})
-
-		// So a button pressed while the box is red cannot act on a number the
-		// app user has already replaced.
-		if tgcomp.Button(numberCompCol, "Save number",
-			&tgcomp.ButtonConf{ID: "save_number"}) {
-			tgcomp.Text(numberCompCol, fmt.Sprint("Saved: ", numberValue),
-				&tgcomp.TextConf{ID: "number_saved"})
-		}
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "12"})
-
-	formCompCol, formCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_form"})
-	tgcomp.Echo(formCodeCol, code, func() {
-		var a, b float64
-		var ops []int
-		opItems := []string{"sum", "product"}
-		tgcomp.Form(formCompCol, &tgcomp.FormConf{ID: "form"}).With(func(c *tgframe.Container) {
-			a = tgcomp.Number[float64](c, "a")
-			b = tgcomp.Number[float64](c, "b")
-			ops = tgcomp.MultiSelect(c, "ops", opItems,
-				&tgcomp.MultiSelectConf{Placeholder: "pick the operations"})
-		})
-
-		// Named rather than numbered, so adding an item to opItems cannot
-		// silently turn into one of the operations already here.
-		for _, op := range ops {
-			switch opItems[op] {
-			case "sum":
-				tgcomp.Text(formCompCol,
-					fmt.Sprintf("int(a) + int(b) = %d", int(a)+int(b)))
-			case "product":
-				tgcomp.Text(formCompCol,
-					fmt.Sprintf("int(a) * int(b) = %d", int(a)*int(b)))
-			}
-		}
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "13"})
-
-	downloadButtonCompCol, downloadButtonCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_download_button"})
-	tgcomp.Echo(downloadButtonCodeCol, code, func() {
-		if tgcomp.DownloadButton(
-			downloadButtonCompCol, "Download", []byte("123"),
-			&tgcomp.DownloadButtonConf{
-				Filename: "123.txt",
-				Color:    tcutil.ColorInfo,
-			}) {
-			tgcomp.Text(downloadButtonCompCol, "Downloaded!")
-		}
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "14"})
-
-	downloadFileCompCol, downloadFileCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_download_file"})
-	tgcomp.Echo(downloadFileCodeCol, code, func() {
-		// A megabyte, which is past what belongs in a data: URI, and a pattern
-		// rather than noise so a byte anywhere in the file is known from its
-		// offset alone.
-		body := make([]byte, 1<<20)
-		for i := range body {
-			body[i] = byte(i % 251)
-		}
-
-		if tgcomp.DownloadFile(
-			downloadFileCompCol, "Save a megabyte", body,
-			&tgcomp.DownloadFileConf{
-				Filename: "pattern.bin",
-				Color:    tcutil.ColorInfo,
-			}) {
-			tgcomp.Text(downloadFileCompCol, "Megabyte saved!")
-		}
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "15"})
-
-	sliderCompCol, sliderCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_slider"})
-	tgcomp.Echo(sliderCodeCol, code, func() {
-		sliderValue := tgcomp.Slider(sliderCompCol, "Slider",
-			(&tcinput.SliderConf[int64]{}).SetMin(0).SetMax(100).SetStep(10).
-				SetDefault(50))
-
-		// A slider always sits somewhere, so there is always a value.
-		tgcomp.Text(sliderCompCol, fmt.Sprint("Value: ", sliderValue),
-			&tgcomp.TextConf{ID: "slider_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "16"})
-
-	selectSliderCompCol, selectSliderCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_select_slider"})
-	tgcomp.Echo(selectSliderCodeCol, code, func() {
-		sizes := []string{"S", "M", "L"}
-		selIdx := tgcomp.SelectSlider(selectSliderCompCol, "SelectSlider", sizes)
-
-		tgcomp.Text(selectSliderCompCol, "Value: "+sizes[selIdx],
-			&tgcomp.TextConf{ID: "select_slider_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
-
-	toggleCompCol, toggleCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_toggle"})
-	tgcomp.Echo(toggleCodeCol, code, func() {
-		toggleValue := tgcomp.Toggle(toggleCompCol, "Toggle")
-		tgcomp.Text(toggleCompCol, fmt.Sprint("Value: ", toggleValue),
-			&tgcomp.TextConf{ID: "toggle_result"})
-
-		onValue := tgcomp.Toggle(toggleCompCol, "Toggle default on",
-			&tgcomp.ToggleConf{Default: true})
-		tgcomp.Text(toggleCompCol, fmt.Sprint("Default: ", onValue),
-			&tgcomp.TextConf{ID: "toggle_default_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "18"})
-
-	colorPickerCompCol, colorPickerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_color_picker"})
-	tgcomp.Echo(colorPickerCodeCol, code, func() {
-		color := tgcomp.ColorPicker(colorPickerCompCol, "ColorPicker",
-			&tgcomp.ColorPickerConf{Default: "#ff3860"})
-
-		tgcomp.Text(colorPickerCompCol, "Value: "+color,
-			&tgcomp.TextConf{ID: "color_picker_result"})
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "19"})
-
-	widgetFormCompCol, widgetFormCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_widget_form"})
-	tgcomp.Echo(widgetFormCodeCol, code, func() {
-		var threshold int64
-		var enabled bool
-
-		tgcomp.Form(widgetFormCompCol, &tgcomp.FormConf{ID: "widget_form"}).
-			With(func(c *tgframe.Container) {
-				threshold = tgcomp.Slider(c, "threshold",
-					(&tcinput.SliderConf[int64]{}).SetMax(100).SetStep(25))
-				enabled = tgcomp.Toggle(c, "enabled")
-			})
-
-		tgcomp.Text(widgetFormCompCol,
-			fmt.Sprintf("threshold = %d, enabled = %v", threshold, enabled))
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "20"})
-
-	buttonFormCompCol, buttonFormCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_button_form"})
-	tgcomp.Echo(buttonFormCodeCol, code, func() {
-		var keyword string
-		var searched bool
-
-		// No submit button of its own: the Search button inside sends the
-		// form, so the page offers one button rather than two.
-		tgcomp.Form(buttonFormCompCol, &tgcomp.FormConf{
-			ID: "search_form", HideSubmit: true}).
-			With(func(c *tgframe.Container) {
-				keyword = tgcomp.Textbox(c, "keyword")
-				searched = tgcomp.Button(c, "Search")
-
-				// Only a Button sends the form. A download button reports its
-				// press the same way, and handing someone a file is not
-				// submitting.
-				tgcomp.DownloadButton(c, "Save query", []byte("q"),
-					&tgcomp.DownloadButtonConf{Filename: "query.txt"})
-			})
-
-		if searched {
-			tgcomp.Text(buttonFormCompCol, "Searched: "+keyword)
-		} else {
-			tgcomp.Text(buttonFormCompCol, "Not searched yet")
-		}
-	})
-
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "21"})
-
-	labelFormCompCol, labelFormCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_label_form"})
-	tgcomp.Echo(labelFormCodeCol, code, func() {
-		var city string
-
-		tgcomp.Form(labelFormCompCol, &tgcomp.FormConf{
-			ID: "label_form", SubmitLabel: "Apply"}).
-			With(func(c *tgframe.Container) {
-				city = tgcomp.Textbox(c, "city")
-			})
-
-		tgcomp.Text(labelFormCompCol, "Applied: "+city)
-	})
-
-	return nil
-}
-
-// pickedColor is what the colorpicker plugin sends through
-// window.toolgui.update.
-type pickedColor struct {
-	Color string `json:"color"`
-}
-
-func PluginPage(p *tgframe.Params) error {
-	tgcomp.Title(p.Main, "Plugin")
-	tgcomp.Text(p.Main, "A plugin is a script the app serves, running in a sandboxed frame.")
-
-	tgcomp.Divider(p.Main)
-
-	pluginCompCol, pluginCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_plugin"})
-	tgcomp.Echo(pluginCodeCol, code, func() {
-		src := tgframe.PluginAssetURL("colorpicker", "colorpicker.js")
-		conf := &tgcomp.PluginConf{
-			ID:     "color_picker",
-			Style:  tgframe.PluginAssetURL("colorpicker", "colorpicker.css"),
-			Height: "auto",
-		}
-
-		// The plugin keeps no state of its own, so what is selected has to be
-		// read before it is drawn. Nothing is until it sends its first value.
-		selected := ""
-		if v := tgcomp.PluginValue[pickedColor](pluginCompCol, src, conf); v != nil {
-			selected = v.Color
-		}
-
-		conf.Props = map[string]any{
-			"colors":   pickerColors,
-			"selected": selected,
-		}
-
-		tgcomp.Plugin(pluginCompCol, src, conf)
-
-		tgcomp.Text(pluginCompCol, "Selected: "+selected)
-	})
-
-	return nil
-}
-
-// clickedValue is what the interactive iframe sends through
-// window.toolgui.update.
-type clickedValue struct {
-	Clicked bool `json:"clicked"`
-}
-
-func MiscPage(p *tgframe.Params) error {
-	headerCompCol, headerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
-	tgcomp.Subtitle(headerCompCol, "Component")
-	tgcomp.Subtitle(headerCodeCol, "Code")
-
-	tgcomp.Divider(p.Main)
-
-	echoCompCol, echoCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_echo"})
-	tgcomp.Echo(echoCodeCol, code, func() {
-		tgcomp.Echo(echoCompCol, code, func() {
-			tgcomp.Text(echoCompCol, "hello echo")
-		})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	msgCompCol, msgCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_msg"})
-	tgcomp.Echo(msgCodeCol, code, func() {
-		tgcomp.Message(msgCompCol, "body of msg")
-	})
-
-	tgcomp.Echo(msgCodeCol, code, func() {
-		tgcomp.Message(msgCompCol, "body of msg2",
-			&tgcomp.MessageConf{
-				Title: "danger!",
-				Color: tcutil.ColorDanger,
-			})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	prgbarCompCol, prgbarCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_progress_bar"})
-	tgcomp.Echo(prgbarCodeCol, code, func() {
-		pct := p.State.Default("misc_progress", 30)
-		if tgcomp.Button(prgbarCompCol, "+10%") {
-			*pct += 10
-			if *pct > 100 {
-				*pct = 0
+			if err := blockRow(p, b); err != nil {
+				return err
 			}
 		}
 
-		tgcomp.ProgressBar(prgbarCompCol, *pct,
-			fmt.Sprintf("progress_bar: %d%%", *pct),
-			&tgcomp.ProgressBarConf{ID: "misc_progress"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	spinnerCompCol, spinnerCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_spinner"})
-	tgcomp.Echo(spinnerCodeCol, code, func() {
-		if tgcomp.Button(spinnerCompCol, "Spin for three seconds") {
-			stop := tgcomp.Spinner(spinnerCompCol, "Working…")
-			time.Sleep(3 * time.Second)
-			stop()
-
-			tgcomp.Text(spinnerCompCol, "Done!")
+		if d.Sidebar == nil {
+			return nil
 		}
-	})
 
-	tgcomp.Divider(p.Main)
-
-	statusCompCol, statusCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_status"})
-	tgcomp.Echo(statusCodeCol, code, func() {
-		if tgcomp.Button(statusCompCol, "Import three files") {
-			status := tgcomp.Status(statusCompCol, "Importing…",
-				&tgcomp.StatusConf{Expanded: true})
-
-			for _, name := range []string{"one.csv", "two.csv", "three.csv"} {
-				status.Write(name)
-				time.Sleep(time.Second)
-			}
-
-			status.Complete("Imported 3 files")
-		}
-	})
-
-	tgcomp.Divider(p.Main)
-
-	toastCompCol, toastCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_toast"})
-	tgcomp.Echo(toastCodeCol, code, func() {
-		if tgcomp.Button(toastCompCol, "Save") {
-			tgcomp.Toast(toastCompCol, "Saved to disk",
-				&tgcomp.ToastConf{Icon: "✅"})
-			tgcomp.Toast(toastCompCol, "Two rows changed",
-				&tgcomp.ToastConf{Icon: "📝", Duration: 10 * time.Second})
-		}
-	})
-
-	tgcomp.Divider(p.Main)
-
-	errorCompCol, errorCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_error"})
-	if tgcomp.Button(errorCompCol, "Show error") {
-		return errors.New("new error")
+		return d.Sidebar(p)
 	}
-	tgcomp.Code(errorCodeCol, `if tgcomp.Button(errorCompCol, "Show error") {
-	return errors.New("new error")
-}`)
+}
 
-	tgcomp.Divider(p.Main)
+// groupPage is a coarse page: every example of a category, the way the demo
+// was organised before each component had a page.
+func groupPage(g *demos.Group) tgframe.RunFunc {
+	return func(p *tgframe.Params) error {
+		headerRow(p)
 
-	panicCompCol, panicCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_panic"})
-	tgcomp.Echo(panicCodeCol, code, func() {
-		if tgcomp.Button(panicCompCol, "Show panic") {
-			panic("show panic")
-		}
-	})
-
-	tgcomp.Divider(p.Main)
-
-	iframeSimpleCompCol, iframeSimpleCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_iframe_simple"})
-	tgcomp.Echo(iframeSimpleCodeCol, code, func() {
-		tgcomp.Iframe(
-			iframeSimpleCompCol,
-			"<b>Hello world gen by html</b>",
-			&tgcomp.IframeConf{ID: "iframe_with_simple"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	iframeScriptCompCol, iframeScriptCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_iframe_script"})
-	tgcomp.Echo(iframeScriptCodeCol, code, func() {
-		htmlWithScript := `
-		<b id="test">Hello world not changed</b>
-		<script>
-			const element = document.getElementById('test');
-			element.innerText = 'Hello world gen by script';
-		</script>`
-		tgcomp.Iframe(
-			iframeScriptCompCol,
-			htmlWithScript,
-			&tgcomp.IframeConf{Script: true, ID: "iframe_with_script"})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	iframeInteractiveCompCol, iframeInteractiveCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_iframe_interactive"})
-	tgcomp.Echo(iframeInteractiveCodeCol, code, func() {
-		html := `<button id="btn">Click me to update</button>
-			<script>
-				const btn = document.getElementById('btn');
-				btn.addEventListener('click', (event) => {
-					window.toolgui.update({clicked: true});
-				});
-			</script>`
-		conf := &tgcomp.IframeConf{
-			Script: true,
-			Height: "60px",
-			ID:     "iframe_with_interactive",
+		div := &dividers{numbered: g.NumberDividers}
+		if g.LeadDivider {
+			div.draw(p.Main)
 		}
 
-		tgcomp.Iframe(iframeInteractiveCompCol, html, conf)
+		drawn := 0
+		sidebars := []tgframe.RunFunc{}
 
-		tgcomp.Text(iframeInteractiveCompCol, time.Now().Format("2006-01-02 15:04:05"))
+		for _, d := range g.Demos {
+			for _, b := range d.Blocks {
+				if drawn != 0 {
+					div.draw(p.Main)
+				}
+				drawn++
 
-		// nil until the guest clicks for the first time.
-		clicked := false
-		if v := tgcomp.IframeValue[clickedValue](iframeInteractiveCompCol, html, conf); v != nil {
-			clicked = v.Clicked
+				if err := blockRow(p, b); err != nil {
+					return err
+				}
+			}
+
+			if d.Sidebar != nil {
+				sidebars = append(sidebars, d.Sidebar)
+			}
 		}
 
-		tgcomp.Text(iframeInteractiveCompCol, fmt.Sprintf("Status: %v", clicked))
-	})
+		// A side column example is about the side column rather than about a
+		// row, so it is written once the rows are done.
+		for _, run := range sidebars {
+			if err := run(p); err != nil {
+				return err
+			}
+		}
 
-	tgcomp.Divider(p.Main)
-
-	iframeRenderCompCol, iframeRenderCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_iframe_render"})
-	tgcomp.Echo(iframeRenderCodeCol, code, func() {
-		tgcomp.Iframe(
-			iframeRenderCompCol,
-			`<div id="out">waiting for render</div>
-			<script>
-				const out = document.getElementById('out');
-				window.toolgui.onRender((props, theme) => {
-					out.innerText = 'theme=' + theme + ' id=' + props.id;
-				});
-				window.toolgui.autoHeight();
-			</script>`,
-			&tgcomp.IframeConf{
-				Script: true,
-				Height: "auto",
-				ID:     "iframe_with_render",
-			})
-	})
-
-	tgcomp.Divider(p.Main)
-
-	htmlCompCol, htmlCodeCol := tgcomp.EqColumn2(
-		p.Main, &tgcomp.ColumnConf{ID: "show_html"})
-	tgcomp.Echo(htmlCodeCol, code, func() {
-		tgcomp.HTML(htmlCompCol,
-			"<b>Hello world gen by html component</b>")
-	})
-
-	return nil
+		return nil
+	}
 }
 
 func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
@@ -1278,6 +255,10 @@ func FuncCachePage(p *tgframe.Params) error {
 
 // newApp build the demo. main lives in main_server.go and main_wasm.go: the
 // pages are the same either way, only the executor differs.
+//
+// The examples come from docs/demos, which is also where the book includes
+// them from, so a page here is a table entry rather than a function of its
+// own.
 func newApp() *tgframe.App {
 	app := tgframe.NewApp()
 
@@ -1286,11 +267,18 @@ func newApp() *tgframe.App {
 	app.SetTitle("ToolGUI Demo")
 
 	app.AddPage("index", "Index", MainPage)
-	app.AddPage("content", "Content", ContentPage)
-	app.AddPage("data", "Data", DataPage)
-	app.AddPage("input", "Input", InputPage)
-	app.AddPage("layout", "Layout", LayoutPage)
-	app.AddPage("misc", "Misc", MiscPage)
+
+	// A category page, then a page per component under it: the nav reads the
+	// way the book's contents do, and a reader following a link from the book
+	// lands on the one component they came for.
+	for _, g := range demos.Groups() {
+		app.AddPage(g.Name, g.Title, groupPage(g))
+
+		for _, d := range g.Demos {
+			app.AddPage(d.Name, d.Title, demoPage(d))
+		}
+	}
+
 	app.AddPage("sidebar", "Sidebar", SidebarPage)
 	app.AddPage("function_cache", "Function Cache", FuncCachePage)
 	app.AddPage("code", "Source Code", SourceCodePage)
@@ -1311,6 +299,7 @@ func addPluginDemo(app *tgframe.App) error {
 		return err
 	}
 
-	app.AddPage("plugin", "Plugin", PluginPage)
+	d := demos.Plugin()
+	app.AddPage(d.Name, d.Title, demoPage(d))
 	return nil
 }

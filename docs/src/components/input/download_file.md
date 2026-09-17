@@ -45,12 +45,7 @@ It returns whether this run is handling a click on it, the same as
 ## Example
 
 ```go
-report := buildReport() // a few megabytes of csv
-
-if tgcomp.DownloadFile(p.Main, "Download", report,
-    &tgcomp.DownloadFileConf{Filename: "report.csv", MIME: "text/csv"}) {
-    tgcomp.Text(p.Main, "Downloaded!")
-}
+{{#include ../../../demos/download_file.go:demo}}
 ```
 
 ## `DownloadFile` or `DownloadButton`

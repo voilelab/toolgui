@@ -35,10 +35,7 @@ type TextareaConf struct {
 ## Example
 
 ```go
-textareaValue := tgcomp.Textarea(p.Main, "Textarea",
-	&tgcomp.TextareaConf{Height: 5})
-tgcomp.Text(p.Main, "Value: "+textareaValue,
-	&tgcomp.TextConf{ID: "textarea_result"})
+{{#include ../../../demos/textarea.go:demo}}
 ```
 
 ![textarea component](textarea.png)

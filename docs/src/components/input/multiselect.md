@@ -49,17 +49,7 @@ type MultiSelectConf struct {
 ## Example
 
 ```go
-envs := []string{"dev", "stage", "prod"}
-selIndexes := tgcomp.MultiSelect(p.Main, "Environments", envs,
-	&tgcomp.MultiSelectConf{
-		Default:       []int{0},
-		MaxSelections: 2,
-		Placeholder:   "pick up to two",
-	})
-
-for _, idx := range selIndexes {
-	tgcomp.Text(p.Main, "Selected: "+envs[idx])
-}
+{{#include ../../../demos/multiselect.go:demo}}
 ```
 
 Like a [Select](select.md), a multiselect derives its id from its label, so two

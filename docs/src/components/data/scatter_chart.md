@@ -29,12 +29,7 @@ func ScatterChart(c *tgframe.Container, series []ChartSeries, conf ...*ChartConf
 ## Example
 
 ```go
-tgcomp.ScatterChart(p.Main, []tgcomp.ChartSeries{
-	{Name: "runs", Points: []tgcomp.ChartPoint{
-		{X: 1, Y: 3}, {X: 2, Y: 5}, {X: 3, Y: 4},
-		{X: 4, Y: 8}, {X: 5, Y: 6},
-	}},
-})
+{{#include ../../../demos/scatter_chart.go:demo}}
 ```
 
 ![scatter chart component](scatter_chart.png)

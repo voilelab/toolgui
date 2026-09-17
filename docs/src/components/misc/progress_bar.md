@@ -44,7 +44,13 @@ lands on that id next.
 ## Example
 
 ```go
-bar := tgcomp.ProgressBar(c, 50, "Progress")
+{{#include ../../../demos/progress_bar.go:demo}}
+```
+
+The handle is for a bar that moves while the run is still going:
+
+```go
+bar := tgcomp.ProgressBar(c, 0, "Progress")
 for i := 0; i <= 100; i++ {
 	bar.SetValue(i)
 	time.Sleep(100 * time.Millisecond)

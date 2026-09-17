@@ -46,10 +46,7 @@ they carry none, and the components inside are still placed by position.
 ## Example
 
 ```go
-cols := tgcomp.Column(colCompCol, 3)
-for i, col := range cols {
-	tgcomp.Text(col, fmt.Sprintf("col-%d", i))
-}
+{{#include ../../../demos/column.go:demo}}
 ```
 
 ```go
