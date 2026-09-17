@@ -20,6 +20,21 @@ tasks:
       - yarn build
       - yarn typecheck
 
+  # tgframe's tests in a browser. The origin private file system the wasm file
+  # store keeps uploads in exists nowhere else, and the synchronous handles it
+  # reads and writes through are a dedicated worker's only -- which is why the
+  # app runs in one too. Needs a Chrome or Chromium on PATH, or TOOLGUI_BROWSER
+  # pointing at one.
+  #
+  # tgframe rather than ./toolgui/...: tgexec serves over HTTP, and a listening
+  # socket is one of the things a tab does not have.
+  test_wasm:
+    vars:
+      RUNNER: '{{.RUNNER | default "/tmp/toolgui-wasmtest"}}'
+    cmds:
+      - go build -o {{.RUNNER}} ./scripts/wasmtest
+      - GOOS=js GOARCH=wasm go test -exec {{.RUNNER}} ./toolgui/tgframe/...
+
   # Builds into toolgui-wails/assets, which assets.go embeds.
   asset_wails:
     dir: ./toolgui-web/wails

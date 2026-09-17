@@ -40,8 +40,9 @@ box on screen stayed empty. A page that wants to start from a file it already
 has should read that file itself rather than ask for one.
 
 On a server the upload is streamed to disk rather than kept in memory, so a
-file only has to fit on disk. In the browser, where a WebAssembly app has no
-filesystem to use, it stays in the tab. `Size` is the size of what was stored.
+file only has to fit on disk. In the browser it is streamed to the origin
+private file system, which is what a tab has instead of one, so it does not
+have to fit in the tab either. `Size` is the size of what was stored.
 
 * `Open` returns a reader over the content, which the caller closes. It reads
   at an offset too, so `archive/zip` and the image decoders can work straight

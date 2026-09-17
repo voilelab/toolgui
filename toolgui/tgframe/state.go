@@ -248,8 +248,8 @@ func (s *State) GetBool(key string) bool {
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
-// was there. The content is streamed to disk, so the upload never has to fit
-// in memory.
+// was there. The content is streamed to wherever the build keeps files, so the
+// upload never has to fit in memory.
 func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
 	file, err := s.NewFile(name)
 	if err != nil {
