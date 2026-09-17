@@ -3,6 +3,7 @@ package tcmisc
 import (
 	"testing"
 
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -63,41 +64,113 @@ func TestPluginConfDrivesTheProps(t *testing.T) {
 	}
 }
 
-// A plugin with no id claims no state key, so nothing collides and nothing
-// can be read back.
+// A plugin with no conf id derives one from its src, so it still claims a
+// state key and its value can be read back.
 func TestPluginWithoutID(t *testing.T) {
+	const src = "/plugin/gauge/gauge.js"
+
 	props := addIframe(t, func(c *tgframe.Container) {
-		Plugin(c, "/plugin/gauge/gauge.js")
+		Plugin(c, src)
 	})
 
-	if props["id"] != "" {
-		t.Errorf("id = %v, want empty", props["id"])
+	want := tcutil.HashedID(pluginComponentName, []byte(src))
+	if props["id"] != want {
+		t.Errorf("id = %v, want %v", props["id"], want)
 	}
 }
 
-// The state key PluginValue reads must be the component id the frontend puts
-// on the event, not the bare user id.
+// A value the plugin sent comes back typed, keyed by the plugin's own
+// component id rather than by the bare user id.
 func TestPluginValueRoundTrip(t *testing.T) {
-	props := addIframe(t, func(c *tgframe.Container) {
-		Plugin(c, "/plugin/gauge/gauge.js", &PluginConf{ID: "my_plugin"})
-	})
+	const src = "/plugin/gauge/gauge.js"
+	conf := &PluginConf{ID: "my_plugin"}
 
-	event := &tgframe.EventCustom{
-		ID:    props["id"].(string),
-		Value: map[string]any{"value": 7},
-	}
-
-	state := tgframe.NewState()
-	event.ApplyState(state)
-
-	var out struct {
+	type gauge struct {
 		Value int `json:"value"`
 	}
-	if err := PluginValue(state, "my_plugin", &out); err != nil {
-		t.Fatalf("PluginValue: %v", err)
+
+	state := stateWithValue(t, map[string]any{"value": 7}, func(c *tgframe.Container) {
+		Plugin(c, src, conf)
+	})
+
+	var got *gauge
+	drawWithState(t, state, func(c *tgframe.Container) {
+		got = PluginValue[gauge](c, src, conf)
+	})
+
+	if got == nil {
+		t.Fatal("value = nil, want the value the plugin sent")
 	}
 
-	if out.Value != 7 {
-		t.Errorf("value = %d, want 7", out.Value)
+	if got.Value != 7 {
+		t.Errorf("value = %d, want 7", got.Value)
+	}
+}
+
+// Before the plugin sends anything there is no value, which is not the same as
+// a value that is the zero T.
+func TestPluginValueBeforeTheFirstUpdate(t *testing.T) {
+	type gauge struct {
+		Value int `json:"value"`
+	}
+
+	var got *gauge
+	drawWithState(t, tgframe.NewState(), func(c *tgframe.Container) {
+		got = PluginValue[gauge](c, "/plugin/gauge/gauge.js")
+	})
+
+	if got != nil {
+		t.Errorf("value = %v, want nil before the plugin sends one", got)
+	}
+}
+
+// null is how a frame says it has no value, so it reads the same as an update
+// that never came rather than as a zero T.
+func TestPluginValueExplicitNull(t *testing.T) {
+	const src = "/plugin/gauge/gauge.js"
+
+	type gauge struct {
+		Value int `json:"value"`
+	}
+
+	state := stateWithValue(t, nil, func(c *tgframe.Container) {
+		Plugin(c, src)
+	})
+
+	var got *gauge
+	drawWithState(t, state, func(c *tgframe.Container) {
+		got = PluginValue[gauge](c, src)
+	})
+
+	if got != nil {
+		t.Errorf("value = %v, want nil for a plugin that sent null", got)
+	}
+}
+
+// A value that does not fit T is the run's failure, not a silent zero.
+func TestPluginValueThatDoesNotParse(t *testing.T) {
+	const src = "/plugin/gauge/gauge.js"
+
+	type gauge struct {
+		Value int `json:"value"`
+	}
+
+	state := stateWithValue(t, map[string]any{"value": "not a number"},
+		func(c *tgframe.Container) {
+			Plugin(c, src)
+		})
+
+	var got *gauge
+	names := drawWithState(t, state, func(c *tgframe.Container) {
+		got = PluginValue[gauge](c, src)
+	})
+
+	if got != nil {
+		t.Errorf("value = %v, want nil when the value does not parse", got)
+	}
+
+	// The failure is on screen, not only in the log.
+	if len(names) != 1 || names[0] != tgframe.ErrorComponentName {
+		t.Errorf("drew %v, want an error placeholder", names)
 	}
 }

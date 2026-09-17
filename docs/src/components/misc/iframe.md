@@ -12,7 +12,7 @@ page, its DOM, its cookies or its storage. It talks to the app only through
 
 ```go
 func Iframe(c *tgframe.Container, html string, conf ...*IframeConf)
-func IframeValue(s *tgframe.State, id string, out any) error
+func IframeValue[T any](c *tgframe.Container, html string, conf ...*IframeConf) *T
 ```
 
 * `c` is the container to add the iframe to.
@@ -28,10 +28,14 @@ func IframeValue(s *tgframe.State, id string, out any) error
 | `Width`  | CSS width of the iframe.                          | `100%`    |
 | `Height` | CSS height of the iframe, or `auto`.              | `150px`   |
 
-`IframeValue` unmarshals the latest value the iframe sent through
-`window.toolgui.update` into `out`. The `id` is the one passed as
-`IframeConf.ID`, so an interactive iframe needs an explicit id — the default id
-is derived from a hash of the html.
+`IframeValue` returns the latest value the guest sent through
+`window.toolgui.update`. It reads the value, it does not draw the iframe: give
+it the same `html` and `conf` the `Iframe` call gets, so that both name the same
+component. It returns `nil` until the guest has a value, which is not the same
+as a value that happens to be the zero `T`. A guest that has not sent yet and
+one that sent `null` both read as `nil` — `null` is how a guest says it has
+nothing. It fails the run rather than return a silent zero when what the guest
+sent does not fit `T`.
 
 ## Examples
 
@@ -90,30 +94,32 @@ opaque origin.
   Undefined until the first render.
 
 ```go
-tgcomp.Iframe(
-	p.Main,
-	`<button id="btn">Click me to update</button>
+type clickedValue struct {
+	Clicked bool `json:"clicked"`
+}
+
+html := `<button id="btn">Click me to update</button>
 	<script>
 		const btn = document.getElementById('btn');
 		btn.addEventListener('click', (event) => {
 			window.toolgui.update({clicked: true});
 		});
-	</script>`,
-	&tgcomp.IframeConf{
-		Script: true,
-		Height: "60px",
-		ID:     "iframe_with_interactive",
-	})
-
-var value struct {
-	Clicked bool `json:"clicked"`
-}
-err := tgcomp.IframeValue(p.State, "iframe_with_interactive", &value)
-if err != nil {
-	return err
+	</script>`
+conf := &tgcomp.IframeConf{
+	Script: true,
+	Height: "60px",
+	ID:     "iframe_with_interactive",
 }
 
-tgcomp.Text(p.Main, fmt.Sprintf("Status: %v", value.Clicked))
+tgcomp.Iframe(p.Main, html, conf)
+
+// nil until the guest clicks for the first time.
+clicked := false
+if v := tgcomp.IframeValue[clickedValue](p.Main, html, conf); v != nil {
+	clicked = v.Clicked
+}
+
+tgcomp.Text(p.Main, fmt.Sprintf("Status: %v", clicked))
 ```
 
 ### Reacting to reruns, and auto height

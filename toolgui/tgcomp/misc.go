@@ -1,6 +1,9 @@
 package tgcomp
 
-import "github.com/voilelab/toolgui/toolgui/tgcomp/tcmisc"
+import (
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcmisc"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
+)
 
 // Echo will execute lambda and show the code in the lambda.
 // To use Echo, we need to store the code in advance (usually by embedded).
@@ -60,8 +63,17 @@ var Iframe = tcmisc.Iframe
 // IframeConf is the configuration for the Iframe component.
 type IframeConf = tcmisc.IframeConf
 
-// IframeValue reads the latest value an iframe sent through window.update.
-var IframeValue = tcmisc.IframeValue
+// IframeValue returns the latest value an iframe's guest sent through
+// window.toolgui.update, nil when it has none. It reads the value rather than
+// drawing the iframe -- see [tcmisc.IframeValue].
+//
+// A generic function cannot be forwarded by a var, so this is a wrapper rather
+// than an alias like its neighbours.
+func IframeValue[T any](
+	c *tgframe.Container, html string, conf ...*IframeConf) *T {
+
+	return tcmisc.IframeValue[T](c, html, conf...)
+}
 
 // Html adds an HTML component to the container.
 var Html = tcmisc.Html
@@ -76,9 +88,17 @@ var Plugin = tcmisc.Plugin
 // PluginConf is the configuration for the Plugin component.
 type PluginConf = tcmisc.PluginConf
 
-// PluginValue reads the latest value a plugin sent through
-// window.toolgui.update.
-var PluginValue = tcmisc.PluginValue
+// PluginValue returns the latest value a plugin sent through
+// window.toolgui.update, nil when it has none. It reads the value rather than
+// drawing the plugin -- see [tcmisc.PluginValue].
+//
+// A generic function cannot be forwarded by a var, so this is a wrapper rather
+// than an alias like its neighbours.
+func PluginValue[T any](
+	c *tgframe.Container, src string, conf ...*PluginConf) *T {
+
+	return tcmisc.PluginValue[T](c, src, conf...)
+}
 
 // Spinner shows that the page function is busy, and returns the function that
 // takes it down again.

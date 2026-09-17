@@ -38,6 +38,50 @@ func addIframe(t *testing.T, add func(c *tgframe.Container)) map[string]any {
 	return out.Component
 }
 
+// drawWithState runs the given call against a container backed by state, the
+// way a rerun draws a page whose widgets already have values, and returns the
+// names of the components it drew.
+func drawWithState(t *testing.T, state *tgframe.State, add func(c *tgframe.Container)) []string {
+	t.Helper()
+
+	var names []string
+	container := tgframe.NewContainer("test", state, func(pack tgframe.NotifyPack) {
+		bs, err := tgjson.Marshal(pack)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+
+		var out struct {
+			Component struct {
+				Name string `json:"name"`
+			} `json:"component"`
+		}
+		if err := tgjson.Unmarshal(bs, &out); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+
+		names = append(names, out.Component.Name)
+	})
+
+	add(container)
+
+	return names
+}
+
+// stateWithValue replays what the frontend sends for the component drawn by
+// add: it draws once to learn the id, then puts value under it.
+func stateWithValue(t *testing.T, value any, add func(c *tgframe.Container)) *tgframe.State {
+	t.Helper()
+
+	props := addIframe(t, add)
+
+	state := tgframe.NewState()
+	event := &tgframe.EventCustom{ID: props["id"].(string), Value: value}
+	event.ApplyState(state)
+
+	return state
+}
+
 func TestIframeDefaultSize(t *testing.T) {
 	props := addIframe(t, func(c *tgframe.Container) {
 		Iframe(c, "<b>hi</b>", &IframeConf{Script: true})
@@ -79,30 +123,59 @@ func TestIframeConfDrivesTheProps(t *testing.T) {
 	}
 }
 
-// The state key IframeValue reads must be the component id the frontend puts
-// on the event, not the bare user id.
+// A value the guest sent comes back typed, keyed by the iframe's own
+// component id rather than by the bare user id.
 func TestIframeValueRoundTrip(t *testing.T) {
-	props := addIframe(t, func(c *tgframe.Container) {
-		Iframe(c, "<b>hi</b>", &IframeConf{Script: true, ID: "my_iframe"})
-	})
+	const html = "<b>hi</b>"
+	conf := &IframeConf{Script: true, ID: "my_iframe"}
 
-	// What the frontend sends back: the iframe's own component id.
-	event := &tgframe.EventCustom{
-		ID:    props["id"].(string),
-		Value: map[string]any{"clicked": true},
-	}
-
-	state := tgframe.NewState()
-	event.ApplyState(state)
-
-	var out struct {
+	type picked struct {
 		Clicked bool `json:"clicked"`
 	}
-	if err := IframeValue(state, "my_iframe", &out); err != nil {
-		t.Fatalf("IframeValue: %v", err)
+
+	state := stateWithValue(t, map[string]any{"clicked": true}, func(c *tgframe.Container) {
+		Iframe(c, html, conf)
+	})
+
+	var got *picked
+	drawWithState(t, state, func(c *tgframe.Container) {
+		got = IframeValue[picked](c, html, conf)
+	})
+
+	if got == nil {
+		t.Fatal("value = nil, want the value the guest sent")
 	}
 
-	if !out.Clicked {
+	if !got.Clicked {
 		t.Error("clicked = false, want true")
+	}
+}
+
+// Before the guest sends anything there is no value, which is not the same as
+// a value that is the zero T.
+func TestIframeValueBeforeTheFirstUpdate(t *testing.T) {
+	type picked struct {
+		Clicked bool `json:"clicked"`
+	}
+
+	var got *picked
+	drawWithState(t, tgframe.NewState(), func(c *tgframe.Container) {
+		got = IframeValue[picked](c, "<b>hi</b>", &IframeConf{Script: true})
+	})
+
+	if got != nil {
+		t.Errorf("value = %v, want nil before the guest sends one", got)
+	}
+}
+
+// Reading is not drawing: a page that only wants the value does not put a
+// second iframe on the screen.
+func TestIframeValueDrawsNothing(t *testing.T) {
+	names := drawWithState(t, tgframe.NewState(), func(c *tgframe.Container) {
+		_ = IframeValue[struct{}](c, "<b>hi</b>", &IframeConf{Script: true})
+	})
+
+	if len(names) != 0 {
+		t.Errorf("drew %v, want nothing", names)
 	}
 }
