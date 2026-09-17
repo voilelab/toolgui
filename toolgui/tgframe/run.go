@@ -2,6 +2,7 @@ package tgframe
 
 import (
 	"errors"
+	"sync/atomic"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
@@ -11,8 +12,19 @@ import (
 // no id are fine; an id is a name for state, and two things cannot share one.
 var ErrDuplicatedID = errors.New("duplicated component id")
 
+// runSeq issues the serial every run is stamped with. It only has to tell a
+// run from the one before it, so one counter for the whole process is enough.
+var runSeq atomic.Uint64
+
 // runState is the bookkeeping shared by every container of a single run.
 type runState struct {
+	// seq names this run, and rises with every one. A component that stands
+	// for something that happened rather than for a piece of the page carries
+	// it in its props: the client keys a node by its position, so the same
+	// component written in the same place twice would otherwise arrive as the
+	// first one unchanged. See [Container.RunSeq].
+	seq uint64
+
 	ids map[string]bool
 
 	// released holds the ids the run has taken back off the screen, the
@@ -24,7 +36,11 @@ type runState struct {
 }
 
 func newRunState() *runState {
-	return &runState{ids: map[string]bool{}, released: map[string]bool{}}
+	return &runState{
+		seq:      runSeq.Add(1),
+		ids:      map[string]bool{},
+		released: map[string]bool{},
+	}
 }
 
 // registerID claims comp's id for this run. The first collision is kept and

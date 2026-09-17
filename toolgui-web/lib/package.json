@@ -15,6 +15,7 @@
     "@mantine/core": "^9.6.0",
     "@mantine/dates": "^9.6.0",
     "@mantine/hooks": "^9.6.0",
+    "@mantine/notifications": "^9.6.0",
     "@tabler/icons-react": "^3.46.0",
     "@types/katex": "^0.16.7",
     "@types/react": "^19.2.0",

@@ -51,6 +51,53 @@ describe('Misc', () => {
     shown().contains('progress_bar: 50%').should('exist')
   })
 
+  // A toast is something that happened, so a node that renders nothing is
+  // what it leaves behind, and every run that reaches the call fires it again.
+  it('Toasts stack, go by themselves, and fire again on the next run', () => {
+    cy.visit('/misc')
+    const shown = () => cy.get('#column_component_show_toast_0')
+    const toast = (text, opts) =>
+      cy.contains('.mantine-Notification-root', text, opts)
+
+    shown().contains('Save').click()
+
+    // Two calls in one run, two toasts, both on screen at once.
+    toast('Saved to disk').should('be.visible')
+    toast('Two rows changed').should('be.visible')
+
+    // Nothing landed where the page function wrote them.
+    shown().should('not.contain', 'Saved to disk')
+
+    // The first took the default duration and the second was given ten
+    // seconds, so the first goes while the second is still up.
+    toast('Saved to disk', { timeout: 10000 }).should('not.exist')
+    toast('Two rows changed').should('be.visible')
+
+    // Same call, same place, second run. The node is the one that is already
+    // there, so only the run serial says this is a second toast.
+    shown().contains('Save').click()
+    toast('Saved to disk').should('be.visible')
+  })
+
+  // Pausing on hover is what gives someone time to read a toast that is about
+  // to go.
+  it('A hovered toast stays up past its duration', () => {
+    cy.visit('/misc')
+    const toast = (text, opts) =>
+      cy.contains('.mantine-Notification-root', text, opts)
+
+    cy.get('#column_component_show_toast_0').contains('Save').click()
+    toast('Saved to disk').should('be.visible').trigger('mouseover')
+
+    // Well past the four seconds it would otherwise have had.
+    cy.wait(8000)
+    toast('Saved to disk').should('be.visible')
+
+    // And it goes once the pointer leaves.
+    toast('Saved to disk').trigger('mouseout')
+    toast('Saved to disk', { timeout: 10000 }).should('not.exist')
+  })
+
   it('Status collects its lines and closes as a success', () => {
     cy.visit('/misc')
     const shown = () => cy.get('#column_component_show_status_0')

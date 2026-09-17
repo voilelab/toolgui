@@ -54,6 +54,7 @@ import { TEmpty } from "./tclayout/empty"
 import { TPopover } from "./tclayout/popover"
 import { TDialog } from "./tclayout/dialog"
 import { TSpinner } from "./tcmisc/spinner"
+import { TToast } from "./tcmisc/toast"
 
 const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   textbox_component: TTextbox,
@@ -104,6 +105,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   progress_bar_component: TProgressar,
   spinner_component: TSpinner,
   message_component: TMessage,
+  toast_component: TToast,
   iframe_component: TIframe,
   html_component: THtml,
   plugin_component: TPlugin,
