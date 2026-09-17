@@ -13,10 +13,10 @@ jobs:
     name: GolangCI-Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           # Pin to go.mod: a Go newer than golangci-lint's own build panics it
           go-version-file: go.mod
@@ -28,6 +28,6 @@ jobs:
         run: ./scripts/stub-assets.sh
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13

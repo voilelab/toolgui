@@ -40,9 +40,12 @@ most, and it is stored under a component the page actually drew, so a caller
 cannot keep a file per name it invents. An event is held to the same rule: it
 writes the state under an id the last finished run drew, so a client cannot
 fill a session with keys no component owns and no run would ever read or
-release. `StartService` also puts deadlines on sending a request's headers, on
-sitting idle between requests, and on naming a state once the websocket
-handshake is done.
+release. One message on the update socket is 1 MiB at most, and a form event
+nests 32 levels at most: every level of a form has its subtree read again, so
+the two together are what stop one message from buying far more work than it
+took to send. `StartService` also puts deadlines on sending a request's
+headers, on sitting idle between requests, and on naming a state once the
+websocket handshake is done.
 
 A download goes the other way and is capped by nothing, because there is
 nothing to cap: `DownloadFile` serves a file one of the page's own runs offered,
@@ -52,13 +55,19 @@ the connection asking. A token is therefore a bearer of nothing on its own, and
 neither it nor the state id is ever put in a URL, where a link, a log line or a
 `Referer` would carry it further than the fetch that needs it.
 
-The two caps are worth lowering on anything reachable by more than the person
+The caps are worth lowering on anything reachable by more than the person
 running it:
 
 ```go
 e.SetMaxStateCount(64)
 e.SetMaxUploadSize(16 * 1024 * 1024)
+e.SetMaxMessageSize(64 * 1024)
 ```
+
+Raise the message cap instead for an app whose iframe or plugin components send
+values of their own that are larger than 1 MiB. A message over the cap is
+refused by its header, without being read into memory, and the page keeps its
+connection.
 
 These bound what one visitor costs. They are not a substitute for deciding who
 reaches the page.

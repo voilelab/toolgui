@@ -948,3 +948,123 @@ func TestUpdateOverMaxStateCount(t *testing.T) {
 		t.Error("Fatal = true, want false")
 	}
 }
+
+// waitResult reads packs until the one a run finishes with, and returns it.
+func waitResult(t *testing.T, ws *websocket.Conn) tgframe.ResultPack {
+	t.Helper()
+
+	if err := ws.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatalf("set deadline: %v", err)
+	}
+	defer func() { _ = ws.SetReadDeadline(time.Time{}) }()
+
+	for {
+		var bs []byte
+		if err := websocket.Message.Receive(ws, &bs); err != nil {
+			t.Fatalf("receive: %v", err)
+		}
+
+		var pack tgframe.ResultPack
+		if err := tgjson.Unmarshal(bs, &pack); err != nil {
+			continue
+		}
+
+		if pack.Success || pack.Error != "" {
+			return pack
+		}
+	}
+}
+
+// A message over the cap is refused by its header, so the size it claims costs
+// the server nothing to turn away. The connection is still in step afterwards:
+// the client is told its message was dropped and keeps the socket.
+func TestUpdateRefusesOversizedMessage(t *testing.T) {
+	srv, _ := newTestServer(t)
+	ws := dialUpdate(t, srv, "index")
+
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var idPack stateIDPack
+	if err := jsonCodec.Receive(ws, &idPack); err != nil {
+		t.Fatalf("receive state id: %v", err)
+	}
+
+	padding := strings.Repeat("x", MaxMessageSize)
+	event := []byte(`{"type":"input","id":"a","value":"` + padding + `"}`)
+	if err := websocket.Message.Send(ws, event); err != nil {
+		t.Fatalf("send oversized event: %v", err)
+	}
+
+	pack := waitResult(t, ws)
+	if !strings.Contains(pack.Error, "exceeds limit") {
+		t.Errorf("Error = %q, want the size limit", pack.Error)
+	}
+
+	// The next message is read as usual, so one oversized message does not
+	// cost the page its connection.
+	if err := websocket.Message.Send(ws, []byte(`{}`)); err != nil {
+		t.Fatalf("send empty event: %v", err)
+	}
+
+	if pack := waitResult(t, ws); !pack.Success {
+		t.Errorf("after an oversized message: %#v, want a run", pack)
+	}
+}
+
+// The cap the app sets is the one the connection takes.
+func TestUpdateMessageSizeIsSettable(t *testing.T) {
+	srv, e := newTestServer(t)
+	e.SetMaxMessageSize(64)
+
+	ws := dialUpdate(t, srv, "index")
+
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var idPack stateIDPack
+	if err := jsonCodec.Receive(ws, &idPack); err != nil {
+		t.Fatalf("receive state id: %v", err)
+	}
+
+	event := []byte(`{"type":"input","id":"a","value":"` +
+		strings.Repeat("x", 64) + `"}`)
+	if err := websocket.Message.Send(ws, event); err != nil {
+		t.Fatalf("send event: %v", err)
+	}
+
+	if pack := waitResult(t, ws); !strings.Contains(pack.Error, "exceeds limit") {
+		t.Errorf("Error = %q, want the size limit", pack.Error)
+	}
+}
+
+// A form nested past what the parser takes is refused as a whole, and the
+// connection carries on.
+func TestUpdateRefusesDeeplyNestedForm(t *testing.T) {
+	srv, _ := newTestServer(t)
+	ws := dialUpdate(t, srv, "index")
+
+	if err := jsonCodec.Send(ws, stateIDPack{}); err != nil {
+		t.Fatalf("send state id: %v", err)
+	}
+
+	var idPack stateIDPack
+	if err := jsonCodec.Receive(ws, &idPack); err != nil {
+		t.Fatalf("receive state id: %v", err)
+	}
+
+	event := `{"type":"input","id":"a","value":"1"}`
+	for range 64 {
+		event = `{"type":"form","events":[` + event + `]}`
+	}
+
+	if err := websocket.Message.Send(ws, []byte(event)); err != nil {
+		t.Fatalf("send nested form: %v", err)
+	}
+
+	if pack := waitResult(t, ws); pack.Error == "" {
+		t.Errorf("%#v, want the message refused", pack)
+	}
+}
