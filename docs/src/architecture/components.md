@@ -186,18 +186,31 @@ by and what `State.GetClickID()` returns:
 if p.State.GetClickID() == "save" {
 ```
 
-Each component package hands out the getter that adds the prefix for you, and
-they all take the id exactly as the conf was given it:
+Each component package hands out the getter that adds the prefix for you:
 
 ```go
 if tgcomp.ButtonClicked(p.State, "save") {
 ```
 
-`ButtonClicked` — and `DownloadButtonClicked`, `IframeValue`, `PluginValue` —
-read the run's state rather than the component, so they can be asked *before*
-the component is drawn. That is what a page needs when the button sits below
-the content it changes: handle the click first, then write the new content
-once, instead of sending the old content out and rewriting the whole slot.
+These getters read the run's state rather than the component, so they can be
+asked *before* the component is drawn. That is what a page needs when the
+button sits below the content it changes: handle the click first, then write
+the new content once, instead of sending the old content out and rewriting the
+whole slot.
+
+They do not all name the component the same way, because they were converged at
+different times:
+
+| Getter | Names the component by |
+| --- | --- |
+| `ButtonClicked` | `*tgframe.State` and the id as the conf was given it |
+| `DownloadButtonClicked` | `*tgframe.State` and the id as the conf was given it |
+| `IframeValue` | the container, plus the same `html` and conf the `Iframe` call got |
+| `PluginValue` | the container, plus the same `src` and conf the `Plugin` call got |
+
+The bottom two are the shape the top two are headed for: the getter takes what
+the draw call takes and derives the id itself, so the id is never written twice
+and the caller never has to reach for `p.State`.
 
 The click id comes from the client, and a getter asked before the page has
 written anything has nothing of this run to check it against. So the two
