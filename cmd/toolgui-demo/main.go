@@ -474,6 +474,50 @@ func LayoutPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	dialogCompCol, dialogCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_dialog"})
+	tgcomp.Echo(dialogCodeCol, code, func() {
+		// Written before the dialog that opens it, on purpose: which of two
+		// open dialogs is drawn on top follows the order they opened, not the
+		// order the page writes them.
+		why := tgcomp.Dialog(dialogCompCol, "What deleting does")
+
+		d := tgcomp.Dialog(dialogCompCol, "Delete confirm")
+
+		// The trigger is handled before With, which is what draws the body:
+		// opening after it would open the dialog on an empty run.
+		if tgcomp.Button(dialogCompCol, "Delete") {
+			d.Open()
+		}
+
+		d.With(func(c *tgframe.Container) {
+			// Only reached while the dialog is open, so the count behind the
+			// question is not looked up on every rerun.
+			tgcomp.Text(c, fmt.Sprintf("Delete the %d selected rows?", 3))
+
+			yes, no := tgcomp.EqColumn2(c, &tgcomp.ColumnConf{ID: "delete_confirm"})
+			if tgcomp.Button(yes, "Yes, delete") {
+				d.Close()
+			}
+			if tgcomp.Button(no, "Keep them") {
+				d.Close()
+			}
+
+			if tgcomp.Button(c, "What does this do?") {
+				why.Open()
+			}
+		})
+
+		why.With(func(c *tgframe.Container) {
+			tgcomp.Text(c, "The rows are removed for good.")
+			if tgcomp.Button(c, "Got it") {
+				why.Close()
+			}
+		})
+	})
+
+	tgcomp.Divider(p.Main)
+
 	emptyCompCol, emptyCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_empty"})
 	tgcomp.Echo(emptyCodeCol, code, func() {
@@ -494,6 +538,21 @@ func LayoutPage(p *tgframe.Params) error {
 					[]string{"table", "rows"},
 					[][]string{{"users", "1289"}, {"orders", "4021"}})
 			})
+		}
+	})
+
+	// A dialog is a portal wherever it is written, so one declared in the
+	// sidebar covers the whole window rather than the side column.
+	sideDialog := tgcomp.Dialog(p.Sidebar, "From the sidebar",
+		(&tgcomp.DialogConf{Width: tgcomp.DialogWidthMedium}).
+			SetDismissible(false))
+	if tgcomp.Button(p.Sidebar, "Open the sidebar dialog") {
+		sideDialog.Open()
+	}
+	sideDialog.With(func(c *tgframe.Container) {
+		tgcomp.Text(c, "Declared in the sidebar, shown over the page.")
+		if tgcomp.Button(c, "Close the sidebar dialog") {
+			sideDialog.Close()
 		}
 	})
 
