@@ -64,7 +64,14 @@ string.
 Because it cannot block, the file store keeps a few files created and open
 ahead of demand, and an upload takes one of those rather than waiting for the
 promises that make one. There are always some by the time a user can have
-picked a file: the pool is filled while the page is still being drawn.
+picked a file: the pool fills while the page is still being drawn.
+
+Once it has filled, taking a file never waits again — it fails instead. A
+callback that took more than the pool holds would be waiting on promises that
+cannot settle until it returns, so the store gives up with an error rather than
+stopping the tab. One `uploadFile` takes one file and the browser sends them one
+per task, so nothing on the transport comes near the limit; a callback of your
+own that stores a stack of files at once would.
 
 ## Building
 

@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall/js"
 	"time"
 
@@ -413,6 +414,15 @@ type opfsBodies struct {
 	done    chan struct{}
 	stopped chan struct{}
 
+	// filled says the pool has been full at least once, which is to say run
+	// has caught up with demand and the state is no longer starting up. Until
+	// then an empty pool is one still being filled, and a caller may wait: it
+	// is a page function on its own goroutine, or a test. After it, an empty
+	// pool is one demand drained, and the caller may be an upload on the
+	// JavaScript callback stack -- where waiting for the refill would stop the
+	// event loop the refill needs to make progress.
+	filled atomic.Bool
+
 	mu        sync.Mutex
 	live      map[*opfsBody]struct{}
 	destroyed bool
@@ -467,9 +477,19 @@ func (b *opfsBodies) run() {
 
 		select {
 		case b.pool <- body:
-		case <-b.done:
-			// destroy closed every handle it was tracking, this one included.
-			return
+		default:
+			// Nowhere to put it, so the pool is full and the state has all the
+			// files ahead of demand it is going to get. An empty pool from
+			// here on is one that was drained rather than one still filling.
+			b.filled.Store(true)
+
+			select {
+			case b.pool <- body:
+			case <-b.done:
+				// destroy closed every handle it was tracking, this one
+				// included.
+				return
+			}
 		}
 	}
 }
@@ -547,16 +567,28 @@ func (b *opfsBodies) newBody() (fileBody, error) {
 // whenever one is pooled, which is what stands in for the promise it cannot
 // await.
 //
-// The wait below covers the turns of the event loop right after a state is
-// made, before the first file is through. An upload cannot land in it: getting
-// there means beating the render of the component that accepts one. What it is
-// for is a page function that stores a file of its own the moment it starts,
-// and a test.
+// A pool that has already handed a file out and is empty again is one demand
+// drained, and refilling it needs turns of the event loop. Waiting for that is
+// what a caller on the JavaScript callback stack must never do, and this has
+// no way to tell where it was called from, so nobody waits: taking more files
+// in one go than the pool holds is an error rather than a tab that stops dead.
+//
+// The wait below is only reachable before the first file is through, in the
+// turns of the event loop right after a state is made. An upload cannot land
+// there -- getting there means beating the render of the component that
+// accepts one -- and a page function runs on a goroutine of its own, where
+// waiting costs nothing.
 func (b *opfsBodies) take() (*opfsBody, error) {
 	select {
 	case body := <-b.pool:
 		return body, nil
 	default:
+	}
+
+	if b.filled.Load() {
+		return nil, tgutil.Errorf(
+			"no file open and ready: more than %d were taken before the"+
+				" browser could open another", opfsPoolSize)
 	}
 
 	select {
@@ -684,6 +716,13 @@ type opfsBody struct {
 	lock   sync.Mutex
 	handle js.Value
 	buf    js.Value
+
+	// readers is how many readers are open on the file, and removed says the
+	// store has dropped it. The file outlives the drop while a reader is on
+	// it, the way an unlinked file does for a descriptor already held: the
+	// disk build gets that from the kernel, and this build has to count.
+	readers int
+	removed bool
 }
 
 func (b *opfsBody) open() (FileReader, error) {
@@ -698,6 +737,8 @@ func (b *opfsBody) open() (FileReader, error) {
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
+
+	b.readers++
 
 	// The reader is capped at what is there now. An append can only add past
 	// that, so what it reads doesn't change under it.
@@ -793,10 +834,53 @@ func (b *opfsBody) writeChunk(bs []byte, off int64) error {
 	return nil
 }
 
-// remove drops the file. The handle goes first: the browser refuses to remove
-// a file something still holds one for.
+// remove drops the file. A reader already open goes on reading it: the handle
+// is shared, so closing it here would break one mid-read, and a page that held
+// a reader across the upload that replaced its file would get an error where
+// the other builds hand it the bytes it opened. The file goes when the last
+// reader closes instead.
+//
+// [fileBodies.destroy] does not wait like this. A state that is gone takes its
+// readers with it, and the directory cannot be removed while a handle inside
+// it is open.
 func (b *opfsBody) remove() {
-	b.close()
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	b.removed = true
+
+	if b.readers > 0 {
+		return
+	}
+
+	b.drop()
+}
+
+// release gives back a reader, and drops the file if it was the last one on a
+// file the store has already removed.
+func (b *opfsBody) release() {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	b.readers--
+
+	if b.readers > 0 || !b.removed {
+		return
+	}
+
+	b.drop()
+}
+
+// drop closes the handle and removes the file. It must be called with the lock
+// held. The handle goes first: the browser refuses to remove a file something
+// still holds one for.
+func (b *opfsBody) drop() {
+	if !b.handle.Truthy() {
+		// Already shut, which means destroy took the whole directory with it.
+		return
+	}
+
+	b.shut()
 	b.bodies.forget(b)
 
 	p, err := opfsCall(b.bodies.dir, "removeEntry", b.name)
@@ -816,6 +900,11 @@ func (b *opfsBody) close() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
+	b.shut()
+}
+
+// shut closes the handle. It must be called with the lock held.
+func (b *opfsBody) shut() {
 	if !b.handle.Truthy() {
 		return
 	}
@@ -982,11 +1071,18 @@ func (r *opfsReader) Seek(offset int64, whence int) (int64, error) {
 	return at, nil
 }
 
-// Close releases the reader. The handle stays open: it is the body's, and the
+// Close releases the reader. The handle stays open unless this was the last
+// reader on a file the store has already dropped: it is the body's, and the
 // other readers are still on it.
 func (r *opfsReader) Close() error {
+	if r.closed {
+		return nil
+	}
+
 	r.closed = true
 	r.buf = js.Undefined()
+
+	r.body.release()
 
 	return nil
 }

@@ -95,6 +95,9 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	state := tgframe.NewState()
 	session, err := tgframe.NewSession(b.app, pageName, state, b.send)
 	if err != nil {
+		// The state never became the bridge's, so nothing else will let go of
+		// what it holds.
+		state.Destroy()
 		b.lock.Unlock()
 
 		// Only the page name can fail here, and a retry would fail the same
@@ -195,12 +198,25 @@ func (b *bridge) currentSession() *tgframe.Session {
 }
 
 // closeSession must be called with lock held.
+//
+// The state is destroyed, not merely dropped: what it holds is not all the
+// garbage collector's to reclaim. In the browser its uploads are files in the
+// origin private file system, with handles open on them, and a page switch
+// that only let go of the pointer would leave every one of them behind for as
+// long as the tab lived. [tgframe.Session.Close] does not do it -- the web
+// executor destroys the state out of its own session map -- so it is done
+// here, the way the desktop executor does.
 func (b *bridge) closeSession() {
 	if b.session == nil {
 		return
 	}
 
 	b.session.Close()
+
+	if b.state != nil {
+		b.state.Destroy()
+	}
+
 	b.session = nil
 	b.state = nil
 }

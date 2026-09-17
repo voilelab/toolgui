@@ -39,21 +39,22 @@ func opfsState(t *testing.T) (*State, *opfsBodies) {
 	return s, bodies
 }
 
-// opfsPooled waits until the state has a file created and open. An upload takes
-// one of those rather than waiting for the promises that make it, which is the
-// whole reason they are made ahead of demand.
+// opfsPooled waits until the state is done starting up: the pool has filled, so
+// every file it keeps open ahead of demand is there and taking one no longer
+// waits for anything. A page gets here within a few turns of the event loop,
+// long before a user can pick a file.
 func opfsPooled(t *testing.T, bodies *opfsBodies) {
 	t.Helper()
 
-	for range 200 {
-		if len(bodies.pool) > 0 {
+	for range 400 {
+		if bodies.filled.Load() {
 			return
 		}
 
 		time.Sleep(5 * time.Millisecond)
 	}
 
-	t.Fatal("no file was pooled")
+	t.Fatal("the file pool never filled")
 }
 
 // opfsEntry answers whether a directory holds an entry under name.
@@ -302,6 +303,93 @@ func TestStateSetFileFromACallback(t *testing.T) {
 	if string(bs) != "hello" {
 		t.Errorf("Bytes = %q, want hello", bs)
 	}
+}
+
+// TestStateNewFileRunsOutRatherThanWaiting checks that asking for more files in
+// one JavaScript callback than the pool holds is an error. Waiting there for
+// the pool to refill would stop the event loop the refill needs, and the tab
+// with it. If that ever regresses this hangs rather than fails.
+func TestStateNewFileRunsOutRatherThanWaiting(t *testing.T) {
+	s, bodies := opfsState(t)
+	defer s.Destroy()
+
+	opfsPooled(t, bodies)
+
+	var failed error
+
+	done := make(chan struct{})
+
+	fn := js.FuncOf(func(_ js.Value, _ []js.Value) any {
+		defer close(done)
+
+		// Twice the pool, so it runs out however full it was to start with.
+		for range opfsPoolSize * 2 {
+			if _, err := s.NewFile("a.txt"); err != nil {
+				failed = err
+				return nil
+			}
+		}
+
+		return nil
+	})
+	defer fn.Release()
+
+	js.Global().Call("setTimeout", fn, 0)
+	<-done
+
+	if failed == nil {
+		t.Error("expect taking more files than the pool holds to fail")
+	}
+}
+
+// TestStateFileReaderSurvivesReplacement checks a reader opened before an
+// upload replaced its file goes on reading what it opened, the way an unlinked
+// file does for a descriptor already held. The file itself goes once the last
+// reader closes.
+func TestStateFileReaderSurvivesReplacement(t *testing.T) {
+	s, bodies := opfsState(t)
+	defer s.Destroy()
+
+	file, err := s.WriteFile("comp", "a.txt", strings.NewReader("hello file"))
+	if err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	body, ok := file.body.(*opfsBody)
+	if !ok {
+		t.Fatalf("body is %T, want a file in the origin private file system", file.body)
+	}
+
+	fp, err := file.Open()
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer fp.Close()
+
+	head := make([]byte, 5)
+	if _, err := io.ReadFull(fp, head); err != nil {
+		t.Fatalf("ReadFull: %v", err)
+	}
+
+	// The upload that takes the key drops the body this reader is on.
+	if _, err := s.WriteFile("comp", "b.txt", strings.NewReader("new")); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	rest, err := io.ReadAll(fp)
+	if err != nil {
+		t.Fatalf("ReadAll after the file was replaced: %v", err)
+	}
+
+	if string(rest) != " file" {
+		t.Errorf("the reader gave %q after the file was replaced, want \" file\"", rest)
+	}
+
+	if err := fp.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	opfsWaitGone(t, bodies.dir, body.name, false)
 }
 
 // TestStateDestroyRemovesDirectory checks the whole directory goes with the

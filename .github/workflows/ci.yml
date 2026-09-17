@@ -46,7 +46,8 @@ jobs:
       - name: Test for wasm
         run: |
           go build -o "$RUNNER" ./scripts/wasmtest
-          GOOS=js GOARCH=wasm go test -exec "$RUNNER" ./toolgui/tgframe/...
+          GOOS=js GOARCH=wasm go test -exec "$RUNNER" ./toolgui/tgframe/... \
+            ./toolgui/tgwasm/...
         env:
           RUNNER: ${{ runner.temp }}/toolgui-wasmtest
 

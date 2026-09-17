@@ -34,6 +34,7 @@ tasks:
     cmds:
       - go build -o {{.RUNNER}} ./scripts/wasmtest
       - GOOS=js GOARCH=wasm go test -exec {{.RUNNER}} ./toolgui/tgframe/...
+        ./toolgui/tgwasm/...
 
   # Builds into toolgui-wails/assets, which assets.go embeds.
   asset_wails:
