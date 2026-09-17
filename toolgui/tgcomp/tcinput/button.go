@@ -48,3 +48,18 @@ func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
 }
+
+// ButtonClicked reports whether the click this run is handling is the one on
+// the button with the given id. The id is the one passed as [ButtonConf.ID].
+//
+// It reads the click off the state rather than off the button, so a page can
+// ask before the button is drawn — the case for a button written below the
+// content it changes, which would otherwise have to send the old content out
+// first and rewrite it.
+//
+// Comparing an id with [tgframe.State.GetClickID] directly does not work:
+// GetClickID returns the button's component id, which carries the component
+// name in front of the conf id.
+func ButtonClicked(s *tgframe.State, id string) bool {
+	return s.GetClickID() == tcutil.NormalID(buttonComponentName, id)
+}

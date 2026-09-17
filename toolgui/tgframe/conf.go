@@ -16,6 +16,14 @@ type Base struct {
 	// stored under and the id it carries in the DOM. Leave it empty and the
 	// component derives one; set it when two components would otherwise
 	// derive the same id.
+	//
+	// The component prefixes it with its own name, so two components given
+	// the same id don't collide: ID "save" on a Button becomes
+	// "button_component_save". That prefixed value is what [State.GetClickID]
+	// returns and what the state is keyed by, so this id does not match
+	// either as written. Ask through the component package instead —
+	// tcinput.ButtonClicked, tcmisc.IframeValue and the like take the id as
+	// given here.
 	ID string
 }
 

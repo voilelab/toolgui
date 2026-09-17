@@ -75,3 +75,10 @@ func DownloadButton(c *tgframe.Container, text string, body []byte, conf ...*Dow
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
 }
+
+// DownloadButtonClicked reports whether the click this run is handling is the
+// one on the download button with the given id. The id is the one passed as
+// [DownloadButtonConf.ID]. It's [ButtonClicked] for a download button.
+func DownloadButtonClicked(s *tgframe.State, id string) bool {
+	return s.GetClickID() == tcutil.NormalID(downloadButtonComponentName, id)
+}
