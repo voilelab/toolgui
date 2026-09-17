@@ -22,7 +22,8 @@ type Base struct {
 	// "button_component_save". That prefixed value is what [State.GetClickID]
 	// returns and what the state is keyed by, so this id does not match
 	// either as written. Ask through the component package instead —
-	// tcinput.ButtonClicked and the like take the id as given here.
+	// tcinput.ButtonClicked and the like take the same conf the draw call
+	// takes, and derive the prefixed id from it.
 	ID string
 }
 

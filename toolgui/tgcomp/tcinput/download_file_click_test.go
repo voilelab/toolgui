@@ -14,9 +14,10 @@ func TestDownloadFileClicked(t *testing.T) {
 		t.Helper()
 
 		return newRunner(t, func(p *tgframe.Params, seen *clickRun) {
-			seen.before = tcinput.DownloadFileClicked(p.State, "report")
-			seen.drawn = tcinput.DownloadFile(p.Main, "Report", []byte("body"),
-				&tcinput.DownloadFileConf{ID: "report"})
+			conf := &tcinput.DownloadFileConf{ID: "report"}
+			seen.before = tcinput.DownloadFileClicked(p.Main, "Report", conf)
+			seen.drawn = tcinput.DownloadFile(p.Main, "Report",
+				[]byte("body"), conf)
 		})
 	}
 
@@ -46,7 +47,8 @@ func TestDownloadFileClicked(t *testing.T) {
 
 	t.Run("never drawn", func(t *testing.T) {
 		r := newRunner(t, func(p *tgframe.Params, seen *clickRun) {
-			seen.before = tcinput.DownloadFileClicked(p.State, "secret")
+			seen.before = tcinput.DownloadFileClicked(p.Main, "Secret",
+				&tcinput.DownloadFileConf{ID: "secret"})
 		})
 
 		got := r.run(&tgframe.EventClick{ID: "download_file_component_secret"})

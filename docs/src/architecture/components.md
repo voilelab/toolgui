@@ -189,7 +189,7 @@ if p.State.GetClickID() == "save" {
 Each component package hands out the getter that adds the prefix for you:
 
 ```go
-if tgcomp.ButtonClicked(p.State, "save") {
+if tgcomp.ButtonClicked(p.Main, "Save") {
 ```
 
 These getters read the run's state rather than the component, so they can be
@@ -198,27 +198,32 @@ button sits below the content it changes: handle the click first, then write
 the new content once, instead of sending the old content out and rewriting the
 whole slot.
 
-They do not all name the component the same way, because they were converged at
-different times:
+They all name the component the same way: the container, plus the same
+arguments and conf the draw call gets. The getter derives the id from those,
+exactly as the draw call does, so the id is never written twice:
 
 | Getter | Names the component by |
 | --- | --- |
-| `ButtonClicked` | `*tgframe.State` and the id as the conf was given it |
-| `DownloadButtonClicked` | `*tgframe.State` and the id as the conf was given it |
+| `ButtonClicked` | the container, plus the same `label` and conf the `Button` call got |
+| `DownloadButtonClicked` | the container, plus the same `text` and conf the `DownloadButton` call got |
+| `DownloadFileClicked` | the container, plus the same `text` and conf the `DownloadFile` call got |
 | `IframeValue` | the container, plus the same `html` and conf the `Iframe` call got |
 | `PluginValue` | the container, plus the same `src` and conf the `Plugin` call got |
 
-The bottom two are the shape the top two are headed for: the getter takes what
-the draw call takes and derives the id itself, so the id is never written twice
-and the caller never has to reach for `p.State`.
+The two download getters leave out the `body` the draw call takes: those ids
+come from the text, not from the file. `IframeValue` keeps its `html`, whose
+hash is the iframe's default id.
+
+None of them draw anything — a getter reads, only the draw call adds a
+component — so it is fine to ask and then draw, in that order, in the same run.
 
 The click id comes from the client, and a getter asked before the page has
-written anything has nothing of this run to check it against. So the two
-`Clicked` getters check it against the ids the *last* run drew: a click naming
-a button that was not on the screen is not a click. `Button` needs no such
-check — it reports a click only where the button is actually written — which
-is why asking by hand, with `GetClickID()` and a prefix of your own, is not
-the same thing.
+written anything has nothing of this run to check it against. So the `Clicked`
+getters check it against the ids the *last* run drew: a click naming a button
+that was not on the screen is not a click. `Button` needs no such check — it
+reports a click only where the button is actually written — which is why
+asking by hand, with `GetClickID()` and a prefix of your own, is not the same
+thing.
 
 ## Writing one place more than once
 

@@ -46,7 +46,7 @@ tgcomp.Button(p.Main, "Save", &tgcomp.ButtonConf{ID: "save_all"})
 ## Asking before the button is drawn
 
 ```go
-func ButtonClicked(s *tgframe.State, id string) bool
+func ButtonClicked(c *tgframe.Container, label string, conf ...*ButtonConf) bool
 ```
 
 `Button` reports the click where it is written, which is a problem when the
@@ -55,17 +55,29 @@ of a card. `ButtonClicked` reads the click off the run's state instead, so the
 page can handle it first and write the content once:
 
 ```go
-if tgcomp.ButtonClicked(p.State, "load_details") {
+if tgcomp.ButtonClicked(p.Main, "Load details") {
 	details = fetchDetails()
 }
 
 tgcomp.Text(p.Main, details)
-tgcomp.Button(p.Main, "Load details", &tgcomp.ButtonConf{ID: "load_details"})
+tgcomp.Button(p.Main, "Load details")
 ```
 
-* `s` is the run's state, `p.State`.
-* `id` is the same string the button's `ButtonConf.ID` carries — the button
-  needs one, since the id a label derives changes with the label.
+It reads the click, it does not draw the button: give it the same `label` and
+`conf` the `Button` call gets, and it derives the same id. Where the button
+carries a `ButtonConf.ID`, pass that conf to both — sharing one variable is the
+way to keep them from drifting apart:
+
+```go
+conf := &tgcomp.ButtonConf{ID: "load_details"}
+
+if tgcomp.ButtonClicked(p.Main, "Load details", conf) {
+	details = fetchDetails()
+}
+
+tgcomp.Text(p.Main, details)
+tgcomp.Button(p.Main, "Load details", conf)
+```
 
 It is true for exactly the run that handles the click on a button the page has
 on the screen — the same as what `Button` returns there — and false again on

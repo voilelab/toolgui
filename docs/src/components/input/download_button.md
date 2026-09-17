@@ -61,10 +61,15 @@ tgcomp.DownloadButton(p.Main, "Download", []byte("123"),
 ## Asking before the button is drawn
 
 ```go
-func DownloadButtonClicked(s *tgframe.State, id string) bool
+func DownloadButtonClicked(c *tgframe.Container, text string,
+    conf ...*DownloadButtonConf) bool
 ```
 
 [`ButtonClicked`](button.md#asking-before-the-button-is-drawn) for a download
 button: it reports the same click, read off the run's state rather than the
-component, so a page can ask before the button is written. `id` is the string
-the button's `DownloadButtonConf.ID` carries.
+component, so a page can ask before the button is written. Give it the same
+`text` and `conf` the `DownloadButton` call gets.
+
+It takes no `body`: the button's id comes from `text` (or the conf id), not
+from what it hands over, so a page can ask about the click before it has the
+bytes to offer.

@@ -77,13 +77,7 @@ func DownloadFile(c *tgframe.Container, text string, body []byte,
 	conf ...*DownloadFileConf) bool {
 	cf := tgframe.OneConf("DownloadFile", conf)
 
-	comp := newDownloadFileComponent(text)
-	tgframe.SetConfID(comp, cf)
-
-	comp.MIME = "application/octet-stream"
-	if cf.MIME != "" {
-		comp.MIME = cf.MIME
-	}
+	comp := downloadFileComponentFor(text, cf)
 
 	comp.Filename = fmt.Sprintf("%x", md5.Sum(body))
 	if cf.Filename != "" {
@@ -104,16 +98,43 @@ func DownloadFile(c *tgframe.Container, text string, body []byte,
 	}
 
 	comp.Token = download.Token()
-	comp.Color = cf.Color
-	comp.Disabled = cf.Disabled
 
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
 }
 
 // DownloadFileClicked reports whether the click this run is handling is the
-// one on the download file button with the given id. The id is the one passed
-// as [DownloadFileConf.ID]. It's [ButtonClicked] for a download file button.
-func DownloadFileClicked(s *tgframe.State, id string) bool {
-	return clicked(s, downloadFileComponentName, id)
+// one on the download file button text and conf describe. It reads the click,
+// it does not draw the button: give it the same text and conf the
+// [DownloadFile] call gets. It's [ButtonClicked] for a download file button.
+//
+// It takes no body, for the same reason [DownloadButtonClicked] does not: the
+// button's id comes from text (or the conf id), not from the file.
+func DownloadFileClicked(c *tgframe.Container, text string,
+	conf ...*DownloadFileConf) bool {
+
+	comp := downloadFileComponentFor(text,
+		tgframe.OneConf("DownloadFileClicked", conf))
+
+	return clicked(c, comp.ID)
+}
+
+// downloadFileComponentFor builds the component text and conf describe, all
+// but the file itself. Both entry points go through it, so the id
+// DownloadFileClicked reads is the one DownloadFile draws.
+func downloadFileComponentFor(text string,
+	cf *DownloadFileConf) *downloadFileComponent {
+
+	comp := newDownloadFileComponent(text)
+	tgframe.SetConfID(comp, cf)
+
+	comp.MIME = "application/octet-stream"
+	if cf.MIME != "" {
+		comp.MIME = cf.MIME
+	}
+
+	comp.Color = cf.Color
+	comp.Disabled = cf.Disabled
+
+	return comp
 }

@@ -21,15 +21,13 @@ type downloadButtonComponent struct {
 	Disabled bool         `json:"disabled"`
 }
 
-func newDownloadButtonComponent(text, uri string) *downloadButtonComponent {
+func newDownloadButtonComponent(text string) *downloadButtonComponent {
 	return &downloadButtonComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: downloadButtonComponentName,
 			ID:   tcutil.NormalID(downloadButtonComponentName, text),
 		},
-		Text:     text,
-		URI:      uri,
-		Filename: fmt.Sprintf("%x", md5.Sum([]byte(uri))),
+		Text: text,
 	}
 }
 
@@ -62,23 +60,46 @@ func DownloadButton(c *tgframe.Container, text string, body []byte, conf ...*Dow
 	}
 
 	uri := fmt.Sprintf("data:%s;base64,%s", mime, b64Body)
-	comp := newDownloadButtonComponent(text, uri)
 
+	comp := downloadButtonComponentFor(text, cf)
+	comp.URI = uri
+
+	comp.Filename = fmt.Sprintf("%x", md5.Sum([]byte(uri)))
 	if cf.Filename != "" {
 		comp.Filename = cf.Filename
 	}
-
-	comp.Color = cf.Color
-	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
 }
 
 // DownloadButtonClicked reports whether the click this run is handling is the
-// one on the download button with the given id. The id is the one passed as
-// [DownloadButtonConf.ID]. It's [ButtonClicked] for a download button.
-func DownloadButtonClicked(s *tgframe.State, id string) bool {
-	return clicked(s, downloadButtonComponentName, id)
+// one on the download button text and conf describe. It reads the click, it
+// does not draw the button: give it the same text and conf the
+// [DownloadButton] call gets. It's [ButtonClicked] for a download button.
+//
+// It takes no body: the button's id comes from text (or the conf id), not from
+// what it hands over, so a page can ask about the click before it has the
+// bytes to offer.
+func DownloadButtonClicked(c *tgframe.Container, text string,
+	conf ...*DownloadButtonConf) bool {
+
+	comp := downloadButtonComponentFor(text,
+		tgframe.OneConf("DownloadButtonClicked", conf))
+
+	return clicked(c, comp.ID)
+}
+
+// downloadButtonComponentFor builds the component text and conf describe, all
+// but the body. Both entry points go through it, so the id
+// DownloadButtonClicked reads is the one DownloadButton draws.
+func downloadButtonComponentFor(text string,
+	cf *DownloadButtonConf) *downloadButtonComponent {
+
+	comp := newDownloadButtonComponent(text)
+	comp.Color = cf.Color
+	comp.Disabled = cf.Disabled
+	tgframe.SetConfID(comp, cf)
+
+	return comp
 }
