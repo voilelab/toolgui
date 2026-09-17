@@ -15,7 +15,7 @@ Renders as `Shipped it 🎉`.
 | --- | --- |
 | `Title`, `Subtitle`, `Text` | `Code` |
 | `Link` text, but not its url | code spans and fenced blocks in `Markdown` |
-| prose in `Markdown` | `Html`, `Json`, `Table` |
+| prose in `Markdown` | `HTML`, `JSON`, `Table` |
 | `PageConfig.Emoji` | anything a user typed and the app reads back |
 
 A shortcode inside code is the thing being shown, not decoration, so it is

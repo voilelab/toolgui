@@ -12,7 +12,7 @@ describe('Misc', () => {
     cy.get('[role=alert]').contains('show panic').should('exist')
   })
 
-  it('Html component', () => {
+  it('HTML component', () => {
     cy.visit('/misc')
     cy.get('b').contains('Hello world gen by html component').should('exist')
   })

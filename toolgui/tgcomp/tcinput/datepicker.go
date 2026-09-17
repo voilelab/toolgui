@@ -36,7 +36,7 @@ type datepickerComponent struct {
 	Disabled bool   `json:"disabled"`
 }
 
-func newDatepickerComponent(label string, typ string) *datepickerComponent {
+func newDatePickerComponent(label string, typ string) *datepickerComponent {
 	return &datepickerComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: datepickerComponentName,
@@ -72,8 +72,8 @@ func (p picker) normalize(t *time.Time) *time.Time {
 	return &out
 }
 
-// DatepickerConf is the configuration for the Datepicker component.
-type DatepickerConf struct {
+// DatePickerConf is the configuration for the DatePicker component.
+type DatePickerConf struct {
 	tgframe.Base
 
 	// Default is the date the picker starts on, read to the day. It is only
@@ -86,24 +86,24 @@ type DatepickerConf struct {
 
 // SetDefault sets Default from a value, so a literal can be written where the
 // conf is.
-func (c *DatepickerConf) SetDefault(v time.Time) *DatepickerConf {
+func (c *DatePickerConf) SetDefault(v time.Time) *DatePickerConf {
 	c.Default = &v
 	return c
 }
 
-// Datepicker create a datepicker and return its selected date, as midnight UTC
+// DatePicker create a datepicker and return its selected date, as midnight UTC
 // on the day picked. Return nil if no date is selected.
 //
 // Only the day is kept: a clock the caller's Default carried is dropped, the
-// way [Timepicker] drops the date, so the three pickers hand back times that
+// way [TimePicker] drops the date, so the three pickers hand back times that
 // compare.
-func Datepicker(c *tgframe.Container, label string, conf ...*DatepickerConf) *time.Time {
-	cf := tgframe.OneConf("Datepicker", conf)
+func DatePicker(c *tgframe.Container, label string, conf ...*DatePickerConf) *time.Time {
+	cf := tgframe.OneConf("DatePicker", conf)
 	return datePicker.pick(c, label, cf.Default, cf.Disabled, cf)
 }
 
-// TimepickerConf is the configuration for the Timepicker component.
-type TimepickerConf struct {
+// TimePickerConf is the configuration for the TimePicker component.
+type TimePickerConf struct {
 	tgframe.Base
 
 	// Default is the time of day the picker starts on, read to the minute. It
@@ -116,24 +116,24 @@ type TimepickerConf struct {
 
 // SetDefault sets Default from a value, so a literal can be written where the
 // conf is.
-func (c *TimepickerConf) SetDefault(v time.Time) *TimepickerConf {
+func (c *TimePickerConf) SetDefault(v time.Time) *TimePickerConf {
 	c.Default = &v
 	return c
 }
 
-// Timepicker create a timepicker and return its selected time of day, as that
+// TimePicker create a timepicker and return its selected time of day, as that
 // clock on 1 January year 0 in UTC — only the clock is meaningful. Return nil
 // if no time is selected.
 //
 // Only the clock is kept: a date the caller's Default carried is dropped, the
-// way [Datepicker] drops the clock.
-func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *time.Time {
-	cf := tgframe.OneConf("Timepicker", conf)
+// way [DatePicker] drops the clock.
+func TimePicker(c *tgframe.Container, label string, conf ...*TimePickerConf) *time.Time {
+	cf := tgframe.OneConf("TimePicker", conf)
 	return timePicker.pick(c, label, cf.Default, cf.Disabled, cf)
 }
 
-// DatetimepickerConf is the configuration for the Datetimepicker component.
-type DatetimepickerConf struct {
+// DateTimePickerConf is the configuration for the DateTimePicker component.
+type DateTimePickerConf struct {
 	tgframe.Base
 
 	// Default is the datetime the picker starts on, read to the minute. It is
@@ -146,17 +146,17 @@ type DatetimepickerConf struct {
 
 // SetDefault sets Default from a value, so a literal can be written where the
 // conf is.
-func (c *DatetimepickerConf) SetDefault(v time.Time) *DatetimepickerConf {
+func (c *DateTimePickerConf) SetDefault(v time.Time) *DateTimePickerConf {
 	c.Default = &v
 	return c
 }
 
-// Datetimepicker create a datetimepicker and return its selected datetime,
+// DateTimePicker create a datetimepicker and return its selected datetime,
 // read to the minute and in UTC. Return nil if no datetime is selected.
-func Datetimepicker(c *tgframe.Container, label string,
-	conf ...*DatetimepickerConf) *time.Time {
+func DateTimePicker(c *tgframe.Container, label string,
+	conf ...*DateTimePickerConf) *time.Time {
 
-	cf := tgframe.OneConf("Datetimepicker", conf)
+	cf := tgframe.OneConf("DateTimePicker", conf)
 	return datetimePicker.pick(c, label, cf.Default, cf.Disabled, cf)
 }
 
@@ -164,7 +164,7 @@ func Datetimepicker(c *tgframe.Container, label string,
 func (p picker) pick(c *tgframe.Container, label string, def *time.Time,
 	disabled bool, conf tgframe.Conf) *time.Time {
 
-	comp := newDatepickerComponent(label, p.typ)
+	comp := newDatePickerComponent(label, p.typ)
 	def = p.normalize(def)
 	if def != nil {
 		comp.Default = def.Format(p.format)

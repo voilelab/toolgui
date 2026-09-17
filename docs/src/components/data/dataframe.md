@@ -169,7 +169,7 @@ selection is still `1` — which is now `C`, a row the user never picked. Only
 an index past the end of `rows` is dropped.
 
 This is the positional contract [Select](../input/select.md) and
-[Multiselect](../input/multiselect.md) already have with their `items`, and
+[MultiSelect](../input/multiselect.md) already have with their `items`, and
 the id being derived from `head` keeps the selection across a rerun rather
 than making it safe across a change of data. So before acting on a selection
 destructively — deleting, submitting, sending — either hand the table rows

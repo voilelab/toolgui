@@ -70,7 +70,7 @@ type NumberConf[T Numeric] struct {
 	//
 	// Emptying the box afterwards is an answer of zero, not a return to
 	// Default — the same way clearing a [Textbox] reads as "" and clearing a
-	// [Datepicker] reads as nil.
+	// [DatePicker] reads as nil.
 	Default T
 
 	// Min is the minimum value of the number component.

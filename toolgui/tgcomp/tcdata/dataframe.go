@@ -326,7 +326,7 @@ func normalizeRowSelection(idxes []int, rowCount int, mode SelectionMode) []int 
 // rather than nil when nothing is picked.
 //
 // An index is a position and not a row identity, the same contract [Select]
-// and [Multiselect] have with their items: when rows changes between runs, an
+// and [MultiSelect] have with their items: when rows changes between runs, an
 // index picked against the old data is read against the new one, and only an
 // index past the end is dropped. Hand it rows whose order is stable between
 // runs, or a fresh [DataFrameConf.ID] when the data is replaced, before acting

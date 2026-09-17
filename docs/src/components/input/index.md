@@ -30,22 +30,22 @@ empty hands back a pointer, and `nil` is that emptiness. There is no third case.
 | `Number` | `T` | `T` | `Default` |
 | `Slider` | `*T` | `T` | `Default`, else `Min` |
 | `SelectSlider` | `int` | `int` | `Default` |
-| `Multiselect` | `[]int` | `[]int` | `Default`, `nil` for none |
+| `MultiSelect` | `[]int` | `[]int` | `Default`, `nil` for none |
 | `Select` | `*int` | `*int` | `Default`, `nil` for none |
 | `Radio` | `*int` | `*int` | `Default`, `nil` for none |
-| `Datepicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
-| `Timepicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
-| `Datetimepicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
-| `Fileupload` | — | `*FileObject` | `nil` |
+| `DatePicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
+| `TimePicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
+| `DateTimePicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
+| `FileUpload` | — | `*FileObject` | `nil` |
 
 Two things follow from the table that are worth saying out loud:
 
-* "Nothing selected" is `nil` for `Select`, `Radio` and `Multiselect` alike, so
+* "Nothing selected" is `nil` for `Select`, `Radio` and `MultiSelect` alike, so
   the same check reads a single pick and a multiple one.
 * The three pickers all hand back a `time.Time`, so a date and a time of day
-  add up without a conversion in between. `Datepicker` keeps only the day, at
-  midnight UTC; `Timepicker` keeps only the clock.
+  add up without a conversion in between. `DatePicker` keeps only the day, at
+  midnight UTC; `TimePicker` keeps only the clock.
 
-`Fileupload` is the one input with no `Default`: a browser refuses to have a
+`FileUpload` is the one input with no `Default`: a browser refuses to have a
 file input's value set from script, so a default would read back in Go while the
 box on screen stayed empty.

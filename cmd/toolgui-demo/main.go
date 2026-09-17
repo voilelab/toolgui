@@ -600,14 +600,14 @@ func InputPage(p *tgframe.Params) error {
 	fileuploadCompCol, fileuploadCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_fileupload"})
 	tgcomp.Echo(fileuploadCodeCol, code, func() {
-		fileObj := tgcomp.Fileupload(fileuploadCompCol,
-			"Fileupload", ".jpg,.png")
+		fileObj := tgcomp.FileUpload(fileuploadCompCol,
+			"FileUpload", ".jpg,.png")
 		if fileObj == nil {
 			return
 		}
 
-		tgcomp.Text(fileuploadCompCol, "Fileupload filename: "+fileObj.Name)
-		tgcomp.Text(fileuploadCompCol, fmt.Sprintf("Fileupload bytes length: %d", fileObj.Size))
+		tgcomp.Text(fileuploadCompCol, "FileUpload filename: "+fileObj.Name)
+		tgcomp.Text(fileuploadCompCol, fmt.Sprintf("FileUpload bytes length: %d", fileObj.Size))
 		if strings.HasSuffix(fileObj.Name, ".jpg") {
 			// Decoding reads the upload off disk, so the image never has to
 			// be held twice.
@@ -671,8 +671,8 @@ func InputPage(p *tgframe.Params) error {
 		p.Main, &tgcomp.ColumnConf{ID: "show_multiselect"})
 	tgcomp.Echo(multiselectCodeCol, code, func() {
 		items := []string{"Alpha", "Beta", "Gamma"}
-		selIdxes := tgcomp.Multiselect(multiselectCompCol, "Multiselect", items,
-			&tgcomp.MultiselectConf{
+		selIdxes := tgcomp.MultiSelect(multiselectCompCol, "MultiSelect", items,
+			&tgcomp.MultiSelectConf{
 				Placeholder:   "pick up to two",
 				MaxSelections: 2,
 			})
@@ -708,7 +708,7 @@ func InputPage(p *tgframe.Params) error {
 	datepickerCompCol, datepickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_datepicker"})
 	tgcomp.Echo(datepickerCodeCol, code, func() {
-		dateValue := tgcomp.Datepicker(datepickerCompCol, "Datepicker")
+		dateValue := tgcomp.DatePicker(datepickerCompCol, "DatePicker")
 		val := ""
 		if dateValue != nil {
 			val = dateValue.Format("2006-01-02")
@@ -723,7 +723,7 @@ func InputPage(p *tgframe.Params) error {
 	timepickerCompCol, timepickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_timepicker"})
 	tgcomp.Echo(timepickerCodeCol, code, func() {
-		timeValue := tgcomp.Timepicker(timepickerCompCol, "Timepicker")
+		timeValue := tgcomp.TimePicker(timepickerCompCol, "TimePicker")
 		val := ""
 		if timeValue != nil {
 			val = timeValue.Format("15:04")
@@ -738,7 +738,7 @@ func InputPage(p *tgframe.Params) error {
 	datetimepickerCompCol, datetimepickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_datetimepicker"})
 	tgcomp.Echo(datetimepickerCodeCol, code, func() {
-		datetimeValue := tgcomp.Datetimepicker(datetimepickerCompCol, "Datetimepicker")
+		datetimeValue := tgcomp.DateTimePicker(datetimepickerCompCol, "DateTimePicker")
 		val := ""
 		if datetimeValue != nil {
 			val = datetimeValue.Format("2006-01-02 15:04")
@@ -785,8 +785,8 @@ func InputPage(p *tgframe.Params) error {
 		tgcomp.Form(formCompCol, &tgcomp.FormConf{ID: "form"}).With(func(c *tgframe.Container) {
 			a = tgcomp.Number[float64](c, "a")
 			b = tgcomp.Number[float64](c, "b")
-			ops = tgcomp.Multiselect(c, "ops", opItems,
-				&tgcomp.MultiselectConf{Placeholder: "pick the operations"})
+			ops = tgcomp.MultiSelect(c, "ops", opItems,
+				&tgcomp.MultiSelectConf{Placeholder: "pick the operations"})
 		})
 
 		// Named rather than numbered, so adding an item to opItems cannot
@@ -911,6 +911,52 @@ func InputPage(p *tgframe.Params) error {
 
 		tgcomp.Text(widgetFormCompCol,
 			fmt.Sprintf("threshold = %d, enabled = %v", threshold, enabled))
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "20"})
+
+	buttonFormCompCol, buttonFormCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_button_form"})
+	tgcomp.Echo(buttonFormCodeCol, code, func() {
+		var keyword string
+		var searched bool
+
+		// No submit button of its own: the Search button inside sends the
+		// form, so the page offers one button rather than two.
+		tgcomp.Form(buttonFormCompCol, &tgcomp.FormConf{
+			ID: "search_form", HideSubmit: true}).
+			With(func(c *tgframe.Container) {
+				keyword = tgcomp.Textbox(c, "keyword")
+				searched = tgcomp.Button(c, "Search")
+
+				// Only a Button sends the form. A download button reports its
+				// press the same way, and handing someone a file is not
+				// submitting.
+				tgcomp.DownloadButton(c, "Save query", []byte("q"),
+					&tgcomp.DownloadButtonConf{Filename: "query.txt"})
+			})
+
+		if searched {
+			tgcomp.Text(buttonFormCompCol, "Searched: "+keyword)
+		} else {
+			tgcomp.Text(buttonFormCompCol, "Not searched yet")
+		}
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "21"})
+
+	labelFormCompCol, labelFormCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_label_form"})
+	tgcomp.Echo(labelFormCodeCol, code, func() {
+		var city string
+
+		tgcomp.Form(labelFormCompCol, &tgcomp.FormConf{
+			ID: "label_form", SubmitLabel: "Apply"}).
+			With(func(c *tgframe.Container) {
+				city = tgcomp.Textbox(c, "city")
+			})
+
+		tgcomp.Text(labelFormCompCol, "Applied: "+city)
 	})
 
 	return nil
@@ -1166,7 +1212,7 @@ func MiscPage(p *tgframe.Params) error {
 	htmlCompCol, htmlCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_html"})
 	tgcomp.Echo(htmlCodeCol, code, func() {
-		tgcomp.Html(htmlCompCol,
+		tgcomp.HTML(htmlCompCol,
 			"<b>Hello world gen by html component</b>")
 	})
 
@@ -1211,7 +1257,7 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 }
 
 func FuncCachePage(p *tgframe.Params) error {
-	cbzfile := tgcomp.Fileupload(p.Sidebar, "CBZ File", "application/x-cbz")
+	cbzfile := tgcomp.FileUpload(p.Sidebar, "CBZ File", "application/x-cbz")
 
 	if cbzfile == nil {
 		return nil
