@@ -101,6 +101,27 @@ describe('Layout spec', () => {
       .should('be.visible')
   })
 
+  // Mantine gives every Modal its own window key handler with no notion of a
+  // stack, so leaving closeOnEscape on closed the whole stack at once.
+  it('ESC closes the top dialog only', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get('[role=dialog]').contains('What does this do?').click()
+    cy.get('[role=dialog]').should('have.length', 2)
+
+    cy.get('body').type('{esc}')
+    cy.get('[role=dialog]').should('have.length', 1)
+
+    // The ESC sent an input event, so the page reran and re-sent both dialogs
+    // with its own idea of open. The parent still being here after that round
+    // trip says the page did not close it either.
+    cy.get('[role=dialog]').contains('Delete the 3 selected rows?')
+      .should('be.visible')
+
+    cy.get('body').type('{esc}')
+    cy.get('[role=dialog]').should('not.exist')
+  })
+
   it('Dialog written into the sidebar still covers the window', () => {
     cy.visit('/layout')
     cy.contains('button', 'Open the sidebar dialog').click()

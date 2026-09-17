@@ -129,3 +129,7 @@ why.With(func(c *tgframe.Container) {
 
 `why.Open()` is called from `d`'s body, which is above `why.With`, so the
 second dialog's body is drawn in the same run it opens in.
+
+ESC and a click outside reach the topmost dialog only, so dismissing the one
+on top leaves the one under it open. A dialog with `Dismissible` off on top
+swallows them rather than letting the dialog beneath take them.
