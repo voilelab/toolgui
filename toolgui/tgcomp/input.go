@@ -26,6 +26,18 @@ type DownloadButtonConf = tcinput.DownloadButtonConf
 // button is drawn.
 var DownloadButtonClicked = tcinput.DownloadButtonClicked
 
+// DownloadFile create a button that hands the app user a file to download,
+// fetched by token rather than carried in the pack.
+var DownloadFile = tcinput.DownloadFile
+
+// DownloadFileConf is the configuration for the DownloadFile component.
+type DownloadFileConf = tcinput.DownloadFileConf
+
+// DownloadFileClicked reports whether the click this run is handling is the
+// one on the download file button with the given id, and can be asked before
+// the button is drawn.
+var DownloadFileClicked = tcinput.DownloadFileClicked
+
 // Checkbox create a checkbox and return true if it's checked.
 var Checkbox = tcinput.Checkbox
 

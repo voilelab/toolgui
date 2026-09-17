@@ -94,3 +94,23 @@ func (f *File) setSize(n int64) {
 
 	f.size = n
 }
+
+// BrowserLocation is where a download's bytes sit in the origin private file
+// system: the directory named from the root down, and the file inside it. The
+// page walks there with getDirectoryHandle, opens the file with getFileHandle
+// and reads it with getFile, which is what keeps the bytes out of the pack and
+// out of the tab's heap.
+//
+// Go's own sync access handle stays open on the file. It is exclusive against a
+// second one and against a writable stream, but not against the read getFile
+// does -- and a download is written once, before its token reaches the page, so
+// there is nothing in flight for that read to catch half done.
+func (d *Download) BrowserLocation() (dir []string, name string, err error) {
+	body, ok := d.file.body.(*opfsBody)
+	if !ok {
+		return nil, "", tgutil.NewError(
+			"this download is not kept in the browser")
+	}
+
+	return body.bodies.dirPath(), body.name, nil
+}

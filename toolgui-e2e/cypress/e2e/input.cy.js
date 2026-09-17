@@ -530,11 +530,43 @@ describe('Input', () => {
 
   const downloadsFolder = Cypress.config('downloadsFolder');
 
+  // What the demo's DownloadFile offers: a megabyte of a pattern, so a byte
+  // anywhere in the file is known from its offset alone.
+  const patternSize = 1024 * 1024
+
+  const pattern = () => {
+    const bs = Cypress.Buffer.alloc(patternSize)
+    for (let i = 0; i < bs.length; i++) {
+      bs[i] = i % 251
+    }
+
+    return bs
+  }
+
   it('Download Button works', () => {
     cy.visit('/input')
     cy.get('button').contains('Download').click()
 
     cy.readFile(path.join(downloadsFolder, '123.txt')).should('equal', '123')
     cy.contains('Downloaded!').should('exist')
+  })
+
+  // DownloadFile keeps the content out of the component: what the page sends
+  // is a token, and the click fetches the file over the same server the
+  // socket came from. So what is worth asserting is that every byte of it
+  // arrives -- a fetch that stopped early, or one served from the wrong file,
+  // is the failure this catches.
+  it('Download File saves the bytes the page offered', () => {
+    cy.visit('/input')
+    cy.get('button').contains('Save a megabyte').click()
+
+    // The page is only told about the click once the bytes are in hand, so
+    // this is also the wait for the download itself.
+    cy.contains('Megabyte saved!').should('exist')
+
+    cy.readFile(path.join(downloadsFolder, 'pattern.bin'), null).then((got) => {
+      expect(got.length).to.eq(patternSize)
+      expect(Cypress.Buffer.compare(got, pattern())).to.eq(0)
+    })
   })
 })

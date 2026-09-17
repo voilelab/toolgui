@@ -820,6 +820,29 @@ func InputPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "14"})
 
+	downloadFileCompCol, downloadFileCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_download_file"})
+	tgcomp.Echo(downloadFileCodeCol, code, func() {
+		// A megabyte, which is past what belongs in a data: URI, and a pattern
+		// rather than noise so a byte anywhere in the file is known from its
+		// offset alone.
+		body := make([]byte, 1<<20)
+		for i := range body {
+			body[i] = byte(i % 251)
+		}
+
+		if tgcomp.DownloadFile(
+			downloadFileCompCol, "Save a megabyte", body,
+			&tgcomp.DownloadFileConf{
+				Filename: "pattern.bin",
+				Color:    tcutil.ColorInfo,
+			}) {
+			tgcomp.Text(downloadFileCompCol, "Megabyte saved!")
+		}
+	})
+
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "15"})
+
 	sliderCompCol, sliderCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_slider"})
 	tgcomp.Echo(sliderCodeCol, code, func() {
@@ -832,7 +855,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "slider_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "15"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "16"})
 
 	selectSliderCompCol, selectSliderCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_select_slider"})
@@ -844,7 +867,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "select_slider_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "16"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
 
 	toggleCompCol, toggleCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_toggle"})
@@ -859,7 +882,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "toggle_default_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "17"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "18"})
 
 	colorPickerCompCol, colorPickerCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_color_picker"})
@@ -871,7 +894,7 @@ func InputPage(p *tgframe.Params) error {
 			&tgcomp.TextConf{ID: "color_picker_result"})
 	})
 
-	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "18"})
+	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "19"})
 
 	widgetFormCompCol, widgetFormCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_widget_form"})

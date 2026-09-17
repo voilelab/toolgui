@@ -22,6 +22,7 @@ import { setIcon } from '../util/seticon';
 import { emojize } from '../util/emoji';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
+import { DownloadFunc } from './Download';
 import { ThemeMode, preferredThemeMode, themeModeManager } from '../util/theme';
 import { ThemeModeSync } from './ThemeModeSync';
 
@@ -66,6 +67,7 @@ interface AppProps {
   appConf: AppConf
   update: (event: any) => void
   upload: UploadFunc
+  download: DownloadFunc
 
   // pageName and onNavigate let a transport without a URL (a desktop
   // webview) drive the routing. Left out, the page comes from window.location
@@ -220,6 +222,7 @@ export class App extends Component<AppProps, AppState> {
                 rerun={() => { this.props.update({}) }}
                 update={(e) => { this.props.update(e) }}
                 upload={async (f, id) => await this.props.upload(f, id)}
+                download={async (token) => await this.props.download(token)}
                 themeMode={themeMode} />
 
               <main className="toolgui-main">
@@ -229,6 +232,7 @@ export class App extends Component<AppProps, AppState> {
                   forest={this.state.forest}
                   update={(e) => { this.props.update(e) }}
                   upload={async (f, id) => await this.props.upload(f, id)}
+                  download={async (token) => await this.props.download(token)}
                   themeMode={themeMode} />
 
                 <AppError error={this.state.error} />

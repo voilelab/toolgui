@@ -4,7 +4,8 @@ import { TComponent } from "../components/factory";
 import { MessagePageNotFound } from "./MessagePageNotFound";
 import { UpdateEvent } from "./UpdateEvent";
 import { Forest } from "./Nodes";
-import { UploadFunc } from "./Upload";
+import { UploadFunc } from "./Upload"
+import { DownloadFunc } from "./Download";
 import { ThemeMode } from "../util/theme";
 
 interface AppBodyProps {
@@ -13,6 +14,7 @@ interface AppBodyProps {
   forest: Forest
   update: (e: UpdateEvent) => void
   upload: UploadFunc
+  download: DownloadFunc
   themeMode: ThemeMode
 }
 
@@ -34,6 +36,7 @@ export class AppBody extends Component<AppBodyProps> {
           <TComponent node={this.rootNode()}
             update={(e) => { this.props.update(e) }}
             upload={async (f, id) => await this.props.upload(f, id)}
+            download={async (token) => await this.props.download(token)}
             theme={this.props.themeMode} />
           : <MessagePageNotFound />}
       </div>

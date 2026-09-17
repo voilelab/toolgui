@@ -1,8 +1,10 @@
-import { UploadResult } from "@toolgui-web/lib"
+import { DownloadResult, UploadResult } from "@toolgui-web/lib"
 
 const healthCheckURL = "/api/health"
 
 const fileUploadURL = "/api/files"
+
+const fileDownloadURL = "/api/files"
 
 // Reconnect backoff. Without it a server that hands out a socket and drops it
 // right away spins us in a tight loop: onclose walks straight back to Ping,
@@ -277,5 +279,29 @@ export class StatefulWebSocket {
     }
 
     return { ok: true }
+  }
+
+  // downloadFile fetches a file the page offered, by the token its component
+  // carries. Both the token and the state id go in headers: a URL of them
+  // would be one the history, a log or a Referer carries further than this
+  // fetch, and neither identifies the download on its own -- the server looks
+  // a token up in this state's downloads and nowhere else.
+  //
+  // resp.blob() is what the bytes land in, so the browser keeps them where it
+  // keeps blobs rather than the tab holding a string of them.
+  async downloadFile(token: string): Promise<DownloadResult> {
+    if (this.stateID === '') {
+      return { ok: false, error: 'state id is not prepared' }
+    }
+
+    const resp = await fetch(fileDownloadURL, {
+      headers: { STATE_ID: this.stateID, DOWNLOAD_TOKEN: token },
+    })
+
+    if (!resp.ok) {
+      return { ok: false, error: `download failed with status ${resp.status}` }
+    }
+
+    return { ok: true, blob: await resp.blob() }
   }
 }

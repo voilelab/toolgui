@@ -4,7 +4,7 @@ import { Tabs } from '@mantine/core'
 import { Props } from '../component_interface'
 import { TComponent } from '../factory'
 
-export function TTab({ node, update, upload, theme }: Props) {
+export function TTab({ node, update, upload, download, theme }: Props) {
   const [activeTab, setActiveTab] = useState<string | null>(node.props.tabs[0])
 
   if (node.props.tabs.length !== node.children.length) {
@@ -32,6 +32,7 @@ export function TTab({ node, update, upload, theme }: Props) {
             <TComponent node={child}
               update={update}
               upload={upload}
+              download={download}
               theme={theme} />
           </Tabs.Panel>
         ))

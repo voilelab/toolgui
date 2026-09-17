@@ -4,7 +4,7 @@ import { Grid, GridColProps } from "@mantine/core"
 import { Props } from "../component_interface"
 import { TComponent } from "../factory"
 
-export function TColumn({ node, update, upload, theme }: Props) {
+export function TColumn({ node, update, upload, download, theme }: Props) {
   const count = node.children.length
 
   // equal splits the row into one share per child; otherwise a column takes
@@ -25,6 +25,7 @@ export function TColumn({ node, update, upload, theme }: Props) {
             <TComponent node={child}
               update={update}
               upload={upload}
+              download={download}
               theme={theme} />
           </Grid.Col>
         )

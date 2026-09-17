@@ -41,6 +41,14 @@ cannot keep a file per name it invents. `StartService` also puts deadlines on
 sending a request's headers, on sitting idle between requests, and on naming a
 state once the websocket handshake is done.
 
+A download goes the other way and is capped by nothing, because there is
+nothing to cap: `DownloadFile` serves a file one of the page's own runs offered,
+named by a token that is unguessable, that is looked up in the state which
+offered it and nowhere else, and that is only accepted alongside the state id of
+the connection asking. A token is therefore a bearer of nothing on its own, and
+neither it nor the state id is ever put in a URL, where a link, a log line or a
+`Referer` would carry it further than the fetch that needs it.
+
 The two caps are worth lowering on anything reachable by more than the person
 running it:
 

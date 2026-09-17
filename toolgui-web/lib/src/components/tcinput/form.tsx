@@ -6,7 +6,7 @@ import { TComponent } from "../factory"
 
 import { UpdateEvent } from "../../app/UpdateEvent"
 
-export function TForm({ node, update, upload, theme }: Props) {
+export function TForm({ node, update, upload, download, theme }: Props) {
   const collectEvent: UpdateEvent[] = []
 
   const handleUpdate = (event: UpdateEvent) => {
@@ -20,6 +20,7 @@ export function TForm({ node, update, upload, theme }: Props) {
           <TComponent key={child.reactKey} node={child}
             update={handleUpdate}
             upload={upload}
+            download={download}
             theme={theme} />
         )
       }
