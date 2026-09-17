@@ -506,6 +506,11 @@ func LayoutPage(p *tgframe.Params) error {
 			if tgcomp.Button(c, "What does this do?") {
 				why.Open()
 			}
+
+			// A popover inside a dialog: ESC reaches whichever was opened
+			// last, so this closes before the dialog around it does.
+			pop := tgcomp.Popover(c, "Delete options")
+			tgcomp.Checkbox(pop, "Also delete the log")
 		})
 
 		why.With(func(c *tgframe.Container) {

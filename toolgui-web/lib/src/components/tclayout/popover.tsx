@@ -3,11 +3,20 @@ import { Button, Popover } from "@mantine/core"
 
 import { Props } from "../component_interface"
 import { TComponent } from "../factory"
+import { useEscapeToClose, useOverlay } from "./overlay_stack"
 
 export function TPopover({ node, update, upload, theme }: Props) {
   // The client owns whether this is open: the server only says what the
   // dropdown holds, so a rerun the dropdown itself triggered leaves it open.
   const [opened, setOpened] = useState(false)
+
+  // Mantine hangs ESC off the dropdown itself, so the key only arrives while
+  // focus is already inside the panel -- not after the trigger opened it,
+  // which is the usual way in. Its own handling stays on for that case; this
+  // covers the rest, and goes through the overlay stack so a popover inside a
+  // dialog takes the key without the dialog closing too.
+  const { isTop } = useOverlay(node.props.id, "popover", opened)
+  useEscapeToClose(opened && isTop, () => setOpened(false))
 
   return (
     // The id goes on the Popover, not on the button below: Popover.Target
