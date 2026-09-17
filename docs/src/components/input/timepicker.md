@@ -1,11 +1,11 @@
-# Timepicker
+# TimePicker
 
-Timepicker create a timepicker and return its selected time of day.
+TimePicker create a timepicker and return its selected time of day.
 
 ## API
 
 ```go
-func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *time.Time
+func TimePicker(c *tgframe.Container, label string, conf ...*TimePickerConf) *time.Time
 ```
 
 * `c` is Parent container.
@@ -15,8 +15,8 @@ func Timepicker(c *tgframe.Container, label string, conf ...*TimepickerConf) *ti
   only the clock is meaningful. nil if no time is selected.
 
 ```go
-// TimepickerConf is the configuration for the Timepicker component.
-type TimepickerConf struct {
+// TimePickerConf is the configuration for the TimePicker component.
+type TimePickerConf struct {
 	tgframe.Base // ID
 
 	// Default is the time of day the picker starts on, read to the minute. It
@@ -27,16 +27,16 @@ type TimepickerConf struct {
 	Disabled bool
 }
 
-func (c *TimepickerConf) SetDefault(v time.Time) *TimepickerConf
+func (c *TimePickerConf) SetDefault(v time.Time) *TimePickerConf
 ```
 
 Only the clock is kept: a date on the `Default` is dropped, the way
-[Datepicker](datepicker.md) drops the clock. Read the hour and minute off it
+[DatePicker](datepicker.md) drops the clock. Read the hour and minute off it
 rather than the date:
 
 ```go
-day := tgcomp.Datepicker(p.Main, "Day")
-at := tgcomp.Timepicker(p.Main, "At")
+day := tgcomp.DatePicker(p.Main, "Day")
+at := tgcomp.TimePicker(p.Main, "At")
 if day != nil && at != nil {
 	when := day.Add(time.Duration(at.Hour())*time.Hour +
 		time.Duration(at.Minute())*time.Minute)
@@ -47,7 +47,7 @@ if day != nil && at != nil {
 ## Example
 
 ```go
-timeValue := tgcomp.Timepicker(p.Main, "Timepicker")
+timeValue := tgcomp.TimePicker(p.Main, "TimePicker")
 if timeValue != nil {
 	tgcomp.Text(p.Main, "Value: "+timeValue.Format("15:04"),
 		&tgcomp.TextConf{ID: "timepicker_result"})
@@ -57,8 +57,8 @@ if timeValue != nil {
 Starting on a time, until the app user picks another:
 
 ```go
-tgcomp.Timepicker(p.Main, "Timepicker",
-	(&tgcomp.TimepickerConf{}).SetDefault(
+tgcomp.TimePicker(p.Main, "TimePicker",
+	(&tgcomp.TimePickerConf{}).SetDefault(
 		time.Date(0, time.January, 1, 9, 30, 0, 0, time.UTC)))
 ```
 

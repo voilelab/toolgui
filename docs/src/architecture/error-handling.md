@@ -87,8 +87,8 @@ run's rows have is the data.
 | `Chart` and friends, series against labels and points against kind | same |
 | `JSON`, a value that will not marshal or a string that is not JSON | same |
 | `Image`, a PNG or JPEG that will not encode | same |
-| `Datepicker`, `Timepicker`, `DatetimePicker`, a stored value that will not parse | the state is data, and the browser or an old session may have written it |
-| `Fileupload`, a stored pick that will not unmarshal | same |
+| `DatePicker`, `TimePicker`, `DateTimePicker`, a stored value that will not parse | the state is data, and the browser or an old session may have written it |
+| `FileUpload`, a stored pick that will not unmarshal | same |
 
 | Still panics | Why |
 | --- | --- |

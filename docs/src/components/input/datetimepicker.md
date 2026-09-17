@@ -1,11 +1,11 @@
-# Datetimepicker
+# DateTimePicker
 
-Datetimepicker create a datetimepicker and return its selected datetime.
+DateTimePicker create a datetimepicker and return its selected datetime.
 
 ## API
 
 ```go
-func Datetimepicker(c *tgframe.Container, label string, conf ...*DatetimepickerConf) *time.Time
+func DateTimePicker(c *tgframe.Container, label string, conf ...*DateTimePickerConf) *time.Time
 ```
 
 * `c` is Parent container.
@@ -14,8 +14,8 @@ func Datetimepicker(c *tgframe.Container, label string, conf ...*DatetimepickerC
 * Return the selected datetime. nil if no datetime is selected.
 
 ```go
-// DatetimepickerConf is the configuration for the Datetimepicker component.
-type DatetimepickerConf struct {
+// DateTimePickerConf is the configuration for the DateTimePicker component.
+type DateTimePickerConf struct {
 	tgframe.Base // ID
 
 	// Default is the datetime the picker starts on, read to the minute. It is
@@ -26,13 +26,13 @@ type DatetimepickerConf struct {
 	Disabled bool
 }
 
-func (c *DatetimepickerConf) SetDefault(v time.Time) *DatetimepickerConf
+func (c *DateTimePickerConf) SetDefault(v time.Time) *DateTimePickerConf
 ```
 
 ## Example
 
 ```go
-dateValue := tgcomp.Datetimepicker(p.Main, "Datetimepicker")
+dateValue := tgcomp.DateTimePicker(p.Main, "DateTimePicker")
 if dateValue != nil {
 	tgcomp.Text(p.Main, "Value: "+dateValue.Format("2006-01-02 15:04"),
 		&tgcomp.TextConf{ID: "datetimepicker_result"})
@@ -42,8 +42,8 @@ if dateValue != nil {
 Starting on a datetime, until the app user picks another:
 
 ```go
-tgcomp.Datetimepicker(p.Main, "Datetimepicker",
-	(&tgcomp.DatetimepickerConf{}).SetDefault(
+tgcomp.DateTimePicker(p.Main, "DateTimePicker",
+	(&tgcomp.DateTimePickerConf{}).SetDefault(
 		time.Date(2026, 9, 8, 13, 5, 0, 0, time.UTC)))
 ```
 

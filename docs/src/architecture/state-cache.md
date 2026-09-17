@@ -109,7 +109,7 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 }
 
 func FuncCachePage(p *tgframe.Params) error {
-	cbzfile := tgcomp.Fileupload(p.Sidebar, "CBZ File", "application/x-cbz")
+	cbzfile := tgcomp.FileUpload(p.Sidebar, "CBZ File", "application/x-cbz")
 
 	if cbzfile == nil {
 		return nil

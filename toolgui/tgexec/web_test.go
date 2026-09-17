@@ -33,7 +33,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *WebExecutor) {
 
 	app := tgframe.NewApp()
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
-		tcinput.Fileupload(p.Main, "File", "")
+		tcinput.FileUpload(p.Main, "File", "")
 		return nil
 	})
 
@@ -355,10 +355,10 @@ func TestWriteUploadErrorOther(t *testing.T) {
 	}
 }
 
-// TestUploadReachesFileupload runs the whole upload path the browser takes:
+// TestUploadReachesFileUpload runs the whole upload path the browser takes:
 // POST the file, then send the pick over the socket, and check the page reads
 // the content back.
-func TestUploadReachesFileupload(t *testing.T) {
+func TestUploadReachesFileUpload(t *testing.T) {
 	// The id the browser puts on the input, and the one the component looks
 	// its content up under.
 	const componentID = testComponentID
@@ -367,7 +367,7 @@ func TestUploadReachesFileupload(t *testing.T) {
 
 	app := tgframe.NewApp()
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
-		fileObj := tcinput.Fileupload(p.Main, "File", "")
+		fileObj := tcinput.FileUpload(p.Main, "File", "")
 		if fileObj == nil {
 			files <- ""
 			return nil

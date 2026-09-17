@@ -19,7 +19,7 @@ const (
 
 type iframeComponent struct {
 	*tgframe.BaseComponent
-	Html   string `json:"html"`
+	HTML   string `json:"html"`
 	Script bool   `json:"script"`
 	Width  string `json:"width"`
 	Height string `json:"height"`
@@ -31,7 +31,7 @@ func newIframeComponent(html string, script bool) *iframeComponent {
 			Name: iframeComponentName,
 			ID:   tcutil.HashedID(iframeComponentName, []byte(html)),
 		},
-		Html:   html,
+		HTML:   html,
 		Script: script,
 		Width:  defaultIframeWidth,
 		Height: defaultIframeHeight,

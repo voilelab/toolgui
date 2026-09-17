@@ -54,17 +54,17 @@ describe('Wasm upload', () => {
 
     pick(uploadSize, 'big.bin')
 
-    cy.contains('Fileupload filename: big.bin').should('exist')
+    cy.contains('FileUpload filename: big.bin').should('exist')
 
     // Every byte of it, so a stream that stopped early or wrote over itself is
     // not mistaken for one that arrived.
-    cy.contains(`Fileupload bytes length: ${uploadSize}`).should('exist')
+    cy.contains(`FileUpload bytes length: ${uploadSize}`).should('exist')
 
     // A second pick right after: the tab is still there to use, and the file
     // the component held is replaced rather than added to.
     pick(16, 'small.bin')
 
-    cy.contains('Fileupload filename: small.bin').should('exist')
-    cy.contains('Fileupload bytes length: 16').should('exist')
+    cy.contains('FileUpload filename: small.bin').should('exist')
+    cy.contains('FileUpload bytes length: 16').should('exist')
   })
 })

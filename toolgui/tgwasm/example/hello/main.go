@@ -47,7 +47,7 @@ func Echo(p *tgframe.Params) error {
 func Upload(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Count a file")
 
-	file := tcinput.Fileupload(p.Main, "Pick a text file", "")
+	file := tcinput.FileUpload(p.Main, "Pick a text file", "")
 	if file == nil {
 		return nil
 	}
