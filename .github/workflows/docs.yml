@@ -34,7 +34,7 @@ jobs:
     steps:
       # Tags too: go stamps the demo binary's version from VCS, and a checkout
       # without the release tag stamps a v0.0.0 pseudo-version instead.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: main
           fetch-tags: true
@@ -56,14 +56,14 @@ jobs:
           "$HOME/.local/bin/mdbook-mermaid" install docs
 
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Build with mdBook
         working-directory: docs
         run: mdbook build
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache-dependency-path: go.sum
@@ -79,7 +79,7 @@ jobs:
           go run ./cmd/toolgui-wasm build -o docs/book/demo ./cmd/toolgui-demo
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: ./docs/book
 
@@ -93,4 +93,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
