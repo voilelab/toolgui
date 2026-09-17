@@ -246,39 +246,19 @@ is worth paging on the server side instead.
 ## Example
 
 ```go
-tgcomp.DataFrame(p.Main,
-	[]string{"Order", "Ordered", "Region", "Item", "Amount"},
-	orders,
-	&tgcomp.DataFrameConf{
-		ID:       "orders",
-		PageSize: 10,
-		ColumnConf: []tgcomp.DataFrameColumnConf{
-			{Width: "9rem"},
-			{Type: tgcomp.ColumnTypeDatetime},
-			{},
-			{},
-			{Type: tgcomp.ColumnTypeNumber},
-		},
-	})
+{{#include ../../../demos/dataframe.go:demo}}
 ```
 
 Picking rows out of one:
 
 ```go
-selected := tgcomp.DataFrame(p.Main,
-	[]string{"Host", "Region", "Status"},
-	hosts,
-	&tgcomp.DataFrameConf{
-		ID:        "hosts",
-		Selection: tgcomp.SelectionModeMulti,
-	})
+{{#include ../../../demos/dataframe.go:multi}}
+```
 
-names := []string{}
-for _, idx := range selected {
-	names = append(names, hosts[idx][0])
-}
+Or one row at a time, starting on the first:
 
-tgcomp.Text(p.Main, "Selected: "+strings.Join(names, ", "))
+```go
+{{#include ../../../demos/dataframe.go:single}}
 ```
 
 ![dataframe component](dataframe.png)

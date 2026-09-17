@@ -52,8 +52,7 @@ comparison in full.
 ## Example
 
 ```go
-tgcomp.DownloadButton(p.Main, "Download", []byte("123"),
-    &tgcomp.DownloadButtonConf{Filename: "123.txt"})
+{{#include ../../../demos/download_button.go:demo}}
 ```
 
 ![download button component](download_button.png)

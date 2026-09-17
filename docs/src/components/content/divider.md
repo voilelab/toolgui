@@ -21,7 +21,7 @@ type DividerConf struct {
 ## Example
 
 ```go
-tgcomp.Divider(p.Main)
+{{#include ../../../demos/divider.go:demo}}
 ```
 
 ![divider component](divider.png)

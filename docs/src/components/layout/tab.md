@@ -31,10 +31,7 @@ a `Conf.ID`.
 ## Example
 
 ```go
-tabs := tgcomp.Tab(c, []string{"Tab 1", "Tab 2", "Tab 3"})
-for _, tab := range tabs {
-    tgcomp.Text(tab, "Hello World")
-}
+{{#include ../../../demos/tab.go:demo}}
 ```
 
 ```go

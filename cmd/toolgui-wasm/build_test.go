@@ -1,8 +1,10 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -78,6 +80,75 @@ func TestBuild(t *testing.T) {
 			t.Errorf("%s is empty", name)
 		}
 	}
+}
+
+// TestBuildDemoIsStillOneBinary builds the demo, which registers a page per
+// component on top of the category pages it has always had. A page is not a
+// binary: however many an app declares, a build writes the same files a one
+// page app does, with the one app.wasm among them.
+func TestBuildDemoIsStillOneBinary(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compiles two wasm binaries")
+	}
+
+	hello := t.TempDir()
+	err := build(hello, "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello")
+	if err != nil {
+		t.Fatalf("build the one page app: %v", err)
+	}
+
+	demo := t.TempDir()
+	err = build(demo, "github.com/voilelab/toolgui/cmd/toolgui-demo")
+	if err != nil {
+		t.Fatalf("build the demo: %v", err)
+	}
+
+	got, want := siteFiles(t, demo), siteFiles(t, hello)
+	if !slices.Equal(got, want) {
+		t.Errorf("the demo built %v, the one page app %v", got, want)
+	}
+
+	binaries := []string{}
+	for _, name := range got {
+		if filepath.Ext(name) == ".wasm" {
+			binaries = append(binaries, name)
+		}
+	}
+
+	if !slices.Equal(binaries, []string{"app.wasm"}) {
+		t.Errorf("built %v, want the one app.wasm", binaries)
+	}
+}
+
+// siteFiles returns what a build wrote under out, sorted, so two sites can be
+// compared by what they are made of.
+func siteFiles(t *testing.T, out string) []string {
+	t.Helper()
+
+	names := []string{}
+	err := filepath.WalkDir(out, func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if entry.IsDir() {
+			return nil
+		}
+
+		rel, err := filepath.Rel(out, name)
+		if err != nil {
+			return err
+		}
+
+		names = append(names, filepath.ToSlash(rel))
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	slices.Sort(names)
+	return names
 }
 
 func writeFile(t *testing.T, name, body string) {

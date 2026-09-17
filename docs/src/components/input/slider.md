@@ -86,13 +86,7 @@ live belongs in the browser, not in a rerun.
 ## Example
 
 ```go
-threshold := tgcomp.Slider(p.Main, "Threshold",
-	(&tcinput.SliderConf[int64]{}).SetMin(0).SetMax(100).SetStep(10).
-		SetDefault(50))
-
-// Always a value, so there is nothing to check first.
-tgcomp.Text(p.Main, fmt.Sprint("Value: ", threshold),
-	&tgcomp.TextConf{ID: "slider_result"})
+{{#include ../../../demos/slider.go:demo}}
 ```
 
 A slider derives its id from its label, so two with the same label collide.

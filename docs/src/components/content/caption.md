@@ -25,8 +25,7 @@ type CaptionConf struct {
 ## Example
 
 ```go
-tgcomp.Table(p.Main, []string{"a", "b"}, [][]string{{"1", "2"}})
-tgcomp.Caption(p.Main, "Sampled hourly, UTC.")
+{{#include ../../../demos/caption.go:demo}}
 ```
 
 ![caption component](caption.png)

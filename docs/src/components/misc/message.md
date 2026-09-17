@@ -38,7 +38,7 @@ type MessageConf struct {
 ## Example
 
 ```go
-tgcomp.Message(c, "Hello, World!")
+{{#include ../../../demos/message.go:demo}}
 ```
 
 ```go

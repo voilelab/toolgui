@@ -32,18 +32,7 @@ the same value therefore need one of them to be named.
 ## Example
 
 ```go
-type DemoJSONHeader struct {
-	Type int
-}
-
-type DemoJSON struct {
-	Header   DemoJSONHeader
-	IntValue int
-	URL      string
-	IsOk     bool
-}
-
-tgcomp.JSON(p.Main, &DemoJSON{})
+{{#include ../../../demos/json.go:demo}}
 ```
 
 ![JSON component](json.png)

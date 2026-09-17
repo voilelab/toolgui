@@ -31,9 +31,7 @@ its label. Two popovers with the same label collide, and the run reports
 ## Example
 
 ```go
-pop := tgcomp.Popover(c, "Advanced options")
-tgcomp.Checkbox(pop, "Show hidden columns")
-tgcomp.Number(pop, "Timeout seconds")
+{{#include ../../../demos/popover.go:demo}}
 ```
 
 ```go

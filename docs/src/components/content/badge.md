@@ -32,8 +32,7 @@ type BadgeConf struct {
 ## Example
 
 ```go
-tgcomp.Badge(p.Main, "Badge")
-tgcomp.Badge(p.Main, "Shipped", &tgcomp.BadgeConf{Color: tcutil.ColorSuccess})
+{{#include ../../../demos/badge.go:demo}}
 ```
 
 ![badge component](badge.png)

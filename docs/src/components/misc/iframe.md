@@ -44,7 +44,7 @@ sent does not fit `T`.
 Show h1 element in the iframe.
 
 ```go
-tgcomp.Iframe(p.Main, "<h1>Hello World</h1>", &tgcomp.IframeConf{Script: true})
+{{#include ../../../demos/iframe.go:simple}}
 ```
 
 ### Script
@@ -52,17 +52,7 @@ tgcomp.Iframe(p.Main, "<h1>Hello World</h1>", &tgcomp.IframeConf{Script: true})
 Run a script inside the iframe to update its content.
 
 ```go
-htmlWithScript := `
-<b id="test">Hello world not changed</b>
-<script>
-	const element = document.getElementById('test');
-	element.innerText = 'Hello world gen by script';
-</script>`
-
-tgcomp.Iframe(
-	p.Main,
-	htmlWithScript,
-	&tgcomp.IframeConf{Script: true, ID: "iframe_with_script"})
+{{#include ../../../demos/iframe.go:script}}
 ```
 
 ### Sizing
@@ -94,32 +84,11 @@ opaque origin.
   Undefined until the first render.
 
 ```go
-type clickedValue struct {
-	Clicked bool `json:"clicked"`
-}
+{{#include ../../../demos/iframe.go:value}}
+```
 
-html := `<button id="btn">Click me to update</button>
-	<script>
-		const btn = document.getElementById('btn');
-		btn.addEventListener('click', (event) => {
-			window.toolgui.update({clicked: true});
-		});
-	</script>`
-conf := &tgcomp.IframeConf{
-	Script: true,
-	Height: "60px",
-	ID:     "iframe_with_interactive",
-}
-
-tgcomp.Iframe(p.Main, html, conf)
-
-// nil until the guest clicks for the first time.
-clicked := false
-if v := tgcomp.IframeValue[clickedValue](p.Main, html, conf); v != nil {
-	clicked = v.Clicked
-}
-
-tgcomp.Text(p.Main, fmt.Sprintf("Status: %v", clicked))
+```go
+{{#include ../../../demos/iframe.go:interactive}}
 ```
 
 ### Reacting to reruns, and auto height
@@ -138,19 +107,5 @@ offscreen iframe stays at the default height and takes its real one as it
 becomes visible.
 
 ```go
-tgcomp.Iframe(
-	p.Main,
-	`<div id="out">waiting for render</div>
-	<script>
-		const out = document.getElementById('out');
-		window.toolgui.onRender((props, theme) => {
-			out.innerText = 'theme=' + theme;
-		});
-		window.toolgui.autoHeight();
-	</script>`,
-	&tgcomp.IframeConf{
-		Script: true,
-		Height: "auto",
-		ID:     "iframe_with_render",
-	})
+{{#include ../../../demos/iframe.go:render}}
 ```

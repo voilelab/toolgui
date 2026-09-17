@@ -43,11 +43,7 @@ dragged over the picker.
 ## Example
 
 ```go
-color := tgcomp.ColorPicker(p.Main, "ColorPicker",
-	&tgcomp.ColorPickerConf{Default: "#ff3860"})
-
-tgcomp.Text(p.Main, "Value: "+color,
-	&tgcomp.TextConf{ID: "color_picker_result"})
+{{#include ../../../demos/color_picker.go:demo}}
 ```
 
 ![color picker component](color_picker.png)

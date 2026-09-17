@@ -17,10 +17,5 @@ func Echo(c *tgframe.Container, code string, lambda func())
 ## Example
 
 ```go
-//go:embed main.go
-var code string
-
-tgcomp.Echo(c, code, func() {
-	println("Hello, World!")
-})
+{{#include ../../../demos/echo.go:demo}}
 ```

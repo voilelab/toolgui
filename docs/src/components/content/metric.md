@@ -39,9 +39,7 @@ way, so the direction still reads without the color.
 ## Example
 
 ```go
-tgcomp.Metric(p.Main, "Revenue", "12.4M", &tgcomp.MetricConf{Delta: "+12%"})
-tgcomp.Metric(p.Main, "Cloud spend", "$3.1k",
-	&tgcomp.MetricConf{Delta: "+8%", DeltaColorInverse: true})
+{{#include ../../../demos/metric.go:demo}}
 ```
 
 ![metric component](metric.png)

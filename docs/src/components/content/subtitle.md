@@ -24,7 +24,7 @@ type SubtitleConf struct {
 ## Example
 
 ```go
-tgcomp.Subtitle(p.Main, "Subtitle")
+{{#include ../../../demos/subtitle.go:demo}}
 ```
 
 ![subtitle component](subtitle.png)

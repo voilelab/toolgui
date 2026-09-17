@@ -37,9 +37,7 @@ type ToggleConf struct {
 ## Example
 
 ```go
-toggleValue := tgcomp.Toggle(p.Main, "Toggle")
-tgcomp.Text(p.Main, fmt.Sprint("Value: ", toggleValue),
-	&tgcomp.TextConf{ID: "toggle_result"})
+{{#include ../../../demos/toggle.go:demo}}
 ```
 
 ![toggle component](toggle.png)

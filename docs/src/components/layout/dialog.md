@@ -107,6 +107,10 @@ The dialog is a portal: it covers the window from wherever it is written, so
 one declared in `p.Sidebar` still darkens the whole page rather than the side
 column. A closed dialog renders as an empty portal and takes up no room.
 
+```go
+{{#include ../../../demos/dialog.go:sidebar}}
+```
+
 Two dialogs may be open at once, and the one opened later is drawn over the
 one opened earlier, whichever order the page writes them in. ESC and a click
 outside reach that topmost dialog only, so dismissing it leaves the one under

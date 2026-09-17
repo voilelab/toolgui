@@ -32,9 +32,7 @@ type CheckboxConf struct {
 ## Example
 
 ```go
-checkboxValue := tgcomp.Checkbox(p.Main, "Checkbox")
-tgcomp.Text(p.Main, fmt.Sprint("Value: ", checkboxValue),
-	&tgcomp.TextConf{ID: "checkbox_result"})
+{{#include ../../../demos/checkbox.go:demo}}
 ```
 
 ![checkbox component](checkbox.png)

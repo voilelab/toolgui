@@ -27,7 +27,7 @@ its title. Two expanders with the same title collide; give one of them a
 ## Example
 
 ```go
-tgcomp.Expand(c, "Expand", true)
+{{#include ../../../demos/expand.go:demo}}
 ```
 
 ```go

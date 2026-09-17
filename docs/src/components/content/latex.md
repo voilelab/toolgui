@@ -22,5 +22,5 @@ type LatexConf struct {
 ## Example
 
 ```go
-tgcomp.Latex(c, "E = mc^2")
+{{#include ../../../demos/latex.go:demo}}
 ```

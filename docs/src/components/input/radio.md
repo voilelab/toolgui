@@ -34,11 +34,7 @@ func (c *RadioConf) SetDefault(v int) *RadioConf
 ## Example
 
 ```go
-radioIndex := tgcomp.Radio(p.Main, "Radio", []string{"Value3", "Value4"})
-if radioIndex != nil {
-	tgcomp.Text(p.Main, fmt.Sprintf("Value: Value%d", *radioIndex+3),
-		&tgcomp.TextConf{ID: "radio_result"})
-}
+{{#include ../../../demos/radio.go:demo}}
 ```
 
 Starting on the second item, until the app user picks another:

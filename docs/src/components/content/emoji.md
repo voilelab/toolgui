@@ -4,7 +4,7 @@ Anywhere text is decoration rather than data, a `:name:` shortcode expands to
 the emoji it stands for, the same names GitHub and Slack use.
 
 ```go
-tgcomp.Text(p.Main, "Shipped it :tada:")
+{{#include ../../../demos/emoji.go:text}}
 ```
 
 Renders as `Shipped it 🎉`.
@@ -22,7 +22,7 @@ A shortcode inside code is the thing being shown, not decoration, so it is
 left as written:
 
 ```go
-tgcomp.Markdown(p.Main, "A `:tada:` in code stays as written.")
+{{#include ../../../demos/emoji.go:markdown}}
 ```
 
 That is also the way to show a shortcode literally — there is no escape

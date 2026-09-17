@@ -31,7 +31,7 @@ type TableConf struct {
 ## Example
 
 ```go
-tgcomp.Table(p.Main, []string{"a", "b"}, [][]string{{"1", "2"}, {"3", "4"}})
+{{#include ../../../demos/table.go:demo}}
 ```
 
 ![table component](table.png)
