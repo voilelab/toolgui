@@ -39,6 +39,89 @@ describe('Layout spec', () => {
     cy.contains('Expand').should('exist')
   })
 
+  // Text assertions here are scoped to the dialog itself: the column beside
+  // the component shows the source, which names the same strings.
+  it('Dialog draws nothing until something opens it', () => {
+    cy.visit('/layout')
+    cy.get('[role=dialog]').should('not.exist')
+
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get('[role=dialog]').contains('Delete the 3 selected rows?')
+      .should('be.visible')
+  })
+
+  it('Dialog closes from a button inside it', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get('[role=dialog]').contains('Yes, delete').click()
+
+    // Closed by the run that handled the click, and the run after it does not
+    // write the body again.
+    cy.get('[role=dialog]').should('not.exist')
+    cy.contains('button', 'Rerun').click()
+    cy.get('[role=dialog]').should('not.exist')
+  })
+
+  it('Dialog closed with ESC stays closed on the next run', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get('[role=dialog]').should('be.visible')
+
+    cy.get('body').type('{esc}')
+    cy.get('[role=dialog]').should('not.exist')
+
+    // Whether it is open is kept by the page, so this is also the check that
+    // the dismissal reached the server rather than only the client.
+    cy.contains('button', 'Rerun').click()
+    cy.get('[role=dialog]').should('not.exist')
+  })
+
+  it('A dialog opened from another one stacks over it', () => {
+    cy.visit('/layout')
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get('[role=dialog]').contains('What does this do?').click()
+
+    cy.get('[role=dialog]').should('have.length', 2)
+
+    // Visible is not the same as on top, so ask the document what is at the
+    // middle of the second dialog. Mantine's default z-index is enough while
+    // the later dialog is the one written later.
+    cy.contains('[role=dialog]', 'The rows are removed for good.').then(($d) => {
+      const box = $d[0].getBoundingClientRect()
+      cy.document().then((doc) => {
+        const at = doc.elementFromPoint(
+          box.x + box.width / 2, box.y + box.height / 2)
+        expect(at.closest('[role=dialog]')).to.contain.text('removed for good')
+      })
+    })
+
+    cy.get('[role=dialog]').contains('Got it').click()
+    cy.get('[role=dialog]').should('have.length', 1)
+    cy.get('[role=dialog]').contains('Delete the 3 selected rows?')
+      .should('be.visible')
+  })
+
+  it('Dialog written into the sidebar still covers the window', () => {
+    cy.visit('/layout')
+    cy.contains('button', 'Open the sidebar dialog').click()
+
+    cy.get('[role=dialog]').contains('Declared in the sidebar')
+      .should('be.visible')
+
+    // A portal: drawn at the top of the document, not inside the side column
+    // the page wrote it into.
+    cy.get('#container_component_container_sidebar [role=dialog]')
+      .should('not.exist')
+
+    // Dismissible is off on this one: no X, and ESC leaves it alone.
+    cy.get('[role=dialog]').find('[aria-label="Close dialog"]').should('not.exist')
+    cy.get('body').type('{esc}')
+    cy.get('[role=dialog]').should('be.visible')
+
+    cy.contains('button', 'Close the sidebar dialog').click()
+    cy.get('[role=dialog]').should('not.exist')
+  })
+
   // The slot is written three times in one run, and what it holds at the end
   // is the only thing on the screen. Everything is scoped to the component
   // column: the column beside it shows the source, which names the same text.

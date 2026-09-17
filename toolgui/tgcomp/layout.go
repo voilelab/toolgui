@@ -65,6 +65,25 @@ var Expand = tclayout.Expand
 // ExpandConf is the configuration for the Expand component.
 type ExpandConf = tclayout.ExpandConf
 
+// Dialog creates a dialog, closed until something opens it, and hands back a
+// handle to open, close and fill it. The body is only computed while it is
+// open, so handle what opens the dialog before calling DialogContainer.With.
+var Dialog = tclayout.Dialog
+
+// DialogConf is the configuration for the Dialog component.
+type DialogConf = tclayout.DialogConf
+
+// DialogContainer is what Dialog hands out: the dialog it drew, to be opened,
+// closed and filled while the page function runs.
+type DialogContainer = tclayout.DialogContainer
+
+// The widths a Dialog may be given.
+const (
+	DialogWidthSmall  = tclayout.DialogWidthSmall
+	DialogWidthMedium = tclayout.DialogWidthMedium
+	DialogWidthLarge  = tclayout.DialogWidthLarge
+)
+
 // Empty reserves a place in the page and hands back a slot to write it with.
 // Writing the slot again takes the previous contents off the screen instead of
 // adding to them.
