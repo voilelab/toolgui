@@ -38,6 +38,19 @@ jobs:
       - name: Build for wasm
         run: GOOS=js GOARCH=wasm go build ./...
 
+      # tgframe in a browser: the wasm build keeps uploads in the origin private
+      # file system, which exists nowhere else, and reads them through handles
+      # only a dedicated worker gets. The runner drives the Chrome the image
+      # already ships. tgexec is left out -- it serves over HTTP, and a tab has
+      # no socket to listen on.
+      - name: Test for wasm
+        run: |
+          go build -o "$RUNNER" ./scripts/wasmtest
+          GOOS=js GOARCH=wasm go test -exec "$RUNNER" ./toolgui/tgframe/... \
+            ./toolgui/tgwasm/...
+        env:
+          RUNNER: ${{ runner.temp }}/toolgui-wasmtest
+
   web:
     name: Web Build
     runs-on: ubuntu-latest

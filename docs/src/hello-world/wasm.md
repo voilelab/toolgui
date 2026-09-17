@@ -80,7 +80,8 @@ build/
 └── app.wasm        your app
 ```
 
-Four static files. Any file server serves them; there is no backend.
+Four static files. Any file server serves them; there is no backend. It does
+have to be an `https` one, though, or `localhost` — see the hosting notes.
 
 The CLI does nothing a shell cannot:
 
@@ -96,20 +97,24 @@ build` instead of asking you to run it — one toolchain, both halves.
 
 ## Where it runs
 
-The Go program runs in a Web Worker, not on the page's thread. It never touches
-the DOM — it sends the same packs the update websocket carries, and the React
-components on the main thread render them — so a page function that takes a
-while leaves the UI responsive.
+The Go program runs in a dedicated Web Worker, not on the page's thread, and it
+has to: the synchronous file handles the file store keeps uploads in exist in a
+worker and nowhere else. It also never touches the DOM — it sends the same packs
+the update websocket carries, and the React components on the main thread render
+them — so a page function that takes a while leaves the UI responsive.
 
 ## What the browser takes away
 
 * One session per tab, created on load. A reload starts from an empty state:
   there is no server to keep it.
-* No filesystem and no listening socket. `net/http` requests become `fetch`, so
-  CORS applies to whatever your page function calls.
+* No filesystem to open by path, and no listening socket. `net/http` requests
+  become `fetch`, so CORS applies to whatever your page function calls.
 * `GOMAXPROCS` is 1. Goroutines interleave, nothing runs in parallel.
 * No timezone database unless the app imports `time/tzdata`.
-* Uploaded files are held in memory.
+* Uploaded files are kept in the origin private file system rather than the
+  tab's memory, and go with the session. Storage there is per origin and
+  bounded, so an upload can fail for want of room. Arriving is still a single
+  hop, so a file has to fit in the tab on the way in however it is stored.
 * The binary is public, like any other static asset. No secrets in it.
 * `SetManifest` and `SetAssets` are `WebExecutor` settings, so the browser
   build does without them. A static site can carry a `manifest.json` and its
@@ -117,6 +122,12 @@ while leaves the UI responsive.
 
 ## Hosting notes
 
+* Serve it over `https`. Uploads go to the origin private file system, and that
+  belongs to a [secure context], so on plain `http` from anything but
+  `localhost` there is nowhere to put one and every upload fails. It says so
+  rather than falling back to the tab's memory, which would put the files back
+  where this build stopped keeping them without anyone noticing. GitHub Pages,
+  Netlify and the like are `https` already.
 * Serve `.wasm` as `application/wasm`, so the browser can compile it while it
   downloads.
 * Compress it. A small app is around 5 MB, about 1.4 MB gzipped; the component
@@ -125,3 +136,5 @@ while leaves the UI responsive.
   `index.html`.
 * The build uses relative asset URLs, so it works at a site root and under a
   project path like `/toolgui/` without rebuilding.
+
+[secure context]: https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts

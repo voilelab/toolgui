@@ -27,17 +27,19 @@ type fileBody interface {
 
 // fileBodies makes the bodies of one state's files and clears up after them.
 // Which one a build gets is what decides where an upload is kept: on disk on
-// a server, in memory in the browser, which has no filesystem to put it on.
-// Its methods are called under the store's lock, so they need none of their
-// own.
+// a server, in the origin private file system in the browser, which is what a
+// tab has instead of one. Its methods are called under the store's lock, so
+// they need none of their own, and they cannot block: in the browser they run
+// on the JavaScript callback stack, where waiting stops the event loop.
 type fileBodies interface {
 	newBody() (fileBody, error)
 	destroy()
 }
 
 // File is a file the user uploaded. Where its content lives is the build's
-// business: on a server it's on disk, so a page can take a file larger than
-// the memory the process has to spare.
+// business: on a server it's on disk, in the browser it's the origin private
+// file system. Either way a page can take a file larger than the memory the
+// process has to spare.
 type File struct {
 	name string
 	body fileBody
