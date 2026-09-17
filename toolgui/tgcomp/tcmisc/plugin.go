@@ -88,8 +88,10 @@ func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
 //	conf.Props = map[string]any{"selected": selected}
 //	tcmisc.Plugin(c, src, conf)
 //
-// It returns nil while the plugin has sent nothing, so a page tells "no value
-// yet" apart from a value that is the zero T.
+// It returns nil when the plugin has no value for the page, so a page tells
+// that apart from a value that is the zero T. A plugin that has not sent yet
+// and one that sent null both read as nil: null is how a plugin says it has
+// nothing, not a value of its own.
 //
 // The frontend keys the value by the plugin's own component id, so a plugin
 // can only write to its own state.

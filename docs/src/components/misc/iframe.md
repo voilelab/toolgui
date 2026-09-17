@@ -31,9 +31,11 @@ func IframeValue[T any](c *tgframe.Container, html string, conf ...*IframeConf) 
 `IframeValue` returns the latest value the guest sent through
 `window.toolgui.update`. It reads the value, it does not draw the iframe: give
 it the same `html` and `conf` the `Iframe` call gets, so that both name the same
-component. It returns `nil` until the guest sends its first value, which is not
-the same as a value that happens to be the zero `T`, and it fails the run rather
-than return a silent zero when what the guest sent does not fit `T`.
+component. It returns `nil` until the guest has a value, which is not the same
+as a value that happens to be the zero `T`. A guest that has not sent yet and
+one that sent `null` both read as `nil` — `null` is how a guest says it has
+nothing. It fails the run rather than return a silent zero when what the guest
+sent does not fit `T`.
 
 ## Examples
 

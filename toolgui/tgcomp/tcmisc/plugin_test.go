@@ -124,6 +124,29 @@ func TestPluginValueBeforeTheFirstUpdate(t *testing.T) {
 	}
 }
 
+// null is how a frame says it has no value, so it reads the same as an update
+// that never came rather than as a zero T.
+func TestPluginValueExplicitNull(t *testing.T) {
+	const src = "/plugin/gauge/gauge.js"
+
+	type gauge struct {
+		Value int `json:"value"`
+	}
+
+	state := stateWithValue(t, nil, func(c *tgframe.Container) {
+		Plugin(c, src)
+	})
+
+	var got *gauge
+	drawWithState(t, state, func(c *tgframe.Container) {
+		got = PluginValue[gauge](c, src)
+	})
+
+	if got != nil {
+		t.Errorf("value = %v, want nil for a plugin that sent null", got)
+	}
+}
+
 // A value that does not fit T is the run's failure, not a silent zero.
 func TestPluginValueThatDoesNotParse(t *testing.T) {
 	const src = "/plugin/gauge/gauge.js"

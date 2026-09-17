@@ -64,8 +64,8 @@ var Iframe = tcmisc.Iframe
 type IframeConf = tcmisc.IframeConf
 
 // IframeValue returns the latest value an iframe's guest sent through
-// window.toolgui.update, nil while it has sent none. It reads the value rather
-// than drawing the iframe -- see [tcmisc.IframeValue].
+// window.toolgui.update, nil when it has none. It reads the value rather than
+// drawing the iframe -- see [tcmisc.IframeValue].
 //
 // A generic function cannot be forwarded by a var, so this is a wrapper rather
 // than an alias like its neighbours.
@@ -89,8 +89,8 @@ var Plugin = tcmisc.Plugin
 type PluginConf = tcmisc.PluginConf
 
 // PluginValue returns the latest value a plugin sent through
-// window.toolgui.update, nil while it has sent none. It reads the value rather
-// than drawing the plugin -- see [tcmisc.PluginValue].
+// window.toolgui.update, nil when it has none. It reads the value rather than
+// drawing the plugin -- see [tcmisc.PluginValue].
 //
 // A generic function cannot be forwarded by a var, so this is a wrapper rather
 // than an alias like its neighbours.

@@ -67,8 +67,10 @@ func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 // describe sent through window.toolgui.update. It reads the value, it does not
 // draw the iframe: give it the same html and conf the [Iframe] call gets.
 //
-// It returns nil while the guest has sent nothing, so a page tells "no value
-// yet" apart from a value that is the zero T:
+// It returns nil when the guest has no value for the page, so a page tells
+// that apart from a value that is the zero T. A guest that has not sent yet and
+// one that sent null both read as nil: null is how a guest says it has nothing,
+// not a value of its own.
 //
 //	if v := tcmisc.IframeValue[picked](c, html, conf); v != nil {
 //		use(*v)

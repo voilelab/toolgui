@@ -27,9 +27,10 @@ func PluginValue[T any](c *tgframe.Container, src string, conf ...*PluginConf) *
 
 `PluginValue` reads the plugin's value, it does not draw the plugin: give it
 the same `src` and `conf` the `Plugin` call gets. It returns `nil` until the
-plugin sends its first value, which is not the same as a value that happens to
-be the zero `T`, and it fails the run rather than return a silent zero when
-what the plugin sent does not fit `T`.
+plugin has a value, which is not the same as a value that happens to be the
+zero `T`. A plugin that has not sent yet and one that sent `null` both read as
+`nil` — `null` is how a plugin says it has nothing. It fails the run rather than
+return a silent zero when what the plugin sent does not fit `T`.
 
 `PluginConf`:
 
