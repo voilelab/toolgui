@@ -78,6 +78,10 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
   // flushed in time for the next one. state.dragging only drives the class.
   private dragging = false
 
+  // The pointer the drag belongs to, so a second finger landing on the handle
+  // cannot move an edge the first one is already holding.
+  private dragPointerId: number | undefined = undefined
+
   componentWillUnmount() {
     // A drag interrupted by a page change would otherwise leave the whole
     // document unselectable.
@@ -101,7 +105,9 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
   }
 
   startDrag(e: React.PointerEvent<HTMLDivElement>) {
-    if (this.dragging) {
+    // Only the primary button resizes. A right press opens the context menu,
+    // and dragging under it would move the edge and store where it ended up.
+    if (this.dragging || e.button !== 0) {
       return
     }
 
@@ -117,12 +123,13 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     this.dragOriginX = e.clientX
     this.dragOriginWidth = this.state.width
     this.dragging = true
+    this.dragPointerId = e.pointerId
     document.body.classList.add(resizingClass)
     this.setState({ dragging: true })
   }
 
   drag(e: React.PointerEvent<HTMLDivElement>) {
-    if (!this.dragging) {
+    if (!this.dragging || e.pointerId !== this.dragPointerId) {
       return
     }
 
@@ -130,11 +137,12 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
   }
 
   endDrag(e: React.PointerEvent<HTMLDivElement>) {
-    if (!this.dragging) {
+    if (!this.dragging || e.pointerId !== this.dragPointerId) {
       return
     }
 
     this.dragging = false
+    this.dragPointerId = undefined
     // No release: the browser drops the capture itself once pointerup or
     // pointercancel has been dispatched.
     document.body.classList.remove(resizingClass)

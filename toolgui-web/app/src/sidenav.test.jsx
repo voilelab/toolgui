@@ -233,6 +233,41 @@ describe('side column width', () => {
     expect(document.body).not.toHaveClass('toolgui-resizing')
   })
 
+  // A right press opens the context menu. Dragging under it must not take the
+  // edge along, nor store where it ended up.
+  test('a non-primary button does not start a drag', () => {
+    renderApp()
+    const handle = resizer()
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 240, button: 2 })
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 400 })
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 400 })
+
+    expect(resizer()).toHaveAttribute('aria-valuenow', '240')
+    expect(document.body).not.toHaveClass('toolgui-resizing')
+    expect(window.localStorage.getItem('sidenav_width')).toBe(null)
+  })
+
+  // A second finger landing on the handle must not move an edge the first one
+  // is already holding.
+  test('a second pointer does not join a drag in flight', () => {
+    renderApp()
+    const handle = resizer()
+
+    fireEvent.pointerDown(handle, { pointerId: 1, clientX: 240, button: 0 })
+    fireEvent.pointerMove(handle, { pointerId: 2, clientX: 460 })
+    expect(resizer()).toHaveAttribute('aria-valuenow', '240')
+
+    fireEvent.pointerUp(handle, { pointerId: 2, clientX: 460 })
+    expect(document.body).toHaveClass('toolgui-resizing')
+
+    // The one that started it still finishes it.
+    fireEvent.pointerMove(handle, { pointerId: 1, clientX: 300 })
+    fireEvent.pointerUp(handle, { pointerId: 1, clientX: 300 })
+    expect(resizer()).toHaveAttribute('aria-valuenow', '300')
+    expect(document.body).not.toHaveClass('toolgui-resizing')
+  })
+
   // The class that stops the drag selecting the page it sweeps over must not
   // outlive the drag, or the whole document stays unselectable.
   test('a drag cleans up after itself', () => {
