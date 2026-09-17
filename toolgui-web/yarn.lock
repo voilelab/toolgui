@@ -1042,9 +1042,9 @@
   integrity sha512-M5UknZPHRu3DEDWoipU6sE8PdkZ6Z/S+v4dD+Ke8IaNlpdSQah50lz1KtcFBa2vsdOnwbbnxJwVM4wty6udA5w==
 
 "@mantine/core@^9.6.0":
-  version "9.6.0"
-  resolved "https://registry.yarnpkg.com/@mantine/core/-/core-9.6.0.tgz#9d4489de141be13c42932247c63e57615695a4bf"
-  integrity sha512-WpdtSv9q2k4RrAVUxBlABMyEul4vv94EkjoVuQglBBC7jVmLhBBgI64HltE6di/l6zvj9D7k1vgkbVjyxQsn1g==
+  version "9.6.1"
+  resolved "https://registry.yarnpkg.com/@mantine/core/-/core-9.6.1.tgz#4376ddb0bca7a751adc3308f3cadcc39077d6efe"
+  integrity sha512-UkcPo8Zq0uSdodvyXV62HVmfIfHCcrjFrFrH0TggTy6Wtp8a78znGP8RJOz8zC9XSPpJmKjBQjg0M+nOvIzftA==
   dependencies:
     "@floating-ui/react" "^0.27.20"
     clsx "^2.1.1"
@@ -1053,18 +1053,18 @@
     type-fest "^5.8.0"
 
 "@mantine/dates@^9.6.0":
-  version "9.6.0"
-  resolved "https://registry.yarnpkg.com/@mantine/dates/-/dates-9.6.0.tgz#676bcc64c37ec96c41d05613706131fca5693bf5"
-  integrity sha512-fcMGrbwKj7F5KkRtwuKeXz/MBh+l0Y3ljLyJ3eaF7NL0CLJSXO7YJxpeZDXBMDF0w+iUs9c2zilnTTidh9ICPQ==
+  version "9.6.1"
+  resolved "https://registry.yarnpkg.com/@mantine/dates/-/dates-9.6.1.tgz#d0dbcd009206ac659d194c376bdf52c22d758a6f"
+  integrity sha512-3NxfqrcwMuYB9wvxIhGhEhhazK3wcA2wG4AuNVFGJDd97ujWWAy+jGHqBF9jOusp/Mk4bn8u+3SuDICtLPDf5w==
   dependencies:
     clsx "^2.1.1"
 
 "@mantine/hooks@^9.6.0":
-  version "9.6.0"
-  resolved "https://registry.yarnpkg.com/@mantine/hooks/-/hooks-9.6.0.tgz#476aa8f9eb13b020190475de53c76177d67d28be"
-  integrity sha512-r+1RWxc0F2XK9exKIk3Cxc17eyDTEtRqvomeQMCqI4S2Z3A78ObAGuNS8WXn8aqDGN66MJlO+WV7oCgQn2iQfQ==
+  version "9.6.1"
+  resolved "https://registry.yarnpkg.com/@mantine/hooks/-/hooks-9.6.1.tgz#9a5cfe7ad91b8f1f89d4e4a39c520ff5dd242ccd"
+  integrity sha512-pfxM95WozngB0ZALw6h99QV1TQ0qniOkFhzi0+dmSnKpxkVSR0xeNsvPpGDj9Teu+M69fRoE4IkzyMnu5Xld3w==
 
-"@mantine/notifications@^9.6.1":
+"@mantine/notifications@^9.6.0":
   version "9.6.1"
   resolved "https://registry.yarnpkg.com/@mantine/notifications/-/notifications-9.6.1.tgz#05b7cd4a4807eb883e2d1f75bf7c14885e392989"
   integrity sha512-6bikkVCAf6wd1KO/oVhBuXGDZ+HcWeNGCEvdgkL0pQ6jmjzd24ShW6UnbGu6aLABhYxQdfLnrE1cbOjC93Tj6A==
@@ -2597,15 +2597,10 @@ pretty-format@^27.0.2:
     ansi-styles "^5.0.0"
     react-is "^17.0.1"
 
-prismjs@^1.30.0:
+prismjs@^1.30.0, prismjs@~1.27.0:
   version "1.30.0"
   resolved "https://registry.yarnpkg.com/prismjs/-/prismjs-1.30.0.tgz#d9709969d9d4e16403f6f348c63553b19f0975a9"
   integrity sha512-DEvV2ZF2r2/63V+tK8hQvrR2ZGn10srHbXviTlcv7Kpzw8jWiNTqbVgjO3IY8RxrrOUF8VPMQQFysYYYv0YZxw==
-
-prismjs@~1.27.0:
-  version "1.27.0"
-  resolved "https://registry.yarnpkg.com/prismjs/-/prismjs-1.27.0.tgz#bb6ee3138a0b438a3653dd4d6ce0cc6510a45057"
-  integrity sha512-t13BGPUlFDR7wRB5kQDG4jjl7XeuH6jbJGt11JHPL96qwsEHNX2+68tFXqc1/k+/jALsbSWJKUOT/hcYAZ5LkA==
 
 prop-types@^15.6.2:
   version "15.8.1"
