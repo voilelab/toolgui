@@ -65,6 +65,12 @@ var Expand = tclayout.Expand
 // ExpandConf is the configuration for the Expand component.
 type ExpandConf = tclayout.ExpandConf
 
+// Popover create a button with a floating panel behind it.
+var Popover = tclayout.Popover
+
+// PopoverConf is the configuration for the Popover component.
+type PopoverConf = tclayout.PopoverConf
+
 // Empty reserves a place in the page and hands back a slot to write it with.
 // Writing the slot again takes the previous contents off the screen instead of
 // adding to them.
