@@ -122,8 +122,8 @@ describe('Layout spec', () => {
     cy.get(DIALOG).should('have.length', 2)
 
     // Visible is not the same as on top, so ask the document what is at the
-    // middle of the second dialog. Mantine's default z-index is enough while
-    // the later dialog is the one written later.
+    // middle of the second dialog. It is the one the page writes FIRST, so
+    // this fails unless being on top follows the order they opened.
     cy.contains(DIALOG, 'The rows are removed for good.').then(($d) => {
       const box = $d[0].getBoundingClientRect()
       cy.document().then((doc) => {
@@ -140,7 +140,9 @@ describe('Layout spec', () => {
   })
 
   // Mantine gives every Modal its own window key handler with no notion of a
-  // stack, so leaving closeOnEscape on closed the whole stack at once.
+  // stack, so leaving closeOnEscape on closed the whole stack at once. The
+  // dialog this closes is the one drawn on top, which is why the same stack
+  // drives the z-index.
   it('ESC closes the top dialog only', () => {
     cy.visit('/layout')
     cy.get('#column_component_show_dialog_0').contains('Delete').click()

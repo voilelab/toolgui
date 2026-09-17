@@ -107,10 +107,11 @@ The dialog is a portal: it covers the window from wherever it is written, so
 one declared in `p.Sidebar` still darkens the whole page rather than the side
 column. A closed dialog renders as an empty portal and takes up no room.
 
-Two dialogs may be open at once, and they stack in the order the page writes
-them rather than the order they were opened: the later one is drawn over the
-earlier. A dialog opened from inside another is written after it, which is the
-order that gives, so nothing special is needed for the usual case:
+Two dialogs may be open at once, and the one opened later is drawn over the
+one opened earlier, whichever order the page writes them in. ESC and a click
+outside reach that topmost dialog only, so dismissing it leaves the one under
+it open; a dialog with `Dismissible` off on top swallows them rather than
+letting the dialog beneath take them.
 
 ```go
 d := tgcomp.Dialog(p.Main, "Delete confirm")
@@ -129,7 +130,3 @@ why.With(func(c *tgframe.Container) {
 
 `why.Open()` is called from `d`'s body, which is above `why.With`, so the
 second dialog's body is drawn in the same run it opens in.
-
-ESC and a click outside reach the topmost dialog only, so dismissing the one
-on top leaves the one under it open. A dialog with `Dismissible` off on top
-swallows them rather than letting the dialog beneath take them.

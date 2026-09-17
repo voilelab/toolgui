@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react"
-import { Modal } from "@mantine/core"
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react"
+import { Modal, getDefaultZIndex } from "@mantine/core"
 
 import { Props } from "../component_interface"
 import { TComponent } from "../factory"
@@ -11,11 +11,42 @@ const SIZES: { [width: string]: string } = {
   large: "lg",
 }
 
-// openDialogs is every dialog currently on screen, in the order they opened,
-// which is also the order they are stacked in. Only the last one answers ESC:
-// Mantine's own closeOnEscape is a window handler per Modal with no notion of
-// a stack, so leaving it on closes every open dialog on one press.
+// openDialogs is every dialog on screen, in the order they opened. It decides
+// both which one answers ESC and which one is painted over the others, so the
+// two can never disagree.
+//
+// Both need saying because Mantine settles neither: its own closeOnEscape is a
+// window handler per Modal with no notion of a stack, and every Modal takes
+// the same z-index, leaving the paint order to the DOM -- which follows where
+// the page writes a dialog, not when it opened. Left alone, a dialog opened
+// from inside one written after it lands underneath, unclickable, while ESC
+// closes it rather than the one on top.
 const openDialogs: string[] = []
+const listeners = new Set<() => void>()
+
+function announce() {
+  listeners.forEach(notify => notify())
+}
+
+function subscribeToDialogs(notify: () => void) {
+  listeners.add(notify)
+  return () => { listeners.delete(notify) }
+}
+
+function openedDialog(id: string) {
+  openDialogs.push(id)
+  announce()
+}
+
+function closedDialog(id: string) {
+  const at = openDialogs.lastIndexOf(id)
+  if (at === -1) {
+    return
+  }
+
+  openDialogs.splice(at, 1)
+  announce()
+}
 
 // Mantine components that handle ESC themselves, a Select with its dropdown
 // open among them, mark the event this way. Same check Mantine's own modal
@@ -60,14 +91,19 @@ export function TDialog({ node, update, upload, theme }: Props) {
       return
     }
 
-    openDialogs.push(id)
-    return () => {
-      const at = openDialogs.lastIndexOf(id)
-      if (at !== -1) {
-        openDialogs.splice(at, 1)
-      }
-    }
+    openedDialog(id)
+    return () => { closedDialog(id) }
   }, [opened, id])
+
+  const depth = useSyncExternalStore(
+    subscribeToDialogs, () => openDialogs.indexOf(id))
+
+  // One step per dialog below this one, so the newest is on top. Kept under
+  // the popover elevation, or a Select dropdown opened inside a dialog would
+  // fall behind it.
+  const zIndex = Math.min(
+    getDefaultZIndex("modal") + Math.max(depth, 0),
+    getDefaultZIndex("popover") - 1)
 
   useEffect(() => {
     if (!opened || !dismissible) {
@@ -100,6 +136,7 @@ export function TDialog({ node, update, upload, theme }: Props) {
       title={node.props.title}
       size={SIZES[node.props.width] ?? SIZES.small}
       opened={opened}
+      zIndex={zIndex}
       withCloseButton={dismissible}
       closeButtonProps={{ "aria-label": "Close dialog" }}
       // Handled above instead, so that one press closes one dialog.

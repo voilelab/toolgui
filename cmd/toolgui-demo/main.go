@@ -477,11 +477,12 @@ func LayoutPage(p *tgframe.Params) error {
 	dialogCompCol, dialogCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_dialog"})
 	tgcomp.Echo(dialogCodeCol, code, func() {
-		d := tgcomp.Dialog(dialogCompCol, "Delete confirm")
-
-		// Opened from inside the one above, so it is written after it: two
-		// dialogs open at once stack in the order the page writes them.
+		// Written before the dialog that opens it, on purpose: which of two
+		// open dialogs is drawn on top follows the order they opened, not the
+		// order the page writes them.
 		why := tgcomp.Dialog(dialogCompCol, "What deleting does")
+
+		d := tgcomp.Dialog(dialogCompCol, "Delete confirm")
 
 		// The trigger is handled before With, which is what draws the body:
 		// opening after it would open the dialog on an empty run.
