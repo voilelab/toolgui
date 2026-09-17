@@ -2,6 +2,8 @@ package tgutil
 
 import (
 	"errors"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -139,5 +141,89 @@ func TestUUIDMapMaxSizeReclaims(t *testing.T) {
 
 	if got := m.Size(); got != 1 {
 		t.Errorf("Size = %d, want 1", got)
+	}
+}
+
+// TestUUIDMapAcquire checks Acquire takes an idle entry and says why it could
+// not when it could not.
+func TestUUIDMapAcquire(t *testing.T) {
+	m := NewUUIDMap(func() *int { v := 0; return &v },
+		func(v *int) {}, time.Minute)
+
+	if _, err := m.Acquire("nothing"); !errors.Is(err, ErrUUIDNotFound) {
+		t.Errorf("Acquire of an unknown id: %v, want ErrUUIDNotFound", err)
+	}
+
+	// New hands the entry out alive, so the connection that made it holds it.
+	id := mustNew(t, m)
+	if _, err := m.Acquire(id); !errors.Is(err, ErrUUIDAlive) {
+		t.Errorf("Acquire of a held id: %v, want ErrUUIDAlive", err)
+	}
+
+	m.SetAlive(id, false)
+
+	value, err := m.Acquire(id)
+	if err != nil {
+		t.Fatalf("Acquire of an idle id: %v", err)
+	}
+
+	if value == nil {
+		t.Fatal("expect the entry, got nil")
+	}
+
+	// It is this caller's now, so the next one is turned away.
+	if _, err := m.Acquire(id); !errors.Is(err, ErrUUIDAlive) {
+		t.Errorf("Acquire after a take-over: %v, want ErrUUIDAlive", err)
+	}
+}
+
+// TestUUIDMapAcquireRace checks two connections racing for the same idle entry
+// do not both come away with it. Sharing one state is how two pages end up
+// writing over each other's clicks and uploads.
+func TestUUIDMapAcquireRace(t *testing.T) {
+	const racers = 8
+
+	m := NewUUIDMap(func() *int { v := 0; return &v },
+		func(v *int) {}, time.Minute)
+
+	for round := 0; round < 100; round++ {
+		id := mustNew(t, m)
+		m.SetAlive(id, false)
+
+		start := make(chan struct{})
+		var won atomic.Int32
+		var wg sync.WaitGroup
+
+		for i := 0; i < racers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				<-start
+
+				value, err := m.Acquire(id)
+				if err == nil {
+					won.Add(1)
+					// Touch it: -race has something to report if a second
+					// winner is writing here too.
+					*value++
+					return
+				}
+
+				if !errors.Is(err, ErrUUIDAlive) {
+					t.Errorf("the losing Acquire: %v, want ErrUUIDAlive", err)
+				}
+			}()
+		}
+
+		close(start)
+		wg.Wait()
+
+		if got := won.Load(); got != 1 {
+			t.Fatalf("round %d: %d connections took the state, want 1",
+				round, got)
+		}
+
+		m.Del(id)
 	}
 }

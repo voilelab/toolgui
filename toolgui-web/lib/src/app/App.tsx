@@ -188,7 +188,8 @@ export class App extends Component<AppProps, AppState> {
       var err: Error | null = null
       if (!pack.success) {
         err = {
-          msg: pack.error
+          msg: pack.error,
+          id: pack.error_id,
         }
       }
 

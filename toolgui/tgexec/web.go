@@ -1,6 +1,8 @@
 package tgexec
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"io/fs"
@@ -251,6 +253,13 @@ func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Requ
 	return errors.New("websocket: origin not allowed")
 }
 
+// stateTag return a stable, non-reversible name for a state id, for a log
+// line that has to tell one connection's state from another's.
+func stateTag(id string) string {
+	sum := sha256.Sum256([]byte(id))
+	return hex.EncodeToString(sum[:4])
+}
+
 // Destory release all resource.
 func (e *WebExecutor) Destroy() {
 	e.stateMap.Destroy()
@@ -290,21 +299,34 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	}
 
 	if err != nil {
-		jsonCodec.Send(ws, &tgframe.ResultPack{
-			Error:   err.Error(),
-			Success: false,
-		})
-		slog.Error("state id", "error", err)
+		jsonCodec.Send(ws, tgframe.ReportError("state id", err))
 		return
 	}
 
-	var stateID string
-	stateID = pack.StateID
+	stateID := pack.StateID
 
-	state, alive := e.stateMap.Get(stateID)
-	if state == nil {
-		newStateID, err := e.stateMap.New()
-		if err != nil {
+	// Taking the state over and marking it taken is one step: two connections
+	// racing for the same idle id would otherwise both pass the check and
+	// then share one *State.
+	state, err := e.stateMap.Acquire(stateID)
+	switch {
+	case err == nil:
+		// The state was idle and is this connection's now.
+
+	case errors.Is(err, tgutil.ErrUUIDAlive):
+		jsonCodec.Send(ws, &tgframe.ResultPack{
+			Error:   "state id already alive",
+			Success: false,
+		})
+		// Not the id itself: it is the whole of what a connection needs to
+		// take the state over, so a log line carrying it hands whoever reads
+		// the log someone else's session.
+		slog.Error("state id already alive", "state", stateTag(stateID))
+		return
+
+	default:
+		newStateID, nerr := e.stateMap.New()
+		if nerr != nil {
 			// The service is holding as many states as it may. Another
 			// connection dropping frees one, so the client is left to retry
 			// rather than told to give up.
@@ -312,7 +334,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 				Error:   "too many sessions, try again later",
 				Success: false,
 			})
-			slog.Error("new state", "error", err)
+			slog.Error("new state", "error", nerr)
 			return
 		}
 
@@ -321,17 +343,6 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		jsonCodec.Send(ws, stateIDPack{
 			StateID: stateID,
 		})
-	} else {
-		if alive {
-			jsonCodec.Send(ws, &tgframe.ResultPack{
-				Error:   "state id already alive",
-				Success: false,
-			})
-			slog.Error("state id already alive", "state_id", stateID)
-			return
-		}
-
-		e.stateMap.SetAlive(stateID, true)
 	}
 
 	session, err := tgframe.NewSession(e.app, pageName, state,
@@ -342,7 +353,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		e.stateMap.SetAlive(stateID, false)
 
 		jsonCodec.Send(ws, &tgframe.ResultPack{
-			Error:   err.Error(),
+			Error:   "page not found",
 			Success: false,
 			Fatal:   true,
 		})
@@ -372,8 +383,11 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 				break
 			}
 
+			// The only recoverable read error is a frame the codec refused,
+			// so the client is told that much and nothing of the library
+			// error underneath.
 			jsonCodec.Send(ws, &tgframe.ResultPack{
-				Error:   err.Error(),
+				Error:   "message too large",
 				Success: false,
 			})
 			slog.Error("state value change", "error", err)

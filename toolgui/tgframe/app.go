@@ -276,7 +276,7 @@ func (app *App) RunContext(ctx context.Context,
 	// a name the page never drew. A run cut short at a notify pack panics out
 	// before this, and one watching the context returns here.
 	if ctx.Err() != nil {
-		return err
+		return NewPageError(err)
 	}
 
 	// The page function returned, so what it claimed is what is on the screen.
@@ -287,7 +287,10 @@ func (app *App) RunContext(ctx context.Context,
 	}
 
 	if err != nil {
-		return tgutil.Errorf("%w", err)
+		// What the page function returned is what the page wants its user to
+		// read, so it keeps its message instead of being masked -- and keeps
+		// it whole, without a function path in front of it.
+		return NewPageError(err)
 	}
 
 	// The page ran to the end, so an id it cleared and never wrote again names
@@ -299,7 +302,8 @@ func (app *App) RunContext(ctx context.Context,
 		}
 	}
 
-	return run.err
+	// A component the page gave up on is the page's own report too.
+	return NewPageError(run.err)
 }
 
 // HasPage return existence of page which named `name`.

@@ -22,6 +22,11 @@ type ResultPack struct {
 	Error   string `json:"error,omitzero"`
 	Success bool   `json:"success"`
 
+	// ErrorID names the log line carrying what really went wrong, for an
+	// error the client is only told the kind of. It is empty for an error
+	// whose message is already the whole of it.
+	ErrorID string `json:"error_id,omitzero"`
+
 	// Fatal marks an error the same request would run into again, such as a
 	// page name the app doesn't have. A client is meant to give up on it
 	// rather than reconnect.
@@ -99,7 +104,7 @@ func (s *Session) HandleRawEvent(bs []byte) error {
 
 	event, err := ParseEvent(bs)
 	if err != nil {
-		s.sendResult(&ResultPack{Error: err.Error()})
+		s.sendResult(ReportError("parse event", err))
 		return tgutil.Errorf("%w", err)
 	}
 
@@ -162,8 +167,7 @@ func (s *Session) HandleEvent(event Event) {
 		}
 
 		if err != nil {
-			s.sendResult(&ResultPack{Error: err.Error()})
-			slog.Error("run err", "error", err)
+			s.sendResult(ReportError("run err", err))
 			return
 		}
 
