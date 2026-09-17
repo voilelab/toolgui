@@ -7,31 +7,33 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
-// clickRun is what one run of the page below saw: what ButtonClicked said
-// before the button was drawn, and what Button returned when it was.
+// clickRun is what one run of a page below saw: what the Clicked getter said
+// before the button was drawn, and what the button returned when it was.
 type clickRun struct {
 	before bool
 	drawn  bool
 }
 
-// buttonRunner drives a one-button page through a real session, so the click
-// id under test is the one an event actually lands in the state.
-type buttonRunner struct {
+// runner drives a page through a real session, so the click id under test is
+// the one an event actually lands in the state.
+type runner struct {
 	t       *testing.T
 	session *tgframe.Session
 	done    chan *tgframe.ResultPack
 	last    clickRun
 }
 
-func newButtonRunner(t *testing.T, id string) *buttonRunner {
+// newRunner starts a session on page and renders it once, which is what a
+// client does before it can click anything. page records what it saw in seen.
+func newRunner(t *testing.T, page func(p *tgframe.Params, seen *clickRun)) *runner {
 	t.Helper()
 
-	r := &buttonRunner{t: t, done: make(chan *tgframe.ResultPack, 1)}
+	r := &runner{t: t, done: make(chan *tgframe.ResultPack, 1)}
 
 	app := tgframe.NewApp()
 	app.AddPage("test", "Test", func(p *tgframe.Params) error {
-		r.last = clickRun{before: tcinput.ButtonClicked(p.State, id)}
-		r.last.drawn = tcinput.Button(p.Main, "Save", &tcinput.ButtonConf{ID: id})
+		r.last = clickRun{}
+		page(p, &r.last)
 		return nil
 	})
 
@@ -49,11 +51,13 @@ func newButtonRunner(t *testing.T, id string) *buttonRunner {
 	r.session = session
 	t.Cleanup(session.Close)
 
+	r.run(&tgframe.EventEmpty{})
+
 	return r
 }
 
 // run handles the event and returns what the page function saw.
-func (r *buttonRunner) run(event tgframe.Event) clickRun {
+func (r *runner) run(event tgframe.Event) clickRun {
 	r.t.Helper()
 
 	r.session.HandleEvent(event)
@@ -64,6 +68,17 @@ func (r *buttonRunner) run(event tgframe.Event) clickRun {
 	}
 
 	return r.last
+}
+
+// newButtonRunner is a page that asks about the button under id, then draws
+// it.
+func newButtonRunner(t *testing.T, id string) *runner {
+	t.Helper()
+
+	return newRunner(t, func(p *tgframe.Params, seen *clickRun) {
+		seen.before = tcinput.ButtonClicked(p.State, id)
+		seen.drawn = tcinput.Button(p.Main, "Save", &tcinput.ButtonConf{ID: id})
+	})
 }
 
 // TestButtonClickedBeforeDraw is the point of ButtonClicked: the page knows
@@ -121,24 +136,69 @@ func TestButtonClickedFalse(t *testing.T) {
 	})
 }
 
+// TestButtonClickedNeverDrawn is what the id check is for. Button reports a
+// click only where the button is written, so a made-up click id can only name
+// something on the screen; ButtonClicked is asked before anything is written,
+// so it has to check that itself — or a click id the client invented would run
+// an action the page never offered.
+func TestButtonClickedNeverDrawn(t *testing.T) {
+	r := newRunner(t, func(p *tgframe.Params, seen *clickRun) {
+		seen.before = tcinput.ButtonClicked(p.State, "delete")
+	})
+
+	got := r.run(&tgframe.EventClick{ID: "button_component_delete"})
+	if got.before {
+		t.Error("ButtonClicked = true for a button the page never drew," +
+			" want false")
+	}
+}
+
 // TestDownloadButtonClicked pins the same behaviour for the download button,
 // whose ids come from its own component name.
 func TestDownloadButtonClicked(t *testing.T) {
-	state := tgframe.NewState()
-	state.SetClickID("download_button_component_report")
+	newDownloadRunner := func(t *testing.T) *runner {
+		t.Helper()
 
-	if !tcinput.DownloadButtonClicked(state, "report") {
-		t.Error("DownloadButtonClicked = false, want true")
+		return newRunner(t, func(p *tgframe.Params, seen *clickRun) {
+			seen.before = tcinput.DownloadButtonClicked(p.State, "report")
+			seen.drawn = tcinput.DownloadButton(p.Main, "Report", []byte("body"),
+				&tcinput.DownloadButtonConf{ID: "report"})
+		})
 	}
 
-	if tcinput.DownloadButtonClicked(state, "other") {
-		t.Error("DownloadButtonClicked = true for another id, want false")
-	}
+	t.Run("clicked", func(t *testing.T) {
+		r := newDownloadRunner(t)
 
-	// The button's own return value agrees with it.
-	if !tcinput.DownloadButton(defaultContainer(state), "Report", []byte("body"),
-		&tcinput.DownloadButtonConf{ID: "report"}) {
+		got := r.run(&tgframe.EventClick{ID: "download_button_component_report"})
+		if !got.before {
+			t.Error("DownloadButtonClicked = false before the draw, want true")
+		}
 
-		t.Error("DownloadButton = false, want true")
-	}
+		if got.before != got.drawn {
+			t.Errorf("DownloadButtonClicked = %v, DownloadButton = %v,"+
+				" want the same", got.before, got.drawn)
+		}
+	})
+
+	t.Run("another button", func(t *testing.T) {
+		r := newDownloadRunner(t)
+
+		got := r.run(&tgframe.EventClick{ID: "download_button_component_other"})
+		if got.before || got.drawn {
+			t.Errorf("DownloadButtonClicked = %v, DownloadButton = %v,"+
+				" want both false", got.before, got.drawn)
+		}
+	})
+
+	t.Run("never drawn", func(t *testing.T) {
+		r := newRunner(t, func(p *tgframe.Params, seen *clickRun) {
+			seen.before = tcinput.DownloadButtonClicked(p.State, "secret")
+		})
+
+		got := r.run(&tgframe.EventClick{ID: "download_button_component_secret"})
+		if got.before {
+			t.Error("DownloadButtonClicked = true for a button the page never" +
+				" drew, want false")
+		}
+	})
 }

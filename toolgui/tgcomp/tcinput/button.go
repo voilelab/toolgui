@@ -60,6 +60,18 @@ func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 // Comparing an id with [tgframe.State.GetClickID] directly does not work:
 // GetClickID returns the button's component id, which carries the component
 // name in front of the conf id.
+//
+// The click id comes from the client, and the page has not drawn anything yet
+// to check it against, so the button the last run put on the screen is what
+// it's checked against — the same guard an upload naming a component id goes
+// through. A click on a button that was not there is not a click.
 func ButtonClicked(s *tgframe.State, id string) bool {
-	return s.GetClickID() == tcutil.NormalID(buttonComponentName, id)
+	return clicked(s, buttonComponentName, id)
+}
+
+// clicked reports whether the click this run is handling is the one on the
+// component of componentName with the given conf id.
+func clicked(s *tgframe.State, componentName, id string) bool {
+	compID := tcutil.NormalID(componentName, id)
+	return s.GetClickID() == compID && s.HasComponentID(compID)
 }

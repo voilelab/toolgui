@@ -67,8 +67,13 @@ tgcomp.Button(p.Main, "Load details", &tgcomp.ButtonConf{ID: "load_details"})
 * `id` is the same string the button's `ButtonConf.ID` carries — the button
   needs one, since the id a label derives changes with the label.
 
-It is true for exactly the run that handles the click, the same as what
-`Button` returns, and false again on the next one. Don't compare
-`State.GetClickID()` with the conf id yourself: the click id carries the
-component name in front of it
-([Identity](../../architecture/components.md#the-name-in-front-of-the-id)).
+It is true for exactly the run that handles the click on a button the page has
+on the screen — the same as what `Button` returns there — and false again on
+the next run. A click id naming a button the last run never drew is not one:
+the click comes from the client, and `ButtonClicked` is asked before the page
+has written anything to check it against, so it checks that itself.
+
+Don't compare `State.GetClickID()` with the conf id yourself: the click id
+carries the component name in front of it
+([Identity](../../architecture/components.md#the-name-in-front-of-the-id)),
+and comparing it by hand skips that check.
