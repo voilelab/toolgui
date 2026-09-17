@@ -24,10 +24,14 @@ On a narrow screen the column collapses behind a `Menu` button.
 
 The version line reads the module version out of the binary's build info, so an
 app that depends on a released toolgui shows that tag with nothing to configure.
-A build off a tag shows the pseudo-version the toolchain derives from the
-commit, `v0.0.0-{date}-{revision}`. A build with no version at all -- `go run`,
-or `-buildvcs=false` -- falls back to the version recorded in the source at
-release time.
+A build off an untagged checkout shows the pseudo-version the toolchain derives
+from the commit, `v0.0.0-{date}-{revision}`.
+
+Only a build whose info names no commit at all falls back to a version recorded
+in the source: `go run`, a tree with no VCS metadata, or `-buildvcs=false`,
+which the wails CLI passes on every build. A release records its own tag there;
+anything built off `dev` reports `v0.0.0-unknown` rather than claiming a release
+it is not.
 
 Hide it with:
 
