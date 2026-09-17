@@ -113,6 +113,9 @@ outside reach that topmost dialog only, so dismissing it leaves the one under
 it open; a dialog with `Dismissible` off on top swallows them rather than
 letting the dialog beneath take them.
 
+A [popover](popover.md) opened inside a dialog counts as being on top of it,
+so ESC closes the popover first and the dialog on the press after.
+
 ```go
 d := tgcomp.Dialog(p.Main, "Delete confirm")
 why := tgcomp.Dialog(p.Main, "What deleting does")

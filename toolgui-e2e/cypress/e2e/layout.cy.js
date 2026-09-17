@@ -77,6 +77,43 @@ describe('Layout spec', () => {
     trigger().should('have.attr', 'aria-expanded', 'false')
   })
 
+  // Mantine hangs a popover's ESC off the dropdown, so it only fires while
+  // focus is already inside the panel -- not after the trigger opened it.
+  it('Popover closes on ESC from its trigger', () => {
+    cy.visit('/layout')
+    const trigger = () => cy.get('[id="popover_component_Advanced options"]')
+
+    trigger().click()
+    trigger().should('have.attr', 'aria-expanded', 'true')
+
+    // No click into the panel first: focus is still on the button.
+    cy.get('body').type('{esc}')
+    trigger().should('have.attr', 'aria-expanded', 'false')
+
+    trigger().click()
+    trigger().should('have.attr', 'aria-expanded', 'true')
+  })
+
+  // ESC goes to whichever overlay opened last, whatever kind it is.
+  it('A popover inside a dialog takes the ESC before the dialog does', () => {
+    cy.visit('/layout')
+    const trigger = () => cy.get('[id="popover_component_Delete options"]')
+
+    cy.get('#column_component_show_dialog_0').contains('Delete').click()
+    cy.get(DIALOG).should('have.length', 1)
+
+    trigger().click()
+    trigger().should('have.attr', 'aria-expanded', 'true')
+
+    cy.get('body').type('{esc}')
+    trigger().should('have.attr', 'aria-expanded', 'false')
+    cy.get(DIALOG).should('have.length', 1)
+
+    // With the popover gone the dialog is topmost again.
+    cy.get('body').type('{esc}')
+    cy.get(DIALOG).should('not.exist')
+  })
+
   // Text assertions here are scoped to the dialog itself: the column beside
   // the component shows the source, which names the same strings.
   it('Dialog draws nothing until something opens it', () => {

@@ -51,5 +51,9 @@ The open state lives on the client, which the server never sees and never
 sets. A widget inside the panel can rerun the page — the popover stays open
 across the rerun. Clicking outside it, or pressing `Escape`, closes it.
 
+`Escape` goes to whichever overlay was opened last, so a popover opened inside
+a [dialog](dialog.md) closes on the first press and leaves the dialog for the
+second.
+
 An open panel follows its button: it hides itself while the button is scrolled
 off the screen, and comes back when the button does.
