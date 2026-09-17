@@ -287,20 +287,58 @@ describe('Input', () => {
 
   it('Number', () => {
     cy.visit('/input')
-    cy.get('input[id=number_component_Number]').type('{backspace}2')
-    cy.get('input[id=number_component_Number]').blur()
-    cy.contains('Value: 12').should('exist')
+    const number = 'input[id=number_component_Number]'
+    const result = () => cy.get('#text_component_number_result')
 
-    // 123 is over the max of 20, so the input is invalid and never sent.
-    // Mantine's NumberInput is a text input that reports the range itself,
-    // so the mark to check is the one it puts on the field.
-    cy.get('input[id=number_component_Number]').type('{backspace}23')
-    cy.get('input[id=number_component_Number]').blur()
-    cy.get('input[id=number_component_Number]')
+    cy.get(number).type('{backspace}2')
+    cy.get(number).blur()
+    result().should('have.text', 'Value: 12')
+
+    // 123 is over the max of 20. The value still goes back -- Mantine's
+    // NumberInput is a text input that reports the range rather than
+    // enforcing it, so the mark to check on the field is its own -- and Go
+    // answers with no value at all rather than with the 12 it last had.
+    cy.get(number).type('{backspace}23')
+    cy.get(number).blur()
+    cy.get(number)
       .should('have.value', '123')
       .and('have.attr', 'aria-invalid', 'true')
     cy.contains('Value out of range').should('exist')
-    cy.contains('Value: 123').should('not.exist')
+    result().should('have.text', 'Value: <none>')
+
+    // The reverse case: with the box still out of range, a button elsewhere
+    // on the page must not hand the page function the old 12 as if it were
+    // what is on screen.
+    cy.get('button[id=button_component_save_number]').click()
+    cy.get('#text_component_number_saved').should('have.text', 'Saved: <none>')
+
+    // Back in range, the value reaches Go again.
+    cy.get(number).type('{backspace}')
+    cy.get(number).blur()
+    result().should('have.text', 'Value: 12')
+  })
+
+  // An empty box is not a zero. It used to be: Number('') is 0, and the 0 was
+  // sent as if the user had typed it.
+  it('Number cleared', () => {
+    cy.visit('/input')
+    const number = 'input[id=number_component_zeroable]'
+    const result = () => cy.get('#text_component_zeroable_result')
+
+    result().should('have.text', 'Value: <none>')
+
+    // A typed zero is a value and reaches Go as one.
+    cy.get(number).type('0')
+    cy.get(number).blur()
+    result().should('have.text', 'Value: 0')
+
+    cy.get(number).clear()
+    cy.get(number).blur()
+    result().should('have.text', 'Value: <none>')
+
+    // Enter reports without waiting for the field to lose focus.
+    cy.get(number).type('7{enter}')
+    result().should('have.text', 'Value: 7')
   })
 
   it('Form', () => {

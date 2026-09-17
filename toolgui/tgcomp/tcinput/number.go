@@ -95,6 +95,11 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 }
 
 // Number create a number input and return its value.
+//
+// The result is nil when the input holds nothing the page can use: it is
+// empty and the conf set no Default, or what the user left in it falls
+// outside Min/Max. The input shows the reason beside itself, so a page that
+// refuses a nil is refusing a value the user has already been told about.
 func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
 	cf := tgframe.OneConf("Number", conf)
 
@@ -126,5 +131,17 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 	}
 
 	v := T(*val)
+
+	// The client sends what the user typed whether it is in range or not, so
+	// the range is judged here. Out of range reports no value at all rather
+	// than the last legal one, which the page would take for the current one.
+	if comp.Min != nil && v < *comp.Min {
+		return nil
+	}
+
+	if comp.Max != nil && v > *comp.Max {
+		return nil
+	}
+
 	return &v
 }

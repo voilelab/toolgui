@@ -1,6 +1,7 @@
 # Number Input
 
-Number create a number input and return its value.
+Number create a number input and return its value, or nil when the input
+holds nothing the page can use.
 
 ## API
 
@@ -71,6 +72,29 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T]
 An integral `T` cannot step by 0, so an explicit zero step means 1. The value
 comes back from the client as a JSON number, so an integral `T` truncates it.
 
+## Range and the nil value
+
+`Min` and `Max` are reported, not enforced: the box keeps whatever the user
+typed, marks itself invalid and sends the value on as it is. `Number` then
+answers with nil rather than with the last value that was in range, so a
+button pressed while the box is out of range cannot act on a number that is
+no longer on screen.
+
+`Number` returns nil in exactly these cases:
+
+* the box is empty and the conf set no `Default`;
+* what the user left in the box falls outside `Min` or `Max`.
+
+An empty box is not a zero, and a value in range is unaffected -- a `Number`
+with no `Min` and no `Max` never returns nil once something has been typed
+into it. The range is judged on the value the page is handed, so an integral
+`T` is truncated first: with `Max` 20, a typed 20.9 is the 20 that is in
+range.
+
+The `Default` is not a fallback for a refused value. It stands while the
+input has sent nothing at all, which is what the box is showing; once the
+user has made the box invalid, nothing is reported for it.
+
 ## Example
 
 ```go
@@ -80,11 +104,16 @@ numberValue := tgcomp.Number(numberCompCol, "Number",
 		Color:       tcutil.ColorSuccess,
 	}).SetMin(10).SetMax(20).SetStep(2))
 
-valStr := ""
+// Out of range, numberValue is nil rather than the last value in range.
+valStr := "<none>"
 if numberValue != nil {
 	valStr = fmt.Sprint(*numberValue)
 }
 
 tgcomp.Text(numberCompCol, "Value: "+valStr,
 	&tgcomp.TextConf{ID: "number_result"})
+
+if tgcomp.Button(numberCompCol, "Save number") && numberValue != nil {
+	tgcomp.Text(numberCompCol, "Saved: "+valStr)
+}
 ```

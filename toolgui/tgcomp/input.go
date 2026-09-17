@@ -110,7 +110,8 @@ type Numeric = tcinput.Numeric
 // NumberConf is the configuration for the Number component.
 type NumberConf[T tcinput.Numeric] = tcinput.NumberConf[T]
 
-// Number create a number input and return its value.
+// Number create a number input and return its value, nil when the input holds
+// nothing the page can use -- see [tcinput.Number].
 //
 // A generic function cannot be forwarded by a var, so this is a wrapper rather
 // than an alias like its neighbours.

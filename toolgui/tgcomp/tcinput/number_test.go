@@ -250,3 +250,79 @@ func TestNumberOmitsUnsetBounds(t *testing.T) {
 		t.Errorf("min = %s (present %v), want 0", v, ok)
 	}
 }
+
+// TestNumberRefusesAValueOutOfRange pins the answer to the bug this range
+// check is for: the client sends whatever the user typed, so a value outside
+// Min/Max has to be reported as no value. Handing back the last legal one --
+// or the Default -- is what let a page save a number nobody had entered.
+func TestNumberRefusesAValueOutOfRange(t *testing.T) {
+	const id = "number_component_n"
+
+	bounded := func() *tcinput.NumberConf[int] {
+		return (&tcinput.NumberConf[int]{}).SetMin(10).SetMax(20)
+	}
+
+	for _, tc := range []struct {
+		name string
+		sent float64
+		conf *tcinput.NumberConf[int]
+		want *int
+	}{
+		{"below min", 9, bounded(), nil},
+		{"above max", 21, bounded(), nil},
+		{"at min", 10, bounded(), ptr(10)},
+		{"at max", 20, bounded(), ptr(20)},
+		{"within", 15, bounded(), ptr(15)},
+
+		// The Default is not a fallback for a refused value: it is as stale
+		// as the last legal one, and the box is not showing it.
+		{"out of range with a default", 99, bounded().SetDefault(12), nil},
+
+		// Only the bound that is set is judged.
+		{"min only", 99, (&tcinput.NumberConf[int]{}).SetMin(10), ptr(99)},
+		{"max only", -99, (&tcinput.NumberConf[int]{}).SetMax(20), ptr(-99)},
+
+		// No bounds, no check: this is the Number that behaves as it always
+		// did.
+		{"no bounds", 9999, &tcinput.NumberConf[int]{}, ptr(9999)},
+
+		// The range is judged on what the page is handed, so an integral T is
+		// truncated first: 20.9 is the 20 that is in range, not the 20.9 that
+		// is not.
+		{"truncated into range", 20.9, bounded(), ptr(20)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			state := tgframe.NewState()
+			state.Set(id, tc.sent)
+
+			var packs []tgframe.NotifyPack
+			got := tcinput.Number(testContainer(state, &packs), "n", tc.conf)
+
+			switch {
+			case tc.want == nil && got != nil:
+				t.Fatalf("got %v, want nil", *got)
+			case tc.want != nil && got == nil:
+				t.Fatalf("got nil, want %v", *tc.want)
+			case tc.want != nil && *got != *tc.want:
+				t.Fatalf("got %v, want %v", *got, *tc.want)
+			}
+		})
+	}
+}
+
+// TestNumberFallsBackToTheDefaultWithNothingSent keeps the untouched box
+// apart from the refused one: with no value in the state at all the Default
+// still stands, bounds or no bounds.
+func TestNumberFallsBackToTheDefaultWithNothingSent(t *testing.T) {
+	conf := (&tcinput.NumberConf[int]{}).SetMin(10).SetMax(20).SetDefault(12)
+
+	var packs []tgframe.NotifyPack
+	got := tcinput.Number(testContainer(tgframe.NewState(), &packs), "n", conf)
+	if got == nil || *got != 12 {
+		t.Fatalf("got %v, want 12", got)
+	}
+}
+
+func ptr[T any](v T) *T {
+	return &v
+}

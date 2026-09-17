@@ -694,13 +694,34 @@ func InputPage(p *tgframe.Params) error {
 			Color:       tcutil.ColorSuccess,
 		}).SetDefault(10).SetMin(10).SetMax(20).SetStep(2))
 
-		valStr := ""
+		// Out of range, Number reports no value rather than the last legal
+		// one, so nothing below can act on a number the user has replaced.
+		valStr := "<none>"
 		if numberValue != nil {
 			valStr = fmt.Sprint(*numberValue)
 		}
 
 		tgcomp.Text(numberCompCol, "Value: "+valStr,
 			&tgcomp.TextConf{ID: "number_result"})
+
+		if tgcomp.Button(numberCompCol, "Save number",
+			&tgcomp.ButtonConf{ID: "save_number"}) {
+			tgcomp.Text(numberCompCol, "Saved: "+valStr,
+				&tgcomp.TextConf{ID: "number_saved"})
+		}
+
+		// No default and no bounds: an empty box reports nothing, where a
+		// typed zero is a value like any other.
+		zeroable := tgcomp.Number[int](numberCompCol, "Zeroable",
+			&tcinput.NumberConf[int]{ID: "zeroable"})
+
+		zeroStr := "<none>"
+		if zeroable != nil {
+			zeroStr = fmt.Sprint(*zeroable)
+		}
+
+		tgcomp.Text(numberCompCol, "Value: "+zeroStr,
+			&tgcomp.TextConf{ID: "zeroable_result"})
 	})
 
 	tgcomp.Divider(p.Main, &tgcomp.DividerConf{ID: "12"})
