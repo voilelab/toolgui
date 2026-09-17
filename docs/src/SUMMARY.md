@@ -89,6 +89,7 @@
     * [Message](components/misc/message.md)
     * [Progress Bar](components/misc/progress_bar.md)
     * [Spinner](components/misc/spinner.md)
+    * [Toast](components/misc/toast.md)
     * [Status](components/misc/status.md)
     * [🧪 Iframe](components/misc/iframe.md)
     * [🧪 Plugin](components/misc/plugin.md)

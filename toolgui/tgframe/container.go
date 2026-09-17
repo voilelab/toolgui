@@ -129,6 +129,22 @@ func (c *Container) With(f func(c *Container)) {
 	f(c)
 }
 
+// RunSeq is the serial of the run this container belongs to, and rises with
+// every run. Zero outside a run.
+//
+// A component that stands for something that happened rather than for a piece
+// of the page puts it in its props. The client keys a node by where it sits,
+// so a component written twice in the same place arrives as the same node with
+// the same props, and nothing on the client can tell the second occurrence
+// from the first one redrawn. The serial is what makes them different.
+func (c *Container) RunSeq() uint64 {
+	if c.run == nil {
+		return 0
+	}
+
+	return c.run.seq
+}
+
 // RemoveComponent takes comp off the screen and gives back its own id, not
 // those of anything it added below, so this run may claim it again and
 // [App.Run] drops the state under an id nothing claims, as [Slot.Clear] does.

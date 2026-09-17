@@ -6,10 +6,12 @@
 // Mantine's variables and win where the two meet.
 import '@mantine/core/styles.css'
 import '@mantine/dates/styles.css'
+import '@mantine/notifications/styles.css'
 import '@toolgui-web/lib/src/assets/css/theme.css'
 
 import React, { Component } from 'react'
-import { MantineProvider } from '@mantine/core'
+import { MantineProvider, getDefaultZIndex } from '@mantine/core'
+import { Notifications } from '@mantine/notifications'
 
 import { Forest } from './Nodes'
 import { clearState } from '../components/state'
@@ -200,6 +202,11 @@ export class App extends Component<AppProps, AppState> {
     return (
       <MantineProvider defaultColorScheme={this.defaultColorScheme}
         colorSchemeManager={themeModeManager}>
+        {/* Where every Toast lands. Above the dialogs and their popovers: a
+            toast is transient and says what just happened, so whatever it was
+            fired from must not cover it. */}
+        <Notifications zIndex={getDefaultZIndex('max')} />
+
         <ThemeModeSync>
           {(themeMode) =>
             <div className="toolgui-shell">

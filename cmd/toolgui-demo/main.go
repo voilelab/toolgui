@@ -996,6 +996,19 @@ func MiscPage(p *tgframe.Params) error {
 
 	tgcomp.Divider(p.Main)
 
+	toastCompCol, toastCodeCol := tgcomp.EqColumn2(
+		p.Main, &tgcomp.ColumnConf{ID: "show_toast"})
+	tgcomp.Echo(toastCodeCol, code, func() {
+		if tgcomp.Button(toastCompCol, "Save") {
+			tgcomp.Toast(toastCompCol, "Saved to disk",
+				&tgcomp.ToastConf{Icon: "✅"})
+			tgcomp.Toast(toastCompCol, "Two rows changed",
+				&tgcomp.ToastConf{Icon: "📝", Duration: 10 * time.Second})
+		}
+	})
+
+	tgcomp.Divider(p.Main)
+
 	errorCompCol, errorCodeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "show_error"})
 	if tgcomp.Button(errorCompCol, "Show error") {

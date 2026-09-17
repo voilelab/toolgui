@@ -87,6 +87,13 @@ var Spinner = tcmisc.Spinner
 // SpinnerConf is the configuration for the Spinner component.
 type SpinnerConf = tcmisc.SpinnerConf
 
+// Toast shows a one-off notification that takes itself off the screen again.
+// It is fired once per run, so every run that reaches the call fires it again.
+var Toast = tcmisc.Toast
+
+// ToastConf is the configuration for the Toast component.
+type ToastConf = tcmisc.ToastConf
+
 // Status reports a piece of work while the page function does it.
 var Status = tcmisc.Status
 
