@@ -43,8 +43,8 @@ const (
 	opfsLockName = ".lock"
 
 	// opfsStatePrefix and the millisecond stamp after it name a state's
-	// directory. The stamp is what lets the sweep leave a directory alone
-	// that was made moments ago and has no lock file yet.
+	// directory. The stamp is what lets the sweep leave a directory alone that
+	// was made moments ago and may still be setting itself up.
 	opfsStatePrefix = "state-"
 
 	// opfsPoolSize is how many files are kept created and open ahead of
@@ -56,8 +56,8 @@ const (
 	// once rather than per call.
 	opfsChunkSize = 64 << 10
 
-	// opfsSweepGrace is how long a state directory with no lock file yet is
-	// taken to be one still being set up.
+	// opfsSweepGrace is how long a state directory is taken to be one still
+	// being set up, and left alone whatever is or is not in it.
 	opfsSweepGrace = time.Minute
 )
 
@@ -342,6 +342,17 @@ func opfsOrphaned(root js.Value, name string) bool {
 		return false
 	}
 
+	// Age decides whether a directory can be judged at all, before anything in
+	// it is looked at. Setting one up is a chain of promises, and for the turns
+	// of the event loop between its lock file being made and that file's handle
+	// being taken it is indistinguishable from one nobody owns -- so a young
+	// directory is left alone whatever state it is in. A sweep runs while this
+	// program's own first state is still setting itself up, and while another
+	// tab's may be.
+	if age <= opfsSweepGrace {
+		return false
+	}
+
 	dir, err := opfsAwaitCall(root, "getDirectoryHandle", name)
 	if err != nil {
 		// Not a directory, or gone between the listing and here.
@@ -350,9 +361,8 @@ func opfsOrphaned(root js.Value, name string) bool {
 
 	lockFile, err := opfsAwaitCall(dir, "getFileHandle", opfsLockName)
 	if err != nil {
-		// Setting a directory up takes a few turns of the event loop, and it
-		// has no lock file for those. Only an old one is abandoned.
-		return age > opfsSweepGrace
+		// Old enough to judge, and it never got as far as a lock file.
+		return true
 	}
 
 	lock, err := opfsAwaitCall(lockFile, "createSyncAccessHandle")

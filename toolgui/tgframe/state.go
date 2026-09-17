@@ -18,8 +18,10 @@ type State struct {
 	funcCache map[string]map[string]any
 
 	// files is shared with the states cloned from this one, so no two of them
-	// can hand out the same path. Its directory is made on the first upload,
-	// so a state that never sees one leaves nothing behind.
+	// can hand out the same path. On a server its directory waits for the
+	// first upload, so a state that never sees one leaves nothing behind; in
+	// the browser it is opened with the state, because what an upload needs
+	// there has to be ready before one can arrive.
 	files *fileStore
 
 	clickID string
@@ -248,8 +250,8 @@ func (s *State) GetBool(key string) bool {
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
-// was there. The content is streamed to wherever the build keeps files, so the
-// upload never has to fit in memory.
+// was there. It is streamed to wherever the build keeps files, so what r
+// yields is never held in memory all at once.
 func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
 	file, err := s.NewFile(name)
 	if err != nil {

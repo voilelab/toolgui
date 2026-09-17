@@ -142,8 +142,10 @@ func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
 // page waits for it.
 //
 // Unlike the other transports it takes the file in one call: the page has
-// already made the whole thing a base64 string to get it here, and there is
-// no filesystem in the tab to stream it to.
+// already made the whole thing a base64 string to get it here. Where the bytes
+// then go is [tgframe.State]'s business -- in this build, the origin private
+// file system -- but they have to fit in the tab to make the crossing, which
+// is what the chunked transport is for.
 func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 	// The lock is held across the write: a start on another goroutine must
 	// not replace the state this is storing into.

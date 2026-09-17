@@ -29,8 +29,9 @@ binary itself has to do the same.
 
 Two reasons, and only the first is a hard one:
 
-* Uploads are kept in the origin private file system, and the only way to read
-  and write one without awaiting a promise is
+* Uploads are kept in the origin private file system -- where they go once they
+  arrive; getting there is still one base64 string, so a file has to fit in the
+  tab to cross. The only way to read and write one without awaiting a promise is
   `FileSystemFileHandle.createSyncAccessHandle`, which exists in a dedicated
   worker and nowhere else. The store cannot await anything — `uploadFile`
   arrives on the JavaScript callback stack, where a Go function that blocks

@@ -273,7 +273,10 @@ func findBrowser() (string, error) {
 }
 
 // pageHTML boots the worker and relays what it says back to the server. The
-// posts are chained so the output arrives in the order it was printed.
+// posts are chained so the output arrives in the order it was printed, and the
+// chain swallows a failed one: a rejection left in it would skip every post
+// after it, the exit included, and the run would sit here until it timed out
+// rather than report how the test went.
 const pageHTML = `<!doctype html>
 <meta charset="utf-8">
 <title>toolgui wasmtest</title>
@@ -284,7 +287,7 @@ let queue = Promise.resolve()
 let done = false
 
 function post(path, body) {
-  queue = queue.then(() => fetch(path, { method: 'POST', body }))
+  queue = queue.then(() => fetch(path, { method: 'POST', body }).catch(() => {}))
   return queue
 }
 

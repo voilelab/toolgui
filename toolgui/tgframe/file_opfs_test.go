@@ -439,6 +439,14 @@ func TestOPFSSweep(t *testing.T) {
 	fresh := opfsFixture(t, root,
 		opfsStatePrefix+strconv.FormatInt(time.Now().UnixMilli(), 10)+"-fresh", false)
 
+	// And a directory of this millisecond whose lock file is there but not yet
+	// held, which is what a state looks like between making the file and taking
+	// its handle. Sweeping on the lock alone would take this one: the sweep runs
+	// while this program's own first state is still setting itself up, and
+	// while another tab's may be.
+	opening := opfsFixture(t, root,
+		opfsStatePrefix+strconv.FormatInt(time.Now().UnixMilli(), 10)+"-opening", true)
+
 	// Somebody else's directory. The origin's root is shared, and ours is only
 	// ours by convention.
 	foreign := opfsFixture(t, root, "not-a-toolgui-state-"+rand.Text(), true)
@@ -455,7 +463,7 @@ func TestOPFSSweep(t *testing.T) {
 		}
 	}
 
-	for _, name := range []string{fresh, foreign, bodies.name} {
+	for _, name := range []string{fresh, opening, foreign, bodies.name} {
 		if !opfsEntry(t, root, name, true) {
 			t.Errorf("expect %q to survive the sweep", name)
 		}
