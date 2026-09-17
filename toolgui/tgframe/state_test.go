@@ -153,8 +153,9 @@ func TestGetNumberNamedType(t *testing.T) {
 }
 
 // TestGetNumberUnrepresentable pins the numbers an int cannot hold. Go leaves
-// the conversion unspecified for these, so the getter reports them as absent
-// rather than handing back whatever the hardware produced.
+// the conversion unspecified for these, and the platforms disagree on what
+// they do: amd64 wraps 2^63 to MinInt64, wasm saturates it at MaxInt64. So
+// the getter reports them as absent rather than handing either back.
 func TestGetNumberUnrepresentable(t *testing.T) {
 	cases := []struct {
 		name string
@@ -179,11 +180,23 @@ func TestGetNumberUnrepresentable(t *testing.T) {
 		})
 	}
 
-	// The edges themselves still read: only past them is out.
+	// int is what it is on the platform, so the 64-bit bound is pinned
+	// through int64 as well: 2^63 is exactly a float64, and no int64.
 	state := NewState()
+	state.Set(testStateKey, -float64(math.MinInt64))
+	if got, ok := state.GetNumber[int64](testStateKey); ok {
+		t.Errorf("GetNumber[int64] = %v, true, want false", got)
+	}
+
+	// The edges themselves still read: only past them is out.
 	state.Set(testStateKey, float64(math.MinInt))
 	if got, ok := state.GetNumber[int](testStateKey); !ok || got != math.MinInt {
 		t.Errorf("GetNumber[int] = %v, %v, want MinInt, true", got, ok)
+	}
+
+	state.Set(testStateKey, float64(math.MinInt64))
+	if got, ok := state.GetNumber[int64](testStateKey); !ok || got != math.MinInt64 {
+		t.Errorf("GetNumber[int64] = %v, %v, want MinInt64, true", got, ok)
 	}
 
 	// A float64 T holds every number the state can land, infinities included.

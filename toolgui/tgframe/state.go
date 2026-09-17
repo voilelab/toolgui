@@ -232,17 +232,30 @@ func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 	}
 
 	// Written as arithmetic rather than a type switch because a named type's
-	// dynamic type is itself, not the type it is defined from.
-	integral := T(1)/T(2) == T(0)
+	// dynamic type is itself, not the type it is defined from. A floating
+	// point T holds every number the state can land, infinities included.
+	if T(1)/T(2) != T(0) {
+		return T(f), true
+	}
 
-	// Go leaves the conversion unspecified outside an integral T's range -- on
-	// amd64 a 1e20 lands on math.MinInt -- so the round trip is what catches
-	// it, whatever that value is.
-	if integral && (math.IsNaN(f) || float64(T(f)) != math.Trunc(f)) {
+	// Go leaves a float-to-integer conversion unspecified outside the target's
+	// range, and the platforms disagree on what they do there: amd64 wraps to
+	// MinInt64, wasm saturates at MaxInt64. So the range is checked in float64
+	// first, against bounds that are exact -- 2^63 has a float64, MaxInt64
+	// does not.
+	if math.IsNaN(f) || f < float64(math.MinInt64) || f >= -float64(math.MinInt64) {
 		return 0, false
 	}
 
-	return T(f), true
+	// In range for an int64, which may still be wider than T. A conversion
+	// between integer types is a defined truncation, so the round trip is
+	// enough from here.
+	i := int64(f)
+	if int64(T(i)) != i {
+		return 0, false
+	}
+
+	return T(i), true
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
