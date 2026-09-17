@@ -388,7 +388,7 @@ func TestDataFrameReadsSelection(t *testing.T) {
 }
 
 // A selection left over from a longer table is dropped rather than clamped,
-// the way Select and Multiselect drop one: the row it named is gone.
+// the way Select and MultiSelect drop one: the row it named is gone.
 func TestDataFrameDropsSelectionOutsideRows(t *testing.T) {
 	state := tgframe.NewState()
 	state.Set(defaultDataFrameID(selectableHead), []int{1, 99, -1})

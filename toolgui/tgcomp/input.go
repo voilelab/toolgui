@@ -1,22 +1,33 @@
 package tgcomp
 
 import (
+	"time"
+
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 // Button create a button and return true if it's clicked.
-var Button = tcinput.Button
+func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
+	return tcinput.Button(c, label, conf...)
+}
 
 // ButtonConf is the configuration for the Button component.
 type ButtonConf = tcinput.ButtonConf
 
 // ButtonClicked reports whether the click this run is handling is the one on
 // the button with the given id, and can be asked before the button is drawn.
-var ButtonClicked = tcinput.ButtonClicked
+func ButtonClicked(s *tgframe.State, id string) bool {
+	return tcinput.ButtonClicked(s, id)
+}
 
 // DownloadButton create a download button component.
-var DownloadButton = tcinput.DownloadButton
+func DownloadButton(
+	c *tgframe.Container, text string, body []byte,
+	conf ...*DownloadButtonConf) bool {
+
+	return tcinput.DownloadButton(c, text, body, conf...)
+}
 
 // DownloadButtonConf is the configuration for the DownloadButton component.
 type DownloadButtonConf = tcinput.DownloadButtonConf
@@ -24,84 +35,143 @@ type DownloadButtonConf = tcinput.DownloadButtonConf
 // DownloadButtonClicked reports whether the click this run is handling is the
 // one on the download button with the given id, and can be asked before the
 // button is drawn.
-var DownloadButtonClicked = tcinput.DownloadButtonClicked
+func DownloadButtonClicked(s *tgframe.State, id string) bool {
+	return tcinput.DownloadButtonClicked(s, id)
+}
 
 // Checkbox create a checkbox and return true if it's checked.
-var Checkbox = tcinput.Checkbox
+func Checkbox(c *tgframe.Container, label string, conf ...*CheckboxConf) bool {
+	return tcinput.Checkbox(c, label, conf...)
+}
 
 // CheckboxConf is the configuration for the Checkbox component.
 type CheckboxConf = tcinput.CheckboxConf
 
 // Toggle create a switch and return true if it's on.
-var Toggle = tcinput.Toggle
+func Toggle(c *tgframe.Container, label string, conf ...*ToggleConf) bool {
+	return tcinput.Toggle(c, label, conf...)
+}
 
 // ToggleConf is the configuration for the Toggle component.
 type ToggleConf = tcinput.ToggleConf
 
 // ColorPicker create a color picker and return the picked color.
-var ColorPicker = tcinput.ColorPicker
+func ColorPicker(
+	c *tgframe.Container, label string, conf ...*ColorPickerConf) string {
+
+	return tcinput.ColorPicker(c, label, conf...)
+}
 
 // ColorPickerConf is the configuration for the ColorPicker component.
 type ColorPickerConf = tcinput.ColorPickerConf
 
-// Datepicker create a datepicker and return its selected date.
-var Datepicker = tcinput.Datepicker
+// DatePicker create a datepicker and return its selected date.
+func DatePicker(
+	c *tgframe.Container, label string, conf ...*DatePickerConf) *time.Time {
 
-// DatepickerConf is the configuration for the Datepicker component.
-type DatepickerConf = tcinput.DatepickerConf
+	return tcinput.DatePicker(c, label, conf...)
+}
 
-// Timepicker create a timepicker and return its selected time.
-var Timepicker = tcinput.Timepicker
+// DatePickerConf is the configuration for the DatePicker component.
+type DatePickerConf = tcinput.DatePickerConf
 
-// TimepickerConf is the configuration for the Timepicker component.
-type TimepickerConf = tcinput.TimepickerConf
+// TimePicker create a timepicker and return its selected time.
+func TimePicker(
+	c *tgframe.Container, label string, conf ...*TimePickerConf) *time.Time {
 
-// Datetimepicker create a datetimepicker and return its selected datetime.
-var Datetimepicker = tcinput.Datetimepicker
+	return tcinput.TimePicker(c, label, conf...)
+}
 
-// DatetimepickerConf is the configuration for the Datetimepicker component.
-type DatetimepickerConf = tcinput.DatetimepickerConf
+// TimePickerConf is the configuration for the TimePicker component.
+type TimePickerConf = tcinput.TimePickerConf
 
-// Fileupload create a fileupload and return its selected file.
-var Fileupload = tcinput.Fileupload
+// DateTimePicker create a datetimepicker and return its selected datetime.
+func DateTimePicker(
+	c *tgframe.Container, label string,
+	conf ...*DateTimePickerConf) *time.Time {
 
-// FileuploadConf is the configuration for the Fileupload component.
-type FileuploadConf = tcinput.FileuploadConf
+	return tcinput.DateTimePicker(c, label, conf...)
+}
+
+// DateTimePickerConf is the configuration for the DateTimePicker component.
+type DateTimePickerConf = tcinput.DateTimePickerConf
+
+// FileUpload create a fileupload and return its selected file.
+func FileUpload(
+	c *tgframe.Container, label, accept string,
+	conf ...*FileUploadConf) *FileObject {
+
+	return tcinput.FileUpload(c, label, accept, conf...)
+}
+
+// FileUploadConf is the configuration for the FileUpload component.
+type FileUploadConf = tcinput.FileUploadConf
+
+// FileObject is what FileUpload hands back: the file the app user picked.
+type FileObject = tcinput.FileObject
 
 // Radio create a group of radio items and return its selected value.
-var Radio = tcinput.Radio
+func Radio(
+	c *tgframe.Container, label string, items []string,
+	conf ...*RadioConf) *int {
+
+	return tcinput.Radio(c, label, items, conf...)
+}
 
 // RadioConf is the configuration for the Radio component.
 type RadioConf = tcinput.RadioConf
 
 // Select create a select dropdown list and return its selected value.
-var Select = tcinput.Select
+func Select(
+	c *tgframe.Container, label string, items []string,
+	conf ...*SelectConf) *int {
+
+	return tcinput.Select(c, label, items, conf...)
+}
 
 // SelectConf is the configuration for the Select component.
 type SelectConf = tcinput.SelectConf
 
-// Multiselect create a dropdown list that takes more than one item and return
+// MultiSelect create a dropdown list that takes more than one item and return
 // the indices of the selected ones.
-var Multiselect = tcinput.Multiselect
+func MultiSelect(
+	c *tgframe.Container, label string, items []string,
+	conf ...*MultiSelectConf) []int {
 
-// MultiselectConf is the configuration for the Multiselect component.
-type MultiselectConf = tcinput.MultiselectConf
+	return tcinput.MultiSelect(c, label, items, conf...)
+}
+
+// MultiSelectConf is the configuration for the MultiSelect component.
+type MultiSelectConf = tcinput.MultiSelectConf
 
 // SelectSlider create a slider over a list of items and return the index of
 // the selected one.
-var SelectSlider = tcinput.SelectSlider
+func SelectSlider(
+	c *tgframe.Container, label string, items []string,
+	conf ...*SelectSliderConf) int {
+
+	return tcinput.SelectSlider(c, label, items, conf...)
+}
 
 // SelectSliderConf is the configuration for the SelectSlider component.
 type SelectSliderConf = tcinput.SelectSliderConf
 
 // Textarea create a textarea and return its value.
-var Textarea = tcinput.Textarea
+func Textarea(
+	c *tgframe.Container, label string, conf ...*TextareaConf) string {
+
+	return tcinput.Textarea(c, label, conf...)
+}
 
 // TextareaConf is the configuration for the Textarea component.
 type TextareaConf = tcinput.TextareaConf
 
 // Textbox create a textbox and return its value.
-var Textbox = tcinput.Textbox
+func Textbox(
+	c *tgframe.Container, label string, conf ...*TextboxConf) string {
+
+	return tcinput.Textbox(c, label, conf...)
+}
 
 // TextboxConf is the configuration for the Textbox component.
 type TextboxConf = tcinput.TextboxConf
@@ -114,9 +184,6 @@ type NumberConf[T tcinput.Numeric] = tcinput.NumberConf[T]
 
 // Number create a number input and return its value, always within Conf.Min
 // and Conf.Max -- see [tcinput.Number].
-//
-// A generic function cannot be forwarded by a var, so this is a wrapper rather
-// than an alias like its neighbours.
 func Number[T tcinput.Numeric](
 	c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
 
@@ -127,9 +194,6 @@ func Number[T tcinput.Numeric](
 type SliderConf[T tcinput.Numeric] = tcinput.SliderConf[T]
 
 // Slider create a slider over a numeric range and return its value.
-//
-// A generic function cannot be forwarded by a var, so this is a wrapper rather
-// than an alias like its neighbours.
 func Slider[T tcinput.Numeric](
 	c *tgframe.Container, label string, conf ...*SliderConf[T]) T {
 
@@ -137,7 +201,9 @@ func Slider[T tcinput.Numeric](
 }
 
 // Form create a form component.
-var Form = tcinput.Form
+func Form(c *tgframe.Container, conf ...*FormConf) *tgframe.Container {
+	return tcinput.Form(c, conf...)
+}
 
 // FormConf is the configuration for the Form component.
 type FormConf = tcinput.FormConf

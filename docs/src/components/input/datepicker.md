@@ -1,11 +1,11 @@
-# Datepicker
+# DatePicker
 
-Datepicker create a datepicker and return its selected date.
+DatePicker create a datepicker and return its selected date.
 
 ## API
 
 ```go
-func Datepicker(c *tgframe.Container, label string, conf ...*DatepickerConf) *time.Time
+func DatePicker(c *tgframe.Container, label string, conf ...*DatePickerConf) *time.Time
 ```
 
 * `c` is Parent container.
@@ -15,8 +15,8 @@ func Datepicker(c *tgframe.Container, label string, conf ...*DatepickerConf) *ti
   is selected.
 
 ```go
-// DatepickerConf is the configuration for the Datepicker component.
-type DatepickerConf struct {
+// DatePickerConf is the configuration for the DatePicker component.
+type DatePickerConf struct {
 	tgframe.Base // ID
 
 	// Default is the date the picker starts on, read to the day. It is only
@@ -27,17 +27,17 @@ type DatepickerConf struct {
 	Disabled bool
 }
 
-func (c *DatepickerConf) SetDefault(v time.Time) *DatepickerConf
+func (c *DatePickerConf) SetDefault(v time.Time) *DatePickerConf
 ```
 
 Only the day is kept: a clock on the `Default` is dropped, the way
-[Timepicker](timepicker.md) drops the date. That is what lets the three pickers
+[TimePicker](timepicker.md) drops the date. That is what lets the three pickers
 be compared and added without a conversion in between.
 
 ## Example
 
 ```go
-dateValue := tgcomp.Datepicker(p.Main, "Datepicker")
+dateValue := tgcomp.DatePicker(p.Main, "DatePicker")
 if dateValue != nil {
 	tgcomp.Text(p.Main, "Value: "+dateValue.Format("2006-01-02"),
 		&tgcomp.TextConf{ID: "datepicker_result"})
@@ -47,8 +47,8 @@ if dateValue != nil {
 Starting on a date, until the app user picks another:
 
 ```go
-tgcomp.Datepicker(p.Main, "Datepicker",
-	(&tgcomp.DatepickerConf{}).SetDefault(
+tgcomp.DatePicker(p.Main, "DatePicker",
+	(&tgcomp.DatePickerConf{}).SetDefault(
 		time.Date(2026, 9, 8, 0, 0, 0, 0, time.UTC)))
 ```
 

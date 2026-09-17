@@ -20,7 +20,7 @@ type multiselectComponent struct {
 	Disabled      bool     `json:"disabled"`
 }
 
-func newMultiselectComponent(label string, items []string) *multiselectComponent {
+func newMultiSelectComponent(label string, items []string) *multiselectComponent {
 	return &multiselectComponent{
 		BaseComponent: &tgframe.BaseComponent{
 			Name: multiselectComponentName,
@@ -31,8 +31,8 @@ func newMultiselectComponent(label string, items []string) *multiselectComponent
 	}
 }
 
-// MultiselectConf is the configuration for the Multiselect component.
-type MultiselectConf struct {
+// MultiSelectConf is the configuration for the MultiSelect component.
+type MultiSelectConf struct {
 	tgframe.Base
 
 	// Default is the selection the component starts with, as indices into
@@ -51,18 +51,18 @@ type MultiselectConf struct {
 	Disabled bool
 }
 
-// Multiselect create a dropdown list that takes more than one item and return
+// MultiSelect create a dropdown list that takes more than one item and return
 // the indices of the selected ones, 0-indexed.
 //
 // The result is ordered by items rather than by the order they were picked in,
 // and is nil when nothing is selected — the same "nothing" [Select] hands back,
 // so one test reads both.
-func Multiselect(c *tgframe.Container, label string, items []string,
-	conf ...*MultiselectConf) []int {
+func MultiSelect(c *tgframe.Container, label string, items []string,
+	conf ...*MultiSelectConf) []int {
 
-	cf := tgframe.OneConf("Multiselect", conf)
+	cf := tgframe.OneConf("MultiSelect", conf)
 
-	comp := newMultiselectComponent(label, items)
+	comp := newMultiSelectComponent(label, items)
 	comp.Default = normalizeSelection(cf.Default, len(items), cf.MaxSelections)
 	comp.MaxSelections = cf.MaxSelections
 	comp.Placeholder = cf.Placeholder

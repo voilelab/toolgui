@@ -60,7 +60,7 @@ describe('Input', () => {
     cy.contains('Value: abcabc')
   })
 
-  it('Fileupload input', () => {
+  it('FileUpload input', () => {
     cy.visit('/input')
     // accept only filters the file picker, so it is the whole of the limit.
     cy.get('input[type=file]').should('have.attr', 'accept', '.jpg,.png')
@@ -70,9 +70,9 @@ describe('Input', () => {
     cy.get('input[type=file]').selectFile('cypress/fixtures/example.png', {
       force: true,
     })
-    cy.contains('Fileupload filename: example.png').should('exist')
+    cy.contains('FileUpload filename: example.png').should('exist')
     // The bytes reach Go, not just the name.
-    cy.contains(/Fileupload bytes length: [1-9]\d*/).should('exist')
+    cy.contains(/FileUpload bytes length: [1-9]\d*/).should('exist')
   })
 
   it('Checkbox', () => {
@@ -133,7 +133,7 @@ describe('Input', () => {
     cy.contains('Value: Value2').should('exist')
   })
 
-  it('Multiselect', () => {
+  it('MultiSelect', () => {
     cy.visit('/input')
     // Same reason as the Select case: the options sit in a portal below the
     // input, and scrolling one to the top would take the input off screen.
@@ -147,7 +147,7 @@ describe('Input', () => {
     const result = () => cy.get('#text_component_multiselect_result')
 
     // The dropdown stays open across picks, so it is opened once.
-    cy.get('input[id=multiselect_component_Multiselect]').click()
+    cy.get('input[id=multiselect_component_MultiSelect]').click()
 
     option('Alpha').click(noScroll)
     result().should('have.text', 'Values: Alpha')
@@ -181,12 +181,12 @@ describe('Input', () => {
     cy.contains('Value: Value4').should('exist')
   })
 
-  it('Datepicker', () => {
+  it('DatePicker', () => {
     cy.visit('/input')
     // Mantine's DateInput is a text input that parses what is typed, so there
     // is no type=date to select on and no segments to overwrite — the second
     // date has to clear the first.
-    const date = 'input[id=datepicker_component_Datepicker]'
+    const date = 'input[id=datepicker_component_DatePicker]'
 
     cy.get(date).type('2000-01-01')
     cy.get(date).blur()
@@ -198,7 +198,7 @@ describe('Input', () => {
     cy.contains('2002-02-02').should('exist')
   })
 
-  it('Timepicker', () => {
+  it('TimePicker', () => {
     cy.visit('/input')
     cy.get('input[type=time]').type('20:34')
     cy.get('input[type=time]').blur()
@@ -209,7 +209,7 @@ describe('Input', () => {
     cy.contains('11:34').should('exist')
   })
 
-  it('Datetimepicker', () => {
+  it('DateTimePicker', () => {
     cy.visit('/input')
 
     // Mantine's DateTimePicker is a calendar popover, not a typeable
@@ -238,7 +238,7 @@ describe('Input', () => {
         `-${pad(date.getDate())} ${time}`
     }
 
-    const picker = () => cy.get('button[id=datepicker_component_Datetimepicker]')
+    const picker = () => cy.get('button[id=datepicker_component_DateTimePicker]')
     const hours = () => cy.get('[role=spinbutton]').eq(0)
     const minutes = () => cy.get('[role=spinbutton]').eq(1)
 

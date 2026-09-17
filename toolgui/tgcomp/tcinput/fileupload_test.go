@@ -8,41 +8,41 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
-const testFileuploadID = "fileupload_component_File"
+const testFileUploadID = "fileupload_component_File"
 
-// newFileuploadContainer builds the container the component reads its state
-// through, so that a test can seed s and then hand it straight to Fileupload.
-func newFileuploadContainer(s *tgframe.State) *tgframe.Container {
+// newFileUploadContainer builds the container the component reads its state
+// through, so that a test can seed s and then hand it straight to FileUpload.
+func newFileUploadContainer(s *tgframe.State) *tgframe.Container {
 	return tgframe.NewContainer("test", s, func(pack tgframe.NotifyPack) {})
 }
 
-func TestFileuploadWithoutPick(t *testing.T) {
+func TestFileUploadWithoutPick(t *testing.T) {
 	s := tgframe.NewState()
 	defer s.Destroy()
 
-	if Fileupload(newFileuploadContainer(s), "File", "") != nil {
+	if FileUpload(newFileUploadContainer(s), "File", "") != nil {
 		t.Error("expect no file object before a pick")
 	}
 }
 
-// TestFileuploadWithoutContent checks a pick whose upload never landed reads
+// TestFileUploadWithoutContent checks a pick whose upload never landed reads
 // as no file, rather than as a file with nothing in it.
-func TestFileuploadWithoutContent(t *testing.T) {
+func TestFileUploadWithoutContent(t *testing.T) {
 	s := tgframe.NewState()
 	defer s.Destroy()
 
-	s.Set(testFileuploadID, map[string]any{"name": "a.txt", "size": 5})
+	s.Set(testFileUploadID, map[string]any{"name": "a.txt", "size": 5})
 
-	if Fileupload(newFileuploadContainer(s), "File", "") != nil {
+	if FileUpload(newFileUploadContainer(s), "File", "") != nil {
 		t.Error("expect no file object when the content is missing")
 	}
 }
 
-func TestFileupload(t *testing.T) {
+func TestFileUpload(t *testing.T) {
 	s := tgframe.NewState()
 	defer s.Destroy()
 
-	s.Set(testFileuploadID, map[string]any{
+	s.Set(testFileUploadID, map[string]any{
 		"name": "a.txt",
 		"type": "text/plain",
 		// The browser's size is not what a reader gets, so the component
@@ -50,12 +50,12 @@ func TestFileupload(t *testing.T) {
 		"size": 100,
 	})
 
-	if _, err := s.WriteFile(testFileuploadID, "a.txt",
+	if _, err := s.WriteFile(testFileUploadID, "a.txt",
 		strings.NewReader("hello")); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	fileObj := Fileupload(newFileuploadContainer(s), "File", "")
+	fileObj := FileUpload(newFileUploadContainer(s), "File", "")
 	if fileObj == nil {
 		t.Fatal("expect a file object")
 	}

@@ -1,6 +1,6 @@
-# Fileupload
+# FileUpload
 
-Fileupload create a fileupload and return its selected file.
+FileUpload create a fileupload and return its selected file.
 
 ## API
 
@@ -14,7 +14,7 @@ type FileObject struct {
 func (f *FileObject) Open() (tgframe.FileReader, error)
 func (f *FileObject) Bytes() ([]byte, error)
 
-func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadConf) *FileObject
+func FileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadConf) *FileObject
 ```
 
 * `c` is Parent container.
@@ -24,8 +24,8 @@ func Fileupload(c *tgframe.Container, label, accept string, conf ...*FileuploadC
 * Return the selected file object. nil if no file is selected.
 
 ```go
-// FileuploadConf is the configuration for the Fileupload component.
-type FileuploadConf struct {
+// FileUploadConf is the configuration for the FileUpload component.
+type FileUploadConf struct {
 	tgframe.Base // ID
 
 	// Disabled is true if the fileupload is disabled.
@@ -55,10 +55,10 @@ to arrive. `Size` is the size of what was stored.
 ## Example
 
 ```go
-fileObj := tgcomp.Fileupload(p.Main, "Fileupload", ".jpg,.png")
+fileObj := tgcomp.FileUpload(p.Main, "FileUpload", ".jpg,.png")
 if fileObj != nil {
-    tgcomp.Text(p.Main, "Fileupload filename: "+fileObj.Name)
-    tgcomp.Text(p.Main, fmt.Sprintf("Fileupload bytes length: %d", fileObj.Size))
+    tgcomp.Text(p.Main, "FileUpload filename: "+fileObj.Name)
+    tgcomp.Text(p.Main, fmt.Sprintf("FileUpload bytes length: %d", fileObj.Size))
 }
 ```
 

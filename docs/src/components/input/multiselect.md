@@ -1,12 +1,12 @@
-# Multiselect
+# MultiSelect
 
-Multiselect create a dropdown list that takes more than one item and return
+MultiSelect create a dropdown list that takes more than one item and return
 the indices of the selected ones.
 
 ## API
 
 ```go
-func Multiselect(c *tgframe.Container, label string, items []string, conf ...*MultiselectConf) []int
+func MultiSelect(c *tgframe.Container, label string, items []string, conf ...*MultiSelectConf) []int
 ```
 
 * `c` is Parent container.
@@ -25,8 +25,8 @@ either way — a nil slice has no elements — so the check is only needed where
 the absence itself matters.
 
 ```go
-// MultiselectConf is the configuration for the Multiselect component.
-type MultiselectConf struct {
+// MultiSelectConf is the configuration for the MultiSelect component.
+type MultiSelectConf struct {
 	tgframe.Base // ID
 
 	// Default is the selection the component starts with, as indices into
@@ -50,8 +50,8 @@ type MultiselectConf struct {
 
 ```go
 envs := []string{"dev", "stage", "prod"}
-selIndexes := tgcomp.Multiselect(p.Main, "Environments", envs,
-	&tgcomp.MultiselectConf{
+selIndexes := tgcomp.MultiSelect(p.Main, "Environments", envs,
+	&tgcomp.MultiSelectConf{
 		Default:       []int{0},
 		MaxSelections: 2,
 		Placeholder:   "pick up to two",
@@ -66,8 +66,8 @@ Like a [Select](select.md), a multiselect derives its id from its label, so two
 with the same label collide. Naming either of them is the way out:
 
 ```go
-tgcomp.Multiselect(p.Main, "Pick", items)
-tgcomp.Multiselect(p.Main, "Pick", items, &tgcomp.MultiselectConf{ID: "second_pick"})
+tgcomp.MultiSelect(p.Main, "Pick", items)
+tgcomp.MultiSelect(p.Main, "Pick", items, &tgcomp.MultiSelectConf{ID: "second_pick"})
 ```
 
 ![multiselect component](multiselect.png)

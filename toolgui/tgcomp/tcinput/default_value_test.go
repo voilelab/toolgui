@@ -58,7 +58,7 @@ func deref(v any) any {
 // component whose Default stops reaching the return cannot hide behind its
 // neighbours.
 //
-// [tcinput.Fileupload] is the one input with no Default — a file input cannot
+// [tcinput.FileUpload] is the one input with no Default — a file input cannot
 // be filled in from script — so it has no case here.
 func TestDefaultValue(t *testing.T) {
 	fruits := []string{"apple", "banana", "cherry"}
@@ -123,27 +123,27 @@ func TestDefaultValue(t *testing.T) {
 
 	checkDefault(t, "multiselect", "multiselect_component_Fruit", []int{1},
 		func(c *tgframe.Container) []int {
-			return tcinput.Multiselect(c, "Fruit", fruits,
-				&tcinput.MultiselectConf{Default: []int{0, 2}})
+			return tcinput.MultiSelect(c, "Fruit", fruits,
+				&tcinput.MultiSelectConf{Default: []int{0, 2}})
 		}, []int{0, 2}, []int{1})
 
 	checkDefault(t, "datepicker", "datepicker_component_When", "2026-09-08",
 		func(c *tgframe.Container) *time.Time {
-			return tcinput.Datepicker(c, "When",
-				(&tcinput.DatepickerConf{}).SetDefault(date(2026, 1, 2)))
+			return tcinput.DatePicker(c, "When",
+				(&tcinput.DatePickerConf{}).SetDefault(date(2026, 1, 2)))
 		}, ptr(date(2026, 1, 2)), ptr(date(2026, 9, 8)))
 
 	checkDefault(t, "timepicker", "datepicker_component_At", "09:30",
 		func(c *tgframe.Container) *time.Time {
-			return tcinput.Timepicker(c, "At",
-				(&tcinput.TimepickerConf{}).SetDefault(clock(8, 15)))
+			return tcinput.TimePicker(c, "At",
+				(&tcinput.TimePickerConf{}).SetDefault(clock(8, 15)))
 		}, ptr(clock(8, 15)), ptr(clock(9, 30)))
 
 	checkDefault(t, "datetimepicker", "datepicker_component_Now",
 		"2026-09-08T09:30",
 		func(c *tgframe.Container) *time.Time {
-			return tcinput.Datetimepicker(c, "Now",
-				(&tcinput.DatetimepickerConf{}).SetDefault(
+			return tcinput.DateTimePicker(c, "Now",
+				(&tcinput.DateTimePickerConf{}).SetDefault(
 					time.Date(2026, 1, 2, 8, 15, 0, 0, time.UTC)))
 		}, ptr(time.Date(2026, 1, 2, 8, 15, 0, 0, time.UTC)),
 		ptr(time.Date(2026, 9, 8, 9, 30, 0, 0, time.UTC)))
@@ -182,20 +182,20 @@ func TestClearingIsAnAnswer(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set("datepicker_component_When", "")
 
-		got := tcinput.Datepicker(defaultContainer(state), "When",
-			(&tcinput.DatepickerConf{}).SetDefault(date(2026, 1, 2)))
+		got := tcinput.DatePicker(defaultContainer(state), "When",
+			(&tcinput.DatePickerConf{}).SetDefault(date(2026, 1, 2)))
 		if got != nil {
-			t.Errorf("cleared Datepicker = %v, want nil rather than the default", *got)
+			t.Errorf("cleared DatePicker = %v, want nil rather than the default", *got)
 		}
 	})
 }
 
-// date is what a [tcinput.Datepicker] hands back for a day: midnight UTC.
+// date is what a [tcinput.DatePicker] hands back for a day: midnight UTC.
 func date(year int, month time.Month, day int) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, time.UTC)
 }
 
-// clock is what a [tcinput.Timepicker] hands back for a time of day: that
+// clock is what a [tcinput.TimePicker] hands back for a time of day: that
 // clock on 1 January year 0 in UTC, the date time.Parse fills in for a layout
 // that names none.
 func clock(hour, min int) time.Time {
@@ -212,12 +212,12 @@ func TestPickersAgreeOnTheTimeType(t *testing.T) {
 	state.Set("datepicker_component_Both", "2026-09-08T09:30")
 
 	c := defaultContainer(state)
-	day := tcinput.Datepicker(c, "Day")
-	at := tcinput.Timepicker(c, "At")
-	both := tcinput.Datetimepicker(c, "Both")
+	day := tcinput.DatePicker(c, "Day")
+	at := tcinput.TimePicker(c, "At")
+	both := tcinput.DateTimePicker(c, "Both")
 
 	if day == nil || at == nil || both == nil {
-		t.Fatalf("Datepicker = %v, Timepicker = %v, Datetimepicker = %v, "+
+		t.Fatalf("DatePicker = %v, TimePicker = %v, DateTimePicker = %v, "+
 			"want all three set", day, at, both)
 	}
 
@@ -236,22 +236,22 @@ func TestPickersDropTheHalfTheyDoNotAsk(t *testing.T) {
 
 	c := defaultContainer(tgframe.NewState())
 
-	if got := tcinput.Datepicker(c, "When",
-		(&tcinput.DatepickerConf{}).SetDefault(full)); !got.Equal(date(2026, 9, 8)) {
-		t.Errorf("Datepicker default = %v, want the day at midnight UTC", *got)
+	if got := tcinput.DatePicker(c, "When",
+		(&tcinput.DatePickerConf{}).SetDefault(full)); !got.Equal(date(2026, 9, 8)) {
+		t.Errorf("DatePicker default = %v, want the day at midnight UTC", *got)
 	}
 
-	if got := tcinput.Timepicker(c, "At",
-		(&tcinput.TimepickerConf{}).SetDefault(full)); !got.Equal(clock(9, 30)) {
-		t.Errorf("Timepicker default = %v, want the clock alone", *got)
+	if got := tcinput.TimePicker(c, "At",
+		(&tcinput.TimePickerConf{}).SetDefault(full)); !got.Equal(clock(9, 30)) {
+		t.Errorf("TimePicker default = %v, want the clock alone", *got)
 	}
 
 	// The datetime picker keeps both halves, and drops only the seconds its
 	// wire format cannot carry.
 	want := time.Date(2026, 9, 8, 9, 30, 0, 0, time.UTC)
-	if got := tcinput.Datetimepicker(c, "Now",
-		(&tcinput.DatetimepickerConf{}).SetDefault(full)); !got.Equal(want) {
-		t.Errorf("Datetimepicker default = %v, want %v", *got, want)
+	if got := tcinput.DateTimePicker(c, "Now",
+		(&tcinput.DateTimePickerConf{}).SetDefault(full)); !got.Equal(want) {
+		t.Errorf("DateTimePicker default = %v, want %v", *got, want)
 	}
 }
 

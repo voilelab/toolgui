@@ -7,7 +7,7 @@ import (
 )
 
 // Errorf return Error with the function info.
-func Errorf(format string, args ...interface{}) error {
+func Errorf(format string, args ...any) error {
 	pc, _, _, ok := runtime.Caller(1)
 	prefix := "unknow: "
 	if ok {

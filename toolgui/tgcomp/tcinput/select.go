@@ -80,7 +80,7 @@ func Select(c *tgframe.Container, label string, items []string, conf ...*SelectC
 	}
 
 	// A selection left over from a longer list is dropped rather than
-	// clamped, the way [Multiselect] drops one.
+	// clamped, the way [MultiSelect] drops one.
 	*idx--
 	return normalizeIndex(idx, len(items))
 }

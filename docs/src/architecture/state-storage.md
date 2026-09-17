@@ -74,7 +74,7 @@ age := tgcomp.Number(p.Main, "Age", &tgcomp.NumberConf[int64]{Default: 30})
 
 Every input that has a value to start on takes a `Default` in its conf, so
 writing the key directly is a thing to reach for only when the value is not
-known where the component is written. `Fileupload` is the exception, for the
+known where the component is written. `FileUpload` is the exception, for the
 reason its [page](../components/input/fileupload.md) gives.
 
 The key is `<component name>_<label>`, unless the component was given an
@@ -88,10 +88,10 @@ explicit `ID` in its conf, in which case the key is that id verbatim.
 | `Checkbox` | `checkbox_component_<label>` | `bool` |
 | `Select` | `select_component_<label>` | item index, **1-based**; `0` is "nothing selected" |
 | `Radio` | `radio_component_<label>` | item index, **0-based** |
-| `Multiselect` | `multiselect_component_<label>` | item indices, **0-based**, as a list; `[]` is "nothing selected" |
-| `Datepicker` | `datepicker_component_<label>` | `string`, `2006-01-02` |
-| `Timepicker` | `datepicker_component_<label>` | `string`, `15:04` |
-| `Datetimepicker` | `datepicker_component_<label>` | `string`, `2006-01-02T15:04` |
+| `MultiSelect` | `multiselect_component_<label>` | item indices, **0-based**, as a list; `[]` is "nothing selected" |
+| `DatePicker` | `datepicker_component_<label>` | `string`, `2006-01-02` |
+| `TimePicker` | `datepicker_component_<label>` | `string`, `15:04` |
+| `DateTimePicker` | `datepicker_component_<label>` | `string`, `2006-01-02T15:04` |
 
 `Select` and `Radio` disagree on the base, which is the one asymmetry to watch
 for. The frontend's select has a placeholder as its first option, so Go
@@ -116,7 +116,7 @@ tgcomp.Select(p.Main, "Fruit", fruits, (&tgcomp.SelectConf{}).SetDefault(1))
 tgcomp.Radio(p.Main, "Fruit", fruits, (&tgcomp.RadioConf{}).SetDefault(1))
 ```
 
-`Multiselect` numbers from 0 like `Radio`, and holds a list rather than one
+`MultiSelect` numbers from 0 like `Radio`, and holds a list rather than one
 index, so an empty list is a selection of nothing and an absent key is what
 falls back to the conf's `Default`:
 

@@ -1,22 +1,37 @@
 package tgcomp
 
-import "github.com/voilelab/toolgui/toolgui/tgcomp/tcdata"
+import (
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tcdata"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
+)
 
 // JSON create a JSON viewer for v.
-var JSON = tcdata.JSON
+func JSON(c *tgframe.Container, v any, conf ...*JSONConf) {
+	tcdata.JSON(c, v, conf...)
+}
 
 // JSONConf is the configuration for the JSON component.
 type JSONConf = tcdata.JSONConf
 
 // Table create a table by heading(head) and values(table).
-var Table = tcdata.Table
+func Table(
+	c *tgframe.Container, head []string, table [][]string,
+	conf ...*TableConf) {
+
+	tcdata.Table(c, head, table, conf...)
+}
 
 // TableConf is the configuration for the Table component.
 type TableConf = tcdata.TableConf
 
 // DataFrame create a table the user can sort, search and page through, all in
 // the browser, and return the rows the user has picked.
-var DataFrame = tcdata.DataFrame
+func DataFrame(
+	c *tgframe.Container, head []string, rows [][]string,
+	conf ...*DataFrameConf) []int {
+
+	return tcdata.DataFrame(c, head, rows, conf...)
+}
 
 // DataFrameConf is the configuration for the DataFrame component.
 type DataFrameConf = tcdata.DataFrameConf
@@ -97,16 +112,40 @@ type ChartSeries = tcdata.ChartSeries
 type ChartConf = tcdata.ChartConf
 
 // Chart create a chart of the kind ChartConf.Kind names.
-var Chart = tcdata.Chart
+func Chart(
+	c *tgframe.Container, labels []string, series []ChartSeries,
+	conf ...*ChartConf) {
+
+	tcdata.Chart(c, labels, series, conf...)
+}
 
 // LineChart create a line chart, one line per series.
-var LineChart = tcdata.LineChart
+func LineChart(
+	c *tgframe.Container, labels []string, series []ChartSeries,
+	conf ...*ChartConf) {
+
+	tcdata.LineChart(c, labels, series, conf...)
+}
 
 // BarChart create a bar chart, one bar per value grouped by label.
-var BarChart = tcdata.BarChart
+func BarChart(
+	c *tgframe.Container, labels []string, series []ChartSeries,
+	conf ...*ChartConf) {
+
+	tcdata.BarChart(c, labels, series, conf...)
+}
 
 // AreaChart create an area chart, one filled line per series.
-var AreaChart = tcdata.AreaChart
+func AreaChart(
+	c *tgframe.Container, labels []string, series []ChartSeries,
+	conf ...*ChartConf) {
+
+	tcdata.AreaChart(c, labels, series, conf...)
+}
 
 // ScatterChart create a scatter chart, one marker per point.
-var ScatterChart = tcdata.ScatterChart
+func ScatterChart(
+	c *tgframe.Container, series []ChartSeries, conf ...*ChartConf) {
+
+	tcdata.ScatterChart(c, series, conf...)
+}

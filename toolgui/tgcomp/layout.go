@@ -1,72 +1,151 @@
 package tgcomp
 
-import "github.com/voilelab/toolgui/toolgui/tgcomp/tclayout"
+import (
+	"github.com/voilelab/toolgui/toolgui/tgcomp/tclayout"
+	"github.com/voilelab/toolgui/toolgui/tgframe"
+)
 
 // Box create a box container.
-var Box = tclayout.Box
+func Box(c *tgframe.Container, conf ...*BoxConf) *tgframe.Container {
+	return tclayout.Box(c, conf...)
+}
 
 // BoxConf is the configuration for the Box component.
 type BoxConf = tclayout.BoxConf
 
 // Column create N columns.
-var Column = tclayout.Column
+func Column(
+	c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
+
+	return tclayout.Column(c, n, conf...)
+}
 
 // Column1 create 1 column.
-var Column1 = tclayout.Column1
+func Column1(c *tgframe.Container, conf ...*ColumnConf) *tgframe.Container {
+	return tclayout.Column1(c, conf...)
+}
 
 // Column2 create 2 columns.
-var Column2 = tclayout.Column2
+func Column2(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container) {
+
+	return tclayout.Column2(c, conf...)
+}
 
 // Column3 create 3 columns.
-var Column3 = tclayout.Column3
+func Column3(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
+
+	return tclayout.Column3(c, conf...)
+}
 
 // ColumnConf is the configuration for the column components.
 type ColumnConf = tclayout.ColumnConf
 
 // EqColumn create N columns with same width.
-var EqColumn = tclayout.EqColumn
+func EqColumn(
+	c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
+
+	return tclayout.EqColumn(c, n, conf...)
+}
 
 // EqColumn1 create 1 columns with same width.
-var EqColumn1 = tclayout.EqColumn1
+func EqColumn1(c *tgframe.Container, conf ...*ColumnConf) *tgframe.Container {
+	return tclayout.EqColumn1(c, conf...)
+}
 
 // EqColumn2 create 2 columns with same width.
-var EqColumn2 = tclayout.EqColumn2
+func EqColumn2(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container) {
+
+	return tclayout.EqColumn2(c, conf...)
+}
 
 // EqColumn3 create 3 columns with same width.
-var EqColumn3 = tclayout.EqColumn3
+func EqColumn3(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
+
+	return tclayout.EqColumn3(c, conf...)
+}
 
 // EqColumn4 create 4 columns with same width.
-var EqColumn4 = tclayout.EqColumn4
+func EqColumn4(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container,
+	*tgframe.Container) {
+
+	return tclayout.EqColumn4(c, conf...)
+}
 
 // EqColumn5 create 5 columns with same width.
-var EqColumn5 = tclayout.EqColumn5
+func EqColumn5(c *tgframe.Container, conf ...*ColumnConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container,
+	*tgframe.Container, *tgframe.Container) {
+
+	return tclayout.EqColumn5(c, conf...)
+}
 
 // Tab create a tab component.
-var Tab = tclayout.Tab
+func Tab(
+	c *tgframe.Container, tabs []string,
+	conf ...*TabConf) []*tgframe.Container {
+
+	return tclayout.Tab(c, tabs, conf...)
+}
 
 // Tab2 create 2 tabs.
-var Tab2 = tclayout.Tab2
+func Tab2(c *tgframe.Container, tab1, tab2 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container) {
+
+	return tclayout.Tab2(c, tab1, tab2, conf...)
+}
 
 // Tab3 create 3 tabs.
-var Tab3 = tclayout.Tab3
+func Tab3(c *tgframe.Container, tab1, tab2, tab3 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
+
+	return tclayout.Tab3(c, tab1, tab2, tab3, conf...)
+}
 
 // Tab4 create 4 tabs.
-var Tab4 = tclayout.Tab4
+func Tab4(
+	c *tgframe.Container, tab1, tab2, tab3, tab4 string, conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container,
+	*tgframe.Container) {
+
+	return tclayout.Tab4(c, tab1, tab2, tab3, tab4, conf...)
+}
 
 // Tab5 create 5 tabs.
-var Tab5 = tclayout.Tab5
+func Tab5(
+	c *tgframe.Container, tab1, tab2, tab3, tab4, tab5 string,
+	conf ...*TabConf) (
+	*tgframe.Container, *tgframe.Container, *tgframe.Container,
+	*tgframe.Container, *tgframe.Container) {
+
+	return tclayout.Tab5(c, tab1, tab2, tab3, tab4, tab5, conf...)
+}
 
 // TabConf is the configuration for the tab components.
 type TabConf = tclayout.TabConf
 
 // Expand create a expandable component.
-var Expand = tclayout.Expand
+func Expand(
+	c *tgframe.Container, title string, expanded bool,
+	conf ...*ExpandConf) *tgframe.Container {
+
+	return tclayout.Expand(c, title, expanded, conf...)
+}
 
 // ExpandConf is the configuration for the Expand component.
 type ExpandConf = tclayout.ExpandConf
 
 // Popover create a button with a floating panel behind it.
-var Popover = tclayout.Popover
+func Popover(
+	c *tgframe.Container, label string,
+	conf ...*PopoverConf) *tgframe.Container {
+
+	return tclayout.Popover(c, label, conf...)
+}
 
 // PopoverConf is the configuration for the Popover component.
 type PopoverConf = tclayout.PopoverConf
@@ -74,7 +153,12 @@ type PopoverConf = tclayout.PopoverConf
 // Dialog creates a dialog, closed until something opens it, and hands back a
 // handle to open, close and fill it. The body is only computed while it is
 // open, so handle what opens the dialog before calling DialogContainer.With.
-var Dialog = tclayout.Dialog
+func Dialog(
+	c *tgframe.Container, title string,
+	conf ...*DialogConf) *DialogContainer {
+
+	return tclayout.Dialog(c, title, conf...)
+}
 
 // DialogConf is the configuration for the Dialog component.
 type DialogConf = tclayout.DialogConf
@@ -93,7 +177,9 @@ const (
 // Empty reserves a place in the page and hands back a slot to write it with.
 // Writing the slot again takes the previous contents off the screen instead of
 // adding to them.
-var Empty = tclayout.Empty
+func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptySlot {
+	return tclayout.Empty(c, conf...)
+}
 
 // EmptyConf is the configuration for the Empty component.
 type EmptyConf = tclayout.EmptyConf
