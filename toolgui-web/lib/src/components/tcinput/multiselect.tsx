@@ -13,7 +13,7 @@ export function TMultiselect({ node, update }: Props) {
   // React too, so the pills follow the click inside a form, where no answer
   // comes back from the server to re-render on.
   const [selected, setSelected] = useState<number[]>(
-    stateValues[node.props.id] || node.props.default || [])
+    stateValues[node.props.id] || node.props.default)
 
   const atMax = max > 0 && selected.length >= max
 

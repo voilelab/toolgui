@@ -148,8 +148,10 @@ function buildConfig(props: any, theme: string, surface: string): any {
   const bar = props.kind === 'bar'
   const scatter = props.kind === 'scatter'
   const chrome = chromes[theme]
-  // A scatter chart sends no labels, and draws its markers either way.
-  const showPoints = (props.labels?.length ?? 0) <= maxPointLabels
+  // A scatter chart sends an empty label list, and draws its markers either
+  // way.
+  const labels: string[] = props.labels
+  const showPoints = labels.length <= maxPointLabels
 
   const datasets = props.series.map((series: any, index: number) => {
     const color = seriesColor(series, index, theme)
@@ -204,7 +206,7 @@ function buildConfig(props: any, theme: string, surface: string): any {
 
   return {
     type: scatter ? 'scatter' : (bar ? 'bar' : 'line'),
-    data: { labels: props.labels, datasets: datasets },
+    data: { labels: labels, datasets: datasets },
     options: {
       responsive: true,
       // The wrapper owns the height, so the canvas must not keep a ratio.
