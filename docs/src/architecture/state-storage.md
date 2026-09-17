@@ -74,9 +74,11 @@ carries whichever integer type was at hand. `GetNumber` reads either, so
 age, ok := p.State.GetNumber[int]("number_component_Age")
 ```
 
-An integral `T` truncates, and reports a number it cannot hold as absent
-rather than handing back whatever the conversion produced. A string is still
-not a number: `Set(key, "30")` reads back as `false`.
+An integer is read exactly, so an id past 2^53 comes back as it went in. A
+float read as an integral `T` truncates, and a number `T` cannot hold is
+absent rather than whatever the conversion produced. A page's own numeric
+type — a `type Count int` — counts as a number on both sides. A string does
+not: `Set(key, "30")` reads back as `false`.
 
 `GetObject` is the third one, and it is not a getter for a type so much as a
 decoder. It marshals what the key holds and unmarshals it into `out`, so a

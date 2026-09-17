@@ -66,6 +66,7 @@ func TestGettersOnWrongType(t *testing.T) {
 		{"nil", nil},
 		{"struct", struct{}{}},
 		{"slice", []int{1}},
+		{"uintptr", uintptr(30)},
 	}
 
 	for _, c := range cases {
@@ -133,9 +134,12 @@ func TestGettersOnRightType(t *testing.T) {
 	}
 }
 
-// myCount is a named type, to pin that GetNumber instantiates for one: a
-// named type's dynamic type is itself, so a type switch would miss it.
+// myCount and myRatio are named types, to pin that GetNumber handles one on
+// both sides. A named type's dynamic type is itself, not the type it is
+// defined from, so a type switch on the stored value would miss it.
 type myCount int
+
+type myRatio float64
 
 func TestGetNumberNamedType(t *testing.T) {
 	state := NewState()
@@ -149,6 +153,48 @@ func TestGetNumberNamedType(t *testing.T) {
 	state.Set(testStateKey, math.NaN())
 	if got, ok := state.GetNumber[myCount](testStateKey); ok {
 		t.Errorf("GetNumber[myCount] = %v, true, want false", got)
+	}
+
+	// And a domain type the page stored is a number on the way out, or a
+	// page could not keep one in the state at all.
+	state.Set(testStateKey, myCount(30))
+	if got, ok := state.GetNumber[myCount](testStateKey); !ok || got != 30 {
+		t.Errorf("GetNumber[myCount] = %v, %v, want 30, true", got, ok)
+	}
+	if got, ok := state.GetNumber[float64](testStateKey); !ok || got != 30 {
+		t.Errorf("GetNumber[float64] = %v, %v, want 30, true", got, ok)
+	}
+
+	state.Set(testStateKey, myRatio(1.5))
+	if got, ok := state.GetNumber[float64](testStateKey); !ok || got != 1.5 {
+		t.Errorf("GetNumber[float64] = %v, %v, want 1.5, true", got, ok)
+	}
+}
+
+// TestGetNumberKeepsLargeIntegers pins that an integer is not routed through
+// a float64 on the way out. Past 2^53 that rounds, which would quietly hand
+// back an id or a counter that is not the one the page stored.
+func TestGetNumberKeepsLargeIntegers(t *testing.T) {
+	cases := []struct {
+		name string
+		val  any
+		want int64
+	}{
+		{"past 2^53", int64(1<<53 + 1), 1<<53 + 1},
+		{"MaxInt64", int64(math.MaxInt64), math.MaxInt64},
+		{"MinInt64", int64(math.MinInt64), math.MinInt64},
+		{"uint64 MaxInt64", uint64(math.MaxInt64), math.MaxInt64},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			state := NewState()
+			state.Set(testStateKey, c.val)
+
+			if got, ok := state.GetNumber[int64](testStateKey); !ok || got != c.want {
+				t.Errorf("GetNumber[int64] = %v, %v, want %v, true", got, ok, c.want)
+			}
+		})
 	}
 }
 

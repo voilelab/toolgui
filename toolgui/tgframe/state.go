@@ -5,6 +5,7 @@ import (
 	"io"
 	"maps"
 	"math"
+	"reflect"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
@@ -144,37 +145,36 @@ func (s *State) GetObject(key string, out any) error {
 	return nil
 }
 
-// toNumber reads any numeric type as a float64, so a default written from Go
-// reads back like the float64 the frontend's JSON lands. A string is not one.
-func toNumber(val any) (float64, bool) {
-	switch v := val.(type) {
-	case float64:
+// numberOf reads what a key holds as a number, whatever numeric type it was
+// stored as. It goes by kind rather than by concrete type, so a page's own
+// domain type -- a `type Count int` -- is a number here, the way [Numeric]
+// says one is. A string is not one, and neither is a uintptr.
+func numberOf(val any) (reflect.Value, bool) {
+	if val == nil {
+		return reflect.Value{}, false
+	}
+
+	v := reflect.ValueOf(val)
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64, reflect.Float32, reflect.Float64:
 		return v, true
-	case float32:
-		return float64(v), true
-	case int:
-		return float64(v), true
-	case int8:
-		return float64(v), true
-	case int16:
-		return float64(v), true
-	case int32:
-		return float64(v), true
-	case int64:
-		return float64(v), true
-	case uint:
-		return float64(v), true
-	case uint8:
-		return float64(v), true
-	case uint16:
-		return float64(v), true
-	case uint32:
-		return float64(v), true
-	case uint64:
-		return float64(v), true
-	default:
+	}
+
+	return reflect.Value{}, false
+}
+
+// narrowInt64 converts i to an integral T, false when T cannot hold it. T may
+// be narrower than an int64 -- int on a 32-bit platform -- and a conversion
+// between integer types is a defined truncation, so the round trip settles it.
+func narrowInt64[T Numeric](i int64) (T, bool) {
+	t := T(i)
+	if int64(t) != i {
 		return 0, false
 	}
+
+	return t, true
 }
 
 // Get returns the value under key as a T, false when it is missing or another
@@ -219,43 +219,64 @@ type Numeric interface {
 // Set(key, int64(30)) and Set(key, 30.0) are the same value. A string is
 // still not a number.
 //
-// An integral T truncates, as the number components do, and reports a number
-// outside its range as absent rather than handing back what the conversion
-// happened to produce.
+// An integer is read exactly: a stored id past 2^53 comes back as it went
+// in, rather than rounded through a float64 on the way out. A float read as
+// an integral T truncates, as the number components do, and a number T cannot
+// hold is absent rather than whatever the conversion happened to produce.
 func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 
-	f, ok := toNumber(s.values[key])
+	v, ok := numberOf(s.values[key])
 	if !ok {
 		return 0, false
 	}
 
 	// Written as arithmetic rather than a type switch because a named type's
-	// dynamic type is itself, not the type it is defined from. A floating
-	// point T holds every number the state can land, infinities included.
-	if T(1)/T(2) != T(0) {
-		return T(f), true
-	}
+	// dynamic type is itself, not the type it is defined from.
+	integral := T(1)/T(2) == T(0)
 
-	// Go leaves a float-to-integer conversion unspecified outside the target's
-	// range, and the platforms disagree on what they do there: amd64 wraps to
-	// MinInt64, wasm saturates at MaxInt64. So the range is checked in float64
-	// first, against bounds that are exact -- 2^63 has a float64, MaxInt64
-	// does not.
-	if math.IsNaN(f) || f < float64(math.MinInt64) || f >= -float64(math.MinInt64) {
-		return 0, false
-	}
+	switch v.Kind() {
+	case reflect.Float32, reflect.Float64:
+		f := v.Float()
+		if !integral {
+			// A floating point T holds every number a float64 can, NaN and
+			// the infinities included.
+			return T(f), true
+		}
 
-	// In range for an int64, which may still be wider than T. A conversion
-	// between integer types is a defined truncation, so the round trip is
-	// enough from here.
-	i := int64(f)
-	if int64(T(i)) != i {
-		return 0, false
-	}
+		// Go leaves a float-to-integer conversion unspecified outside the
+		// target's range, and the platforms disagree on what they do there:
+		// amd64 wraps to MinInt64, wasm saturates at MaxInt64. So the range
+		// is checked in float64 first, against bounds that are exact -- 2^63
+		// has a float64, math.MaxInt64 does not.
+		if math.IsNaN(f) || f < float64(math.MinInt64) || f >= -float64(math.MinInt64) {
+			return 0, false
+		}
 
-	return T(i), true
+		return narrowInt64[T](int64(f))
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32,
+		reflect.Uint64:
+		u := v.Uint()
+		if !integral {
+			return T(u), true
+		}
+
+		if u > math.MaxInt64 {
+			return 0, false
+		}
+
+		return narrowInt64[T](int64(u))
+
+	default:
+		i := v.Int()
+		if !integral {
+			return T(i), true
+		}
+
+		return narrowInt64[T](i)
+	}
 }
 
 // WriteFile stores what r yields as the file under key, replacing whatever
