@@ -41,25 +41,33 @@ describe('Layout spec', () => {
 
   it('Popover opens, survives a rerun, and closes on an outside click', () => {
     cy.visit('/layout')
+    const trigger = () => cy.contains('button', 'Advanced options')
     const inner = () => cy.get('.toolgui-popover-dropdown')
       .contains('button', 'Reset options')
 
     // The dropdown holds its contents from the start, hidden until the
-    // trigger is clicked.
+    // trigger is clicked. Whether it is open is the trigger's aria-expanded:
+    // the dropdown also hides itself whenever the trigger scrolls off the
+    // screen, which is not the same thing as being closed.
+    trigger().should('have.attr', 'aria-expanded', 'false')
     inner().should('not.be.visible')
 
-    cy.contains('button', 'Advanced options').click()
+    trigger().click()
+    trigger().should('have.attr', 'aria-expanded', 'true')
     inner().should('be.visible')
 
     // A widget inside the popover reruns the page. The client owns whether
-    // the popover is open, so the new props leave it open.
-    inner().click()
+    // the popover is open, so the new props leave it open. Scrolled to the
+    // middle rather than the top, which would push the trigger off the screen
+    // and take the dropdown with it.
+    inner().click({ scrollBehavior: 'center' })
     cy.get('#text_component_popover_reset').should('exist')
+    trigger().should('have.attr', 'aria-expanded', 'true')
     inner().should('be.visible')
 
     // Anything outside the dropdown closes it.
     cy.get('.toolgui-box').contains('A box!').click()
-    inner().should('not.be.visible')
+    trigger().should('have.attr', 'aria-expanded', 'false')
   })
 
   // The slot is written three times in one run, and what it holds at the end
