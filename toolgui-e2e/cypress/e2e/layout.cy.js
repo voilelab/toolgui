@@ -41,7 +41,9 @@ describe('Layout spec', () => {
 
   it('Popover opens, survives a rerun, and closes on an outside click', () => {
     cy.visit('/layout')
-    const trigger = () => cy.contains('button', 'Advanced options')
+    // The trigger carries the component's derived id, the way every other
+    // component carries its Conf.ID.
+    const trigger = () => cy.get('[id="popover_component_Advanced options"]')
     const inner = () => cy.get('.toolgui-popover-dropdown')
       .contains('button', 'Reset options')
 

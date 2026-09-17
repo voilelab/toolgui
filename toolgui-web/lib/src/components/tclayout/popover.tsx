@@ -10,15 +10,18 @@ export function TPopover({ node, update, upload, theme }: Props) {
   const [opened, setOpened] = useState(false)
 
   return (
-    <Popover opened={opened} onChange={setOpened}
+    // The id goes on the Popover, not on the button below: Popover.Target
+    // overwrites its child's id with the one it derives from this, which is
+    // the id itself when it is given one.
+    <Popover id={node.props.id || undefined}
+      opened={opened} onChange={setOpened}
       position="bottom-start" shadow="md" withinPortal
       // The dropdown holds whatever the server wrote into it, open or not:
       // nothing here is built lazily, so a widget inside keeps what it holds
       // while the popover is closed.
       keepMounted keepMountedMode="display-none">
       <Popover.Target>
-        <Button id={node.props.id || undefined}
-          variant="default"
+        <Button variant="default"
           disabled={node.props.disabled}
           onClick={() => setOpened(o => !o)}>
           {node.props.label}
