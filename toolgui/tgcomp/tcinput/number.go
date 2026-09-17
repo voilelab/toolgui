@@ -1,6 +1,8 @@
 package tcinput
 
 import (
+	"math"
+
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
@@ -22,6 +24,25 @@ type Numeric interface {
 // itself, not the type it is defined from, so a switch would miss it.
 func isIntegral[T Numeric]() bool {
 	return T(1)/T(2) == T(0)
+}
+
+// numberValue converts the float the state holds to T, reporting whether T
+// can hold it at all. A float outside an integral T's range converts to an
+// implementation-defined value -- on amd64 a submitted 1e20 lands on
+// math.MinInt -- and the bounds below would then be judging a number nobody
+// typed. The round trip catches it whatever that value is: only one T really
+// holds converts back to the float it was truncated from.
+func numberValue[T Numeric](f float64) (T, bool) {
+	if math.IsNaN(f) {
+		return 0, false
+	}
+
+	v := T(f)
+	if isIntegral[T]() && float64(v) != math.Trunc(f) {
+		return 0, false
+	}
+
+	return v, true
 }
 
 type numberComponent[T Numeric] struct {
@@ -97,9 +118,10 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 // Number create a number input and return its value.
 //
 // The result is nil when the input holds nothing the page can use: it is
-// empty and the conf set no Default, or what the user left in it falls
-// outside Min/Max. The input shows the reason beside itself, so a page that
-// refuses a nil is refusing a value the user has already been told about.
+// empty and the conf set no Default, what the user left in it falls outside
+// Min/Max, or T cannot hold it at all. The input shows the reason beside
+// itself, so a page that refuses a nil is refusing a value the user has
+// already been told about.
 func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) *T {
 	cf := tgframe.OneConf("Number", conf)
 
@@ -130,11 +152,14 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 		return cf.Default
 	}
 
-	v := T(*val)
-
 	// The client sends what the user typed whether it is in range or not, so
 	// the range is judged here. Out of range reports no value at all rather
 	// than the last legal one, which the page would take for the current one.
+	v, ok := numberValue[T](*val)
+	if !ok {
+		return nil
+	}
+
 	if comp.Min != nil && v < *comp.Min {
 		return nil
 	}

@@ -2,6 +2,7 @@ package tcinput_test
 
 import (
 	"encoding/json/jsontext"
+	"math"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcinput"
@@ -290,6 +291,19 @@ func TestNumberRefusesAValueOutOfRange(t *testing.T) {
 		// truncated first: 20.9 is the 20 that is in range, not the 20.9 that
 		// is not.
 		{"truncated into range", 20.9, bounded(), ptr(20)},
+
+		// A float an integral T cannot hold converts to an
+		// implementation-defined value, which on amd64 is math.MinInt -- a
+		// number below every Min and above no Max, so it used to slip past a
+		// conf with only one bound, or with none, as a value the user had
+		// supposedly typed.
+		{"beyond the type", 1e20, bounded(), nil},
+		{"beyond the type, max only", 1e20, (&tcinput.NumberConf[int]{}).SetMax(20), nil},
+		{"beyond the type, min only", -1e20, (&tcinput.NumberConf[int]{}).SetMin(10), nil},
+		{"beyond the type, no bounds", 1e20, &tcinput.NumberConf[int]{}, nil},
+
+		// The far edge of what it can hold is still a value.
+		{"at the type's edge", math.MinInt, &tcinput.NumberConf[int]{}, ptr(math.MinInt)},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			state := tgframe.NewState()
@@ -320,6 +334,55 @@ func TestNumberFallsBackToTheDefaultWithNothingSent(t *testing.T) {
 	got := tcinput.Number(testContainer(tgframe.NewState(), &packs), "n", conf)
 	if got == nil || *got != 12 {
 		t.Fatalf("got %v, want 12", got)
+	}
+}
+
+// TestNumberRefusesWhatTheTypeCannotHold covers the cases the table above
+// cannot: a float64 T holds everything a float64 can, so only NaN is refused,
+// and an int64 has a different edge from the int the table uses.
+func TestNumberRefusesWhatTheTypeCannotHold(t *testing.T) {
+	const id = "number_component_n"
+
+	read := func(t *testing.T, sent float64, call func(*tgframe.Container) bool) bool {
+		t.Helper()
+		state := tgframe.NewState()
+		state.Set(id, sent)
+
+		var packs []tgframe.NotifyPack
+		return call(testContainer(state, &packs))
+	}
+
+	nilFloat := func(c *tgframe.Container) bool {
+		return tcinput.Number[float64](c, "n") == nil
+	}
+	nilInt64 := func(c *tgframe.Container) bool {
+		return tcinput.Number[int64](c, "n") == nil
+	}
+
+	// NaN is nobody's value, whatever T is. It cannot arrive as JSON, but the
+	// state is not only fed by the client.
+	if !read(t, math.NaN(), nilFloat) {
+		t.Error("NaN reported a value for a float64 T")
+	}
+	if !read(t, math.NaN(), nilInt64) {
+		t.Error("NaN reported a value for an int64 T")
+	}
+
+	// An infinity is a float64, so only the integral T refuses it -- and a
+	// bounded float64 refuses it on the bound, which is the case above.
+	if read(t, math.Inf(1), nilFloat) {
+		t.Error("+Inf reported no value for an unbounded float64 T")
+	}
+	if !read(t, math.Inf(1), nilInt64) {
+		t.Error("+Inf reported a value for an int64 T")
+	}
+
+	// 1e20 is a perfectly good float64 and no int64 at all.
+	if read(t, 1e20, nilFloat) {
+		t.Error("1e20 reported no value for a float64 T")
+	}
+	if !read(t, 1e20, nilInt64) {
+		t.Error("1e20 reported a value for an int64 T")
 	}
 }
 

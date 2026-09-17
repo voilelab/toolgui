@@ -83,7 +83,9 @@ no longer on screen.
 `Number` returns nil in exactly these cases:
 
 * the box is empty and the conf set no `Default`;
-* what the user left in the box falls outside `Min` or `Max`.
+* what the user left in the box falls outside `Min` or `Max`;
+* `T` cannot hold it -- a submitted `1e20` is no `int`, and converting it
+  would land on an implementation-defined number nobody typed.
 
 An empty box is not a zero, and a value in range is unaffected -- a `Number`
 with no `Min` and no `Max` never returns nil once something has been typed
