@@ -89,6 +89,41 @@ func TestToolGUIAppConf(t *testing.T) {
 	}
 }
 
+// TestToolGUIAppConfMenu is the desktop half of "one declaration, three
+// executors": the menu tree the App declares reaches the frontend here the
+// same way it does over HTTP and through the wasm bridge.
+func TestToolGUIAppConfMenu(t *testing.T) {
+	app := newTestApp(func(p *tgframe.Params) error { return nil })
+	app.SetMenu(tgframe.NewMenu().
+		Submenu("File", func(m *tgframe.Menu) {
+			m.Text("Open", "file_open")
+			m.Separator()
+			m.Text("Quit", "file_quit")
+		}))
+
+	backend, _ := newTestToolGUI(t, app)
+
+	confJSON, err := backend.AppConf()
+	if err != nil {
+		t.Fatalf("AppConf: %v", err)
+	}
+
+	var conf tgframe.AppConf
+	if err := tgjson.Unmarshal([]byte(confJSON), &conf); err != nil {
+		t.Fatalf("unmarshal app conf: %v", err)
+	}
+
+	if len(conf.Menu) != 1 || conf.Menu[0].Label != "File" {
+		t.Fatalf("unexpected menu: %v", conf.Menu)
+	}
+
+	children := conf.Menu[0].Children
+	if len(children) != 3 || children[0].ID != tgframe.MenuID("file_open") ||
+		children[1].Type != tgframe.MenuNodeSeparator {
+		t.Fatalf("unexpected File submenu: %v", children)
+	}
+}
+
 func TestToolGUIStartRunsPage(t *testing.T) {
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
 		addTestComponent(p, "comp")

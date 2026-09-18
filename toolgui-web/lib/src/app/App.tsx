@@ -17,6 +17,7 @@ import { Forest } from './Nodes'
 import { clearState } from '../components/state'
 import { AppConf } from './AppConf';
 import { AppSideNav } from './AppSideNav';
+import { AppMenuBar } from './AppMenuBar';
 import { AppBody } from './AppBody';
 import { setIcon } from '../util/seticon';
 import { emojize } from '../util/emoji';
@@ -206,6 +207,11 @@ export class App extends Component<AppProps, AppState> {
   }
 
   render() {
+    // Embed mode is the page on its own, so the menubar goes with the rest of
+    // the app's chrome. An empty tree counts as none.
+    const menu = !this.props.embed && this.props.appConf.menu?.length ?
+      this.props.appConf.menu : null
+
     // Mantine holds the color scheme, so there is one source of truth for the
     // theme; ThemeModeSync reads it back out for the app.
     return (
@@ -218,33 +224,43 @@ export class App extends Component<AppProps, AppState> {
 
         <ThemeModeSync>
           {(themeMode) =>
-            <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
-              {this.props.embed ? '' :
-                <AppSideNav
-                  appConf={this.props.appConf}
-                  forest={this.state.forest}
-                  running={this.state.running}
-                  pageFound={this.state.pageFound}
-                  pageName={this.state.pageName}
-                  onNavigate={this.props.onNavigate}
-                  rerun={() => { this.props.update({}) }}
-                  update={(e) => { this.props.update(e) }}
-                  upload={async (f, id) => await this.props.upload(f, id)}
-                  download={async (token) => await this.props.download(token)}
-                  themeMode={themeMode} />}
+            // The frame is a column: the menubar row, and the shell's two
+            // columns under it. An app that declares no menu gets no row --
+            // the frame is then the shell in a wrapper, and --tg-menubar-h
+            // stays 0, so every 100vh the shell is built on still holds.
+            <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
+              {menu ?
+                <AppMenuBar menu={menu}
+                  update={(e) => { this.props.update(e) }} /> : ''}
 
-              <main className="toolgui-main">
-                <AppBody
-                  appConf={this.props.appConf}
-                  pageFound={this.state.pageFound}
-                  forest={this.state.forest}
-                  update={(e) => { this.props.update(e) }}
-                  upload={async (f, id) => await this.props.upload(f, id)}
-                  download={async (token) => await this.props.download(token)}
-                  themeMode={themeMode} />
+              <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
+                {this.props.embed ? '' :
+                  <AppSideNav
+                    appConf={this.props.appConf}
+                    forest={this.state.forest}
+                    running={this.state.running}
+                    pageFound={this.state.pageFound}
+                    pageName={this.state.pageName}
+                    onNavigate={this.props.onNavigate}
+                    rerun={() => { this.props.update({}) }}
+                    update={(e) => { this.props.update(e) }}
+                    upload={async (f, id) => await this.props.upload(f, id)}
+                    download={async (token) => await this.props.download(token)}
+                    themeMode={themeMode} />}
 
-                <AppError error={this.state.error} />
-              </main>
+                <main className="toolgui-main">
+                  <AppBody
+                    appConf={this.props.appConf}
+                    pageFound={this.state.pageFound}
+                    forest={this.state.forest}
+                    update={(e) => { this.props.update(e) }}
+                    upload={async (f, id) => await this.props.upload(f, id)}
+                    download={async (token) => await this.props.download(token)}
+                    themeMode={themeMode} />
+
+                  <AppError error={this.state.error} />
+                </main>
+              </div>
             </div>}
         </ThemeModeSync>
       </MantineProvider>

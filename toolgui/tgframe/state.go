@@ -36,6 +36,11 @@ type State struct {
 	// name is one of the page's own rather than one the caller made up.
 	runIDs map[string]bool
 
+	// menuIDs is the set of click ids the app's menu declares. It is the
+	// app's, not a run's: a menu item belongs to no run, so [State.runIDs]
+	// never holds one, and the two sets stay apart.
+	menuIDs map[string]bool
+
 	rwLock sync.RWMutex
 }
 
@@ -65,6 +70,7 @@ func (s *State) Clone() *State {
 		downloads: s.downloads,
 		funcCache: maps.Clone(s.funcCache),
 		runIDs:    maps.Clone(s.runIDs),
+		menuIDs:   s.menuIDs,
 		clickID:   s.clickID,
 	}
 }
@@ -75,6 +81,26 @@ func (s *State) setRunIDs(ids map[string]bool) {
 	defer s.rwLock.Unlock()
 
 	s.runIDs = maps.Clone(ids)
+}
+
+// setMenuIDs records the click ids the app's menu declares. The map is the
+// app's and is never written after startup, so it is shared rather than
+// cloned.
+func (s *State) setMenuIDs(ids map[string]bool) {
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	s.menuIDs = ids
+}
+
+// HasMenuID reports whether the app's menu declares the click id. It is what
+// [MenuClicked] checks a click against, the way [State.HasComponentID] guards
+// a component's.
+func (s *State) HasMenuID(id string) bool {
+	s.rwLock.RLock()
+	defer s.rwLock.RUnlock()
+
+	return s.menuIDs[id]
 }
 
 // HasComponentID reports whether the last run of the page drew a component

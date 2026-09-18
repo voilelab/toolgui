@@ -1,0 +1,219 @@
+package tgframe
+
+import (
+	"errors"
+	"testing"
+
+	"github.com/voilelab/toolgui/toolgui/tgjson"
+)
+
+func demoMenu() *Menu {
+	return NewMenu().
+		Submenu("File", func(m *Menu) {
+			m.Text("Open", "file_open")
+			m.Separator()
+			m.Text("Quit", "file_quit")
+		}).
+		Text("Help", "help")
+}
+
+func TestMenuTree(t *testing.T) {
+	nodes := demoMenu().Nodes()
+
+	if len(nodes) != 2 {
+		t.Fatalf("len(Nodes()) = %d, want 2", len(nodes))
+	}
+
+	file := nodes[0]
+	if file.Type != MenuNodeSubmenu || file.Label != "File" {
+		t.Fatalf("nodes[0] = %+v, want the File submenu", file)
+	}
+
+	want := []MenuNode{
+		{Type: MenuNodeText, Label: "Open", ID: "menu_item_file_open"},
+		{Type: MenuNodeSeparator},
+		{Type: MenuNodeText, Label: "Quit", ID: "menu_item_file_quit"},
+	}
+
+	if len(file.Children) != len(want) {
+		t.Fatalf("len(File.Children) = %d, want %d",
+			len(file.Children), len(want))
+	}
+
+	for i, w := range want {
+		got := file.Children[i]
+		if got.Type != w.Type || got.Label != w.Label || got.ID != w.ID ||
+			got.Children != nil {
+			t.Errorf("File.Children[%d] = %+v, want %+v", i, *got, w)
+		}
+	}
+
+	if nodes[1].ID != MenuID("help") {
+		t.Errorf("nodes[1].ID = %q, want %q", nodes[1].ID, MenuID("help"))
+	}
+}
+
+// TestMenuJSON pins what the frontend receives: a separator carries nothing
+// but its type, and a text item carries the prefixed click id.
+func TestMenuJSON(t *testing.T) {
+	bs, err := tgjson.Marshal(demoMenu().Nodes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := `[{"type":"submenu","label":"File","children":` +
+		`[{"type":"text","label":"Open","id":"menu_item_file_open"},` +
+		`{"type":"separator"},` +
+		`{"type":"text","label":"Quit","id":"menu_item_file_quit"}]},` +
+		`{"type":"text","label":"Help","id":"menu_item_help"}]`
+
+	if string(bs) != want {
+		t.Errorf("menu JSON =\n%s\nwant\n%s", bs, want)
+	}
+}
+
+func TestAppConfMenu(t *testing.T) {
+	app := NewApp()
+
+	if app.AppConf().Menu != nil {
+		t.Error("AppConf().Menu is set on an app with no menu, want nil")
+	}
+
+	// An app with no menu must not put the field on the wire either: the
+	// frontend keys the menubar row off its absence.
+	bs, err := tgjson.Marshal(app.AppConf())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var conf map[string]any
+	if err := tgjson.Unmarshal(bs, &conf); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, ok := conf["menu"]; ok {
+		t.Error("AppConf JSON carries `menu` for an app with no menu")
+	}
+
+	app.SetMenu(demoMenu())
+	if len(app.AppConf().Menu) != 2 {
+		t.Errorf("len(AppConf().Menu) = %d, want 2", len(app.AppConf().Menu))
+	}
+
+	app.SetMenu(nil)
+	if app.AppConf().Menu != nil {
+		t.Error("AppConf().Menu is set after SetMenu(nil), want nil")
+	}
+}
+
+func TestSetMenuInvalid(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		menu *Menu
+	}{
+		{"no id", NewMenu().Text("Open", "")},
+		{"no label", NewMenu().Text("", "open")},
+		{"submenu with no label", NewMenu().Submenu("", func(*Menu) {})},
+		{"duplicated id", NewMenu().Text("Open", "x").Text("Close", "x")},
+		{"duplicated id across submenus", NewMenu().
+			Submenu("File", func(m *Menu) { m.Text("Open", "x") }).
+			Submenu("Edit", func(m *Menu) { m.Text("Undo", "x") })},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				r := recover()
+				if r == nil {
+					t.Fatal("SetMenu did not panic, want ErrMenuItem")
+				}
+
+				err, ok := r.(error)
+				if !ok || !errors.Is(err, ErrMenuItem) {
+					t.Fatalf("SetMenu panicked with %v, want ErrMenuItem", r)
+				}
+			}()
+
+			NewApp().SetMenu(tt.menu)
+		})
+	}
+}
+
+// TestMenuClicked is the whole point of the id: the run handling the click
+// sees it, the run after it does not.
+func TestMenuClicked(t *testing.T) {
+	app := NewApp()
+	app.SetMenu(demoMenu())
+
+	var seen struct {
+		open, quit, undeclared bool
+	}
+	app.AddPage("index", "Index", func(p *Params) error {
+		seen.open = MenuClicked(p, "file_open")
+		seen.quit = MenuClicked(p, "file_quit")
+		seen.undeclared = MenuClicked(p, "file_save")
+		return nil
+	})
+
+	state := NewState()
+
+	if err := app.Run("index", state, nil); err != nil {
+		t.Fatal(err)
+	}
+	if seen.open || seen.quit {
+		t.Errorf("MenuClicked before any click = %+v, want all false", seen)
+	}
+
+	(&EventClick{ID: MenuID("file_open")}).ApplyState(state)
+	if err := app.Run("index", state, nil); err != nil {
+		t.Fatal(err)
+	}
+	if !seen.open || seen.quit {
+		t.Errorf("MenuClicked on the file_open run = %+v,"+
+			" want open only", seen)
+	}
+
+	// A click on an id the menu never declared is not a click, however well
+	// formed the id is.
+	(&EventClick{ID: MenuID("file_save")}).ApplyState(state)
+	if err := app.Run("index", state, nil); err != nil {
+		t.Fatal(err)
+	}
+	if seen.undeclared || seen.open || seen.quit {
+		t.Errorf("MenuClicked after an undeclared click = %+v,"+
+			" want all false", seen)
+	}
+}
+
+// TestMenuClickedWithoutMenu keeps an app that declares no menu from reporting
+// clicks on one.
+func TestMenuClickedWithoutMenu(t *testing.T) {
+	app := NewApp()
+
+	clicked := false
+	app.AddPage("index", "Index", func(p *Params) error {
+		clicked = MenuClicked(p, "file_open")
+		return nil
+	})
+
+	state := NewState()
+	(&EventClick{ID: MenuID("file_open")}).ApplyState(state)
+
+	if err := app.Run("index", state, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if clicked {
+		t.Error("MenuClicked = true on an app with no menu, want false")
+	}
+}
+
+// TestMenuIDNotAComponentID is what the reserved prefix buys: a menu item's
+// click id is not one a component can be given, so the two spaces cannot
+// collide.
+func TestMenuIDNotAComponentID(t *testing.T) {
+	comp := &BaseComponent{Name: "button_component"}
+	comp.SetID("file_open")
+
+	if comp.GetID() == MenuID("file_open") {
+		t.Errorf("a component took the menu item's id %q", comp.GetID())
+	}
+}
