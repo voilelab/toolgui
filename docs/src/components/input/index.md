@@ -49,3 +49,7 @@ Two things follow from the table that are worth saying out loud:
 `FileUpload` is the one input with no `Default`: a browser refuses to have a
 file input's value set from script, so a default would read back in Go while the
 box on screen stayed empty.
+
+[`Menu`](menu.md) is outside the table altogether. It reports a click rather
+than holding a value — the index it hands back is there for one run and `nil`
+after — so there is nothing for a default to stand in for.

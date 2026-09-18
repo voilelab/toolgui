@@ -112,6 +112,48 @@ describe('Input', () => {
     cy.get('div[id=column_component_show_button]').contains('Value: false').should('exist')
   })
 
+  it('Menu', () => {
+    cy.visit('/input')
+
+    const result = () => cy.get('div[id=column_component_show_menu]')
+    const trigger = () => cy.get('[id="menu_component_Actions"]')
+    const item = (at) => cy.get(`[id="menu_component_Actions_${at}"]`)
+
+    result().contains('Action: none').should('exist')
+
+    // The dropdown is built when it opens, so nothing of it is on the page
+    // before the button is pressed.
+    item(1).should('not.exist')
+
+    trigger().click()
+    item(1).click()
+    result().contains('Action: Duplicate').should('exist')
+
+    // Picking closes the dropdown, and the pick belongs to the run that
+    // handled it: the next run is back to nothing.
+    item(1).should('not.exist')
+    cy.contains('Rerun').click()
+    result().contains('Action: none').should('exist')
+
+    // Every item reports itself, not just the one that happens to be first.
+    trigger().click()
+    item(2).click()
+    result().contains('Action: Delete').should('exist')
+  })
+
+  it('Menu closes on ESC without picking anything', () => {
+    cy.visit('/input')
+
+    const result = () => cy.get('div[id=column_component_show_menu]')
+
+    cy.get('[id="menu_component_Actions"]').click()
+    cy.get('.toolgui-menu-dropdown').should('exist')
+
+    cy.get('body').type('{esc}')
+    cy.get('.toolgui-menu-dropdown').should('not.exist')
+    result().contains('Action: none').should('exist')
+  })
+
   it('Select', () => {
     cy.visit('/input')
     // Mantine's Select is a combobox over a listbox, not a native <select>:
