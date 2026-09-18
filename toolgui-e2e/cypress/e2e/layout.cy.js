@@ -37,8 +37,10 @@ describe('Layout spec', () => {
     const bar = () => cy.get('#toolbar_component_sticky_toolbar')
     bar().should('have.css', 'position', 'sticky')
 
-    // The rows under it are what the page scrolls past.
-    cy.contains('row-39').scrollIntoView()
+    // The rows under it are what the page scrolls past. Not the last one:
+    // the demo ends a little below it, and a sticky row rides the bottom of
+    // the box it was written into off the top of the screen with it.
+    cy.contains('row-30').scrollIntoView()
 
     // The app's menubar is pinned to the top of the viewport, so the row
     // comes to rest under it rather than beneath it -- the same place the
