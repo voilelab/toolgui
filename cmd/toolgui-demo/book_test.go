@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -180,4 +181,81 @@ func bookPages(t *testing.T) []string {
 	}
 
 	return pages
+}
+
+// summaryRe matches a link to a component page in the book's contents, which
+// is where the order the book reads in comes from.
+var summaryRe = regexp.MustCompile(`\(components/(\w+)/(\w+)\.md\)`)
+
+// TestDemoOrderFollowsTheBook holds the two lists to one order: the groups,
+// and the components inside each one. A component the book has no page for is
+// nobody's to place, so it is left out here and written last in the group.
+func TestDemoOrderFollowsTheBook(t *testing.T) {
+	inBook := bookOrder(t)
+
+	groups := []string{}
+	for _, g := range demos.Groups() {
+		groups = append(groups, g.Name)
+
+		want := []string{}
+		for _, name := range inBook[g.Name] {
+			if hasDemo(g, name) {
+				want = append(want, name)
+			}
+		}
+
+		got := []string{}
+		for _, d := range g.Demos {
+			if slices.Contains(inBook[g.Name], d.Name) {
+				got = append(got, d.Name)
+			}
+		}
+
+		if !slices.Equal(got, want) {
+			t.Errorf("%s: demos read %v, the book reads %v", g.Name, got, want)
+		}
+	}
+
+	if !slices.Equal(groups, inBook[""]) {
+		t.Errorf("groups read %v, the book reads %v", groups, inBook[""])
+	}
+}
+
+// bookOrder reads the contents: the groups under the key "", and each group's
+// components under its own name, both in the order they are listed in.
+func bookOrder(t *testing.T) map[string][]string {
+	t.Helper()
+
+	bs, err := os.ReadFile(filepath.Join(bookDir, "SUMMARY.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	order := map[string][]string{}
+	for _, m := range summaryRe.FindAllStringSubmatch(string(bs), -1) {
+		group, page := m[1], m[2]
+
+		// A group's own page is what names the group, in its place among the
+		// others.
+		if page == "index" {
+			order[""] = append(order[""], group)
+			continue
+		}
+
+		order[group] = append(order[group], page)
+	}
+
+	if len(order[""]) == 0 {
+		t.Fatal("the contents list no component groups")
+	}
+
+	return order
+}
+
+// hasDemo reports whether the group has an example for the component, which
+// not every page of the book does.
+func hasDemo(g *demos.Group, name string) bool {
+	return slices.ContainsFunc(g.Demos, func(d *demos.Demo) bool {
+		return d.Name == name
+	})
 }

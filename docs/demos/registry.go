@@ -1,8 +1,10 @@
 package demos
 
-// groups is every component that has an example, in the order the coarse
-// pages have always shown them. The demo app reads it twice: once for the
-// coarse pages, once to give every component a page of its own.
+// groups is every component that has an example, in the order the book's
+// contents list them -- the groups, and the components inside each one. A
+// reader moving between the two reads one order, not two. The demo app reads
+// it twice: once for the coarse pages, once to give every component a page of
+// its own.
 var groups = []*Group{
 	{
 		Name: "content", Title: "Content",
@@ -52,14 +54,21 @@ var groups = []*Group{
 			demo("textbox", "Textbox", show("show_textbox", textboxDemo, "demo")),
 			demo("fileupload", "FileUpload",
 				show("show_fileupload", fileuploadDemo, "demo")),
+			demo("download_button", "Download Button",
+				show("show_download_button", downloadButtonDemo, "demo")),
+			demo("download_file", "Download File",
+				show("show_download_file", downloadFileDemo, "demo")),
 			demo("checkbox", "Checkbox",
 				show("show_checkbox", checkboxDemo, "demo")),
+			demo("toggle", "Toggle", show("show_toggle", toggleDemo, "demo")),
 			demo("button", "Button", show("show_button", buttonDemo, "demo")),
 			demo("menu", "Menu", show("show_menu", menuDemo, "demo")),
 			demo("select", "Select", show("show_select", selectDemo, "demo")),
 			demo("multiselect", "MultiSelect",
 				show("show_multiselect", multiSelectDemo, "demo")),
 			demo("radio", "Radio", show("show_radio", radioDemo, "demo")),
+			demo("select_slider", "Select Slider",
+				show("show_select_slider", selectSliderDemo, "demo")),
 			demo("datepicker", "DatePicker",
 				show("show_datepicker", datePickerDemo, "demo")),
 			demo("timepicker", "TimePicker",
@@ -68,38 +77,31 @@ var groups = []*Group{
 				show("show_datetimepicker", dateTimePickerDemo, "demo")),
 			demo("number_input", "Number Input",
 				show("show_number", numberDemo, "demo")),
+			demo("slider", "Slider", show("show_slider", sliderDemo, "demo")),
+			demo("color_picker", "Color Picker",
+				show("show_color_picker", colorPickerDemo, "demo")),
 			demo("form", "Form",
 				show("show_form", formDemo, "demo"),
 				show("show_widget_form", widgetFormDemo, "widget"),
 				show("show_button_form", buttonFormDemo, "button"),
 				show("show_label_form", labelFormDemo, "label")),
-			demo("download_button", "Download Button",
-				show("show_download_button", downloadButtonDemo, "demo")),
-			demo("download_file", "Download File",
-				show("show_download_file", downloadFileDemo, "demo")),
-			demo("slider", "Slider", show("show_slider", sliderDemo, "demo")),
-			demo("select_slider", "Select Slider",
-				show("show_select_slider", selectSliderDemo, "demo")),
-			demo("toggle", "Toggle", show("show_toggle", toggleDemo, "demo")),
-			demo("color_picker", "Color Picker",
-				show("show_color_picker", colorPickerDemo, "demo")),
 		},
 	},
 	{
 		Name: "layout", Title: "Layout",
 		Demos: []*Demo{
-			demo("column", "Column", show("show_col", columnDemo, "demo")),
 			demo("box", "Box", show("show_box", boxDemo, "demo")),
+			demo("empty", "Empty", show("show_empty", emptyDemo, "demo")),
+			demo("column", "Column", show("show_col", columnDemo, "demo")),
 			demo("toolbar", "Toolbar",
 				show("show_toolbar", toolbarDemo, "demo"),
 				show("show_toolbar_sticky", toolbarStickyDemo, "sticky"),
 				show("show_toolbar_dialog", toolbarDialogDemo, "dialog")),
-			demo("tab", "Tab", show("show_tab", tabDemo, "demo")),
 			demo("expand", "Expand", show("show_expand", expandDemo, "demo")),
 			demo("popover", "Popover", show("show_popover", popoverDemo, "demo")),
 			demo("dialog", "Dialog", show("show_dialog", dialogDemo, "demo")).
 				withSidebar(dialogSidebarDemo),
-			demo("empty", "Empty", show("show_empty", emptyDemo, "demo")),
+			demo("tab", "Tab", show("show_tab", tabDemo, "demo")),
 		},
 	},
 	{
@@ -110,17 +112,19 @@ var groups = []*Group{
 			demo("progress_bar", "Progress Bar",
 				show("show_progress_bar", progressBarDemo, "demo")),
 			demo("spinner", "Spinner", show("show_spinner", spinnerDemo, "demo")),
-			demo("status", "Status", show("show_status", statusDemo, "demo")),
 			demo("toast", "Toast", show("show_toast", toastDemo, "demo")),
-			demo("error", "Error",
-				show("show_error", errorDemo, "demo"),
-				show("show_panic", panicDemo, "panic")),
+			demo("status", "Status", show("show_status", statusDemo, "demo")),
 			demo("iframe", "Iframe",
 				show("show_iframe_simple", iframeSimpleDemo, "simple"),
 				show("show_iframe_script", iframeScriptDemo, "script"),
 				show("show_iframe_interactive", iframeInteractiveDemo, "interactive"),
 				show("show_iframe_render", iframeRenderDemo, "render")),
 			demo("html", "HTML", show("show_html", htmlDemo, "demo")),
+			// Last, and after the components the book lists: the book has no
+			// page for Error under Misc -- it is the error handling chapter.
+			demo("error", "Error",
+				show("show_error", errorDemo, "demo"),
+				show("show_panic", panicDemo, "panic")),
 		},
 	},
 }
