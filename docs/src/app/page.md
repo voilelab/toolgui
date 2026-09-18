@@ -28,7 +28,7 @@ type PageConfig struct {
 	Name   string `json:"name"`
 	Title  string `json:"title"`
 	Emoji  string `json:"emoji"`
-	Hidden bool   `json:"hidden,omitempty"`
+	Hidden bool   `json:"hidden,omitzero"`
 }
 ```
 

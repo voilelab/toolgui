@@ -65,7 +65,7 @@ type PageConfig struct {
 	// it is the page being read. For a page something else links to -- a
 	// detail page, a page an iframe embeds -- rather than one a visitor picks
 	// off the list.
-	Hidden bool `json:"hidden,omitempty"`
+	Hidden bool `json:"hidden,omitzero"`
 }
 
 // App is an app
