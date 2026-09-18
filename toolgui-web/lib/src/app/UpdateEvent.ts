@@ -9,13 +9,15 @@ export interface InputEvent {
   value: any
 }
 
-// A SelectEvent carries either the one value a select or a radio has, or the
-// values a multiselect has. The two are separate fields so that a server
-// built before multi-selection existed still reads the single one.
+// A SelectEvent carries the one value a select or a radio has, the values a
+// multiselect has, or the keys a component that remembers what is picked by
+// name has -- a DataFrame given row keys. Three separate fields so that a
+// server built before either of the later two existed still reads the single
+// value; a payload only ever carries one of them.
 export type SelectEvent = {
   type: "select"
   id: string
-} & ({ value: number } | { values: number[] })
+} & ({ value: number } | { values: number[] } | { keys: string[] })
 
 // CustomUpdateEvent carries an arbitrary value from a component that renders
 // itself, an iframe or a plugin. The id is set by the host to the component's

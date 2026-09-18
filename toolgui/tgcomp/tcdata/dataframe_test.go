@@ -446,3 +446,189 @@ func TestDataFrameDoesNotWriteBackTheSelection(t *testing.T) {
 		t.Errorf("DefaultSelection = %v, want it left alone", conf.DefaultSelection)
 	}
 }
+
+// selectableKeys names the rows of selectableRows, the way an app naming its
+// rows by a primary key would.
+var selectableKeys = []string{"web-1", "web-2", "db-1"}
+
+// RowKeys reaches the client so that it can send the pick back as keys rather
+// than as positions, and is empty rather than absent when the table has none.
+func TestDataFrameRowKeysProps(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, selectableRows, &DataFrameConf{
+			Selection: SelectionModeMulti,
+			RowKeys:   selectableKeys,
+		})
+	})
+
+	keys, ok := props["row_keys"].([]any)
+	if !ok || len(keys) != 3 || keys[0] != "web-1" {
+		t.Fatalf("row_keys = %v, want the three keys", props["row_keys"])
+	}
+
+	bare := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, selectableHead, selectableRows,
+			&DataFrameConf{Selection: SelectionModeMulti})
+	})
+
+	if keys, ok := bare["row_keys"].([]any); !ok || len(keys) != 0 {
+		t.Errorf("row_keys = %v, want empty", bare["row_keys"])
+	}
+}
+
+// The point of RowKeys: a row that moves keeps its pick. The state holds the
+// key that was picked against the old rows, and the return names where that
+// same row sits now, not where it used to.
+func TestDataFrameKeyedSelectionSurvivesMovedRows(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventSelect{
+		ID:   defaultDataFrameID(selectableHead),
+		Keys: []string{"db-1"},
+	}).ApplyState(state)
+
+	// web-1 is gone and web-3 is new, so db-1 has slid from row 2 to row 1.
+	container := tgframe.NewContainer("test", state, func(tgframe.NotifyPack) {})
+	got := DataFrame(container, selectableHead, [][]string{
+		{"web-2", "EMEA"}, {"db-1", "NA"}, {"web-3", "APAC"},
+	}, &DataFrameConf{
+		Selection: SelectionModeMulti,
+		RowKeys:   []string{"web-2", "db-1", "web-3"},
+	})
+
+	if !slices.Equal(got, []int{1}) {
+		t.Fatalf("DataFrame = %v, want [1], the row db-1 moved to", got)
+	}
+}
+
+// A key whose row is gone is dropped rather than standing for whatever took
+// its place, which is the whole reason to pick rows by key before deleting.
+func TestDataFrameKeyedSelectionDropsVanishedRows(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventSelect{
+		ID:   defaultDataFrameID(selectableHead),
+		Keys: []string{"web-2", "gone"},
+	}).ApplyState(state)
+
+	got := dataFrameSelection(state, &DataFrameConf{
+		Selection: SelectionModeMulti,
+		RowKeys:   selectableKeys,
+	})
+
+	if !slices.Equal(got, []int{1}) {
+		t.Fatalf("DataFrame = %v, want [1], with the vanished key dropped", got)
+	}
+}
+
+// The return is in row order and free of duplicates whatever order the keys
+// arrived in, the same promise the positional selection makes.
+func TestDataFrameKeyedSelectionIsNormalized(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventSelect{
+		ID:   defaultDataFrameID(selectableHead),
+		Keys: []string{"db-1", "web-1", "db-1"},
+	}).ApplyState(state)
+
+	got := dataFrameSelection(state, &DataFrameConf{
+		Selection: SelectionModeMulti,
+		RowKeys:   selectableKeys,
+	})
+
+	if !slices.Equal(got, []int{0, 2}) {
+		t.Fatalf("DataFrame = %v, want [0 2]", got)
+	}
+}
+
+// DefaultSelection stays positions even on a keyed table: the page function
+// has the rows in hand when it writes them.
+func TestDataFrameKeyedDefaultSelectionIsPositional(t *testing.T) {
+	got := dataFrameSelection(tgframe.NewState(), &DataFrameConf{
+		Selection:        SelectionModeMulti,
+		RowKeys:          selectableKeys,
+		DefaultSelection: []int{2, 0},
+	})
+
+	if !slices.Equal(got, []int{0, 2}) {
+		t.Fatalf("DataFrame = %v, want [0 2]", got)
+	}
+}
+
+// Clearing the selection is an answer on a keyed table too, so the empty
+// keys the frontend sends beat the default.
+func TestDataFrameKeyedEmptySelectionBeatsDefault(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventSelect{
+		ID:   defaultDataFrameID(selectableHead),
+		Keys: []string{},
+	}).ApplyState(state)
+
+	got := dataFrameSelection(state, &DataFrameConf{
+		Selection:        SelectionModeMulti,
+		RowKeys:          selectableKeys,
+		DefaultSelection: []int{1},
+	})
+
+	if len(got) != 0 {
+		t.Fatalf("DataFrame = %v, want empty", got)
+	}
+}
+
+// SelectionModeSingle trims a keyed selection the same way, to the first row
+// of the current rows rather than the first key that arrived.
+func TestDataFrameKeyedSingleSelectionKeepsOneRow(t *testing.T) {
+	state := tgframe.NewState()
+	(&tgframe.EventSelect{
+		ID:   defaultDataFrameID(selectableHead),
+		Keys: []string{"db-1", "web-2"},
+	}).ApplyState(state)
+
+	got := dataFrameSelection(state, &DataFrameConf{
+		Selection: SelectionModeSingle,
+		RowKeys:   selectableKeys,
+	})
+
+	if !slices.Equal(got, []int{1}) {
+		t.Fatalf("DataFrame = %v, want [1]", got)
+	}
+}
+
+// Without RowKeys nothing about the selection changes: a state holding
+// positions is still read as positions.
+func TestDataFrameWithoutRowKeysStaysPositional(t *testing.T) {
+	state := tgframe.NewState()
+	state.Set(defaultDataFrameID(selectableHead), []int{2})
+
+	got := dataFrameSelection(state, &DataFrameConf{Selection: SelectionModeMulti})
+	if !slices.Equal(got, []int{2}) {
+		t.Fatalf("DataFrame = %v, want [2]", got)
+	}
+}
+
+// RowKeys that do not line up with rows are the app's mistake, so the run
+// fails rather than picking rows against a key list that means nothing.
+func TestDataFrameRowKeysFail(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		want string
+		keys []string
+	}{
+		{"too few keys", "len of row keys",
+			[]string{"web-1", "web-2"}},
+		{"too many keys", "len of row keys",
+			[]string{"web-1", "web-2", "db-1", "db-2"}},
+		{"a repeated key", "should be unique",
+			[]string{"web-1", "web-1", "db-1"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			msg := failMessage(t, func(c *tgframe.Container) {
+				DataFrame(c, selectableHead, selectableRows, &DataFrameConf{
+					Selection: SelectionModeMulti,
+					RowKeys:   tc.keys,
+				})
+			})
+
+			if !strings.Contains(msg, tc.want) {
+				t.Errorf("message = %q, want it to contain %q", msg, tc.want)
+			}
+		})
+	}
+}

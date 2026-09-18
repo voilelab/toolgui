@@ -16,12 +16,18 @@ interface Column {
   hidden: boolean
 }
 
-// Row is a row carried with the index the page function wrote it at. Filtering
-// and sorting reorder the rows, so the index has to travel with them: it is
-// what a selection is remembered by and what goes back to the server.
+// RowKey is what one row is remembered by: the index the page function wrote
+// it at, or the key the page function named it with when row_keys is set. A
+// key survives the rows changing underneath the table, an index does not.
+type RowKey = number | string
+
+// Row is a row carried with both. Filtering and sorting reorder the rows, so
+// they have to travel with them: the key is what a selection is remembered by
+// and what goes back to the server, the index is where the row sits now.
 interface Row {
   cells: string[]
   index: number
+  key: RowKey
 }
 
 interface Sort {
@@ -30,6 +36,11 @@ interface Sort {
 }
 
 type Selection = "none" | "single" | "multi"
+
+// noKeys stands in for a server that sends no row_keys at all, kept module
+// level so that the memo the rows hang off is not invalidated every render by
+// a fresh empty array.
+const noKeys: string[] = []
 
 // sortKey reads a cell as the value its column type says it holds. Cells that
 // do not parse come back as null and are kept together at the end, so a
@@ -105,6 +116,12 @@ export function TDataFrame({ node, update }: Props) {
   const height: string = node.props.height
   const selection: Selection = node.props.selection || "none"
 
+  // Empty is how the server says the table is positional, so the rows are
+  // remembered by index and the selection goes back as one.
+  const rowKeyList: string[] = node.props.row_keys ?? noKeys
+  const keyed = rowKeyList.length !== 0
+  const keyOf = (index: number): RowKey => keyed ? rowKeyList[index] : index
+
   // Sorting, searching and paging are all local: none of them calls update,
   // so none of them reruns the page function on the server. Picking a row is
   // the one interaction that does.
@@ -115,8 +132,9 @@ export function TDataFrame({ node, update }: Props) {
   // Nothing is picked until the table is first touched, which is when the
   // default stands in — the same rule Go applies to the state. Kept in
   // stateValues so the pick survives the re-render the server answer brings.
-  const [selected, setSelected] = useState<number[]>(
-    stateValues[node.props.id] || node.props.default_selection)
+  const [selected, setSelected] = useState<RowKey[]>(
+    stateValues[node.props.id] ||
+    (node.props.default_selection as number[]).map(keyOf))
   const pickable = selection !== "none"
 
   // What is drawn as picked is the selection with the current mode applied,
@@ -124,17 +142,24 @@ export function TDataFrame({ node, update }: Props) {
   // between runs while this component stays mounted, so a selection made
   // under a wider one must not go on being drawn under a narrower one:
   // dropped outright when the rows are no longer pickable, and trimmed to
-  // the lowest index -- selected is kept sorted -- under single.
+  // the first row -- selected is kept in row order -- under single.
   const picked = useMemo(() => {
     if (!pickable) {
-      return new Set<number>()
+      return new Set<RowKey>()
     }
 
     return new Set(selection === "single" ? selected.slice(0, 1) : selected)
   }, [selected, selection, pickable])
 
   const rows: Row[] = useMemo(
-    () => rowCells.map((cells, index) => ({ cells, index })), [rowCells])
+    () => rowCells.map((cells, index) => ({ cells, index, key: keyOf(index) })),
+    [rowCells, rowKeyList])
+
+  // Where each key sits in this run's rows, which is what puts a selection
+  // back in row order and what tells a key whose row is gone from one that is
+  // still there.
+  const at = useMemo(
+    () => new Map(rows.map(row => [row.key, row.index])), [rows])
 
   const shown = useMemo(
     () => head.map((_, i) => i).filter(i => !columns[i].hidden), [head, columns])
@@ -183,34 +208,41 @@ export function TDataFrame({ node, update }: Props) {
     })
   }
 
-  // commit is the only thing here that talks to the server. The indices are
-  // sorted so the page function reads them in row order whatever order they
-  // were picked in, which is what the Go side hands back.
-  const commit = (indices: number[]) => {
-    const next = [...new Set(indices)].sort((a, b) => a - b)
+  // commit is the only thing here that talks to the server. The rows are
+  // sorted into the order the page function wrote them, whatever order they
+  // were picked in, which is what the Go side hands back. A key whose row is
+  // gone is dropped here for the same reason the Go side drops it: no row is
+  // left for it to name.
+  const commit = (keys: RowKey[]) => {
+    const next = [...new Set(keys)]
+      .filter(key => at.has(key))
+      .sort((a, b) => at.get(a)! - at.get(b)!)
+
     stateValues[node.props.id] = next
     setSelected(next)
-    update({ type: "select", id: node.props.id, values: next })
+    update(keyed
+      ? { type: "select", id: node.props.id, keys: next as string[] }
+      : { type: "select", id: node.props.id, values: next as number[] })
   }
 
-  const toggleRow = (index: number) => {
+  const toggleRow = (key: RowKey) => {
     if (selection === "single") {
       // Clicking the picked row again clears it, so a single-select table can
       // be emptied without a modifier key.
-      commit(picked.has(index) ? [] : [index])
+      commit(picked.has(key) ? [] : [key])
       return
     }
 
-    commit(picked.has(index)
-      ? selected.filter(i => i !== index)
-      : [...selected, index])
+    commit(picked.has(key)
+      ? selected.filter(k => k !== key)
+      : [...selected, key])
   }
 
   // In single mode the row is the only control there is, so it has to be
   // reachable and operable from the keyboard. In multi mode the checkbox
   // already is both, and a focusable row would only add a second tab stop
   // per row without adding anything to do from it.
-  const rowKeys = (index: number): React.HTMLAttributes<HTMLTableRowElement> =>
+  const rowProps = (key: RowKey): React.HTMLAttributes<HTMLTableRowElement> =>
     selection !== "single" ? {} : {
       tabIndex: 0,
       onKeyDown: e => {
@@ -221,20 +253,20 @@ export function TDataFrame({ node, update }: Props) {
         // Space would scroll the page, and Enter would submit the form the
         // table may sit in.
         e.preventDefault()
-        toggleRow(index)
+        toggleRow(key)
       },
     }
 
   // The head checkbox covers every row the search kept, not just the page on
   // screen: paging is how a long table is read, not how it is divided up.
-  const allPicked = sorted.length > 0 && sorted.every(row => picked.has(row.index))
-  const somePicked = sorted.some(row => picked.has(row.index))
+  const allPicked = sorted.length > 0 && sorted.every(row => picked.has(row.key))
+  const somePicked = sorted.some(row => picked.has(row.key))
 
   const toggleAll = () => {
-    const inView = sorted.map(row => row.index)
+    const inView = sorted.map(row => row.key)
     if (allPicked) {
       const drop = new Set(inView)
-      commit(selected.filter(i => !drop.has(i)))
+      commit(selected.filter(k => !drop.has(k)))
       return
     }
 
@@ -277,20 +309,20 @@ export function TDataFrame({ node, update }: Props) {
           </Table.Thead>
           <Table.Tbody>
             {visible.map(row =>
-              <Table.Tr key={row.index}
-                {...rowKeys(row.index)}
-                aria-selected={pickable ? picked.has(row.index) : undefined}
-                bg={picked.has(row.index)
+              <Table.Tr key={String(row.key)}
+                {...rowProps(row.key)}
+                aria-selected={pickable ? picked.has(row.key) : undefined}
+                bg={picked.has(row.key)
                   ? "var(--mantine-color-blue-light)" : undefined}
                 style={pickable ? { cursor: "pointer" } : undefined}
-                onClick={pickable ? () => toggleRow(row.index) : undefined}>
+                onClick={pickable ? () => toggleRow(row.key) : undefined}>
                 {selection === "multi" &&
                   // The click is stopped here so it does not also reach the
                   // row, which would toggle the pick straight back.
                   <Table.Td onClick={e => e.stopPropagation()}>
                     <Checkbox aria-label={`select row ${row.index + 1}`}
-                      checked={picked.has(row.index)}
-                      onChange={() => toggleRow(row.index)} />
+                      checked={picked.has(row.key)}
+                      onChange={() => toggleRow(row.key)} />
                   </Table.Td>}
                 {shown.map(j =>
                   <Table.Td key={j} ta={columns[j].align}>{row.cells[j]}</Table.Td>)}

@@ -63,11 +63,19 @@ func dataFrameMultiDemo(p *tgframe.Params) error {
 		{"db-2", "LATAM", "down"},
 	}
 
+	// The host name is what a row is, so the pick follows the host rather
+	// than the position it happens to sit at this run.
+	keys := make([]string, 0, len(hosts))
+	for _, host := range hosts {
+		keys = append(keys, host[0])
+	}
+
 	selected := tgcomp.DataFrame(p.Main,
 		[]string{"Host", "Region", "Status"}, hosts,
 		&tgcomp.DataFrameConf{
 			ID:        "demo_hosts",
 			Selection: tgcomp.SelectionModeMulti,
+			RowKeys:   keys,
 		})
 
 	names := []string{}
