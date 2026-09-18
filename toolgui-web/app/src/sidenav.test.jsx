@@ -319,3 +319,34 @@ describe('side column width', () => {
     expect(resizer()).toHaveAttribute('aria-valuenow', '240')
   })
 })
+
+describe('hidden pages', () => {
+  // An app whose middle page is reached by url rather than off the list.
+  const CONF = {
+    ...APP_CONF,
+    page_names: ['index', 'detail', 'other'],
+    page_confs: {
+      index: { name: 'index', title: 'Index', emoji: '' },
+      detail: { name: 'detail', title: 'Detail', emoji: '', hidden: true },
+      other: { name: 'other', title: 'Other', emoji: '' },
+    },
+  }
+
+  function navTitles() {
+    return Array.from(document.querySelectorAll('.toolgui-nav-list a'))
+      .map((a) => a.textContent)
+  }
+
+  test('are left off the list', () => {
+    render(<App appConf={CONF} pageName="index" {...RENDER_PROPS} />)
+    expect(navTitles()).toEqual(['Index', 'Other'])
+  })
+
+  test('are on it while they are the page being read', () => {
+    render(<App appConf={CONF} pageName="detail" {...RENDER_PROPS} />)
+    expect(navTitles()).toEqual(['Index', 'Detail', 'Other'])
+
+    expect(document.querySelector('.toolgui-nav-list a[href="#/detail"]'))
+      .toHaveAttribute('aria-current', 'page')
+  })
+})

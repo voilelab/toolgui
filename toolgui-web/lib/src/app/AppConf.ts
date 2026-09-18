@@ -22,9 +22,20 @@ export interface MenuSubmenuNode {
   children?: MenuNode[]
 }
 
+// PageConf is one page, as the Go App declares it.
+export interface PageConf {
+  name: string
+  title: string
+  emoji: string
+
+  // Whether the side nav leaves the page off its list. Absent for a page the
+  // list holds, which is most of them.
+  hidden?: boolean
+}
+
 export interface AppConf {
   page_names: string[]
-  page_confs: { [page_name: string]: any }
+  page_confs: { [page_name: string]: PageConf }
 
   title: string,
 

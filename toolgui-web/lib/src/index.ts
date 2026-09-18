@@ -1,7 +1,8 @@
 export { App } from "./app/App"
 export { dispatchPack } from "./app/dispatch"
 export type {
-  AppConf, MenuNode, MenuTextNode, MenuSeparatorNode, MenuSubmenuNode,
+  AppConf, PageConf,
+  MenuNode, MenuTextNode, MenuSeparatorNode, MenuSubmenuNode,
 } from "./app/AppConf"
 export type { UpdateEvent } from "./app/UpdateEvent"
 export type { UploadFunc, UploadResult } from "./app/Upload"

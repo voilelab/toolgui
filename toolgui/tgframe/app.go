@@ -59,6 +59,13 @@ type PageConfig struct {
 
 	// Emoji will show as icon of a page
 	Emoji string `json:"emoji"`
+
+	// Hidden keeps the page out of the side nav. It is served like any
+	// other: a link to its url still lands on it, and the nav shows it while
+	// it is the page being read. For a page something else links to -- a
+	// detail page, a page an iframe embeds -- rather than one a visitor picks
+	// off the list.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // App is an app
