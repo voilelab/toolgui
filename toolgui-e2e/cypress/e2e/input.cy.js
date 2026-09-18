@@ -119,6 +119,14 @@ describe('Input', () => {
     const trigger = () => cy.get('[id="menu_component_Actions"]')
     const item = (at) => cy.get(`[id="menu_component_Actions_${at}"]`)
 
+    // The item clicks turn scrolling off, for the reason the Select options
+    // below do. Cypress scrolls what it is about to click to the top of the
+    // viewport, and an item sits in a portal below the button -- scrolling it
+    // up carries the button off screen, at which point Mantine hides the
+    // dropdown as detached from it. The dropdown opens in view already, so
+    // there is nothing to scroll to.
+    const noScroll = { scrollBehavior: false }
+
     result().contains('Action: none').should('exist')
 
     // The dropdown is built when it opens, so nothing of it is on the page
@@ -126,7 +134,7 @@ describe('Input', () => {
     item(1).should('not.exist')
 
     trigger().click()
-    item(1).click()
+    item(1).click(noScroll)
     result().contains('Action: Duplicate').should('exist')
 
     // Picking closes the dropdown, and the pick belongs to the run that
@@ -137,7 +145,7 @@ describe('Input', () => {
 
     // Every item reports itself, not just the one that happens to be first.
     trigger().click()
-    item(2).click()
+    item(2).click(noScroll)
     result().contains('Action: Delete').should('exist')
   })
 
