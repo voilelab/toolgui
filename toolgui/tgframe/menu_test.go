@@ -118,6 +118,20 @@ func TestSetMenuInvalid(t *testing.T) {
 		{"duplicated id across submenus", NewMenu().
 			Submenu("File", func(m *Menu) { m.Text("Open", "x") }).
 			Submenu("Edit", func(m *Menu) { m.Text("Undo", "x") })},
+		{"unparseable accelerator", NewMenu().
+			Text("Open", "open", &MenuTextConf{Accelerator: "Super+o"})},
+		{"duplicated accelerator", NewMenu().
+			Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"}).
+			Text("Close", "close", &MenuTextConf{Accelerator: "CmdOrCtrl+o"})},
+		{"duplicated accelerator across submenus", NewMenu().
+			Submenu("File", func(m *Menu) {
+				m.Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"})
+			}).
+			Submenu("Edit", func(m *Menu) {
+				m.Text("Undo", "undo", &MenuTextConf{
+					Accelerator: "cmdorctrl+o",
+				})
+			})},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			defer func() {
@@ -261,5 +275,66 @@ func TestSetMenuSnapshotsSubmenus(t *testing.T) {
 	if len(children) != 1 {
 		t.Fatalf("len(File.Children) = %d after the caller added an item,"+
 			" want 1", len(children))
+	}
+}
+
+// TestMenuAccelerator is the declaration both carriers read: one spelling on
+// the item, normalized so the frontend and the native menu are handed the
+// same thing however it was written.
+func TestMenuAccelerator(t *testing.T) {
+	app := NewApp()
+	app.SetMenu(NewMenu().
+		Submenu("File", func(m *Menu) {
+			m.Text("Open", "file_open", &MenuTextConf{
+				Accelerator: "shift+cmdorctrl+O",
+			})
+			m.Text("Quit", "file_quit")
+		}))
+
+	items := app.menu.Nodes()[0].Children
+	if got := items[0].Accelerator; got != "CmdOrCtrl+Shift+o" {
+		t.Errorf("Open.Accelerator = %q, want %q", got, "CmdOrCtrl+Shift+o")
+	}
+
+	// An item that declared none carries none, which is what keeps the field
+	// out of the conf the frontend receives.
+	if got := items[1].Accelerator; got != "" {
+		t.Errorf("Quit.Accelerator = %q, want empty", got)
+	}
+}
+
+// TestMenuAcceleratorJSON pins the field the frontend reads it under, and
+// that an item without one does not carry it at all.
+func TestMenuAcceleratorJSON(t *testing.T) {
+	app := NewApp()
+	app.SetMenu(NewMenu().
+		Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"}).
+		Text("Quit", "quit"))
+
+	bs, err := tgjson.Marshal(app.menu.Nodes())
+	if err != nil {
+		t.Fatalf("Marshal() = %v", err)
+	}
+
+	want := `[{"type":"text","label":"Open","id":"menu_item_open",` +
+		`"accelerator":"CmdOrCtrl+o"},` +
+		`{"type":"text","label":"Quit","id":"menu_item_quit"}]`
+
+	if string(bs) != want {
+		t.Errorf("Marshal() = %s, want %s", bs, want)
+	}
+}
+
+// TestSetMenuNormalizesTheSnapshot: the normalizing happens on the copy
+// SetMenu keeps, so a Menu the caller still holds reads back the way they
+// wrote it.
+func TestSetMenuNormalizesTheSnapshot(t *testing.T) {
+	menu := NewMenu().
+		Text("Open", "open", &MenuTextConf{Accelerator: "cmdorctrl+O"})
+
+	NewApp().SetMenu(menu)
+
+	if got := menu.Nodes()[0].Accelerator; got != "cmdorctrl+O" {
+		t.Errorf("Accelerator = %q, want the declared %q", got, "cmdorctrl+O")
 	}
 }

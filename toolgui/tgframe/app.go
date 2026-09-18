@@ -146,7 +146,9 @@ func (app *App) SetTitle(v string) {
 //
 //	app.SetMenu(tgframe.NewMenu().
 //		Submenu("File", func(m *tgframe.Menu) {
-//			m.Text("Open", "file_open")
+//			m.Text("Open", "file_open", &tgframe.MenuTextConf{
+//				Accelerator: "CmdOrCtrl+O",
+//			})
 //			m.Separator()
 //			m.Text("Quit", "file_quit")
 //		}))
@@ -154,6 +156,9 @@ func (app *App) SetTitle(v string) {
 // The tree belongs to the app rather than to a page func: it is declared once
 // and stands for every run, which is the only shape a native menu -- with no
 // diff to apply -- can take.
+//
+// An item may declare an accelerator, which the desktop hands to the OS and
+// the browser's shell listens for itself. See [MenuTextConf].
 //
 // It panics on a menu the app cannot serve, so a mistake is reported at
 // startup rather than by a menubar that quietly misses an item. See
@@ -164,14 +169,18 @@ func (app *App) SetMenu(menu *Menu) {
 		return
 	}
 
+	// A snapshot rather than the Menu itself, so the tree and the ids stay
+	// the same declaration however the caller goes on to use its Menu. The
+	// check walks the snapshot because it also normalizes the accelerators it
+	// finds, and the caller's tree is not ours to write to.
+	nodes := cloneNodes(menu.nodes)
+
 	ids := map[string]bool{}
-	if err := collectIDs(menu.nodes, ids); err != nil {
+	if err := checkNodes(nodes, ids, map[string]bool{}); err != nil {
 		panic(err)
 	}
 
-	// A snapshot rather than the Menu itself, so the tree and the ids stay
-	// the same declaration however the caller goes on to use its Menu.
-	app.menu, app.menuIDs = &Menu{nodes: cloneNodes(menu.nodes)}, ids
+	app.menu, app.menuIDs = &Menu{nodes: nodes}, ids
 }
 
 // SetShowVersion set whether the side nav shows the toolgui version.

@@ -1,6 +1,10 @@
 package tgframe
 
-import "github.com/voilelab/toolgui/toolgui/tgutil"
+import (
+	"fmt"
+
+	"github.com/voilelab/toolgui/toolgui/tgutil"
+)
 
 // MenuIDPrefix is what every menu item's click id carries in front of the id
 // the app declares. Menu items live on the app rather than inside a run, yet
@@ -41,6 +45,11 @@ type MenuNode struct {
 	// ID is the click id of a text item, already carrying [MenuIDPrefix].
 	ID string `json:"id,omitzero"`
 
+	// Accelerator is the key combination a text item also fires on, in the
+	// normalized spelling [Menu.Text] stored it under, and empty for an item
+	// that declared none.
+	Accelerator string `json:"accelerator,omitzero"`
+
 	// Children are a submenu's own items.
 	Children []*MenuNode `json:"children,omitzero"`
 }
@@ -64,16 +73,59 @@ func NewMenu() *Menu {
 	return &Menu{}
 }
 
+// MenuTextConf is the optional part of a [Menu.Text] item.
+type MenuTextConf struct {
+	// Accelerator is the key combination that fires the item without the menu
+	// being opened, written in a platform independent spelling:
+	// "CmdOrCtrl+O", "CmdOrCtrl+Shift+F5", "Ctrl+plus". Modifiers are
+	// CmdOrCtrl, OptionOrAlt, Shift and Ctrl; the key is one printable ASCII
+	// character or one of the named keys (backspace, tab, enter, escape,
+	// left, right, up, down, space, delete, home, end, page up, page down,
+	// f1 to f24, plus).
+	//
+	// The desktop hangs it off the native menu item and lets the OS dispatch
+	// it. The browser has no such service, so the shell listens for the
+	// keystroke itself -- and a combination the browser has already taken is
+	// not reliably the app's. See the menu documentation for which ones.
+	//
+	// [App.SetMenu] panics on one it cannot serve, see [ErrAccelerator].
+	Accelerator string
+}
+
 // Text adds an item reading label that reports a click under id. Read the
 // click with [MenuClicked].
-func (m *Menu) Text(label, id string) *Menu {
+//
+//	m.Text("Open", "file_open", &tgframe.MenuTextConf{
+//		Accelerator: "CmdOrCtrl+O",
+//	})
+func (m *Menu) Text(label, id string, conf ...*MenuTextConf) *Menu {
+	cf := oneMenuTextConf(conf)
+
 	m.nodes = append(m.nodes, &MenuNode{
-		Type:  MenuNodeText,
-		Label: label,
-		ID:    MenuID(id),
+		Type:        MenuNodeText,
+		Label:       label,
+		ID:          MenuID(id),
+		Accelerator: cf.Accelerator,
 	})
 
 	return m
+}
+
+// oneMenuTextConf resolves Text's variadic conf the way [OneConf] resolves a
+// component's. It is its own function because a menu item has no id to
+// configure -- Text takes it -- so MenuTextConf embeds no [Base] and is not a
+// [Conf].
+func oneMenuTextConf(conf []*MenuTextConf) *MenuTextConf {
+	if len(conf) > 1 {
+		panic(fmt.Sprintf(
+			"toolgui: Menu.Text takes at most one conf, got %d", len(conf)))
+	}
+
+	if len(conf) == 0 || conf[0] == nil {
+		return &MenuTextConf{}
+	}
+
+	return conf[0]
 }
 
 // Separator adds a line between the items around it.
@@ -124,13 +176,19 @@ func cloneNodes(nodes []*MenuNode) []*MenuNode {
 	return out
 }
 
-// ErrMenuItem is what a menu the app cannot serve is reported with:
-// an item with no label, a text item with no id, or two items sharing one.
+// ErrMenuItem is what a menu the app cannot serve is reported with: an item
+// with no label, a text item with no id, two items sharing one, or an
+// accelerator the app cannot serve ([ErrAccelerator]).
 var ErrMenuItem = tgutil.NewError("invalid menu item")
 
-// collectIDs walks nodes, checking each one and adding every text item's click
-// id to ids.
-func collectIDs(nodes []*MenuNode, ids map[string]bool) error {
+// checkNodes walks nodes, checking each one, adding every text item's click id
+// to ids, and normalizing every accelerator in place -- accels is the set of
+// the ones seen, so two items cannot declare the same combination in
+// different words.
+//
+// It writes to the nodes it is given, so it is walked over the snapshot
+// [App.SetMenu] took rather than over the caller's own tree.
+func checkNodes(nodes []*MenuNode, ids, accels map[string]bool) error {
 	for _, node := range nodes {
 		switch node.Type {
 		case MenuNodeSeparator:
@@ -154,18 +212,48 @@ func collectIDs(nodes []*MenuNode, ids map[string]bool) error {
 			}
 
 			ids[node.ID] = true
+
+			if err := checkAccelerator(node, accels); err != nil {
+				return tgutil.Errorf("%w", err)
+			}
 		case MenuNodeSubmenu:
 			if node.Label == "" {
 				return tgutil.Errorf("%w: a submenu needs a label", ErrMenuItem)
 			}
 
-			if err := collectIDs(node.Children, ids); err != nil {
+			if err := checkNodes(node.Children, ids, accels); err != nil {
 				return tgutil.Errorf("%w", err)
 			}
 		default:
 			return tgutil.Errorf("%w: unknown type `%s`", ErrMenuItem, node.Type)
 		}
 	}
+
+	return nil
+}
+
+// checkAccelerator normalizes node's accelerator in place and records it in
+// accels. An item that declared none is left alone.
+func checkAccelerator(node *MenuNode, accels map[string]bool) error {
+	if node.Accelerator == "" {
+		return nil
+	}
+
+	accel, err := parseAccelerator(node.Accelerator)
+	if err != nil {
+		return tgutil.Errorf("%w: `%s`: %w", ErrMenuItem, node.Label, err)
+	}
+
+	// Two items on one combination is one of them never firing, and which
+	// one is whichever the walk reaches first -- not something to leave to
+	// the tree's shape.
+	if accels[accel] {
+		return tgutil.Errorf("%w: two items share the accelerator `%s`",
+			ErrMenuItem, accel)
+	}
+
+	accels[accel] = true
+	node.Accelerator = accel
 
 	return nil
 }
