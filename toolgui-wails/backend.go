@@ -47,6 +47,13 @@ type ToolGUI struct {
 	// them too: a chunk that lands while the session is being replaced must
 	// not write to the state that is going away.
 	uploads map[string]*tgframe.File
+
+	// menuLock guards the queue of menu picks and the flag saying one
+	// goroutine is working through it. It is its own lock rather than the one
+	// above: taking a pick's place in line must not wait on a run.
+	menuLock  sync.Mutex
+	menuQueue []string
+	menuBusy  bool
 }
 
 // NewToolGUI return the bound struct serving app.
@@ -73,13 +80,96 @@ func (t *ToolGUI) shutdown(ctx context.Context) {
 
 // AppConf return the app config as JSON. It's the desktop counterpart of
 // GET /api/app.
+//
+// The menu is the one field it drops. The tree goes to the window's own
+// menubar instead (see [Executor.Run]), and leaving it in the conf would have
+// the frontend draw a second menubar inside the window under the real one.
 func (t *ToolGUI) AppConf() (string, error) {
-	bs, err := tgjson.Marshal(t.app.AppConf())
+	conf := *t.app.AppConf()
+	conf.Menu = nil
+
+	bs, err := tgjson.Marshal(&conf)
 	if err != nil {
 		return "", tgutil.Errorf("%w", err)
 	}
 
 	return string(bs), nil
+}
+
+// clickMenu applies a click on the menu item declared under id, which is the
+// native menubar's way in. It is the same event the web menubar sends over
+// the wire, so the run handling it reads the click with
+// [tgframe.MenuClicked] either way.
+//
+// It is unexported because the menubar is the only caller: the frontend has
+// no business firing menu clicks, and every exported method here becomes a
+// binding it can reach.
+//
+// A click before Start has opened a session has nothing to run, which is what
+// the window between the menubar appearing and the first page looks like. It
+// is ignored rather than reported: a menu is not the frontend asking for
+// something, and there is no caller to tell.
+func (t *ToolGUI) clickMenu(id string) {
+	session := t.currentSession()
+	if session == nil {
+		return
+	}
+
+	session.HandleEvent(&tgframe.EventClick{ID: id})
+}
+
+// queueMenuClick puts a pick at the back of the line and makes sure something
+// is working through it. It is what the native menubar's callback calls.
+//
+// Applying the pick where the callback lands is not an option on Windows,
+// where that is the message loop and the window is frozen for as long as the
+// page takes to run. Handing each callback its own goroutine is not either: a
+// run cuts the one before it, so two picks that overtake each other leave the
+// page showing the older one. So the pick is queued -- a mutex the callback
+// holds for the length of an append -- and one goroutine applies the queue in
+// order.
+//
+// It can only order what reaches it in order, which on Windows is every pick:
+// they arrive on the one message loop. macOS and Linux hand each callback its
+// own goroutine before this sees it, and what they have already shuffled
+// cannot be put back.
+func (t *ToolGUI) queueMenuClick(id string) {
+	t.menuLock.Lock()
+	t.menuQueue = append(t.menuQueue, id)
+
+	if t.menuBusy {
+		t.menuLock.Unlock()
+		return
+	}
+
+	t.menuBusy = true
+	t.menuLock.Unlock()
+
+	go t.drainMenuClicks()
+}
+
+// drainMenuClicks applies the queued picks, oldest first, until it runs out.
+// Exactly one of these runs at a time: it only starts on the pick that found
+// menuBusy false, and it clears the flag under the same lock that a pick is
+// appended under, so a pick either joins the queue this goroutine is still
+// reading or starts the next one.
+func (t *ToolGUI) drainMenuClicks() {
+	for {
+		t.menuLock.Lock()
+		if len(t.menuQueue) == 0 {
+			t.menuQueue = nil
+			t.menuBusy = false
+			t.menuLock.Unlock()
+
+			return
+		}
+
+		id := t.menuQueue[0]
+		t.menuQueue = t.menuQueue[1:]
+		t.menuLock.Unlock()
+
+		t.clickMenu(id)
+	}
 }
 
 // Start open a session on pageName and run the page once. Calling it again

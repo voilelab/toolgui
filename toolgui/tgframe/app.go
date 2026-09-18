@@ -133,8 +133,9 @@ func (app *App) SetTitle(v string) {
 	app.title = v
 }
 
-// SetMenu declares the app's menu. The frontend draws it as a menubar above
-// the app, and a click on one of its items is read with [MenuClicked].
+// SetMenu declares the app's menu. On the web the frontend draws it as a
+// menubar above the app; on the desktop it is the window's own menubar. A
+// click on one of its items is read with [MenuClicked] either way.
 //
 //	app.SetMenu(tgframe.NewMenu().
 //		Submenu("File", func(m *tgframe.Menu) {
