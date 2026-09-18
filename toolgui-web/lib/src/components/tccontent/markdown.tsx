@@ -3,11 +3,9 @@ import React from 'react'
 import Markdown from 'react-markdown'
 import { Typography } from '@mantine/core'
 
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { prism, tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
 import { Props } from '../component_interface'
 import { remarkEmoji } from '../../util/remark_emoji'
+import { CodeBlock } from './code'
 
 export function TMarkdown({ node, theme }: Props) {
   return (
@@ -23,28 +21,28 @@ export function TMarkdown({ node, theme }: Props) {
               </a>
             )
           },
-          code(props) {
-            const { children, className, node, ...rest } = props
-            const match = /language-(\w+)/.exec(className || '')
-            if (!match) {
-              return (
-                <code {...rest} className={className}>
-                  {children}
-                </code>
-              )
+          // A code block is drawn by the Code component's own block, and
+          // replaces the <pre> rather than sitting in it: the block brings its
+          // own <pre>, and Typography styles one of those it finds.
+          pre(props) {
+            const { children, node, ...rest } = props
+
+            const child = React.Children.toArray(children)[0]
+            if (!React.isValidElement(child) || child.type !== 'code') {
+              return <pre {...rest}>{children}</pre>
             }
 
-            const lang = match[1]
-            const code = String(children).replace(/\n$/, '')
+            const codeProps = child.props as {
+              className?: string
+              children?: React.ReactNode
+            }
+            const match = /language-([\w-]+)/.exec(codeProps.className || '')
 
             return (
-              <SyntaxHighlighter
-                PreTag="div"
-                language={lang}
-                style={theme === 'dark' ? tomorrow : prism}
-              >
-                {code}
-              </SyntaxHighlighter>
+              <CodeBlock
+                code={String(codeProps.children).replace(/\n$/, '')}
+                lang={match ? match[1] : undefined}
+                theme={theme} />
             )
           }
         }}

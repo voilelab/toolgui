@@ -1,0 +1,11 @@
+/* A code block brings its own colours and spacing inline, and these are the
+   rest: in a Markdown component the block sits under the typography rules for
+   <pre> and inline <code>, which would round its corners and pad its text. */
+.toolgui-code {
+  border-radius: 0;
+}
+
+.toolgui-code code {
+  padding: 0;
+  border-radius: 0;
+}
