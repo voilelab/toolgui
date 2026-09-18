@@ -37,16 +37,9 @@ func (cc *echoCodeCache) set(filename string, line int, code string) {
 
 var codeCache echoCodeCache
 
+// countIndent returns how many tabs line opens with.
 func countIndent(line string) int {
-	cnt := 0
-	for _, c := range line {
-		if c == '\t' {
-			cnt++
-		} else {
-			return cnt
-		}
-	}
-	return 0
+	return len(line) - len(strings.TrimLeft(line, "\t"))
 }
 
 func removeIndent(lines []string) []string {
