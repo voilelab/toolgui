@@ -84,6 +84,23 @@ func EqColumn5(c *tgframe.Container, conf ...*ColumnConf) (
 	return tclayout.EqColumn5(c, conf...)
 }
 
+// Toolbar creates a row of controls and returns the container they go into.
+// What is written inside lines up horizontally rather than taking a row of the
+// page each.
+func Toolbar(c *tgframe.Container, conf ...*ToolbarConf) *tgframe.Container {
+	return tclayout.Toolbar(c, conf...)
+}
+
+// ToolbarConf is the configuration for the Toolbar component.
+type ToolbarConf = tclayout.ToolbarConf
+
+// The ways a Toolbar may line its items up.
+const (
+	ToolbarJustifyStart   = tclayout.ToolbarJustifyStart
+	ToolbarJustifyEnd     = tclayout.ToolbarJustifyEnd
+	ToolbarJustifyBetween = tclayout.ToolbarJustifyBetween
+)
+
 // Tab create a tab component.
 func Tab(
 	c *tgframe.Container, tabs []string,

@@ -6,6 +6,9 @@
   --tg-surface-alt: var(--mantine-color-gray-0);
   /* A divider that separates without drawing attention. */
   --tg-border-weak: var(--mantine-color-gray-2);
+  /* The page's own background, for anything that has to cover what scrolls
+     under it. Mantine flips this one itself, so dark needs no value. */
+  --tg-surface: var(--mantine-color-body);
 }
 
 /* Dark reads the other way round: the surface sits below the page, not above

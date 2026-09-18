@@ -80,6 +80,7 @@
     * [Box](components/layout/box.md)
     * [Empty](components/layout/empty.md)
     * [Column](components/layout/column.md)
+    * [Toolbar](components/layout/toolbar.md)
     * [Expand](components/layout/expand.md)
     * [Popover](components/layout/popover.md)
     * [Dialog](components/layout/dialog.md)
