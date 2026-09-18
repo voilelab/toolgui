@@ -3,9 +3,8 @@
 
 describe('Menu', () => {
   // The item clicks turn scrolling off. Cypress scrolls what it is about to
-  // click to the top of the viewport, and an item sits in a portal below the
-  // entry it opened from -- scrolling it up carries the menubar off screen,
-  // at which point Mantine hides the dropdown as detached from it. The
+  // click to the top of the viewport, which is where the menubar is pinned:
+  // an item scrolled up there lands under the row that opened it. The
   // dropdown opens in view already, so there is nothing to scroll to.
   const noScroll = { scrollBehavior: false }
 
