@@ -89,17 +89,12 @@ func TestToolGUIAppConf(t *testing.T) {
 	}
 }
 
-// TestToolGUIAppConfMenu is the desktop half of "one declaration, three
-// executors": the menu tree the App declares reaches the frontend here the
-// same way it does over HTTP and through the wasm bridge.
+// TestToolGUIAppConfMenu pins where the desktop conf differs from the web
+// one: the window draws the menu itself, so the tree is kept out of what the
+// frontend is told and no second menubar appears inside the window.
 func TestToolGUIAppConfMenu(t *testing.T) {
 	app := newTestApp(func(p *tgframe.Params) error { return nil })
-	app.SetMenu(tgframe.NewMenu().
-		Submenu("File", func(m *tgframe.Menu) {
-			m.Text("Open", "file_open")
-			m.Separator()
-			m.Text("Quit", "file_quit")
-		}))
+	app.SetMenu(testMenu())
 
 	backend, _ := newTestToolGUI(t, app)
 
@@ -113,14 +108,21 @@ func TestToolGUIAppConfMenu(t *testing.T) {
 		t.Fatalf("unmarshal app conf: %v", err)
 	}
 
-	if len(conf.Menu) != 1 || conf.Menu[0].Label != "File" {
-		t.Fatalf("unexpected menu: %v", conf.Menu)
+	if conf.Menu != nil {
+		t.Fatalf("AppConf carries a menu the window already draws: %v",
+			conf.Menu)
 	}
 
-	children := conf.Menu[0].Children
-	if len(children) != 3 || children[0].ID != tgframe.MenuID("file_open") ||
-		children[1].Type != tgframe.MenuNodeSeparator {
-		t.Fatalf("unexpected File submenu: %v", children)
+	// The rest of the conf is untouched, so dropping the menu is not done by
+	// handing the frontend a hollowed out config.
+	if len(conf.PageNames) != 1 || conf.PageNames[0] != testPageName {
+		t.Fatalf("unexpected page names: %v", conf.PageNames)
+	}
+
+	// And the App still has its menu: the conf is a copy, so the tree the
+	// window was built from is not what was emptied.
+	if len(app.AppConf().Menu) != 1 {
+		t.Fatalf("AppConf dropped the App's own menu: %v", app.AppConf().Menu)
 	}
 }
 
@@ -221,6 +223,57 @@ func TestToolGUIBeforeStart(t *testing.T) {
 
 	if backend.UploadFileFinish("f", "1") != ErrNoSession {
 		t.Fatal("expect ErrNoSession from UploadFileFinish before Start")
+	}
+}
+
+// TestToolGUIClickMenu is the way back from the native menubar: the callback
+// happens in Go, so the click goes straight into the session and the page
+// reruns with tgframe.MenuClicked seeing it.
+func TestToolGUIClickMenu(t *testing.T) {
+	app := newTestApp(func(p *tgframe.Params) error {
+		if tgframe.MenuClicked(p, "file_open") {
+			addTestComponent(p, "opened")
+		}
+		return nil
+	})
+	app.SetMenu(testMenu())
+
+	backend, events := newTestToolGUI(t, app)
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	backend.clickMenu(tgframe.MenuID("file_open"))
+
+	result, seen := events.waitResult(t)
+	if result["success"] != true {
+		t.Fatalf("expect a successful rerun, got %v", result)
+	}
+	if len(seen) != 2 {
+		t.Fatalf("expect the click to add a component, got %v", seen)
+	}
+}
+
+// TestToolGUIClickMenuBeforeStart is the window between the menubar appearing
+// and the first page: the menu is already there to be picked from, and there
+// is no session behind it yet.
+func TestToolGUIClickMenuBeforeStart(t *testing.T) {
+	app := newTestApp(func(p *tgframe.Params) error { return nil })
+	app.SetMenu(testMenu())
+
+	backend, events := newTestToolGUI(t, app)
+
+	// No panic, and nothing reaches the frontend: there is no run to send
+	// packs from.
+	backend.clickMenu(tgframe.MenuID("file_open"))
+
+	select {
+	case pack := <-events.packs:
+		t.Fatalf("a click before Start produced a pack: %v", pack)
+	default:
 	}
 }
 

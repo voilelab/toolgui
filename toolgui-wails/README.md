@@ -48,6 +48,7 @@ webview dependencies below.
 | update websocket | `Update(eventJSON)` + the `toolgui:pack` event |
 | `POST /api/files` | `UploadFileStart` + `UploadFileChunk` + `UploadFileFinish` |
 | a page load | `Start(pageName)` |
+| the menubar the frontend draws | the window's own, from `options.App.Menu` |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both
 transports share a wire format. An upload is the exception: bound methods take
@@ -69,6 +70,69 @@ or `LinkButton`.
 Wails serves the frontend from its own origin, so the asset server could carry
 the plain HTTP endpoints too. Bound methods handle all four instead, to keep
 this module off `tgexec`, which embeds the whole web bundle.
+
+## Menus
+
+`App.SetMenu` declares one tree, and the desktop window draws it itself:
+
+```go
+app.SetMenu(tgframe.NewMenu().
+	Submenu("File", func(m *tgframe.Menu) {
+		m.Text("Open", "file_open")
+		m.Separator()
+		m.Text("Quit", "file_quit")
+	}))
+```
+
+The same declaration is a row of buttons above the app in a browser. Here it
+is translated into a `menu.Menu` and handed to `options.App.Menu`, so what the
+window shows is the platform's real menubar. The tree is then kept out of the
+app config the frontend receives — otherwise it would draw its own menubar
+inside the window, under the real one.
+
+Nothing new carries the click back. A Wails `MenuItem.Click` callback happens
+in Go, so it goes into the running session as the click event the web menubar
+would have sent over the wire:
+
+```go
+session.HandleEvent(&tgframe.EventClick{ID: "menu_item_file_open"})
+```
+
+which is the ordinary rerun, with the packs going out to the frontend as
+usual. The page reads the pick with `tgframe.MenuClicked(p, "file_open")`
+whichever executor it is running under. The wire format does not change and
+there is no new event type.
+
+A pick made before `Start` has opened a session — the window is up, the
+menubar with it, and no page has loaded yet — has nothing to run and is
+ignored.
+
+### What the platform adds
+
+macOS actions like Cmd+C, Cmd+V and Cmd+Q belong to the standard App and Edit
+menus rather than to the webview, so a window that replaces the menubar
+without them loses those shortcuts. The App and Edit menus therefore go in
+front of the app's own entries there, plus the Window menu unless the window
+is frameless — the same set, under the same rule, that Wails gives a window
+with no menu at all. So an app keeps the standard menus whether or not it
+declares one of its own.
+
+This is the one place the menubar is not the same on every platform, and it
+cannot be helped: Wails v2 serves menu roles on macOS only. The translation
+does not expose roles at all — a `tgframe.Menu` is text items, separators and
+submenus, and nothing else.
+
+### What it does not do
+
+- **A menu item cannot change page.** On the desktop the page switch happens
+  in the frontend, and Go has no way to ask it for one: `SendPackFunc` carries
+  create, update, delete, ready and result, none of which navigate. That would
+  need a new Go-to-frontend pack type.
+- **Nothing is enabled or disabled while running.** The tree is declared once
+  on the app, which is the shape a native menu — with no diff to apply — can
+  take. `runtime.MenuUpdateApplicationMenu` rebuilds the whole menu, closing
+  any dropdown that happens to be open, so a menu that changed on every run
+  would be a menu that cannot be used.
 
 ## Building
 

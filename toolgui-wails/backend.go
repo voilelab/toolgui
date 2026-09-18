@@ -73,13 +73,42 @@ func (t *ToolGUI) shutdown(ctx context.Context) {
 
 // AppConf return the app config as JSON. It's the desktop counterpart of
 // GET /api/app.
+//
+// The menu is the one field it drops. The tree goes to the window's own
+// menubar instead (see [Executor.Run]), and leaving it in the conf would have
+// the frontend draw a second menubar inside the window under the real one.
 func (t *ToolGUI) AppConf() (string, error) {
-	bs, err := tgjson.Marshal(t.app.AppConf())
+	conf := *t.app.AppConf()
+	conf.Menu = nil
+
+	bs, err := tgjson.Marshal(&conf)
 	if err != nil {
 		return "", tgutil.Errorf("%w", err)
 	}
 
 	return string(bs), nil
+}
+
+// clickMenu applies a click on the menu item declared under id, which is the
+// native menubar's way in. It is the same event the web menubar sends over
+// the wire, so the run handling it reads the click with
+// [tgframe.MenuClicked] either way.
+//
+// It is unexported because the menubar is the only caller: the frontend has
+// no business firing menu clicks, and every exported method here becomes a
+// binding it can reach.
+//
+// A click before Start has opened a session has nothing to run, which is what
+// the window between the menubar appearing and the first page looks like. It
+// is ignored rather than reported: a menu is not the frontend asking for
+// something, and there is no caller to tell.
+func (t *ToolGUI) clickMenu(id string) {
+	session := t.currentSession()
+	if session == nil {
+		return
+	}
+
+	session.HandleEvent(&tgframe.EventClick{ID: id})
 }
 
 // Start open a session on pageName and run the page once. Calling it again

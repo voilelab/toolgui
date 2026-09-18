@@ -108,6 +108,21 @@ func (e *Executor) Run() error {
 		DisableResize:    e.conf.DisableResize,
 		Frameless:        e.conf.Frameless,
 
+		// The tree the app declared becomes the window's own menubar, rather
+		// than a row the frontend draws inside it. The way back needs nothing
+		// new: the click callback happens in Go, so it goes straight into the
+		// session as the click event the web menubar would have sent over the
+		// wire, and the packs come back the usual way.
+		Menu: nativeMenu(e.conf.Frameless, e.app.AppConf().Menu,
+			func(id string) {
+				// Windows calls the callback on the message loop, where a run
+				// that takes a second freezes the window for a second. A
+				// goroutine keeps it responsive; the other platforms already
+				// call back on one of their own, and the session serializes
+				// the runs whichever way they arrive.
+				go backend.clickMenu(id)
+			}),
+
 		// Handler catches what the embedded frontend does not have, which is
 		// where plugin assets land.
 		AssetServer: &assetserver.Options{
