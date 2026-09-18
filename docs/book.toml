@@ -12,7 +12,8 @@ git-repository-url = "https://github.com/voilelab/toolgui"
 git-repository-icon = "fa-github"
 edit-url-template = "https://github.com/voilelab/toolgui/edit/dev/docs/{path}"
 additional-css = ["diagrams.css", "demo-embed.css"]
-additional-js = ["mermaid.min.js", "mermaid-init.js", "demo-embed.js"]
+additional-js = ["mermaid.min.js", "mermaid-init.js", "demo-theme.js",
+  "demo-embed.js"]
 
 [output.html.fold]
 enable = true

@@ -33,10 +33,10 @@
   border: 1px solid var(--theme-popup-border);
   border-radius: 4px;
 
-  /* The demo is light-themed whatever the book is (theme sync is its own
-     change), so the frame is white before it paints rather than a flash of
-     the page behind it. */
-  background: #ffffff;
+  /* The demo is on the book's theme (demo-theme.js), so the frame holds the
+     book's own background before it paints -- neither a flash of white in a
+     dark book nor of the page showing through. */
+  background: var(--bg, #ffffff);
 }
 
 /* The demo app lays an example out in two columns, what it drew beside the

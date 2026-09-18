@@ -68,6 +68,20 @@ iframe never arrives, and the screenshot stays with a line of text under it,
 so the page is never an empty box — which is what the screenshots under
 `src/components/` are for now.
 
+The demo is on the book's theme. The two are published as one site, so they
+share an origin and with it `localStorage`: `demo-theme.js` mirrors the theme
+mdBook is showing — the class on `<html>`, which is what is actually on the
+screen — into `theme_mode`, the key the app keeps its own under, and the app
+follows a write to it from outside through the `storage` event. So a frame
+already on the page goes dark with the book, in the same action and without
+reloading. The app has light and dark and nothing else, so `coal`, `navy` and
+`ayu` all map onto dark.
+
+It writes only a theme that changed, which is what leaves a reader who picked
+a theme inside the frame with the theme they picked — a class changes on
+`<html>` for the sidebar too. Turning the page is where that choice ends: the
+next component page puts the demo back on the book's theme.
+
 One page embeds one demo: each frame is a worker with a copy of the wasm
 binary in it, and a component's page in the demo app already shows every
 example it has. `go test ./cmd/toolgui-demo` holds the book to that, and to
