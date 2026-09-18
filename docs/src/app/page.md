@@ -15,13 +15,20 @@ the title of a page will be used as the title of the page and the text of its li
 3. Emoji: Optional. The emoji will be used as an icon in the side nav and browser favicon.
 An [emoji shortcode](../components/content/emoji.md) works here too.
 
+4. Hidden: Optional. A hidden page is kept off the [side nav](sidenav.md) list.
+It is served like any other page: a link to its url still lands on it, and the
+nav shows it while it is the page being read. For a page something else links
+to — a detail page, a page an iframe embeds — rather than one a visitor picks
+off the list.
+
 The config type in package is:
 
 ```go
 type PageConfig struct {
-	Name  string `json:"name"`
-	Title string `json:"title"`
-	Emoji string `json:"emoji"`
+	Name   string `json:"name"`
+	Title  string `json:"title"`
+	Emoji  string `json:"emoji"`
+	Hidden bool   `json:"hidden,omitzero"`
 }
 ```
 
@@ -105,6 +112,16 @@ app.AddPageByConfig(&tgframe.PageConfig{
 	Title: "Page2",
 	Emoji: "🔄",
 }, Page2)
+```
+
+* Reached by url, not off the nav
+
+```go
+app.AddPageByConfig(&tgframe.PageConfig{
+	Name:   "page3",
+	Title:  "Page3",
+	Hidden: true,
+}, Page3)
 ```
 
 ## Page name in the URL

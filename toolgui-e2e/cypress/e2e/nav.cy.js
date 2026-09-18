@@ -111,10 +111,11 @@ describe('Nav', () => {
     cy.get('.toolgui-nav').should('not.have.class', 'is-collapsed')
   })
 
-  // The demo declares a page per component, which is more than the column is
-  // tall. The list takes the overflow so the parts under it -- the page's own
-  // sidebar, the controls, the version line -- stay where they are.
+  // A column too short for its pages. The list takes the overflow so the
+  // parts under it -- the page's own sidebar, the controls, the version line
+  // -- stay where they are.
   it('A long page list scrolls inside the column', () => {
+    cy.viewport(1000, 300)
     cy.visit('/index')
 
     cy.get('.toolgui-nav-list').then(([list]) => {
@@ -162,7 +163,7 @@ describe('Nav', () => {
   // it fits the screen it was tapped on, with the controls and the version
   // line under the list rather than a thousand pixels past the fold.
   it('The open bar fits the screen on a narrow viewport', () => {
-    cy.viewport(420, 800)
+    cy.viewport(420, 480)
     cy.visit('/index')
     cy.get('.toolgui-nav-burger').click()
 
@@ -170,7 +171,7 @@ describe('Nav', () => {
       expect(list.scrollHeight).to.be.greaterThan(list.clientHeight)
     })
 
-    cy.get('.toolgui-nav').invoke('outerHeight').should('be.lessThan', 800)
+    cy.get('.toolgui-nav').invoke('outerHeight').should('be.lessThan', 480)
     cy.get('.toolgui-nav-foot').should('be.visible')
     cy.get('.toolgui-nav-version').should('be.visible')
   })

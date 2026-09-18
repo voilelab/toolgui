@@ -7,7 +7,9 @@ The side nav is the left column of the app.
 It holds four parts, top to bottom:
 
 1. The page list: one link per page in the App. The link of the current page is
-   highlighted, and a page's emoji is shown in front of its title.
+   highlighted, and a page's emoji is shown in front of its title. A page the
+   App declares [Hidden](page.md) is left off the list, except while it is the
+   page being read.
 2. The page's [Sidebar container](../components/layout/container.md), when the
    page func puts anything in it.
 3. The app controls:

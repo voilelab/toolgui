@@ -221,6 +221,16 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     return this.props.forest.nodes[this.props.appConf.sidebar_container_id]
   }
 
+  // navPages are the pages the list holds: every page the app has, less the
+  // hidden ones. The page being read stays on the list whether or not it is
+  // hidden -- a list with nothing highlighted reads as the wrong list.
+  navPages(): string[] {
+    return this.props.appConf.page_names.filter((name) => {
+      return !this.props.appConf.page_confs[name]?.hidden ||
+        name === this.props.pageName
+    })
+  }
+
   render() {
     const sidebarNode = this.sidebarNode()
     const hasSidebar = sidebarNode.children.length > 0
@@ -265,7 +275,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
           className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
           <nav className="toolgui-nav-list" aria-label="main navigation">
             {
-              this.props.appConf.page_names.map(name => {
+              this.navPages().map(name => {
                 const active = name === this.props.pageName
                 return (
                   <NavLink key={name}

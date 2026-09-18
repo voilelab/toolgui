@@ -345,14 +345,20 @@ func newApp() *tgframe.App {
 
 	app.AddPage("index", "Index", MainPage)
 
-	// A category page, then a page per component under it: the nav reads the
-	// way the book's contents do, and a reader following a link from the book
-	// lands on the one component they came for.
+	// A category page per group, and under it a page per component -- hidden,
+	// so the nav stays the handful of categories it reads as. The component
+	// pages are what the book links and embeds: a reader following a link
+	// lands on the one component they came for, and sees it on the list while
+	// they are there.
 	for _, g := range demos.Groups() {
 		app.AddPage(g.Name, g.Title, groupPage(g))
 
 		for _, d := range g.Demos {
-			app.AddPage(d.Name, d.Title, demoPage(d))
+			app.AddPageByConfig(&tgframe.PageConfig{
+				Name:   d.Name,
+				Title:  d.Title,
+				Hidden: true,
+			}, demoPage(d))
 		}
 	}
 
@@ -379,6 +385,8 @@ func addPluginDemo(app *tgframe.App) error {
 		return err
 	}
 
+	// Listed, unlike the rest: the plugin component is in no group, so this
+	// page is the only way to it from the nav.
 	d := demos.Plugin()
 	app.AddPage(d.Name, d.Title, demoPage(d))
 	return nil
