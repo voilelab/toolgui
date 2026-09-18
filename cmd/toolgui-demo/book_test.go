@@ -189,7 +189,8 @@ var summaryRe = regexp.MustCompile(`\(components/(\w+)/(\w+)\.md\)`)
 
 // TestDemoOrderFollowsTheBook holds the two lists to one order: the groups,
 // and the components inside each one. A component the book has no page for is
-// nobody's to place, so it is left out here and written last in the group.
+// nobody's to place among the rest, so what is asked of it is only that it
+// comes after them.
 func TestDemoOrderFollowsTheBook(t *testing.T) {
 	inBook := bookOrder(t)
 
@@ -213,6 +214,22 @@ func TestDemoOrderFollowsTheBook(t *testing.T) {
 
 		if !slices.Equal(got, want) {
 			t.Errorf("%s: demos read %v, the book reads %v", g.Name, got, want)
+		}
+
+		// The contents place the rest against each other; one they leave out
+		// has no place among them, so it goes after all of them rather than
+		// between two the book put side by side.
+		unlisted := ""
+		for _, d := range g.Demos {
+			if !slices.Contains(inBook[g.Name], d.Name) {
+				unlisted = d.Name
+				continue
+			}
+
+			if unlisted != "" {
+				t.Errorf("%s: %s comes after %s, which the book does not list",
+					g.Name, d.Name, unlisted)
+			}
 		}
 	}
 
