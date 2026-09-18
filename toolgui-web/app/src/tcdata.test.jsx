@@ -632,6 +632,50 @@ describe('TDataFrame selection', () => {
       expect(sent().keys).toEqual(['web-1', 'web-2'])
     })
 
+    // selected is in the row order of the run it was committed in, and the
+    // rows can be reordered under a component that stays mounted. Go
+    // resolves the keys against the current rows before capping single at
+    // the first of them, so drawing the front of a stale array would paint
+    // one row while the page function acted on another.
+    test('narrows to the first row of the current rows under single', () => {
+      const { rerender } = mount(hostProps())
+
+      fireEvent.click(checkboxAt(0))
+      fireEvent.click(checkboxAt(1))
+      expect(sent().keys).toEqual(['web-1', 'web-2'])
+
+      // web-2 now sits above web-1, and the mode narrows in the same run.
+      rerender(
+        <TDataFrame node={nodeFor(hostProps({
+          rows: [['web-2', 'EMEA'], ['web-1', 'APAC'], ['db-1', 'NA']],
+          row_keys: ['web-2', 'web-1', 'db-1'],
+          selection: 'single',
+        }))} {...RENDER_PROPS} />)
+
+      // Go would hand back position 0, which is web-2.
+      expect(bodyRow(0)).toHaveAttribute('aria-selected', 'true')
+      expect(bodyRow(1)).toHaveAttribute('aria-selected', 'false')
+    })
+
+    // The same staleness with a row that went away: the front of selected
+    // names nothing, where Go moves on to the next key that still has a row.
+    test('skips a vanished row when narrowing to single', () => {
+      const { rerender } = mount(hostProps())
+
+      fireEvent.click(checkboxAt(0))
+      fireEvent.click(checkboxAt(2))
+
+      rerender(
+        <TDataFrame node={nodeFor(hostProps({
+          rows: [['web-2', 'EMEA'], ['db-1', 'NA']],
+          row_keys: ['web-2', 'db-1'],
+          selection: 'single',
+        }))} {...RENDER_PROPS} />)
+
+      expect(bodyRow(1)).toHaveAttribute('aria-selected', 'true')
+      expect(bodyRow(0)).toHaveAttribute('aria-selected', 'false')
+    })
+
     // An empty row_keys is how the server says the table is positional, so
     // nothing about the old shape changes.
     test('stays positional on an empty row_keys', () => {

@@ -139,20 +139,6 @@ export function TDataFrame({ node, update }: Props) {
     ((node.props.default_selection ?? []) as number[]).map(keyOf))
   const pickable = selection !== "none"
 
-  // What is drawn as picked is the selection with the current mode applied,
-  // mirroring what the Go side hands the page function. The mode can change
-  // between runs while this component stays mounted, so a selection made
-  // under a wider one must not go on being drawn under a narrower one:
-  // dropped outright when the rows are no longer pickable, and trimmed to
-  // the first row -- selected is kept in row order -- under single.
-  const picked = useMemo(() => {
-    if (!pickable) {
-      return new Set<RowKey>()
-    }
-
-    return new Set(selection === "single" ? selected.slice(0, 1) : selected)
-  }, [selected, selection, pickable])
-
   const rows: Row[] = useMemo(
     () => rowCells.map((cells, index) => ({ cells, index, key: keyOf(index) })),
     [rowCells, rowKeyList])
@@ -162,6 +148,34 @@ export function TDataFrame({ node, update }: Props) {
   // still there.
   const at = useMemo(
     () => new Map(rows.map(row => [row.key, row.index])), [rows])
+
+  // What is drawn as picked is the selection with the current mode applied,
+  // mirroring what the Go side hands the page function. The mode can change
+  // between runs while this component stays mounted, so a selection made
+  // under a wider one must not go on being drawn under a narrower one:
+  // dropped outright when the rows are no longer pickable, and cut to one
+  // row under single.
+  //
+  // Which row that is has to be read off the current rows. selected holds
+  // the order of the run it was committed in, and the rows can have been
+  // reordered or shortened since, which Go settles by resolving the keys
+  // against this run's rows before capping. Taking the front of selected
+  // instead would paint one row while the page function acted on another.
+  const picked = useMemo(() => {
+    if (!pickable) {
+      return new Set<RowKey>()
+    }
+
+    if (selection !== "single") {
+      return new Set(selected)
+    }
+
+    const first = selected
+      .filter(key => at.has(key))
+      .sort((a, b) => at.get(a)! - at.get(b)!)[0]
+
+    return new Set(first === undefined ? [] : [first])
+  }, [selected, selection, pickable, at])
 
   const shown = useMemo(
     () => head.map((_, i) => i).filter(i => !columns[i].hidden), [head, columns])
