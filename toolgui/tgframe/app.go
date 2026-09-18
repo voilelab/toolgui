@@ -176,7 +176,7 @@ func (app *App) SetMenu(menu *Menu) {
 	nodes := cloneNodes(menu.nodes)
 
 	ids := map[string]bool{}
-	if err := checkNodes(nodes, ids, map[string]bool{}); err != nil {
+	if err := checkNodes(nodes, ids, map[string]string{}); err != nil {
 		panic(err)
 	}
 

@@ -53,6 +53,20 @@ function bindings(nodes: MenuNode[]): Bound[] {
   return out
 }
 
+// isAltGraph reports whether the keystroke carries AltGr, the modifier that
+// puts a third character on a key.
+//
+// Windows, and some layouts elsewhere, report AltGr as Control and Alt held
+// together, so a Ctrl+OptionOrAlt chord and the character AltGr+that key
+// produces arrive as the same event. There is no telling them apart, so the
+// character wins: firing the item would eat a keystroke the visitor meant to
+// type, and the item is still in the menu, while a shortcut that silently
+// swallows text is not something to hand a visitor on a German keyboard.
+function isAltGraph(e: KeyboardEvent): boolean {
+  return typeof e.getModifierState === 'function' &&
+    e.getModifierState('AltGraph')
+}
+
 // isEditable reports whether the keystroke landed in something the visitor is
 // typing into. Mantine's own inputs are all one of these three.
 function isEditable(target: EventTarget | null): boolean {
@@ -112,7 +126,7 @@ export class AppMenuBar extends Component<AppMenuBarProps, AppMenuBarState> {
   keyDown(e: KeyboardEvent) {
     // A keystroke the visitor is still composing is not a keystroke yet: an
     // IME reports the whole composition as one keydown of its own.
-    if (e.isComposing || e.repeat) {
+    if (e.isComposing || e.repeat || isAltGraph(e)) {
       return
     }
 

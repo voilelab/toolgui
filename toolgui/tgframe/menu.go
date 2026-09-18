@@ -77,11 +77,15 @@ func NewMenu() *Menu {
 type MenuTextConf struct {
 	// Accelerator is the key combination that fires the item without the menu
 	// being opened, written in a platform independent spelling:
-	// "CmdOrCtrl+O", "CmdOrCtrl+Shift+F5", "Ctrl+plus". Modifiers are
-	// CmdOrCtrl, OptionOrAlt, Shift and Ctrl; the key is one printable ASCII
-	// character or one of the named keys (backspace, tab, enter, escape,
-	// left, right, up, down, space, delete, home, end, page up, page down,
-	// f1 to f24, plus).
+	// "CmdOrCtrl+O", "CmdOrCtrl+Shift+F5", "Ctrl+Shift+/". Modifiers are
+	// CmdOrCtrl, OptionOrAlt, Shift and Ctrl; the key is a letter, a digit,
+	// one of ` - = [ ] \ ; ' , . / or one of the named keys (backspace, tab,
+	// enter, escape, left, right, up, down, space, delete, home, end,
+	// page up, page down, f1 to f24).
+	//
+	// It names a key rather than the character the key produces, so a
+	// character needing Shift is not one: "CmdOrCtrl+Shift+/", never
+	// "CmdOrCtrl+?".
 	//
 	// The desktop hangs it off the native menu item and lets the OS dispatch
 	// it. The browser has no such service, so the shell listens for the
@@ -182,13 +186,14 @@ func cloneNodes(nodes []*MenuNode) []*MenuNode {
 var ErrMenuItem = tgutil.NewError("invalid menu item")
 
 // checkNodes walks nodes, checking each one, adding every text item's click id
-// to ids, and normalizing every accelerator in place -- accels is the set of
-// the ones seen, so two items cannot declare the same combination in
-// different words.
+// to ids, and normalizing every accelerator in place -- accels is the
+// keystrokes claimed so far, each against the declaration that claimed it, so
+// two items cannot land on one keystroke.
 //
 // It writes to the nodes it is given, so it is walked over the snapshot
 // [App.SetMenu] took rather than over the caller's own tree.
-func checkNodes(nodes []*MenuNode, ids, accels map[string]bool) error {
+func checkNodes(nodes []*MenuNode, ids map[string]bool,
+	accels map[string]string) error {
 	for _, node := range nodes {
 		switch node.Type {
 		case MenuNodeSeparator:
@@ -232,9 +237,9 @@ func checkNodes(nodes []*MenuNode, ids, accels map[string]bool) error {
 	return nil
 }
 
-// checkAccelerator normalizes node's accelerator in place and records it in
-// accels. An item that declared none is left alone.
-func checkAccelerator(node *MenuNode, accels map[string]bool) error {
+// checkAccelerator normalizes node's accelerator in place and records the
+// keystrokes it claims in accels. An item that declared none is left alone.
+func checkAccelerator(node *MenuNode, accels map[string]string) error {
 	if node.Accelerator == "" {
 		return nil
 	}
@@ -244,16 +249,24 @@ func checkAccelerator(node *MenuNode, accels map[string]bool) error {
 		return tgutil.Errorf("%w: `%s`: %w", ErrMenuItem, node.Label, err)
 	}
 
-	// Two items on one combination is one of them never firing, and which
-	// one is whichever the walk reaches first -- not something to leave to
-	// the tree's shape.
-	if accels[accel] {
-		return tgutil.Errorf("%w: two items share the accelerator `%s`",
-			ErrMenuItem, accel)
+	// Two items on one keystroke is one of them never firing, and which one
+	// is whichever the walk reaches first -- not something to leave to the
+	// tree's shape. A keystroke rather than the declaration, because
+	// CmdOrCtrl is Control off macOS: `CmdOrCtrl+o` and `Ctrl+o` read the
+	// same there while reading differently as text.
+	declared := accel.String()
+	if taken, ok := accels[accel.keystroke()]; ok {
+		if taken == declared {
+			return tgutil.Errorf("%w: two items share the accelerator `%s`",
+				ErrMenuItem, declared)
+		}
+
+		return tgutil.Errorf("%w: `%s` and `%s` are one keystroke %s",
+			ErrMenuItem, taken, declared, accelWhere)
 	}
 
-	accels[accel] = true
-	node.Accelerator = accel
+	accels[accel.keystroke()] = declared
+	node.Accelerator = declared
 
 	return nil
 }

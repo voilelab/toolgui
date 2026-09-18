@@ -16,7 +16,7 @@ import (
 //
 //	CmdOrCtrl+O
 //	CmdOrCtrl+Shift+F5
-//	Ctrl+plus
+//	Ctrl+Shift+/
 //
 // Modifiers and keys are case insensitive; [MenuNode.Accelerator] holds the
 // normalized form.
@@ -32,33 +32,17 @@ const (
 	accelCtrl        = "Ctrl"
 )
 
-// accelModifiers is every modifier, in the order a normalized accelerator
-// writes them. Keyed by the lowercased spelling the app may write.
-var accelModifiers = map[string]int{
-	"cmdorctrl":   0,
-	"ctrl":        1,
-	"optionoralt": 2,
-	"shift":       3,
-}
-
-// accelModifierOrder is accelModifiers the other way round: index to spelling.
-var accelModifierOrder = []string{
-	accelCmdOrCtrl, accelCtrl, accelOptionOrAlt, accelShift,
-}
-
 // accelNamedKeys are the keys that are not one character. They are a subset of
 // what the desktop menu accepts, cut down to the ones a browser also names:
 // the function keys stop at F24 because no `KeyboardEvent.key` goes past it,
 // and lock keys are left out because the OS takes them before a page sees
 // them.
-//
-// `plus` is the way to write the `+` that joins the parts.
 var accelNamedKeys = func() map[string]bool {
 	keys := map[string]bool{
 		"backspace": true, "tab": true, "enter": true, "escape": true,
 		"left": true, "right": true, "up": true, "down": true,
 		"space": true, "delete": true, "home": true, "end": true,
-		"page up": true, "page down": true, "plus": true,
+		"page up": true, "page down": true,
 	}
 
 	for _, f := range []string{
@@ -72,56 +56,137 @@ var accelNamedKeys = func() map[string]bool {
 	return keys
 }()
 
+// accelPunctuation is the punctuation an accelerator may name: the character a
+// key is printed with when Shift is not held. Letters and digits are the rest
+// of the set.
+const accelPunctuation = "`-=[]\\;',./"
+
+// accelShifted maps a character that needs Shift to the key it shares. An
+// accelerator names a key rather than the character the key produces, so `?`
+// is refused and `Shift+/` is the way to say it -- which is also the only
+// spelling the two carriers agree on, since a browser reports `?` for that
+// keystroke and the desktop is handed `/`.
+//
+// `+` is in here as well, so the character joining the parts is never a key.
+var accelShifted = map[byte]byte{
+	'~': '`', '!': '1', '@': '2', '#': '3', '$': '4', '%': '5',
+	'^': '6', '&': '7', '*': '8', '(': '9', ')': '0', '_': '-',
+	'+': '=', '{': '[', '}': ']', '|': '\\', ':': ';', '"': '\'',
+	'<': ',', '>': '.', '?': '/',
+}
+
 // ErrAccelerator is what an accelerator the app cannot serve is reported
 // with: an unknown modifier or key, a modifier written twice, or nothing to
 // press. It is reported through [ErrMenuItem] as well, so a caller checking
 // for a bad menu catches it without naming this one.
 var ErrAccelerator = tgutil.NewError("invalid accelerator")
 
-// parseAccelerator checks accel and returns its normalized spelling:
-// modifiers in a fixed order, each in its canonical case, and the key
-// lowercased. Normalizing is what lets two items be compared for declaring
-// the same combination in different words.
-func parseAccelerator(accel string) (string, error) {
+// accelerator is a parsed declaration.
+type accelerator struct {
+	cmdOrCtrl, ctrl, optionOrAlt, shift bool
+
+	// key is lowercased: one of accelNamedKeys, a letter, a digit, or one of
+	// accelPunctuation.
+	key string
+}
+
+// String is the normalized spelling: the modifiers in one order whatever
+// order they were written in, so two items declaring the same combination in
+// different words compare equal.
+func (a accelerator) String() string {
+	var parts []string
+	for _, m := range []struct {
+		on   bool
+		name string
+	}{
+		{a.cmdOrCtrl, accelCmdOrCtrl},
+		{a.ctrl, accelCtrl},
+		{a.optionOrAlt, accelOptionOrAlt},
+		{a.shift, accelShift},
+	} {
+		if m.on {
+			parts = append(parts, m.name)
+		}
+	}
+
+	return strings.Join(append(parts, a.key), "+")
+}
+
+// accelWhere names the platform two declarations meet on, in the message
+// about them meeting there.
+const accelWhere = "off macOS"
+
+// keystroke is the keys actually held down, which is what makes two
+// declarations one shortcut rather than two. `CmdOrCtrl+o` and `Ctrl+o` read
+// differently and are Control and `o` both, so the second would never fire.
+//
+// It is the reading off macOS, because that is the only place two
+// declarations can meet: macOS is where CmdOrCtrl and Ctrl are different
+// keys, so two accelerators alike there are alike as text too, and the
+// message about them says so instead.
+func (a accelerator) keystroke() string {
+	out := ""
+	for _, m := range []struct {
+		on bool
+		c  byte
+	}{
+		{a.ctrl || a.cmdOrCtrl, 'C'}, {a.optionOrAlt, 'A'}, {a.shift, 'S'},
+	} {
+		if m.on {
+			out += string(m.c)
+		}
+	}
+
+	return out + " " + a.key
+}
+
+// parseAccelerator checks accel and returns it parsed.
+func parseAccelerator(accel string) (accelerator, error) {
+	var out accelerator
+
 	parts := strings.Split(accel, "+")
 
 	// Everything but the last part is a modifier, and the last one is the
-	// key -- which is why `+` itself has to be written `plus`.
-	seen := map[int]bool{}
+	// key -- which is why `+` is not a key an accelerator can name.
 	for _, part := range parts[:len(parts)-1] {
-		at, ok := accelModifiers[strings.ToLower(strings.TrimSpace(part))]
-		if !ok {
-			return "", tgutil.Errorf("%w: `%s` is not a modifier", ErrAccelerator,
-				part)
+		var at *bool
+
+		switch strings.ToLower(strings.TrimSpace(part)) {
+		case "cmdorctrl":
+			at = &out.cmdOrCtrl
+		case "ctrl":
+			at = &out.ctrl
+		case "optionoralt":
+			at = &out.optionOrAlt
+		case "shift":
+			at = &out.shift
+		default:
+			return out, tgutil.Errorf("%w: `%s` is not a modifier",
+				ErrAccelerator, part)
 		}
 
-		if seen[at] {
-			return "", tgutil.Errorf("%w: `%s` twice", ErrAccelerator, part)
+		if *at {
+			return out, tgutil.Errorf("%w: `%s` twice", ErrAccelerator, part)
 		}
 
-		seen[at] = true
+		*at = true
 	}
 
 	// CmdOrCtrl already is Control off macOS, so the two together would be
 	// one key on every platform but one -- and unpressable on that one.
-	if seen[accelModifiers["cmdorctrl"]] && seen[accelModifiers["ctrl"]] {
-		return "", tgutil.Errorf(
+	if out.cmdOrCtrl && out.ctrl {
+		return out, tgutil.Errorf(
 			"%w: CmdOrCtrl and Ctrl are the same key off macOS", ErrAccelerator)
 	}
 
 	key, err := parseAcceleratorKey(parts[len(parts)-1])
 	if err != nil {
-		return "", tgutil.Errorf("%w", err)
+		return out, tgutil.Errorf("%w", err)
 	}
 
-	var out []string
-	for at, name := range accelModifierOrder {
-		if seen[at] {
-			out = append(out, name)
-		}
-	}
+	out.key = key
 
-	return strings.Join(append(out, key), "+"), nil
+	return out, nil
 }
 
 // parseAcceleratorKey checks the last part of an accelerator and returns it
@@ -132,16 +197,29 @@ func parseAcceleratorKey(key string) (string, error) {
 		return key, nil
 	}
 
-	// Anything else is one printable ASCII character. A wider set would have
-	// to survive a keyboard layout the app does not know about, and a
-	// browser reports the character the layout produced rather than the key
-	// that was pressed.
-	if len(key) == 1 && key[0] > ' ' && key[0] < 0x7f {
-		return key, nil
-	}
-
 	if key == "" {
 		return "", tgutil.Errorf("%w: no key", ErrAccelerator)
+	}
+
+	// Anything else is one key of the standard layout, named by the
+	// character it is printed with. A wider set would have to survive a
+	// keyboard layout the app does not know about, and a browser reports the
+	// character the layout produced rather than the key that was pressed.
+	if len(key) == 1 {
+		c := key[0]
+		if c >= 'a' && c <= 'z' || c >= '0' && c <= '9' ||
+			strings.IndexByte(accelPunctuation, c) >= 0 {
+
+			return key, nil
+		}
+
+		// A shifted character names no key of its own, so say which key it
+		// is on rather than turning it away as unknown.
+		if unshifted, ok := accelShifted[c]; ok {
+			return "", tgutil.Errorf(
+				"%w: `%s` is Shift and the `%c` key, so write `Shift+%c`",
+				ErrAccelerator, key, unshifted, unshifted)
+		}
 	}
 
 	return "", tgutil.Errorf("%w: `%s` is not a key", ErrAccelerator, key)

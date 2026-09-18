@@ -77,12 +77,18 @@ One declaration, written once, in a spelling that belongs to no platform:
   `OptionOrAlt` is Option on macOS and Alt everywhere else — which is what
   saves the app from writing the combination twice. `Ctrl` is Control on every
   platform, so `CmdOrCtrl+Ctrl` is refused: off macOS the two are one key.
-* The key is one printable ASCII character, or one of `backspace`, `tab`,
-  `enter`, `escape`, `left`, `right`, `up`, `down`, `space`, `delete`, `home`,
-  `end`, `page up`, `page down`, `f1` to `f24`, and `plus` — which is how to
-  write the `+` that joins the parts.
+* The key is a letter, a digit, one of `` ` - = [ ] \ ; ' , . / ``, or one of
+  `backspace`, `tab`, `enter`, `escape`, `left`, `right`, `up`, `down`,
+  `space`, `delete`, `home`, `end`, `page up`, `page down`, `f1` to `f24`.
 * Case does not matter, and neither does the order the modifiers are written
   in.
+
+An accelerator names a *key*, not the character the key produces, so a
+character that needs Shift is not one of them: `CmdOrCtrl+?` is refused, and
+`CmdOrCtrl+Shift+/` is how to say it. This is also the only spelling the two
+carriers agree on — a browser reports `?` for that keystroke while the desktop
+menu is handed `/` — and it is why `+` is written `Shift+=` rather than being
+the key that joins the parts.
 
 The two carriers serve it differently, which is the whole of why it is worth
 declaring rather than wiring up:
@@ -97,9 +103,12 @@ declaring rather than wiring up:
 Either way the item reports the same click id, and the run handling it reads
 it back with `MenuClicked` without knowing which of the two fired.
 
-`SetMenu` panics on a combination it cannot serve, and on two items declaring
-the same one — normalized, so `CmdOrCtrl+O` and `shift+cmdorctrl+o` are
-different combinations while `CmdOrCtrl+O` and `cmdorctrl+o` are one.
+`SetMenu` panics on a combination it cannot serve, and on two items landing on
+one keystroke. What counts as one keystroke is what is actually held down, not
+how it was written: `CmdOrCtrl+O` and `cmdorctrl+o` are one, and so are
+`CmdOrCtrl+O` and `Ctrl+O`, because `CmdOrCtrl` *is* Control off macOS and the
+second item would never fire there. `CmdOrCtrl+O` and `CmdOrCtrl+Shift+O` are
+two, wherever they run.
 
 ### Typing is not a shortcut
 
@@ -110,6 +119,14 @@ except inside the box being filled in, where it is a keystroke.
 
 A real chord — anything carrying `CmdOrCtrl`, `Ctrl` or `OptionOrAlt` — still
 reaches the menu from inside a text field, the way `Cmd+S` does in an editor.
+
+One chord is not a chord: a keystroke carrying AltGr is left alone. On Windows,
+and on some layouts elsewhere, AltGr is reported as Control and Alt held
+together, so `AltGr+E` and a `Ctrl+OptionOrAlt+E` accelerator arrive as the
+same event. There is no telling them apart, so the character wins — firing the
+item would swallow a keystroke the visitor meant to type. A `Ctrl+OptionOrAlt`
+accelerator is therefore not reachable by keyboard on such a layout, which is a
+reason to prefer `CmdOrCtrl` and `Shift` for one.
 
 ### What the browser has already taken
 

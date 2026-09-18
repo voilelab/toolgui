@@ -2,6 +2,7 @@ package tgframe
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
@@ -123,6 +124,14 @@ func TestSetMenuInvalid(t *testing.T) {
 		{"duplicated accelerator", NewMenu().
 			Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"}).
 			Text("Close", "close", &MenuTextConf{Accelerator: "CmdOrCtrl+o"})},
+		{"shifted character accelerator", NewMenu().
+			Text("Find", "find", &MenuTextConf{Accelerator: "CmdOrCtrl+?"})},
+
+		// Off macOS CmdOrCtrl is Control, so these are one keystroke there
+		// and the second item would never fire.
+		{"accelerators that collide off macOS", NewMenu().
+			Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"}).
+			Text("Close", "close", &MenuTextConf{Accelerator: "Ctrl+O"})},
 		{"duplicated accelerator across submenus", NewMenu().
 			Submenu("File", func(m *Menu) {
 				m.Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"})
@@ -337,4 +346,46 @@ func TestSetMenuNormalizesTheSnapshot(t *testing.T) {
 	if got := menu.Nodes()[0].Accelerator; got != "cmdorctrl+O" {
 		t.Errorf("Accelerator = %q, want the declared %q", got, "cmdorctrl+O")
 	}
+}
+
+// TestMenuAcceleratorsThatCollideOffMac: two declarations that read
+// differently are still one keystroke where CmdOrCtrl is Control, and the
+// message says which two and where, because neither one alone says what is
+// wrong with it.
+func TestMenuAcceleratorsThatCollideOffMac(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("SetMenu did not panic, want ErrMenuItem")
+		}
+
+		err, ok := r.(error)
+		if !ok || !errors.Is(err, ErrMenuItem) {
+			t.Fatalf("SetMenu panicked with %v, want ErrMenuItem", r)
+		}
+
+		for _, want := range []string{"CmdOrCtrl+o", "Ctrl+o", "off macOS"} {
+			if !strings.Contains(err.Error(), want) {
+				t.Errorf("panic %q does not mention %q", err, want)
+			}
+		}
+	}()
+
+	NewApp().SetMenu(NewMenu().
+		Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"}).
+		Submenu("Edit", func(m *Menu) {
+			m.Text("Outdent", "outdent", &MenuTextConf{Accelerator: "Ctrl+o"})
+		}))
+}
+
+// TestMenuAcceleratorAcrossPlatforms keeps the pairs that really are two
+// keystrokes everywhere from being turned away with them: a different key, a
+// modifier that means the same thing on every platform, and a shifted
+// punctuation key written the one way both carriers read alike.
+func TestMenuAcceleratorAcrossPlatforms(t *testing.T) {
+	NewApp().SetMenu(NewMenu().
+		Text("Open", "open", &MenuTextConf{Accelerator: "CmdOrCtrl+O"}).
+		Text("Outdent", "outdent", &MenuTextConf{Accelerator: "CmdOrCtrl+["}).
+		Text("Save", "save", &MenuTextConf{Accelerator: "CmdOrCtrl+Shift+o"}).
+		Text("Find", "find", &MenuTextConf{Accelerator: "CmdOrCtrl+Shift+/"}))
 }

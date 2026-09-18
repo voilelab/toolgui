@@ -28,6 +28,10 @@ const MENU = [
     type: 'text', label: 'Help', id: 'menu_item_help',
     accelerator: 'f2',
   },
+  {
+    type: 'text', label: 'Find', id: 'menu_item_find',
+    accelerator: 'CmdOrCtrl+Shift+/',
+  },
 ]
 
 const APP_CONF = {
@@ -138,6 +142,38 @@ describe('menu accelerators', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
+  // The key an accelerator names is a physical key, not the character it
+  // produces. Shift and `/` report `?`, so the character comparison is not
+  // what can match it -- `code` is.
+  test('a shifted punctuation key fires', () => {
+    const { update } = renderApp({ menu: MENU })
+
+    expect(press(document.body,
+      { key: '?', code: 'Slash', ctrlKey: true, shiftKey: true })).toBe(false)
+
+    expect(update).toHaveBeenCalledWith({ type: 'click', id: 'menu_item_find' })
+  })
+
+  // Another layout puts another character on the same key, and the item is
+  // still the one that key fires.
+  test('a layout that prints something else on the key still fires it', () => {
+    const { update } = renderApp({ menu: MENU })
+
+    press(document.body,
+      { key: '-', code: 'Slash', ctrlKey: true, shiftKey: true })
+
+    expect(update).toHaveBeenCalledWith({ type: 'click', id: 'menu_item_find' })
+  })
+
+  // An event with no code at all -- a synthetic one, or a key the browser
+  // does not name -- matches nothing it did not match by character.
+  test('an event with no code matches by character alone', () => {
+    const { update } = renderApp({ menu: MENU })
+
+    press(document.body, { key: '?', code: '', ctrlKey: true, shiftKey: true })
+    expect(update).not.toHaveBeenCalled()
+  })
+
   test('a named key fires too', () => {
     const { update } = renderApp({ menu: MENU })
 
@@ -190,6 +226,31 @@ describe('menu accelerators', () => {
     press(document.body,
       { key: 'o', code: 'KeyO', ctrlKey: true, isComposing: true })
 
+    expect(update).not.toHaveBeenCalled()
+  })
+
+  // AltGr is Control and Alt held together on Windows and on some layouts
+  // elsewhere, so the third character on a key arrives looking exactly like a
+  // Ctrl+Alt chord. The character wins: firing the item would eat a keystroke
+  // the visitor meant to type.
+  test('AltGr is a character, not a chord', () => {
+    const menu = [{
+      type: 'text', label: 'Euro', id: 'menu_item_euro',
+      accelerator: 'Ctrl+OptionOrAlt+e',
+    }]
+
+    const { update } = renderApp({ menu })
+
+    // Without the marker the same event is the chord it looks like.
+    press(document.body,
+      { key: 'e', code: 'KeyE', ctrlKey: true, altKey: true })
+    expect(update).toHaveBeenCalledWith({ type: 'click', id: 'menu_item_euro' })
+    update.mockClear()
+
+    expect(press(document.body, {
+      key: '€', code: 'KeyE', ctrlKey: true, altKey: true,
+      modifierAltGraph: true,
+    })).toBe(true)
     expect(update).not.toHaveBeenCalled()
   })
 

@@ -40,7 +40,26 @@ const namedKeys: { [name: string]: string } = {
   'end': 'End',
   'page up': 'PageUp',
   'page down': 'PageDown',
-  'plus': '+',
+}
+
+// punctuationCodes maps the punctuation an accelerator may name to the
+// `KeyboardEvent.code` of the key it is printed on. `key` is the character the
+// layout produced -- Shift and `/` report `?`, and another layout reports
+// something else again -- so the physical key is what these have to be matched
+// by. The spellings are the standard layout's, which is also the set the Go
+// side accepts.
+const punctuationCodes: { [key: string]: string } = {
+  '`': 'Backquote',
+  '-': 'Minus',
+  '=': 'Equal',
+  '[': 'BracketLeft',
+  ']': 'BracketRight',
+  '\\': 'Backslash',
+  ';': 'Semicolon',
+  "'": 'Quote',
+  ',': 'Comma',
+  '.': 'Period',
+  '/': 'Slash',
 }
 
 // isMac says which key CmdOrCtrl and OptionOrAlt stand for here. The platform
@@ -91,12 +110,28 @@ export function hasModifier(accel: Accelerator): boolean {
   return accel.cmdOrCtrl || accel.ctrl || accel.optionOrAlt
 }
 
+// codeFor is the `KeyboardEvent.code` of the physical key an accelerator
+// names, on the standard layout.
+function codeFor(key: string): string | undefined {
+  if (key >= 'a' && key <= 'z') {
+    return 'Key' + key.toUpperCase()
+  }
+
+  if (key >= '0' && key <= '9') {
+    return 'Digit' + key
+  }
+
+  return punctuationCodes[key]
+}
+
 // matchesKey reports whether the event's key is the accelerator's.
 //
-// `key` is the character the layout produced, so it is what a named key and a
-// plain letter both arrive as. It is also what Option turns into something
-// else entirely on a Mac -- Option+O is `ø` -- so `code`, which names the
-// physical key, is taken as well for the letters and digits it covers.
+// `key` is the character the layout produced, so it is what a named key
+// arrives as. It is not what the accelerator names, though: Shift and `/`
+// report `?`, Option and `o` report `ø` on a Mac, and another layout reports
+// something else again. So `code`, which names the physical key whatever it
+// produced, is taken as well -- and is what makes a shifted or non-standard
+// keystroke reach the item the Go side accepted the declaration for.
 function matchesKey(accel: Accelerator, e: KeyboardEvent): boolean {
   const want = namedKeys[accel.key]
   if (want !== undefined) {
@@ -107,15 +142,7 @@ function matchesKey(accel: Accelerator, e: KeyboardEvent): boolean {
     return true
   }
 
-  if (accel.key >= 'a' && accel.key <= 'z') {
-    return e.code === 'Key' + accel.key.toUpperCase()
-  }
-
-  if (accel.key >= '0' && accel.key <= '9') {
-    return e.code === 'Digit' + accel.key
-  }
-
-  return false
+  return e.code !== '' && e.code === codeFor(accel.key)
 }
 
 // matchesEvent reports whether e is the keystroke accel declared. Every
@@ -153,7 +180,6 @@ const keyLabels: { [name: string]: string } = {
   'end': 'End',
   'page up': 'PgUp',
   'page down': 'PgDn',
-  'plus': '+',
 }
 
 // formatAccelerator is what the item shows next to its label: the symbols a

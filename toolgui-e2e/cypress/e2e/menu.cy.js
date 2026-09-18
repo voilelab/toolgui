@@ -123,7 +123,7 @@ describe('Menu', () => {
       press('{ctrl}{shift}E')
       cy.contains('2. FILE > MORE > SAY HELLO LOUDLY').should('exist')
 
-      press('{ctrl}{alt}{backspace}')
+      press('{ctrl}{shift}{backspace}')
       cy.contains('Nothing picked yet.').should('exist')
     })
 

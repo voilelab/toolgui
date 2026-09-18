@@ -89,7 +89,7 @@ func demoMenu() *tgframe.Menu {
 			})
 			m.Separator()
 			m.Text("Clear the log", "clear", &tgframe.MenuTextConf{
-				Accelerator: "CmdOrCtrl+OptionOrAlt+Backspace",
+				Accelerator: "CmdOrCtrl+Shift+Backspace",
 			})
 		}).
 		Submenu("Help", func(m *tgframe.Menu) {
