@@ -107,7 +107,8 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 }
 
 // Number create a number input and return its value, which is always within
-// Conf.Min and Conf.Max.
+// Conf.Min and Conf.Max, and whether that value is the one the app user
+// entered.
 //
 // The input reports a value outside that range rather than enforcing it, so
 // the app user keeps seeing what they typed, with the message beside it. What
@@ -115,9 +116,30 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 // on arrival -- never the last one that happened to be inside it, which the
 // page would read as what is on screen now.
 //
+// Pulling it in keeps the value usable but says nothing about where it came
+// from: a Max of 24 reads as 24 whether the app user typed 24 or 999. The
+// second return tells those apart, so a page can refuse to act on a number
+// nobody entered instead of storing a bound as if it were an answer:
+//
+//	limit, ok := Number(c, "Limit", conf)
+//	if !ok {
+//		Text(c, "Enter a limit between 0 and 24.")
+//		return nil
+//	}
+//
+// It is false when what arrived is outside Conf.Min or Conf.Max, and when T
+// cannot hold it -- a pasted 1e20 is no int, and is no more the app user's
+// number than a clamped 999 is. With no bounds set and a T that holds
+// whatever arrives, it is always true. The value is still worth reading when
+// it is false: it is the nearest one in range, which is what a page that only
+// wants to display something should show.
+//
 // There is no "nothing entered" state to report: an input nobody has typed in
-// reads as Conf.Default, and one the app user has emptied reads as zero.
-func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
+// reads as Conf.Default, and one the app user has emptied reads as zero. Both
+// are answers, so both are true.
+func Number[T Numeric](
+	c *tgframe.Container, label string, conf ...*NumberConf[T]) (T, bool) {
+
 	cf := tgframe.OneConf("Number", conf)
 
 	comp := newNumberComponent[T](label)
@@ -144,7 +166,7 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 	// a float64 whatever T is; T(*val) truncates it back for an integral T.
 	val, ok := c.State.GetNumber[float64](comp.ID)
 	if !ok {
-		return cf.Default
+		return cf.Default, true
 	}
 
 	// The bounds are compared in float64, before the truncation: that is the
@@ -152,19 +174,19 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 	// survives in -- converting first would land on whatever an integral T
 	// does with a value it cannot hold.
 	if comp.Min != nil && val < float64(*comp.Min) {
-		return *comp.Min
+		return *comp.Min, false
 	}
 
 	if comp.Max != nil && val > float64(*comp.Max) {
-		return *comp.Max
+		return *comp.Max, false
 	}
 
 	// In range, or unbounded. A float no T can hold is left to the Default:
 	// there is no number to report and, with no bound to pull it to, nothing
 	// to pull it to either.
 	if !holds[T](val) {
-		return cf.Default
+		return cf.Default, false
 	}
 
-	return T(val)
+	return T(val), true
 }

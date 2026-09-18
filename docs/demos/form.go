@@ -14,8 +14,10 @@ func formDemo(p *tgframe.Params) error {
 	var ops []int
 	opItems := []string{"sum", "product"}
 	tgcomp.Form(p.Main, &tgcomp.FormConf{ID: "form"}).With(func(c *tgframe.Container) {
-		a = tgcomp.Number[float64](c, "a")
-		b = tgcomp.Number[float64](c, "b")
+		// No Min or Max, so every number the app user can type is one
+		// this form accepts: the second return is always true here.
+		a, _ = tgcomp.Number[float64](c, "a")
+		b, _ = tgcomp.Number[float64](c, "b")
 		ops = tgcomp.MultiSelect(c, "ops", opItems,
 			&tgcomp.MultiSelectConf{Placeholder: "pick the operations"})
 	})

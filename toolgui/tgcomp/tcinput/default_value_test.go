@@ -92,7 +92,8 @@ func TestDefaultValue(t *testing.T) {
 	// The state holds the float64 a JSON number lands as, whatever T is.
 	checkDefault(t, "number", "number_component_Age", 7.0,
 		func(c *tgframe.Container) int64 {
-			return tcinput.Number(c, "Age", &tcinput.NumberConf[int64]{Default: 30})
+			v, _ := tcinput.Number(c, "Age", &tcinput.NumberConf[int64]{Default: 30})
+			return v
 		}, 30, 7)
 
 	checkDefault(t, "slider", "slider_component_Level", 70.0,
@@ -160,7 +161,7 @@ func TestClearingIsAnAnswer(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set("number_component_Count", 0.0)
 
-		got := tcinput.Number(defaultContainer(state), "Count",
+		got, _ := tcinput.Number(defaultContainer(state), "Count",
 			&tcinput.NumberConf[int]{Default: 10})
 		if got != 0 {
 			t.Errorf("cleared Number = %v, want 0 rather than the default", got)
@@ -263,7 +264,7 @@ func TestSetAsInitialValue(t *testing.T) {
 		state := tgframe.NewState()
 		state.Set("number_component_Age", 30)
 
-		if got := tcinput.Number[int64](defaultContainer(state), "Age"); got != 30 {
+		if got, _ := tcinput.Number[int64](defaultContainer(state), "Age"); got != 30 {
 			t.Fatalf("Number = %v, want 30", got)
 		}
 	})
@@ -323,7 +324,7 @@ func TestWrongTypeDoesNotPanic(t *testing.T) {
 
 	c := defaultContainer(state)
 
-	if got := tcinput.Number[int64](c, "Age"); got != 0 {
+	if got, _ := tcinput.Number[int64](c, "Age"); got != 0 {
 		t.Errorf("Number = %v, want 0", got)
 	}
 	if got := tcinput.Select(c, "Fruit", []string{"apple", "banana"}); got != nil {
