@@ -1,8 +1,49 @@
+/* App frame: the menubar row, and the shell under it. --tg-menubar-h is what
+   everything below sizes against, so an app with no menubar -- which renders
+   no row at all -- keeps the 100vh the shell was built on. */
+.toolgui-frame {
+  --tg-menubar-h: 0px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.toolgui-frame.has-menubar {
+  --tg-menubar-h: 2.25rem;
+}
+
+/* The row scrolls away with the page rather than sticking to the top of the
+   viewport. A bar pinned there covers the first 36px of whatever is under it,
+   which is where a browser -- and a test driver scrolling a target into view
+   -- puts the thing being reached for. The side column below keeps the top of
+   the viewport instead, which is what it is for. */
+.toolgui-menubar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  height: var(--tg-menubar-h);
+  padding-inline: 0.5rem;
+  background-color: var(--tg-surface-alt);
+  border-bottom: 1px solid var(--tg-border-weak);
+  /* More entries than the viewport is wide is the narrow-screen case: the
+     row scrolls sideways rather than wrapping into a second one, which the
+     sticky column below it has no room for. */
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.toolgui-menubar-button {
+  flex: 0 0 auto;
+  font-weight: 400;
+}
+
 /* App shell: a resizable left column beside the page content. */
 .toolgui-shell {
   display: flex;
   align-items: stretch;
-  min-height: 100vh;
+  flex: 1 1 auto;
+  min-height: calc(100vh - var(--tg-menubar-h));
 }
 
 /* --tg-nav-width comes in as an inline style on the column. A variable, not
@@ -20,7 +61,7 @@
      below something to scroll inside of. */
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: calc(100vh - var(--tg-menubar-h));
   overflow-y: auto;
   background-color: var(--tg-surface-alt);
   border-right: 1px solid var(--tg-border-weak);
@@ -88,7 +129,7 @@
   margin-inline-start: -3px;
   position: sticky;
   top: 0;
-  height: 100vh;
+  height: calc(100vh - var(--tg-menubar-h));
   z-index: 1;
   cursor: col-resize;
   background-color: transparent;

@@ -16,6 +16,7 @@
 
 * [App](app/index.md)
     * [Side Nav](app/sidenav.md)
+    * [Menu](app/menu.md)
     * [Page](app/page.md)
     * [Web Manifest](app/manifest.md)
 

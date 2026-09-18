@@ -330,3 +330,38 @@ func handleOpen(handle js.Value) (ok bool) {
 	handle.Call("getSize")
 	return true
 }
+
+// TestAppConfCarriesMenu is the browser half of "one declaration, three
+// executors": the bridge hands the page the menu tree the App declared, the
+// same as GET /api/app does on a server.
+func TestAppConfCarriesMenu(t *testing.T) {
+	app := testApp()
+	app.SetMenu(tgframe.NewMenu().
+		Submenu("File", func(m *tgframe.Menu) {
+			m.Text("Open", "file_open")
+			m.Separator()
+			m.Text("Quit", "file_quit")
+		}))
+
+	b := newBridge(app)
+
+	confJSON, ok := b.jsAppConf(js.Undefined(), nil).(string)
+	if !ok || confJSON == "" {
+		t.Fatal("appConf returned nothing")
+	}
+
+	var conf tgframe.AppConf
+	if err := json.Unmarshal([]byte(confJSON), &conf); err != nil {
+		t.Fatalf("unmarshal app conf: %v", err)
+	}
+
+	if len(conf.Menu) != 1 || conf.Menu[0].Label != "File" {
+		t.Fatalf("unexpected menu: %v", conf.Menu)
+	}
+
+	children := conf.Menu[0].Children
+	if len(children) != 3 || children[0].ID != tgframe.MenuID("file_open") ||
+		children[1].Type != tgframe.MenuNodeSeparator {
+		t.Fatalf("unexpected File submenu: %v", children)
+	}
+}

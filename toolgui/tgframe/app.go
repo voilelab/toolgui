@@ -77,6 +77,12 @@ type App struct {
 
 	hashPageNameMode bool
 	showVersion      bool
+
+	// menu is the tree [App.SetMenu] took, and menuIDs the click ids in it.
+	// Both are nil until an app declares a menu, which is what keeps the
+	// menubar out of the frontend's DOM entirely.
+	menu    *Menu
+	menuIDs map[string]bool
 }
 
 // AppConf store configs for frontend
@@ -96,6 +102,9 @@ type AppConf struct {
 
 	MainContainerID    string `json:"main_container_id"`
 	SidebarContainerID string `json:"sidebar_container_id"`
+
+	// Menu is the app's menu tree, absent for an app that declares none.
+	Menu []*MenuNode `json:"menu,omitzero"`
 }
 
 // NewApp return App
@@ -122,6 +131,39 @@ func (app *App) SetHashPageNameMode(v bool) {
 //	app.SetTitle("My Tool")
 func (app *App) SetTitle(v string) {
 	app.title = v
+}
+
+// SetMenu declares the app's menu. The frontend draws it as a menubar above
+// the app, and a click on one of its items is read with [MenuClicked].
+//
+//	app.SetMenu(tgframe.NewMenu().
+//		Submenu("File", func(m *tgframe.Menu) {
+//			m.Text("Open", "file_open")
+//			m.Separator()
+//			m.Text("Quit", "file_quit")
+//		}))
+//
+// The tree belongs to the app rather than to a page func: it is declared once
+// and stands for every run, which is the only shape a native menu -- with no
+// diff to apply -- can take.
+//
+// It panics on a menu the app cannot serve, so a mistake is reported at
+// startup rather than by a menubar that quietly misses an item. See
+// [ErrMenuItem] for what counts as one. Passing nil drops the menu.
+func (app *App) SetMenu(menu *Menu) {
+	if menu == nil {
+		app.menu, app.menuIDs = nil, nil
+		return
+	}
+
+	ids := map[string]bool{}
+	if err := collectIDs(menu.nodes, ids); err != nil {
+		panic(err)
+	}
+
+	// A snapshot rather than the Menu itself, so the tree and the ids stay
+	// the same declaration however the caller goes on to use its Menu.
+	app.menu, app.menuIDs = &Menu{nodes: cloneNodes(menu.nodes)}, ids
 }
 
 // SetShowVersion set whether the side nav shows the toolgui version.
@@ -192,7 +234,18 @@ func (app *App) AppConf() *AppConf {
 
 		Version:     Version(),
 		ShowVersion: app.showVersion,
+
+		Menu: app.menuNodes(),
 	}
+}
+
+// menuNodes returns the menu tree, nil for an app with no menu.
+func (app *App) menuNodes() []*MenuNode {
+	if app.menu == nil {
+		return nil
+	}
+
+	return app.menu.nodes
 }
 
 // RunWithHandlingPanic run a page which named `name` with state, with a
@@ -248,6 +301,13 @@ func (app *App) RunContext(ctx context.Context,
 	pageFunc, ok := app.pageFuncs[name]
 	if !ok {
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
+	}
+
+	// The menu is the app's, not the run's, so the ids it declares are told
+	// to the state here rather than claimed like a component's. [MenuClicked]
+	// reads them back to turn away a click on an item the app never declared.
+	if state != nil {
+		state.setMenuIDs(app.menuIDs)
 	}
 
 	run := newRunState()

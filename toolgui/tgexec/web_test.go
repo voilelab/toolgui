@@ -1224,3 +1224,53 @@ func TestUpdateMasksStateIDError(t *testing.T) {
 		t.Error("expect an error id to look the report up by")
 	}
 }
+
+// TestAppConfCarriesMenu is the server half of "one declaration, three
+// executors": /api/app hands the frontend the menu tree the App declared.
+func TestAppConfCarriesMenu(t *testing.T) {
+	app := tgframe.NewApp()
+	app.AddPage("index", "Index", func(*tgframe.Params) error { return nil })
+	app.SetMenu(tgframe.NewMenu().
+		Submenu("File", func(m *tgframe.Menu) {
+			m.Text("Open", "file_open")
+			m.Separator()
+			m.Text("Quit", "file_quit")
+		}))
+
+	e := NewWebExecutor(app)
+	t.Cleanup(e.Destroy)
+
+	mux, err := e.Mux()
+	if err != nil {
+		t.Fatalf("Mux: %v", err)
+	}
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	resp, err := http.Get(srv.URL + "/api/app")
+	if err != nil {
+		t.Fatalf("GET /api/app: %v", err)
+	}
+	defer resp.Body.Close()
+
+	bs, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	var conf tgframe.AppConf
+	if err := tgjson.Unmarshal(bs, &conf); err != nil {
+		t.Fatalf("unmarshal app conf: %v", err)
+	}
+
+	if len(conf.Menu) != 1 || conf.Menu[0].Label != "File" {
+		t.Fatalf("unexpected menu: %v", conf.Menu)
+	}
+
+	children := conf.Menu[0].Children
+	if len(children) != 3 || children[0].ID != tgframe.MenuID("file_open") ||
+		children[1].Type != tgframe.MenuNodeSeparator {
+		t.Fatalf("unexpected File submenu: %v", children)
+	}
+}

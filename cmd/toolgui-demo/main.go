@@ -71,6 +71,66 @@ func MainPage(p *tgframe.Params) error {
 	return nil
 }
 
+// demoMenu is the menubar the app declares. Its items are read back on the
+// menu page, and nowhere else: the tree belongs to the app, so the same items
+// are there whichever page is open.
+func demoMenu() *tgframe.Menu {
+	return tgframe.NewMenu().
+		Submenu("File", func(m *tgframe.Menu) {
+			m.Text("Say hello", "hello")
+			m.Submenu("More", func(m *tgframe.Menu) {
+				m.Text("Say hello loudly", "hello_loud")
+			})
+			m.Separator()
+			m.Text("Clear the log", "clear")
+		}).
+		Submenu("Help", func(m *tgframe.Menu) {
+			m.Text("About", "about")
+		})
+}
+
+// menuLogKey is where the menu page keeps what has been picked. The state is
+// the session's, so the log survives a page func that only draws it.
+const menuLogKey = "demo_menu_log"
+
+func MenuPage(p *tgframe.Params) error {
+	tgcomp.Title(p.Main, "App Menu")
+	tgcomp.Text(p.Main, "The menubar above the app comes from App.SetMenu."+
+		" Pick an item and the run handling the click appends to this log.")
+
+	log, _ := p.State.Get[[]string](menuLogKey)
+
+	// Numbered, so a line says which run wrote it: picking the same item
+	// twice reads as two entries rather than as one that may not have moved.
+	pick := func(what string) {
+		log = append(log, fmt.Sprintf("%d. %s", len(log)+1, what))
+	}
+
+	switch {
+	case tgframe.MenuClicked(p, "hello"):
+		pick("File > Say hello")
+	case tgframe.MenuClicked(p, "hello_loud"):
+		pick("FILE > MORE > SAY HELLO LOUDLY")
+	case tgframe.MenuClicked(p, "clear"):
+		log = nil
+	case tgframe.MenuClicked(p, "about"):
+		pick("Help > About: toolgui " + tgframe.Version())
+	}
+
+	p.State.Set(menuLogKey, log)
+
+	if len(log) == 0 {
+		tgcomp.Caption(p.Main, "Nothing picked yet.")
+		return nil
+	}
+
+	for _, line := range log {
+		tgcomp.Text(p.Main, line)
+	}
+
+	return nil
+}
+
 func SidebarPage(p *tgframe.Params) error {
 	if tgcomp.Checkbox(p.Main, "Show sidebar") {
 		tgcomp.Text(p.Sidebar, "Sidebar is here")
@@ -266,6 +326,10 @@ func newApp() *tgframe.App {
 	// in the manifest main_server.go sets unless that gives its own name.
 	app.SetTitle("ToolGUI Demo")
 
+	// The menubar is the app's, so it is there on every page. Embedded in the
+	// book the row is dropped along with the rest of the app's chrome.
+	app.SetMenu(demoMenu())
+
 	app.AddPage("index", "Index", MainPage)
 
 	// A category page, then a page per component under it: the nav reads the
@@ -280,6 +344,9 @@ func newApp() *tgframe.App {
 	}
 
 	app.AddPage("sidebar", "Sidebar", SidebarPage)
+	// app_menu, not menu: a page name is the App's own namespace, and the
+	// Menu component has the shorter one.
+	app.AddPage("app_menu", "App Menu", MenuPage)
 	app.AddPage("function_cache", "Function Cache", FuncCachePage)
 	app.AddPage("code", "Source Code", SourceCodePage)
 
