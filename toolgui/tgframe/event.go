@@ -213,11 +213,22 @@ type EventSelect struct {
 	// own rather than a Value that may be either shape so that a frontend
 	// built before multi-selection existed keeps working unchanged.
 	Values []int `json:"values,omitzero"`
+
+	// Keys carries the selection of a component that remembers what is
+	// picked by a key the app gave rather than by position, a DataFrame with
+	// DataFrameConf.RowKeys set. Another field of its own for the same
+	// reason as Values: a payload only ever carries one of the three.
+	Keys []string `json:"keys,omitzero"`
 }
 
 func (e *EventSelect) ApplyState(state *State) {
 	// An empty selection still arrives as [], so the nil check is what tells
-	// a multi-valued payload from a single-valued one, not the length.
+	// the payload's shape apart, not the length.
+	if e.Keys != nil {
+		state.Set(e.ID, e.Keys)
+		return
+	}
+
 	if e.Values != nil {
 		state.Set(e.ID, e.Values)
 		return

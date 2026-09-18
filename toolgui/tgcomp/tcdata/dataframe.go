@@ -182,10 +182,18 @@ type DataFrameConf struct {
 	// and makes picking a row rerun the page function.
 	Selection SelectionMode
 
+	// RowKeys names the rows, one key per row, so that what is picked is
+	// remembered by row and not by position: a row that moves between runs
+	// keeps its pick, and a row that is gone drops it. Empty leaves the
+	// selection positional. Any other length than rows, or a repeated key,
+	// fails the run.
+	RowKeys []string
+
 	// DefaultSelection is what is picked before the app user first touches
-	// the table, as indices into rows. It is only read until then. Indices
-	// pointing outside rows are dropped, and SelectionModeSingle keeps only
-	// the lowest one.
+	// the table, as indices into rows -- indices even when RowKeys is set,
+	// since the page function has the rows in hand when it writes them. It
+	// is only read until then. Indices pointing outside rows are dropped,
+	// and SelectionModeSingle keeps only the lowest one.
 	DefaultSelection []int
 }
 
@@ -222,8 +230,9 @@ type dataFrameComponent struct {
 	PageSize   int               `json:"page_size"`
 	Height     string            `json:"height"`
 
-	Selection        string `json:"selection"`
-	DefaultSelection []int  `json:"default_selection"`
+	Selection        string   `json:"selection"`
+	RowKeys          []string `json:"row_keys"`
+	DefaultSelection []int    `json:"default_selection"`
 }
 
 // boolOr reports what an unset conf toggle means.
@@ -255,6 +264,13 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 		pageSize = defaultDataFramePageSize
 	}
 
+	// Never nil on the wire: the client tells a keyed table from a positional
+	// one by whether the keys are empty, not by whether they are there.
+	rowKeys := conf.RowKeys
+	if rowKeys == nil {
+		rowKeys = []string{}
+	}
+
 	// A DataFrame carries state only once its rows can be picked, so that is
 	// the only time it needs an id of its own. The id is derived from the
 	// head rather than the rows, so a selection survives the data changing
@@ -278,6 +294,7 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 		PageSize:   pageSize,
 		Height:     conf.Height,
 		Selection:  conf.Selection.String(),
+		RowKeys:    rowKeys,
 		DefaultSelection: normalizeRowSelection(
 			conf.DefaultSelection, len(rows), conf.Selection),
 	}
@@ -311,6 +328,26 @@ func normalizeRowSelection(idxes []int, rowCount int, mode SelectionMode) []int 
 	return out
 }
 
+// selectionFromKeys turns the keys a keyed table remembers back into the
+// positions DataFrame hands the page function, against the rows of this run.
+// A key that is no longer among them is dropped, which is the whole point:
+// the row it named is gone, so nothing is picked in its place.
+func selectionFromKeys(keys, rowKeys []string, mode SelectionMode) []int {
+	at := make(map[string]int, len(rowKeys))
+	for i, key := range rowKeys {
+		at[key] = i
+	}
+
+	idxes := make([]int, 0, len(keys))
+	for _, key := range keys {
+		if idx, ok := at[key]; ok {
+			idxes = append(idxes, idx)
+		}
+	}
+
+	return normalizeRowSelection(idxes, len(rowKeys), mode)
+}
+
 // DataFrame create a table the user can sort, search and page through, and
 // return the rows the user has picked, as indices into rows. Sorting,
 // searching and paging all happen in the browser, so none of them reruns the
@@ -328,9 +365,11 @@ func normalizeRowSelection(idxes []int, rowCount int, mode SelectionMode) []int 
 // An index is a position and not a row identity, the same contract [Select]
 // and [MultiSelect] have with their items: when rows changes between runs, an
 // index picked against the old data is read against the new one, and only an
-// index past the end is dropped. Hand it rows whose order is stable between
-// runs, or a fresh [DataFrameConf.ID] when the data is replaced, before acting
-// on a selection destructively.
+// index past the end is dropped. Set [DataFrameConf.RowKeys] to name the rows
+// and the selection is remembered by key instead, which is what to do before
+// acting on a selection destructively: the return is still positions, but
+// positions into the rows of this run, and a row that is gone is dropped
+// rather than standing for whatever moved into its place.
 //
 // [Table] is the static counterpart: reach for it when the rows are few and
 // already in the order they should be read in.
@@ -362,12 +401,53 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 		}
 	}
 
+	if len(cf.RowKeys) != 0 {
+		if len(cf.RowKeys) != len(rows) {
+			c.Fail(tgutil.Errorf(
+				"len of row keys should equal to len of rows, got %d and %d",
+				len(cf.RowKeys), len(rows)))
+			return []int{}
+		}
+
+		// A repeated key is the very mistake RowKeys is for catching: two
+		// rows answering to one name is how a pick lands on the wrong row.
+		seen := make(map[string]int, len(cf.RowKeys))
+		for i, key := range cf.RowKeys {
+			if first, ok := seen[key]; ok {
+				c.Fail(tgutil.Errorf(
+					"row key %q is used by both row %d and row %d, "+
+						"row keys should be unique", key, first, i))
+				return []int{}
+			}
+
+			seen[key] = i
+		}
+	}
+
 	comp := newDataFrameComponent(head, rows, cf)
 	tgframe.SetConfID(comp, cf)
 	c.AddComponent(comp)
 
 	if cf.Selection == SelectionModeNone {
 		return []int{}
+	}
+
+	// def is what an untouched table hands back. Normalized a second time
+	// rather than handing back comp.DefaultSelection: the component is about
+	// to be serialized, and the caller owns what it gets back.
+	def := func() []int {
+		return normalizeRowSelection(cf.DefaultSelection, len(rows), cf.Selection)
+	}
+
+	if len(cf.RowKeys) != 0 {
+		// A keyed table remembers keys, so that is what the state holds: a
+		// []string either way, written from Go or sent by the client.
+		var keys []string
+		if c.State.GetObject(comp.ID, &keys) != nil || keys == nil {
+			return def()
+		}
+
+		return selectionFromKeys(keys, cf.RowKeys, cf.Selection)
 	}
 
 	// The state holds whatever the select event landed, a []int written from
@@ -379,10 +459,7 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 	}
 
 	if idxes == nil {
-		// Untouched, so the default stands in. Normalized a second time
-		// rather than handing back comp.DefaultSelection: the component is
-		// about to be serialized, and the caller owns what it gets back.
-		return normalizeRowSelection(cf.DefaultSelection, len(rows), cf.Selection)
+		return def()
 	}
 
 	return normalizeRowSelection(idxes, len(rows), cf.Selection)

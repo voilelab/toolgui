@@ -190,6 +190,50 @@ func TestParseEventSelectEmptyMultiValue(t *testing.T) {
 	}
 }
 
+// A DataFrame that names its rows sends back the keys it was given, which
+// have to reach the state as keys rather than be read as a position.
+func TestParseEventSelectKeys(t *testing.T) {
+	event, err := ParseEvent([]byte(
+		`{"type":"select","id":"dataframe_component_hosts","keys":["db-1","web-2"]}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	state := NewState()
+	event.ApplyState(state)
+
+	var got []string
+	if err := state.GetObject("dataframe_component_hosts", &got); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+
+	if len(got) != 2 || got[0] != "db-1" || got[1] != "web-2" {
+		t.Fatalf("state = %v, want [db-1 web-2]", got)
+	}
+}
+
+// Clearing a keyed selection sends an empty list, which stays a selection of
+// nothing rather than falling through to the values or the single value.
+func TestParseEventSelectEmptyKeys(t *testing.T) {
+	event, err := ParseEvent([]byte(
+		`{"type":"select","id":"dataframe_component_hosts","keys":[]}`))
+	if err != nil {
+		t.Fatalf("ParseEvent: %v", err)
+	}
+
+	state := NewState()
+	event.ApplyState(state)
+
+	var got []string
+	if err := state.GetObject("dataframe_component_hosts", &got); err != nil {
+		t.Fatalf("GetObject: %v", err)
+	}
+
+	if got == nil || len(got) != 0 {
+		t.Fatalf("state = %v, want an empty selection", got)
+	}
+}
+
 // What the frontend puts on the wire reads back as the right fields, and
 // marshalling keeps an empty values there while leaving an event that never
 // had one without it. A multi-valued payload carries no value of its own, so
@@ -205,6 +249,8 @@ func TestEventSelectMarshalShape(t *testing.T) {
 		{"single", `{"id":"a","value":2}`, `{"id":"a","value":2}`},
 		{"multi", `{"id":"a","values":[0,2]}`, `{"id":"a","value":0,"values":[0,2]}`},
 		{"empty multi", `{"id":"a","values":[]}`, `{"id":"a","value":0,"values":[]}`},
+		{"keys", `{"id":"a","keys":["x"]}`, `{"id":"a","value":0,"keys":["x"]}`},
+		{"empty keys", `{"id":"a","keys":[]}`, `{"id":"a","value":0,"keys":[]}`},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			var event EventSelect

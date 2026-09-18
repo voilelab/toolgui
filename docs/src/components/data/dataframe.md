@@ -53,6 +53,10 @@ type DataFrameConf struct {
 	// SelectionModeNone.
 	Selection SelectionMode
 
+	// RowKeys names the rows, one key per row, so that what is picked is
+	// remembered by row and not by position.
+	RowKeys []string
+
 	// DefaultSelection is what is picked before the user first touches the
 	// table, as indices into rows.
 	DefaultSelection []int
@@ -161,20 +165,56 @@ and is only read until then: clearing the selection is an answer, and beats
 the default from that point on. Indices pointing outside `rows` are dropped,
 and `SelectionModeSingle` keeps only the lowest one.
 
-#### A selection is a position, not a row
+#### Name the rows with `RowKeys`
 
-If `rows` changes between runs, an index picked against the old data is read
-against the new one. Pick `rows[1]` out of `[A, B, C]`, drop `B`, and the
-selection is still `1` — which is now `C`, a row the user never picked. Only
-an index past the end of `rows` is dropped.
+Without `RowKeys` a selection is a **position**, not a row. If `rows` changes
+between runs, an index picked against the old data is read against the new
+one. Pick `rows[1]` out of `[A, B, C]`, drop `B`, and the selection is still
+`1` — which is now `C`, a row the user never picked. Only an index past the
+end of `rows` is dropped. This is the positional contract
+[Select](../input/select.md) and [MultiSelect](../input/multiselect.md)
+already have with their `items`, and the id being derived from `head` keeps
+the selection across a rerun rather than making it safe across a change of
+data.
 
-This is the positional contract [Select](../input/select.md) and
-[MultiSelect](../input/multiselect.md) already have with their `items`, and
-the id being derived from `head` keeps the selection across a rerun rather
-than making it safe across a change of data. So before acting on a selection
-destructively — deleting, submitting, sending — either hand the table rows
-whose order is stable between runs, or give it a fresh `ID` when the data is
-replaced, which drops the selection with the old id.
+`RowKeys` is how to get out of it, and is what to reach for before acting on a
+selection destructively — deleting, submitting, sending. Give one key per row,
+whatever the app already calls that row by — a primary key, an id, a path:
+
+```go
+keys := make([]string, 0, len(hosts))
+for _, host := range hosts {
+	keys = append(keys, host[0])
+}
+
+selected := tgcomp.DataFrame(p.Main, head, hosts, &tgcomp.DataFrameConf{
+	ID:        "hosts",
+	Selection: tgcomp.SelectionModeMulti,
+	RowKeys:   keys,
+})
+```
+
+What is picked is then remembered by key. The return is still indices into
+`rows` — the same slice the page function just wrote, so `hosts[idx]` reads
+the same as ever — but they are resolved from the keys against **this run's**
+rows: a row that moved keeps its pick at its new position, and a key whose row
+is gone is dropped instead of standing for whatever moved into its place. Drop
+`B` out of `[A, B, C]` with `B` picked, and the selection comes back empty.
+
+`RowKeys` is either empty, leaving the selection positional, or exactly as
+long as `rows`. Any other length fails the run and draws an error placeholder,
+and so does a key used by two rows: two rows answering to one name is the
+mistake `RowKeys` exists to rule out. The keys are the app's to give —
+`DataFrame` will not guess one out of a column, because no column is
+guaranteed unique.
+
+`DefaultSelection` stays positional either way: it is read before the user has
+touched anything, when the page function has `rows` in hand.
+
+The other way out is to give the table a fresh `ID` when the data is replaced,
+which drops the selection with the old id. That clears the selection rather
+than carrying it over, so reach for it when a reload means "start again" and
+for `RowKeys` when it does not.
 
 #### Identity
 
@@ -249,7 +289,7 @@ is worth paging on the server side instead.
 {{#include ../../../demos/dataframe.go:demo}}
 ```
 
-Picking rows out of one:
+Picking rows out of one, by key so the pick follows the host:
 
 ```go
 {{#include ../../../demos/dataframe.go:multi}}
