@@ -106,7 +106,7 @@ func Main(p *tgframe.Params) error {
 		p.State.Set("number_component_Age", 30)
 	}
 
-	age := tgcomp.Number[int64](p.Main, "Age") // 30, before anyone types
+	age, _ := tgcomp.Number[int64](p.Main, "Age") // 30, before anyone types
 	...
 }
 ```
@@ -123,7 +123,7 @@ To have both, write the key and set the conf:
 
 ```go
 p.State.Set("number_component_Age", 30)
-age := tgcomp.Number(p.Main, "Age", &tgcomp.NumberConf[int64]{Default: 30})
+age, _ := tgcomp.Number(p.Main, "Age", &tgcomp.NumberConf[int64]{Default: 30})
 ```
 
 Every input that has a value to start on takes a `Default` in its conf, so

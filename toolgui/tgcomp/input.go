@@ -209,9 +209,10 @@ type Numeric = tcinput.Numeric
 type NumberConf[T tcinput.Numeric] = tcinput.NumberConf[T]
 
 // Number create a number input and return its value, always within Conf.Min
-// and Conf.Max -- see [tcinput.Number].
+// and Conf.Max, and whether that value is the one the app user entered -- see
+// [tcinput.Number].
 func Number[T tcinput.Numeric](
-	c *tgframe.Container, label string, conf ...*NumberConf[T]) T {
+	c *tgframe.Container, label string, conf ...*NumberConf[T]) (T, bool) {
 
 	return tcinput.Number[T](c, label, conf...)
 }

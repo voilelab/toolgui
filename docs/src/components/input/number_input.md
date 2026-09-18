@@ -1,7 +1,7 @@
 # Number Input
 
-Number create a number input and return its value, or nil when the input
-holds nothing the page can use.
+Number create a number input and return its value, always within `Min` and
+`Max`, and whether that value is the one the app user entered.
 
 ## API
 
@@ -12,7 +12,7 @@ type Numeric interface {
 	~int | ~int64 | ~float64
 }
 
-func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) T
+func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T]) (T, bool)
 ```
 
 ### Parameters
@@ -25,9 +25,13 @@ func Number[T Numeric](c *tgframe.Container, label string, conf ...*NumberConf[T
 from the conf or from an explicit instantiation:
 
 ```go
-count := tgcomp.Number[int](p.Main, "Count")
-ratio := tgcomp.Number(p.Main, "Ratio", &tcinput.NumberConf[float64]{})
+count, _ := tgcomp.Number[int](p.Main, "Count")
+ratio, _ := tgcomp.Number(p.Main, "Ratio", &tcinput.NumberConf[float64]{})
 ```
+
+Neither of those sets a bound, so the second return is always `true` there and
+`_` is the honest way to write it. Read it wherever `Min` or `Max` is set —
+see [The second return](#the-second-return) below.
 
 The `~` in the constraint lets a page keep its own named type all the way in,
 so `type Rating int` is a `Number[Rating]`.
@@ -100,6 +104,73 @@ The bounds are compared before an integral `T` truncates, on the number the
 app user actually typed. A float no `T` can hold — a pasted `1e20` is no
 `int` — has no number to report and no bound to be pulled to, so it reads as
 `Default`.
+
+An integral `T` still truncates a fractional value that is inside the range:
+`20.9` under a `Max` of 21 reads as `20`. That is reported rather than
+enforced too — see [The second return](#the-second-return).
+
+## The second return
+
+Pulling the value into the range keeps it usable, but it says nothing about
+where it came from: a `Max` of 24 reads as 24 whether the app user typed 24 or
+typed 999. Storing the second is the bug this input used to have, and clamping
+did not fix it — it only made the number stored a fresh 24 instead of a stale
+one. The app user still sees a number they never entered come back.
+
+The second return is what tells those apart:
+
+```go
+limit, ok := tgcomp.Number(p.Main, "Limit", conf)
+if !ok {
+    tgcomp.Text(p.Main, "Enter a limit between 0 and 24.")
+    return nil
+}
+save(limit)
+```
+
+It is `false` when what arrived was outside `Min` or `Max`, and when `T` does
+not hold it as it is:
+
+* a pasted `1e20` is no `int` — there is no number to report, so the value
+  reads as `Default`;
+* a typed `20.9` is no `int` either — an integral `T` truncates it to `20`,
+  and nothing on the wire says `T` is integral, so the box takes a decimal
+  whatever `T` is. The value is the `20`, and the signal says it is not what
+  was typed.
+
+Neither is the app user's number, any more than a clamped 999 is. With no
+bounds set and a `T` that holds whatever arrives exactly, it is always `true`:
+an untouched box reading as `Default` and an emptied one reading as zero are
+both answers, not refusals.
+
+**The value is still worth reading when it is `false`.** It is the nearest one
+`T` holds inside the range, which is what a page that only wants to display
+something should show. The signal is extra information, not a replacement for the value:
+handing back the raw 999 instead would put back the implementation-defined
+conversion an integral `T` does with a number it cannot hold.
+
+A form with several bounded inputs `&&`s their signals together itself; there
+is no form-level validity to read.
+
+## Why a second return, and not something else
+
+Three shapes were on the table. This is the one that is safe by default:
+`x := Number(...)` stops compiling, so every call site has to look at the
+signal once, rather than only the pages whose author already knew about the
+problem. The cost is that `Number` is the only input with a comma-ok return —
+an asymmetry, but a Go-idiomatic one, and one the bug is worth.
+
+*A sibling query function* — `NumberInRange(state, id) bool`, in the shape of
+`ButtonClicked` — was rejected for the opposite reason: it is opt-in. A page
+that does not know it exists behaves exactly as it does today and stores the
+clamped 24, so the default stays wrong. It would also have added another
+component-layer function taking a `*tgframe.State`, which is the entry point
+the component layer is trying to shed.
+
+*A handle* — `Number` returning a value with `Value()` and `Valid()` on it —
+carries the same signal and lines up with `StatusHandle`, but it is a heavy
+shape for the simplest input there is, and it breaks existing call sites just
+as hard as a second return does without buying anything more.
 
 ## Example
 

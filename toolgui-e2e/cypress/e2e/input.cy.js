@@ -308,14 +308,20 @@ describe('Input', () => {
 
     // The reverse case: with the box still out of range, a button elsewhere
     // on the page must not hand the page function the old 12 as if it were
-    // what is on screen.
+    // what is on screen -- and 20 is not what is on screen either. The page
+    // gets the bound to display and the signal to refuse on, so Save stops
+    // rather than storing a number nobody typed.
     cy.get('button[id=button_component_save_number]').click()
-    cy.get('#text_component_number_saved').should('have.text', 'Saved: 20')
+    cy.get('#text_component_number_saved')
+      .should('have.text', 'Not saved: enter a value between 10 and 20')
 
-    // Back in range, the value reaches Go again.
+    // Back in range, the value reaches Go again -- and so does a Save.
     cy.get(number).type('{backspace}')
     cy.get(number).blur()
     result().should('have.text', 'Value: 12')
+
+    cy.get('button[id=button_component_save_number]').click()
+    cy.get('#text_component_number_saved').should('have.text', 'Saved: 12')
 
     // Enter reports without waiting for the field to lose focus.
     cy.get(number).type('{backspace}5{enter}')
