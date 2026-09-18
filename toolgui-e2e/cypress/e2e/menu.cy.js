@@ -137,17 +137,25 @@ describe('Menu', () => {
 
     // A bare key is a shortcut on the page and a keystroke in a field. F2 is
     // Help > About, and the page has a textbox to prove it with.
+    //
+    // A function key is dispatched rather than typed: cy.type has a sequence
+    // for the modifiers and for Backspace, but none for F1 to F24.
     it('A bare key stays out of a text field', () => {
+      const f2 = ['keydown', { key: 'F2', code: 'F2' }]
+      const textbox = 'input[id=textbox_component_menu_typing]'
+
       cy.visit('/app_menu')
 
-      cy.get('body').type('{f2}')
+      cy.get('body').trigger(...f2)
       cy.contains('1. Help > About: toolgui').should('exist')
 
-      cy.get('input[id=textbox_component_menu_typing]').type('hello{f2}')
+      cy.get(textbox).type('hello')
+      cy.get(textbox).trigger(...f2)
       cy.contains('2. Help > About: toolgui').should('not.exist')
+      cy.get(textbox).should('have.value', 'hello')
 
       // A real chord still reaches the menu from in there.
-      cy.get('input[id=textbox_component_menu_typing]').type('{ctrl}e')
+      cy.get(textbox).type('{ctrl}e')
       cy.contains('2. File > Say hello').should('exist')
     })
   })
