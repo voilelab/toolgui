@@ -8,6 +8,9 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgexec"
 )
 
+// Nothing carries the code here, so an example draws its source beside it.
+const withCode = true
+
 func main() {
 	app := newApp()
 
