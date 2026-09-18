@@ -140,8 +140,14 @@ describe('Menu', () => {
     //
     // A function key is dispatched rather than typed: cy.type has a sequence
     // for the modifiers and for Backspace, but none for F1 to F24.
+    //
+    // eventConstructor, because cy.trigger builds a plain Event by default
+    // and assigns the options onto it -- which leaves ctrlKey and the rest
+    // undefined rather than false, and the shell matches a keystroke by every
+    // modifier, the ones the item did not ask for included.
     it('A bare key stays out of a text field', () => {
-      const f2 = ['keydown', { key: 'F2', code: 'F2' }]
+      const f2 = ['keydown',
+        { eventConstructor: 'KeyboardEvent', key: 'F2', code: 'F2' }]
       const textbox = 'input[id=textbox_component_menu_typing]'
 
       cy.visit('/app_menu')
