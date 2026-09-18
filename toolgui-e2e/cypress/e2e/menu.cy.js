@@ -2,6 +2,13 @@
 // the shell, whose items report a click to the run handling it.
 
 describe('Menu', () => {
+  // The item clicks turn scrolling off. Cypress scrolls what it is about to
+  // click to the top of the viewport, and an item sits in a portal below the
+  // entry it opened from -- scrolling it up carries the menubar off screen,
+  // at which point Mantine hides the dropdown as detached from it. The
+  // dropdown opens in view already, so there is nothing to scroll to.
+  const noScroll = { scrollBehavior: false }
+
   // Opens a top level entry and returns its dropdown, which Mantine renders
   // in a portal rather than inside the row.
   function openMenu(label) {
@@ -10,7 +17,7 @@ describe('Menu', () => {
   }
 
   it('The menubar is a row above the shell', () => {
-    cy.visit('/menu')
+    cy.visit('/app_menu')
 
     cy.get('.toolgui-frame').should('have.class', 'has-menubar')
     cy.get('.toolgui-menubar').should('be.visible')
@@ -36,7 +43,7 @@ describe('Menu', () => {
   })
 
   it('A submenu holds its items and its separator', () => {
-    cy.visit('/menu')
+    cy.visit('/app_menu')
 
     openMenu('File').within(() => {
       cy.contains('Say hello').should('exist')
@@ -46,16 +53,16 @@ describe('Menu', () => {
   })
 
   it('An item reports its click to the run handling it', () => {
-    cy.visit('/menu')
+    cy.visit('/app_menu')
     cy.contains('Nothing picked yet.').should('exist')
 
     openMenu('File')
-    cy.get('#menu_item_hello').click()
+    cy.get('#menu_item_hello').click(noScroll)
     cy.contains('1. File > Say hello').should('exist')
     cy.contains('Nothing picked yet.').should('not.exist')
 
     openMenu('File')
-    cy.get('#menu_item_hello').click()
+    cy.get('#menu_item_hello').click(noScroll)
     cy.contains('2. File > Say hello').should('exist')
 
     // The click belongs to that one run: a rerun must not report it again.
@@ -65,14 +72,14 @@ describe('Menu', () => {
   })
 
   it('A second submenu has items of its own', () => {
-    cy.visit('/menu')
+    cy.visit('/app_menu')
 
     openMenu('Help')
-    cy.get('#menu_item_about').click()
+    cy.get('#menu_item_about').click(noScroll)
     cy.contains('1. Help > About: toolgui').should('exist')
 
     openMenu('File')
-    cy.get('#menu_item_clear').click()
+    cy.get('#menu_item_clear').click(noScroll)
     cy.contains('Nothing picked yet.').should('exist')
   })
 })

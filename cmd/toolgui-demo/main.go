@@ -344,7 +344,9 @@ func newApp() *tgframe.App {
 	}
 
 	app.AddPage("sidebar", "Sidebar", SidebarPage)
-	app.AddPage("menu", "App Menu", MenuPage)
+	// app_menu, not menu: a page name is the App's own namespace, and the
+	// Menu component has the shorter one.
+	app.AddPage("app_menu", "App Menu", MenuPage)
 	app.AddPage("function_cache", "Function Cache", FuncCachePage)
 	app.AddPage("code", "Source Code", SourceCodePage)
 
