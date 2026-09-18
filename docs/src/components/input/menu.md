@@ -83,3 +83,10 @@ dialog for the second.
 
 `Disabled` is on the button, not the items: a disabled menu cannot be opened at
 all.
+
+## Inside a form
+
+Picking an item sends the [form](form.md) it is written in, the way pressing a
+`Button` does. A menu item is an action to take now, so it does not sit in the
+form's queue waiting for something else to send it: the run that reports the
+pick is the one that reads the values queued before it.
