@@ -70,16 +70,32 @@ func TestNumberAcceptsEveryTypeInTheSet(t *testing.T) {
 }
 
 // TestNumberTruncatesTowardsTheIntegralType records what an integral T does
-// with the fractional float the state can hold: it truncates, it does not
-// round and it does not report the loss.
+// with the fractional float the state can hold: it truncates and it does not
+// round. What it no longer does is keep quiet about it -- nothing on the wire
+// says T is integral, so the client's number box takes a decimal whatever T
+// is, and a page that saved the 2 would be saving a number nobody typed.
 func TestNumberTruncatesTowardsTheIntegralType(t *testing.T) {
 	state := tgframe.NewState()
 	state.Set("number_component_n", 2.9)
 
 	var packs []tgframe.NotifyPack
-	got, _ := tcinput.Number[int](testContainer(state, &packs), "n")
+	got, ok := tcinput.Number[int](testContainer(state, &packs), "n")
 	if got != 2 {
 		t.Fatalf("got %v, want 2", got)
+	}
+	if ok {
+		t.Error("ok = true for a truncated 2.9, want false")
+	}
+
+	// A float64 T holds it as it is, so there is nothing to report.
+	state = tgframe.NewState()
+	state.Set("number_component_n", 2.9)
+
+	packs = nil
+	if got, ok := tcinput.Number[float64](
+		testContainer(state, &packs), "n"); got != 2.9 || !ok {
+
+		t.Errorf("float64 T = %v, %v, want 2.9, true", got, ok)
 	}
 }
 
@@ -301,9 +317,15 @@ func TestNumberAppliesTheRangeToWhatArrives(t *testing.T) {
 		// rather than as the 20 it would have truncated to.
 		{"truncated at the bound", 20.9, bounded(), 20, false},
 
-		// And under a Max of 21 the same 20.9 is in range, so it truncates.
-		// Truncating is not the range refusing it, so the signal stays true.
-		{"truncated inside the range", 20.9, (&tcinput.NumberConf[int]{}).SetMax(21), 20, true},
+		// And under a Max of 21 the same 20.9 is in range, so it truncates --
+		// and the truncation is reported, because 20 is not what was typed
+		// any more than a clamped 20 would have been. The value handed over
+		// is still the 20, not the Default.
+		{"truncated inside the range", 20.9, (&tcinput.NumberConf[int]{}).SetMax(21), 20, false},
+		{"truncated, no bounds", 20.9, &tcinput.NumberConf[int]{Default: 7}, 20, false},
+
+		// A whole number that arrived as a float is not truncated at all.
+		{"whole float", 20.0, (&tcinput.NumberConf[int]{}).SetMax(21), 20, true},
 
 		// A float an integral T cannot hold converts to an
 		// implementation-defined value -- on amd64, math.MinInt. Comparing
@@ -427,11 +449,11 @@ func TestNumberSignalsOnlyWhatTheAppUserCouldNotEnter(t *testing.T) {
 		return tcinput.Number(testContainer(state, &packs), "n", conf)
 	}
 
-	// With no Min or Max there is no range to be outside of, so every number
-	// an int holds is the app user's own -- including the ones a bounded
-	// Number would have refused. math.MaxInt is not in the list: as a float64
-	// it rounds up to 2^63, which is one past what an int holds, so it belongs
-	// with the values below rather than here.
+	// With no Min or Max there is no range to be outside of, so every whole
+	// number an int holds is the app user's own -- including the ones a
+	// bounded Number would have refused. math.MaxInt is not in the list: as a
+	// float64 it rounds up to 2^63, which is one past what an int holds, so it
+	// belongs with the values below rather than here.
 	for _, sent := range []float64{0, -9999, 9999, math.MinInt} {
 		if got, ok := read(sent, &tcinput.NumberConf[int]{}); !ok {
 			t.Errorf("unbounded %v = %v, false; want true", sent, got)
@@ -442,7 +464,7 @@ func TestNumberSignalsOnlyWhatTheAppUserCouldNotEnter(t *testing.T) {
 	// false: the signal is the extra, not a replacement. Returning the 999 as
 	// it arrived would put the implementation-defined conversion back.
 	conf := (&tcinput.NumberConf[int]{}).SetMin(0).SetMax(24)
-	for _, sent := range []float64{-1, 999, 1e20, -1e20} {
+	for _, sent := range []float64{-1, 999, 1e20, -1e20, 12.5} {
 		got, ok := read(sent, conf)
 		if ok {
 			t.Errorf("%v against [0, 24] = true, want false", sent)

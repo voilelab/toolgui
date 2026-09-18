@@ -105,6 +105,10 @@ app user actually typed. A float no `T` can hold — a pasted `1e20` is no
 `int` — has no number to report and no bound to be pulled to, so it reads as
 `Default`.
 
+An integral `T` still truncates a fractional value that is inside the range:
+`20.9` under a `Max` of 21 reads as `20`. That is reported rather than
+enforced too — see [The second return](#the-second-return).
+
 ## The second return
 
 Pulling the value into the range keeps it usable, but it says nothing about
@@ -124,15 +128,24 @@ if !ok {
 save(limit)
 ```
 
-It is `false` when what arrived was outside `Min` or `Max`, and when `T`
-cannot hold it — a pasted `1e20` is no `int`, and is no more the app user's
-number than a clamped 999 is. With no bounds set and a `T` that holds whatever
-arrives, it is always `true`: an untouched box reading as `Default` and an
-emptied one reading as zero are both answers, not refusals.
+It is `false` when what arrived was outside `Min` or `Max`, and when `T` does
+not hold it as it is:
+
+* a pasted `1e20` is no `int` — there is no number to report, so the value
+  reads as `Default`;
+* a typed `20.9` is no `int` either — an integral `T` truncates it to `20`,
+  and nothing on the wire says `T` is integral, so the box takes a decimal
+  whatever `T` is. The value is the `20`, and the signal says it is not what
+  was typed.
+
+Neither is the app user's number, any more than a clamped 999 is. With no
+bounds set and a `T` that holds whatever arrives exactly, it is always `true`:
+an untouched box reading as `Default` and an emptied one reading as zero are
+both answers, not refusals.
 
 **The value is still worth reading when it is `false`.** It is the nearest one
-in range, which is what a page that only wants to display something should
-show. The signal is extra information, not a replacement for the value:
+`T` holds inside the range, which is what a page that only wants to display
+something should show. The signal is extra information, not a replacement for the value:
 handing back the raw 999 instead would put back the implementation-defined
 conversion an integral `T` does with a number it cannot hold.
 
