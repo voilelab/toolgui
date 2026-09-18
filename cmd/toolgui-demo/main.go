@@ -140,8 +140,13 @@ func SidebarPage(p *tgframe.Params) error {
 	return nil
 }
 
-// headerRow names the two columns every example is laid out in.
+// headerRow names the two columns every example is laid out in. Without a
+// code column there is nothing to name, so it is skipped.
 func headerRow(p *tgframe.Params) {
+	if !withCode {
+		return
+	}
+
 	compCol, codeCol := tgcomp.EqColumn2(
 		p.Main, &tgcomp.ColumnConf{ID: "header_of_rows"})
 	tgcomp.Subtitle(compCol, "Component")
@@ -150,12 +155,17 @@ func headerRow(p *tgframe.Params) {
 
 // blockRow draws one example: what it renders on the left, and on the right
 // the source it was rendered from -- the same slice of docs/demos the book
-// includes, so the two cannot disagree.
+// includes, so the two cannot disagree. Where the page around the example
+// already carries the code, the example gets the full width instead.
 //
 // A failing example takes the page with it, as it did when the demo wrote its
 // own rows, which is what the error example is there to show.
 func blockRow(p *tgframe.Params, b demos.Block) error {
-	compCol, codeCol := tgcomp.EqColumn2(p.Main, &tgcomp.ColumnConf{ID: b.ID})
+	compCol, codeCol := p.Main, (*tgframe.Container)(nil)
+	if withCode {
+		compCol, codeCol = tgcomp.EqColumn2(
+			p.Main, &tgcomp.ColumnConf{ID: b.ID})
+	}
 
 	err := b.Run(&tgframe.Params{
 		Context: p.Context,
@@ -167,7 +177,10 @@ func blockRow(p *tgframe.Params, b demos.Block) error {
 		return err
 	}
 
-	tgcomp.Code(codeCol, b.Code)
+	if codeCol != nil {
+		tgcomp.Code(codeCol, b.Code)
+	}
+
 	return nil
 }
 
