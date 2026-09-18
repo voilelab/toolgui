@@ -37,13 +37,22 @@ describe('Layout spec', () => {
     const bar = () => cy.get('#toolbar_component_sticky_toolbar')
     bar().should('have.css', 'position', 'sticky')
 
-    // The rows under it are what the page scrolls past.
-    cy.contains('row-39').scrollIntoView()
+    // The rows under it are what the page scrolls past. Not the last one:
+    // the demo ends a little below it, and a sticky row rides the bottom of
+    // the box it was written into off the top of the screen with it.
+    cy.contains('row-30').scrollIntoView()
 
-    bar().should($bar => {
-      const rect = $bar[0].getBoundingClientRect()
-      expect(rect.top).to.be.closeTo(0, 2)
-      expect(rect.height).to.be.greaterThan(0)
+    // The app's menubar is pinned to the top of the viewport, so the row
+    // comes to rest under it rather than beneath it -- the same place the
+    // dialog header puts the row in the test below.
+    cy.get('.toolgui-menubar').then($menubar => {
+      const bottom = $menubar[0].getBoundingClientRect().bottom
+
+      bar().should($bar => {
+        const rect = $bar[0].getBoundingClientRect()
+        expect(rect.top).to.be.closeTo(bottom, 2)
+        expect(rect.height).to.be.greaterThan(0)
+      })
     })
 
     // Opaque, or the rows passing under would read through the row.

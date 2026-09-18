@@ -3,9 +3,8 @@
 
 describe('Menu', () => {
   // The item clicks turn scrolling off. Cypress scrolls what it is about to
-  // click to the top of the viewport, and an item sits in a portal below the
-  // entry it opened from -- scrolling it up carries the menubar off screen,
-  // at which point Mantine hides the dropdown as detached from it. The
+  // click to the top of the viewport, which is where the menubar is pinned:
+  // an item scrolled up there lands under the row that opened it. The
   // dropdown opens in view already, so there is nothing to scroll to.
   const noScroll = { scrollBehavior: false }
 
@@ -32,6 +31,24 @@ describe('Menu', () => {
       })
     })
     cy.get('.toolgui-nav .toolgui-menubar').should('not.exist')
+  })
+
+  // The row and the side column are pinned to the same edge, so scrolling
+  // must not open a band of page between the column and the bottom of the
+  // viewport -- which is what a row that scrolled away left behind.
+  it('The menubar and the column stay put as the page scrolls', () => {
+    cy.visit('/toolbar')
+
+    cy.contains('row-39').scrollIntoView()
+
+    cy.get('.toolgui-menubar').should($bar => {
+      expect($bar[0].getBoundingClientRect().top).to.be.closeTo(0, 1)
+    })
+
+    cy.get('.toolgui-nav').should($nav => {
+      const rect = $nav[0].getBoundingClientRect()
+      expect(rect.bottom).to.be.closeTo(Cypress.config('viewportHeight'), 1)
+    })
   })
 
   it('The menubar is on every page, whichever one is open', () => {
