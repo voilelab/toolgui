@@ -14,7 +14,7 @@ const modulePath = "github.com/voilelab/toolgui"
 // tree reports its own version. What dev carries is deliberately not a release
 // number: a build off dev is not one, and naming a release it is not reads as
 // fact rather than as the guess it is.
-const fallbackVersion = "v0.0.0-unknown"
+const fallbackVersion = "v0.7.0"
 
 // Version return the version of toolgui this binary was built against.
 //
