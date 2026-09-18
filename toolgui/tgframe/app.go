@@ -161,7 +161,9 @@ func (app *App) SetMenu(menu *Menu) {
 		panic(err)
 	}
 
-	app.menu, app.menuIDs = menu, ids
+	// A snapshot rather than the Menu itself, so the tree and the ids stay
+	// the same declaration however the caller goes on to use its Menu.
+	app.menu, app.menuIDs = &Menu{nodes: cloneNodes(menu.nodes)}, ids
 }
 
 // SetShowVersion set whether the side nav shows the toolgui version.

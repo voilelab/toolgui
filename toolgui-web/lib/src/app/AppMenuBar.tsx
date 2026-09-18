@@ -11,6 +11,13 @@ interface AppMenuBarProps {
   update: (e: UpdateEvent) => void
 }
 
+interface AppMenuBarState {
+  // Which top level entry is open, by index, and null when none is. One
+  // number for the whole row rather than a flag per entry: a menubar has at
+  // most one dropdown open, and it is also what says the row is armed.
+  open: number | null
+}
+
 // hasItems reports whether a menu holds anything worth opening a dropdown for.
 // A submenu of nothing but separators draws nothing, so it stays a plain
 // label rather than an empty panel.
@@ -20,11 +27,29 @@ function hasItems(nodes: MenuNode[]): boolean {
 
 // AppMenuBar is the row above the app: one entry per top level node of the
 // tree the App declared. It is only rendered for an app that declared one.
-export class AppMenuBar extends Component<AppMenuBarProps> {
+export class AppMenuBar extends Component<AppMenuBarProps, AppMenuBarState> {
+  constructor(props: AppMenuBarProps) {
+    super(props)
+    this.state = { open: null }
+  }
+
   // A menu item sends the same click event a Button does; the Go side tells
   // the two apart by the item id's reserved prefix.
   click(id: string) {
+    this.setState({ open: null })
     this.props.update({ type: 'click', id })
+  }
+
+  // Moving along the row once something is open moves the dropdown with the
+  // pointer, which is what a menubar does. Before anything is open it does
+  // nothing: a pointer crossing the row on its way elsewhere should not pop
+  // a menu open.
+  hover(at: number | null) {
+    if (this.state.open === null) {
+      return
+    }
+
+    this.setState({ open: at })
   }
 
   // The contents of a dropdown. Nested submenus go through Menu.Sub, whose
@@ -64,16 +89,34 @@ export class AppMenuBar extends Component<AppMenuBarProps> {
     })
   }
 
+  // The button every top level entry wears, submenu or not.
+  entryButton(label: string, at: number, disabled?: boolean) {
+    return (
+      <Button className="toolgui-menubar-button"
+        variant="subtle" color="gray" size="compact-sm"
+        disabled={disabled}
+        onMouseEnter={() => { this.hover(at) }}>
+        {label}
+      </Button>
+    )
+  }
+
   // One top level node. A submenu opens a dropdown; a text item is a button
   // that sends its click straight away, and a separator divides the row.
-  topNode(node: MenuNode, key: string) {
+  topNode(node: MenuNode, at: number) {
+    const key = `${at}`
+
     switch (node.type) {
       case 'separator':
         return <Divider key={key} orientation="vertical" my={4} />
       case 'text':
         return (
+          // Crossing a plain entry closes whatever was open: it has no
+          // dropdown to move to, and leaving the last one up would leave a
+          // dropdown belonging to an entry the pointer has left.
           <Button key={key} className="toolgui-menubar-button"
             id={node.id} variant="subtle" color="gray" size="compact-sm"
+            onMouseEnter={() => { this.hover(null) }}
             onClick={() => { this.click(node.id) }}>
             {node.label}
           </Button>
@@ -81,25 +124,21 @@ export class AppMenuBar extends Component<AppMenuBarProps> {
       case 'submenu': {
         const children = node.children || []
         if (!hasItems(children)) {
-          return (
-            <Button key={key} className="toolgui-menubar-button"
-              variant="subtle" color="gray" size="compact-sm" disabled>
-              {node.label}
-            </Button>
-          )
+          return <React.Fragment key={key}>
+            {this.entryButton(node.label, at, true)}
+          </React.Fragment>
         }
 
         return (
-          // trigger="click-hover" is what makes a menubar feel like one: the
-          // first entry is opened with a click, and moving along the row then
-          // opens the rest without clicking again.
-          <Menu key={key} trigger="click-hover" position="bottom-start"
-            openDelay={0} closeDelay={80} withinPortal>
+          // Controlled, and one entry at a time: left to their own state the
+          // dropdowns do not know about each other, and the one a click
+          // opened would stay up while hovering opened the next.
+          <Menu key={key} trigger="click" position="bottom-start"
+            opened={this.state.open === at}
+            onChange={(opened) => { this.setState({ open: opened ? at : null }) }}
+            withinPortal>
             <Menu.Target>
-              <Button className="toolgui-menubar-button"
-                variant="subtle" color="gray" size="compact-sm">
-                {node.label}
-              </Button>
+              {this.entryButton(node.label, at)}
             </Menu.Target>
             <Menu.Dropdown>
               {this.dropdownItems(children, key)}
@@ -116,7 +155,7 @@ export class AppMenuBar extends Component<AppMenuBarProps> {
       // which would promise roving arrow keys and menuitem children that
       // Mantine's own dropdowns do not render.
       <div className="toolgui-menubar">
-        {this.props.menu.map((node, i) => this.topNode(node, `${i}`))}
+        {this.props.menu.map((node, i) => this.topNode(node, i))}
       </div>
     )
   }

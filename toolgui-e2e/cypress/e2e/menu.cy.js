@@ -52,6 +52,24 @@ describe('Menu', () => {
     })
   })
 
+  // A menubar is armed by a click: crossing the row on the way somewhere else
+  // must not pop a dropdown open, and once one is open, moving along the row
+  // moves the dropdown rather than leaving two up.
+  it('Opens one entry at a time, and only once armed', () => {
+    cy.visit('/app_menu')
+
+    cy.get('.toolgui-menubar').contains('button', 'File').trigger('mouseover')
+    cy.get('[role="menu"]').should('not.exist')
+
+    openMenu('File')
+    cy.get('[role="menu"]:visible').should('have.length', 1)
+
+    cy.get('.toolgui-menubar').contains('button', 'Help').trigger('mouseover')
+    cy.get('[role="menu"]:visible').should('have.length', 1)
+    cy.get('[role="menu"]:visible').contains('About').should('exist')
+    cy.get('[role="menu"]:visible').contains('Say hello').should('not.exist')
+  })
+
   it('An item reports its click to the run handling it', () => {
     cy.visit('/app_menu')
     cy.contains('Nothing picked yet.').should('exist')

@@ -29,6 +29,13 @@ An App that calls no `SetMenu` has no menubar, and the row is not in the
 document at all. The menubar is also dropped in embed mode, along with the
 rest of the app's chrome.
 
+The row is armed by a click: crossing the menubar opens nothing until an entry
+has been clicked, and from then on moving along the row moves the open dropdown
+with the pointer. Only one entry is open at a time.
+
+The row scrolls away with the page rather than pinning to the top of the
+viewport, which would cover the first line of whatever is under it.
+
 ## Reading a click
 
 A click on a menu item runs the current page, the same as a

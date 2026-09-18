@@ -1,5 +1,5 @@
 import React from 'react'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, describe, vi } from 'vitest'
 
 import { App } from '@toolgui-web/lib'
@@ -19,6 +19,11 @@ const MENU = [
         ],
       },
     ],
+  },
+  {
+    type: 'submenu',
+    label: 'Help',
+    children: [{ type: 'text', label: 'About', id: 'menu_item_about' }],
   },
   { type: 'text', label: 'Run', id: 'menu_item_run' },
 ]
@@ -112,6 +117,58 @@ describe('menubar', () => {
         type: 'click',
         id: 'menu_item_file_open',
       })
+    })
+  })
+
+  // A menubar is armed by a click. A pointer crossing the row on its way
+  // somewhere else must not pop a dropdown open.
+  test('hovering opens nothing while the row is closed', async () => {
+    renderApp({}, { menu: MENU })
+
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'File' }))
+    await waitFor(() => {
+      expect(screen.queryByText('Open')).not.toBeInTheDocument()
+    })
+  })
+
+  // Once one is open, moving along the row moves the dropdown with the
+  // pointer -- and takes the old one down, rather than leaving two up.
+  test('only one entry is open at a time', async () => {
+    renderApp({}, { menu: MENU })
+
+    screen.getByRole('button', { name: 'File' }).click()
+    await screen.findByText('Open')
+
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Help' }))
+    await screen.findByText('About')
+    await waitFor(() => {
+      expect(screen.queryByText('Open')).not.toBeInTheDocument()
+    })
+  })
+
+  // A plain entry has no dropdown to move to, so crossing it closes what was
+  // open rather than leaving a dropdown belonging to an entry left behind.
+  test('crossing a plain entry closes what was open', async () => {
+    renderApp({}, { menu: MENU })
+
+    screen.getByRole('button', { name: 'File' }).click()
+    await screen.findByText('Open')
+
+    fireEvent.mouseOver(screen.getByRole('button', { name: 'Run' }))
+    await waitFor(() => {
+      expect(screen.queryByText('Open')).not.toBeInTheDocument()
+    })
+  })
+
+  test('picking an item closes the dropdown', async () => {
+    renderApp({}, { menu: MENU })
+
+    screen.getByRole('button', { name: 'File' }).click()
+    const open = await screen.findByText('Open')
+
+    open.click()
+    await waitFor(() => {
+      expect(screen.queryByText('Open')).not.toBeInTheDocument()
     })
   })
 

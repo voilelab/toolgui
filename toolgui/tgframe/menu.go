@@ -104,6 +104,26 @@ func (m *Menu) Nodes() []*MenuNode {
 	return m.nodes
 }
 
+// cloneNodes returns a deep copy of nodes. [App.SetMenu] keeps one rather than
+// the Menu it was handed: a caller still holding that Menu could otherwise add
+// an item to it afterwards, and the tree would grow while the set of declared
+// ids did not -- leaving an item the menubar draws whose clicks [MenuClicked]
+// turns away as undeclared.
+func cloneNodes(nodes []*MenuNode) []*MenuNode {
+	if nodes == nil {
+		return nil
+	}
+
+	out := make([]*MenuNode, len(nodes))
+	for i, node := range nodes {
+		cp := *node
+		cp.Children = cloneNodes(node.Children)
+		out[i] = &cp
+	}
+
+	return out
+}
+
 // ErrMenuItem is what a menu the app cannot serve is reported with:
 // an item with no label, a text item with no id, or two items sharing one.
 var ErrMenuItem = tgutil.NewError("invalid menu item")

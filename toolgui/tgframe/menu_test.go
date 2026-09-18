@@ -217,3 +217,49 @@ func TestMenuIDNotAComponentID(t *testing.T) {
 		t.Errorf("a component took the menu item's id %q", comp.GetID())
 	}
 }
+
+// TestSetMenuSnapshotsTheTree is what keeps the tree and the declared ids one
+// declaration: a caller that goes on using its Menu would otherwise grow the
+// menubar without growing the set of ids a click is checked against, and the
+// new item would draw but never report.
+func TestSetMenuSnapshotsTheTree(t *testing.T) {
+	menu := NewMenu().Text("Open", "file_open")
+
+	app := NewApp()
+	app.SetMenu(menu)
+
+	menu.Text("Quit", "file_quit")
+	menu.Nodes()[0].Label = "Opened"
+
+	conf := app.AppConf()
+	if len(conf.Menu) != 1 {
+		t.Fatalf("len(AppConf().Menu) = %d after the caller added an item,"+
+			" want 1", len(conf.Menu))
+	}
+
+	if conf.Menu[0].Label != "Open" {
+		t.Errorf("AppConf().Menu[0].Label = %q after the caller renamed it,"+
+			" want %q", conf.Menu[0].Label, "Open")
+	}
+}
+
+// TestSetMenuSnapshotsSubmenus pins the same for a tree the caller reaches
+// into rather than appends to.
+func TestSetMenuSnapshotsSubmenus(t *testing.T) {
+	var sub *Menu
+	menu := NewMenu().Submenu("File", func(m *Menu) {
+		m.Text("Open", "file_open")
+		sub = m
+	})
+
+	app := NewApp()
+	app.SetMenu(menu)
+
+	sub.Text("Quit", "file_quit")
+
+	children := app.AppConf().Menu[0].Children
+	if len(children) != 1 {
+		t.Fatalf("len(File.Children) = %d after the caller added an item,"+
+			" want 1", len(children))
+	}
+}
