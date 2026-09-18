@@ -1,24 +1,33 @@
-/* App frame: the menubar row, and the shell under it. --tg-menubar-h is what
-   everything below sizes against, so an app with no menubar -- which renders
-   no row at all -- keeps the 100vh the shell was built on. */
-.toolgui-frame {
+/* --tg-menubar-h is what everything below sizes against, and it lives on the
+   root rather than the frame: the document is the scroll container, so its
+   scroll-padding -- what keeps an anchor or a scrollIntoView target clear of
+   the pinned row -- has to read the same height. An app with no menubar
+   renders no row and keeps the 100vh the shell was built on. */
+:root {
   --tg-menubar-h: 0px;
+}
+
+:root:has(.toolgui-frame.has-menubar) {
+  --tg-menubar-h: 2.25rem;
+  scroll-padding-top: var(--tg-menubar-h);
+}
+
+/* App frame: the menubar row, and the shell under it. */
+.toolgui-frame {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
 
-.toolgui-frame.has-menubar {
-  --tg-menubar-h: 2.25rem;
-}
-
-/* The row scrolls away with the page rather than sticking to the top of the
-   viewport. A bar pinned there covers the first 36px of whatever is under it,
-   which is where a browser -- and a test driver scrolling a target into view
-   -- puts the thing being reached for. The side column below keeps the top of
-   the viewport instead, which is what it is for. */
+/* The row stays at the top of the viewport, like the column below it: it is
+   the app's menubar, and a menubar scrolled out of reach -- with its open
+   dropdown drifting off its button -- is not one. Above the column and its
+   drag handle, which pin to the same edge. */
 .toolgui-menubar {
   flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 0.125rem;
@@ -60,7 +69,7 @@
      A definite height rather than a cap: it is what gives the page list
      below something to scroll inside of. */
   position: sticky;
-  top: 0;
+  top: var(--tg-menubar-h);
   height: calc(100vh - var(--tg-menubar-h));
   overflow-y: auto;
   background-color: var(--tg-surface-alt);
@@ -128,7 +137,7 @@
   width: 6px;
   margin-inline-start: -3px;
   position: sticky;
-  top: 0;
+  top: var(--tg-menubar-h);
   height: calc(100vh - var(--tg-menubar-h));
   z-index: 1;
   cursor: col-resize;
