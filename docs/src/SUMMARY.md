@@ -63,6 +63,7 @@
     * [Checkbox](components/input/checkbox.md)
     * [Toggle](components/input/toggle.md)
     * [Button](components/input/button.md)
+    * [Menu](components/input/menu.md)
     * [Select](components/input/select.md)
     * [MultiSelect](components/input/multiselect.md)
     * [Radio](components/input/radio.md)

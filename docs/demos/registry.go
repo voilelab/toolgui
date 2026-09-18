@@ -55,6 +55,7 @@ var groups = []*Group{
 			demo("checkbox", "Checkbox",
 				show("show_checkbox", checkboxDemo, "demo")),
 			demo("button", "Button", show("show_button", buttonDemo, "demo")),
+			demo("menu", "Menu", show("show_menu", menuDemo, "demo")),
 			demo("select", "Select", show("show_select", selectDemo, "demo")),
 			demo("multiselect", "MultiSelect",
 				show("show_multiselect", multiSelectDemo, "demo")),

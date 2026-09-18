@@ -170,6 +170,18 @@ func MultiSelect(
 // MultiSelectConf is the configuration for the MultiSelect component.
 type MultiSelectConf = tcinput.MultiSelectConf
 
+// Menu create a button with a list of actions behind it, and return the index
+// of the item clicked.
+func Menu(
+	c *tgframe.Container, label string, items []string,
+	conf ...*MenuConf) *int {
+
+	return tcinput.Menu(c, label, items, conf...)
+}
+
+// MenuConf is the configuration for the Menu component.
+type MenuConf = tcinput.MenuConf
+
 // SelectSlider create a slider over a list of items and return the index of
 // the selected one.
 func SelectSlider(
