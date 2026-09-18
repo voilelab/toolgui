@@ -103,6 +103,15 @@ usual. The page reads the pick with `tgframe.MenuClicked(p, "file_open")`
 whichever executor it is running under. The wire format does not change and
 there is no new event type.
 
+The picks go through a queue that one goroutine works through, rather than a
+goroutine each. Windows calls the callback on the message loop, where applying
+the pick there and then freezes the window for as long as the page takes to
+run; but a run cuts the one before it, so picks that overtake each other would
+leave the page showing the older one. Queueing costs the callback a mutex held
+for the length of an append and keeps both. It can only order what reaches it
+in order, which on Windows is everything — macOS and Linux hand each callback
+its own goroutine before it gets there.
+
 A pick made before `Start` has opened a session — the window is up, the
 menubar with it, and no page has loaded yet — has nothing to run and is
 ignored.

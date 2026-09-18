@@ -47,6 +47,13 @@ type ToolGUI struct {
 	// them too: a chunk that lands while the session is being replaced must
 	// not write to the state that is going away.
 	uploads map[string]*tgframe.File
+
+	// menuLock guards the queue of menu picks and the flag saying one
+	// goroutine is working through it. It is its own lock rather than the one
+	// above: taking a pick's place in line must not wait on a run.
+	menuLock  sync.Mutex
+	menuQueue []string
+	menuBusy  bool
 }
 
 // NewToolGUI return the bound struct serving app.
@@ -109,6 +116,60 @@ func (t *ToolGUI) clickMenu(id string) {
 	}
 
 	session.HandleEvent(&tgframe.EventClick{ID: id})
+}
+
+// queueMenuClick puts a pick at the back of the line and makes sure something
+// is working through it. It is what the native menubar's callback calls.
+//
+// Applying the pick where the callback lands is not an option on Windows,
+// where that is the message loop and the window is frozen for as long as the
+// page takes to run. Handing each callback its own goroutine is not either: a
+// run cuts the one before it, so two picks that overtake each other leave the
+// page showing the older one. So the pick is queued -- a mutex the callback
+// holds for the length of an append -- and one goroutine applies the queue in
+// order.
+//
+// It can only order what reaches it in order, which on Windows is every pick:
+// they arrive on the one message loop. macOS and Linux hand each callback its
+// own goroutine before this sees it, and what they have already shuffled
+// cannot be put back.
+func (t *ToolGUI) queueMenuClick(id string) {
+	t.menuLock.Lock()
+	t.menuQueue = append(t.menuQueue, id)
+
+	if t.menuBusy {
+		t.menuLock.Unlock()
+		return
+	}
+
+	t.menuBusy = true
+	t.menuLock.Unlock()
+
+	go t.drainMenuClicks()
+}
+
+// drainMenuClicks applies the queued picks, oldest first, until it runs out.
+// Exactly one of these runs at a time: it only starts on the pick that found
+// menuBusy false, and it clears the flag under the same lock that a pick is
+// appended under, so a pick either joins the queue this goroutine is still
+// reading or starts the next one.
+func (t *ToolGUI) drainMenuClicks() {
+	for {
+		t.menuLock.Lock()
+		if len(t.menuQueue) == 0 {
+			t.menuQueue = nil
+			t.menuBusy = false
+			t.menuLock.Unlock()
+
+			return
+		}
+
+		id := t.menuQueue[0]
+		t.menuQueue = t.menuQueue[1:]
+		t.menuLock.Unlock()
+
+		t.clickMenu(id)
+	}
 }
 
 // Start open a session on pageName and run the page once. Calling it again

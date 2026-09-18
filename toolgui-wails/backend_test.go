@@ -2,6 +2,7 @@ package tgwails
 
 import (
 	"encoding/base64"
+	"sync"
 	"testing"
 	"time"
 
@@ -274,6 +275,74 @@ func TestToolGUIClickMenuBeforeStart(t *testing.T) {
 	case pack := <-events.packs:
 		t.Fatalf("a click before Start produced a pack: %v", pack)
 	default:
+	}
+}
+
+// TestToolGUIQueueMenuClickOrder is why the picks go through a queue rather
+// than a goroutine each: a run cuts the one before it, so two picks that
+// overtake each other would leave the page showing the older one.
+func TestToolGUIQueueMenuClickOrder(t *testing.T) {
+	var lock sync.Mutex
+	var seen []string
+
+	app := newTestApp(func(p *tgframe.Params) error {
+		if id := p.State.GetClickID(); id != "" {
+			lock.Lock()
+			seen = append(seen, id)
+			lock.Unlock()
+		}
+		return nil
+	})
+	app.SetMenu(testMenu())
+
+	backend, events := newTestToolGUI(t, app)
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	// The opening run drew nothing under a click, so the log starts empty.
+	lock.Lock()
+	seen = nil
+	lock.Unlock()
+
+	// Queued back to back, the way the message loop delivers them.
+	want := []string{
+		tgframe.MenuID("file_open"),
+		tgframe.MenuID("file_reload"),
+		tgframe.MenuID("file_quit"),
+	}
+	for _, id := range want {
+		backend.queueMenuClick(id)
+	}
+
+	// Waiting on the page func rather than on result packs: each pick cuts
+	// the run before it, and a cut run sends no result, so three picks in a
+	// row are not three results. What they are is three runs, in order.
+	count := func() int {
+		lock.Lock()
+		defer lock.Unlock()
+
+		return len(seen)
+	}
+
+	deadline := time.Now().Add(5 * time.Second)
+	for count() < len(want) && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+
+	lock.Lock()
+	defer lock.Unlock()
+
+	if len(seen) != len(want) {
+		t.Fatalf("runs = %v, want one per pick (%v)", seen, want)
+	}
+	for i := range want {
+		if seen[i] != want[i] {
+			t.Errorf("run %d handled %q, want %q", i, seen[i], want[i])
+		}
 	}
 }
 
