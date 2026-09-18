@@ -56,6 +56,12 @@ interface WorkerCtx {
   onmessage: ((event: MessageEvent) => void) | null
   Go: new () => { importObject: WebAssembly.Imports, run(instance: WebAssembly.Instance): void }
   toolgui?: Bridge
+
+  // The display mode, for a program that lays its page out differently in a
+  // frame. Set before the wasm program runs, which is the only moment Go can
+  // read it: the query string it comes from is the page's, and a worker's own
+  // location is this script.
+  toolguiEmbed?: boolean
 }
 
 const ctx = self as unknown as WorkerCtx
@@ -67,6 +73,7 @@ ctx.onmessage = (event: MessageEvent) => {
 
   switch (msg.kind) {
     case 'init':
+      ctx.toolguiEmbed = !!msg.embed
       boot(msg.wasmExecURL, msg.wasmURL).catch((e) => {
         ctx.postMessage({ kind: 'failed', error: String(e) })
       })
