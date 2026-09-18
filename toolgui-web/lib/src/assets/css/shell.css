@@ -21,13 +21,13 @@
 
 /* The row stays at the top of the viewport, like the column below it: it is
    the app's menubar, and a menubar scrolled out of reach -- with its open
-   dropdown drifting off its button -- is not one. Above the column and its
-   drag handle, which pin to the same edge. */
+   dropdown drifting off its button -- is not one. Above the column, its drag
+   handle, and a sticky row on the page, all of which pin under it. */
 .toolgui-menubar {
   flex: 0 0 auto;
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 0.125rem;

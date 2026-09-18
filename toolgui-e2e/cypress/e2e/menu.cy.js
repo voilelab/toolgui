@@ -34,6 +34,24 @@ describe('Menu', () => {
     cy.get('.toolgui-nav .toolgui-menubar').should('not.exist')
   })
 
+  // The row and the side column are pinned to the same edge, so scrolling
+  // must not open a band of page between the column and the bottom of the
+  // viewport -- which is what a row that scrolled away left behind.
+  it('The menubar and the column stay put as the page scrolls', () => {
+    cy.visit('/toolbar')
+
+    cy.contains('row-39').scrollIntoView()
+
+    cy.get('.toolgui-menubar').should($bar => {
+      expect($bar[0].getBoundingClientRect().top).to.be.closeTo(0, 1)
+    })
+
+    cy.get('.toolgui-nav').should($nav => {
+      const rect = $nav[0].getBoundingClientRect()
+      expect(rect.bottom).to.be.closeTo(Cypress.config('viewportHeight'), 1)
+    })
+  })
+
   it('The menubar is on every page, whichever one is open', () => {
     cy.visit('/index')
     cy.get('.toolgui-menubar').contains('button', 'File').should('exist')

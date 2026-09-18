@@ -20,10 +20,11 @@
 /* --tg-sticky-top is how a scrolling container says it already has something
    sticky at its own top: a Dialog publishes its header's height there, so a
    toolbar in a dialog body stops below the header rather than sliding under
-   it. Nothing sets it on a plain page, where 0 is the top of the viewport. */
+   it. On a plain page nothing sets it and the app's menubar is what the row
+   stops below -- 0 where there is none. */
 .toolgui-toolbar.is-sticky {
   position: sticky;
-  top: var(--tg-sticky-top, 0px);
+  top: var(--tg-sticky-top, var(--tg-menubar-h, 0px));
   z-index: 2;
   padding-block: 0.5rem;
   background-color: var(--tg-surface);
