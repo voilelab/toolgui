@@ -76,6 +76,14 @@ cannot settle until it returns, so the store gives up with an error rather than
 stopping the tab. Nothing on the transport comes near that limit; a callback of
 your own that stores a stack of files at once would.
 
+The page talks back once, before any of that. The frontend's `?embed` — its
+display mode, not something the app declares — is posted to the worker at
+boot and set on `globalThis.toolguiEmbed`, and `tgwasm.Embedded()` reads it.
+It is the one thing an app can ask about how it is being shown, and it is for
+a page laid out differently in a frame. A worker's own location is its script
+rather than the page's URL, which is why the flag is handed over instead of
+read.
+
 ## An upload is written by the page and read by Go
 
 No bytes cross the boundary. `newUpload` answers with a directory and a file

@@ -63,6 +63,11 @@ default 320px says so with `data-toolgui-demo-height`, which is a fixed
 height: the frame cannot ask the app how tall it is, and one that comes up
 short scrolls.
 
+`?embed` is the display mode, and the app reads it too: `tgwasm.Embedded()`
+answers it in Go, and the demo draws an example alone in a frame — the page
+around it already carries the code — and beside its source everywhere else.
+So the demo app, opened on its own, is the two columns it has always been.
+
 What the `<div>` holds is the fallback. With JavaScript or WebAssembly off the
 iframe never arrives, and the screenshot stays with a line of text under it,
 so the page is never an empty box — which is what the screenshots under

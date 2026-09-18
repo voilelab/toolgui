@@ -4,10 +4,11 @@ package main
 
 import "github.com/voilelab/toolgui/toolgui/tgwasm"
 
-// The book embeds this build in an iframe, under a page that already carries
-// the example's code, so an example here draws the component alone rather
-// than splitting the frame's width with a copy of it.
-const withCode = false
+// Embedded, this build is in an iframe under a book page that already carries
+// the example's code, so an example draws the component alone rather than
+// splitting the frame's width with a copy of it. On its own -- the demo app,
+// published beside the book -- nothing else carries the code, so it does.
+var withCode = !tgwasm.Embedded()
 
 // The browser build, published to GitHub Pages beside the book.
 func main() {

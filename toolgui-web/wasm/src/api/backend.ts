@@ -10,7 +10,9 @@ export class Backend {
   private ready: Promise<void>
 
   // onPack is called for every pack, in the order the page produced them.
-  constructor(onPack: (pack: any) => void) {
+  // embed is the display mode, which the program is told at boot: a worker's
+  // own location is this script, so it cannot read the page's query string.
+  constructor(onPack: (pack: any) => void, embed: boolean = false) {
     this.worker = new Worker(new URL('../worker.ts', import.meta.url))
 
     let started: () => void
@@ -50,6 +52,7 @@ export class Backend {
       kind: 'init',
       wasmExecURL: assetURL('wasm_exec.js'),
       wasmURL: assetURL('app.wasm'),
+      embed,
     })
   }
 

@@ -56,7 +56,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
       }
 
       dispatchPack(app, pack)
-    })
+    }, this.embed)
 
     this.setup().catch((e) => { this.fail(e) })
   }
