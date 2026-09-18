@@ -50,6 +50,25 @@ describe('Layout spec', () => {
     bar().should('not.have.css', 'background-color', 'rgba(0, 0, 0, 0)')
   })
 
+  it('A sticky toolbar in a dialog stops below the dialog header', () => {
+    cy.visit('/toolbar')
+    cy.get('#button_component_toolbar_dialog_open').click()
+
+    // The dialog scrolls its own body, so this scrolls inside the modal
+    // rather than the page.
+    cy.contains('dialog-row-29').scrollIntoView()
+
+    // Mantine keeps the modal's header sticky at the top of that scroller,
+    // so the row has to come to rest under it, not beneath it.
+    cy.get('.toolgui-dialog-header').then($header => {
+      const bottom = $header[0].getBoundingClientRect().bottom
+
+      cy.get('#toolbar_component_dialog_toolbar').should($bar => {
+        expect($bar[0].getBoundingClientRect().top).to.be.closeTo(bottom, 2)
+      })
+    })
+  })
+
   it('Tab works', () => {
     cy.visit('/layout')
     cy.contains('tab1').click()

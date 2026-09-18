@@ -42,3 +42,28 @@ func toolbarStickyDemo(p *tgframe.Params) error {
 	// ANCHOR_END: sticky
 	return nil
 }
+
+func toolbarDialogDemo(p *tgframe.Params) error {
+	// ANCHOR: dialog
+	d := tgcomp.Dialog(p.Main, "Rows", &tgcomp.DialogConf{ID: "toolbar_dialog"})
+
+	if tgcomp.Button(p.Main, "Open", &tgcomp.ButtonConf{ID: "toolbar_dialog_open"}) {
+		d.Open()
+	}
+
+	d.With(func(c *tgframe.Container) {
+		bar := tgcomp.Toolbar(c, &tgcomp.ToolbarConf{
+			ID:     "dialog_toolbar",
+			Sticky: true,
+		})
+		tgcomp.Button(bar, "Export", &tgcomp.ButtonConf{ID: "toolbar_dialog_export"})
+
+		// A dialog scrolls its own body, so the row sticks to the top of
+		// that -- below the dialog's header rather than under it.
+		for i := range 30 {
+			tgcomp.Text(c, fmt.Sprintf("dialog-row-%d", i))
+		}
+	})
+	// ANCHOR_END: dialog
+	return nil
+}

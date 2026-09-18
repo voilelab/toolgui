@@ -63,7 +63,13 @@ beneath does not show through:
 
 It sticks to whatever scrolls the page, which for an app in the shell is the
 document. A toolbar written inside something that scrolls on its own — a
-[dialog](dialog.md) body, say — sticks to the top of that instead.
+[dialog](dialog.md) body — sticks to the top of that instead, and below
+anything that container already keeps there: a dialog's own header is sticky,
+so the row stops under it rather than sliding beneath it.
+
+```go
+{{#include ../../../demos/toolbar.go:dialog}}
+```
 
 ## Toolbar or Column?
 
