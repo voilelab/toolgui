@@ -16,6 +16,59 @@ describe('Layout spec', () => {
     cy.get('.toolgui-box').contains('A box!').should('exist')
   })
 
+  it('Toolbar lines its items up in one row', () => {
+    cy.visit('/toolbar')
+
+    // One row means one top edge. Written straight into the page each of
+    // these would take a row to itself, which is the whole point of the
+    // component.
+    cy.get('#button_component_toolbar_run').then($run => {
+      const top = $run[0].getBoundingClientRect().top
+
+      cy.get('#button_component_toolbar_stop').should($stop => {
+        expect($stop[0].getBoundingClientRect().top).to.be.closeTo(top, 2)
+      })
+    })
+  })
+
+  it('A sticky toolbar stays at the top of a scrolled page', () => {
+    cy.visit('/toolbar')
+
+    const bar = () => cy.get('#toolbar_component_sticky_toolbar')
+    bar().should('have.css', 'position', 'sticky')
+
+    // The rows under it are what the page scrolls past.
+    cy.contains('row-39').scrollIntoView()
+
+    bar().should($bar => {
+      const rect = $bar[0].getBoundingClientRect()
+      expect(rect.top).to.be.closeTo(0, 2)
+      expect(rect.height).to.be.greaterThan(0)
+    })
+
+    // Opaque, or the rows passing under would read through the row.
+    bar().should('not.have.css', 'background-color', 'rgba(0, 0, 0, 0)')
+  })
+
+  it('A sticky toolbar in a dialog stops below the dialog header', () => {
+    cy.visit('/toolbar')
+    cy.get('#button_component_toolbar_dialog_open').click()
+
+    // The dialog scrolls its own body, so this scrolls inside the modal
+    // rather than the page.
+    cy.contains('dialog-row-29').scrollIntoView()
+
+    // Mantine keeps the modal's header sticky at the top of that scroller,
+    // so the row has to come to rest under it, not beneath it.
+    cy.get('.toolgui-dialog-header').then($header => {
+      const bottom = $header[0].getBoundingClientRect().bottom
+
+      cy.get('#toolbar_component_dialog_toolbar').should($bar => {
+        expect($bar[0].getBoundingClientRect().top).to.be.closeTo(bottom, 2)
+      })
+    })
+  })
+
   it('Tab works', () => {
     cy.visit('/layout')
     cy.contains('tab1').click()

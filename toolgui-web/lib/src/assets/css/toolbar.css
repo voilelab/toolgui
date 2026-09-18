@@ -1,0 +1,31 @@
+/* A row of controls. min-width:0 is the rule .toolgui-main follows: wide
+   content scrolls or wraps inside the row instead of stretching the page
+   past the viewport. */
+.toolgui-toolbar {
+  min-width: 0;
+  margin-bottom: 1rem;
+}
+
+/* The container a toolbar hands out arrives as a div of its own, the way
+   every container does. contents lets what was written into it be the items
+   of the row, rather than one item holding all of them. */
+.toolgui-toolbar > div {
+  display: contents;
+}
+
+/* Sticky rides the page's own scrolling -- the shell scrolls the document, so
+   top:0 pins the row to the top of the viewport. The background is opaque and
+   the row is lifted above the page, or what scrolls under would show through
+   it; the line under it is what separates the row from that content. */
+/* --tg-sticky-top is how a scrolling container says it already has something
+   sticky at its own top: a Dialog publishes its header's height there, so a
+   toolbar in a dialog body stops below the header rather than sliding under
+   it. Nothing sets it on a plain page, where 0 is the top of the viewport. */
+.toolgui-toolbar.is-sticky {
+  position: sticky;
+  top: var(--tg-sticky-top, 0px);
+  z-index: 2;
+  padding-block: 0.5rem;
+  background-color: var(--tg-surface);
+  border-bottom: 1px solid var(--tg-border-weak);
+}

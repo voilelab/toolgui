@@ -90,6 +90,10 @@ var groups = []*Group{
 		Demos: []*Demo{
 			demo("column", "Column", show("show_col", columnDemo, "demo")),
 			demo("box", "Box", show("show_box", boxDemo, "demo")),
+			demo("toolbar", "Toolbar",
+				show("show_toolbar", toolbarDemo, "demo"),
+				show("show_toolbar_sticky", toolbarStickyDemo, "sticky"),
+				show("show_toolbar_dialog", toolbarDialogDemo, "dialog")),
 			demo("tab", "Tab", show("show_tab", tabDemo, "demo")),
 			demo("expand", "Expand", show("show_expand", expandDemo, "demo")),
 			demo("popover", "Popover", show("show_popover", popoverDemo, "demo")),
