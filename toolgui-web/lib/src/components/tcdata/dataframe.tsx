@@ -132,9 +132,11 @@ export function TDataFrame({ node, update }: Props) {
   // Nothing is picked until the table is first touched, which is when the
   // default stands in — the same rule Go applies to the state. Kept in
   // stateValues so the pick survives the re-render the server answer brings.
-  const [selected, setSelected] = useState<RowKey[]>(
+  // The default arrives as positions, so a keyed table reads it through the
+  // keys before it can compare it with anything else it holds.
+  const [selected, setSelected] = useState<RowKey[]>(() =>
     stateValues[node.props.id] ||
-    (node.props.default_selection as number[]).map(keyOf))
+    ((node.props.default_selection ?? []) as number[]).map(keyOf))
   const pickable = selection !== "none"
 
   // What is drawn as picked is the selection with the current mode applied,

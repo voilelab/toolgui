@@ -538,6 +538,111 @@ describe('TDataFrame selection', () => {
     })
   })
 
+  // row_keys names the rows, so a pick is remembered by the row it was made
+  // on rather than by the position that row sat at.
+  describe('row keys', () => {
+    const hostProps = (rest) => ({
+      head: ['host', 'region'],
+      rows: [['web-1', 'APAC'], ['web-2', 'EMEA'], ['db-1', 'NA']],
+      columns: [column(), column()],
+      id: 'hosts',
+      selection: 'multi',
+      default_selection: [],
+      row_keys: ['web-1', 'web-2', 'db-1'],
+      ...rest,
+    })
+
+    // rerenderWith replaces the props at the same position, which is what a
+    // rerun does: the component is not remounted, so what it holds carries
+    // over into the new rows.
+    const rerenderWith = (rerender, rows, row_keys) => rerender(
+      <TDataFrame node={nodeFor(hostProps({ rows, row_keys }))}
+        {...RENDER_PROPS} />)
+
+    test('sends the keys rather than the positions', () => {
+      mount(hostProps())
+
+      fireEvent.click(checkboxAt(1))
+
+      expect(sent()).toEqual({ type: 'select', id: 'hosts', keys: ['web-2'] })
+      expect(sent().values).toBeUndefined()
+    })
+
+    test('keeps the keys in row order whatever order they were made in', () => {
+      mount(hostProps())
+
+      fireEvent.click(checkboxAt(2))
+      fireEvent.click(checkboxAt(0))
+
+      expect(sent().keys).toEqual(['web-1', 'db-1'])
+    })
+
+    // The point of naming the rows: web-1 goes away, db-1 slides from row 2
+    // to row 1, and the pick goes with it instead of staying on row 2.
+    test('the pick follows the row when the rows change', () => {
+      const { rerender } = mount(hostProps())
+
+      fireEvent.click(checkboxAt(2))
+      expect(sent().keys).toEqual(['db-1'])
+
+      rerenderWith(rerender,
+        [['web-2', 'EMEA'], ['db-1', 'NA'], ['web-3', 'APAC']],
+        ['web-2', 'db-1', 'web-3'])
+
+      expect(checkboxAt(1)).toBeChecked()
+      expect(checkboxAt(0)).not.toBeChecked()
+      expect(checkboxAt(2)).not.toBeChecked()
+    })
+
+    // Positionally this pick would have slid onto the row that moved up into
+    // its place, which is the bug row keys exist to rule out.
+    test('drops a pick whose row is gone', () => {
+      const { rerender } = mount(hostProps())
+
+      fireEvent.click(checkboxAt(1))
+
+      rerenderWith(rerender,
+        [['web-1', 'APAC'], ['db-1', 'NA']], ['web-1', 'db-1'])
+
+      expect(checkboxAt(0)).not.toBeChecked()
+      expect(checkboxAt(1)).not.toBeChecked()
+
+      // And the key is gone from the next answer too, not merely undrawn.
+      fireEvent.click(checkboxAt(1))
+      expect(sent().keys).toEqual(['db-1'])
+    })
+
+    // The default is positions even here, because the page function has the
+    // rows in hand when it writes it.
+    test('reads the positional default through the keys', () => {
+      mount(hostProps({ default_selection: [2] }))
+
+      expect(checkboxAt(2)).toBeChecked()
+
+      fireEvent.click(checkboxAt(0))
+      expect(sent().keys).toEqual(['web-1', 'db-1'])
+    })
+
+    test('the head checkbox sends keys too', () => {
+      mount(hostProps())
+
+      search('web')
+      fireEvent.click(screen.getByLabelText('select every row'))
+
+      expect(sent().keys).toEqual(['web-1', 'web-2'])
+    })
+
+    // An empty row_keys is how the server says the table is positional, so
+    // nothing about the old shape changes.
+    test('stays positional on an empty row_keys', () => {
+      mount(hostProps({ row_keys: [] }))
+
+      fireEvent.click(checkboxAt(1))
+
+      expect(sent()).toEqual({ type: 'select', id: 'hosts', values: [1] })
+    })
+  })
+
   describe('none', () => {
     const mountNone = () => mountHosts({ selection: 'none', id: '' })
 
