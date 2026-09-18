@@ -1,17 +1,20 @@
 import React from 'react'
 
 import Markdown from 'react-markdown'
-import { Typography } from '@mantine/core'
+import remarkGfm from 'remark-gfm'
+import { Table, Typography } from '@mantine/core'
 
 import { Props } from '../component_interface'
 import { remarkEmoji } from '../../util/remark_emoji'
 import { CodeBlock } from './code'
 
+import '@toolgui-web/lib/src/assets/css/markdown.css'
+
 export function TMarkdown({ node, theme }: Props) {
   return (
-    <Typography id={node.props.id || undefined}>
+    <Typography className='toolgui-markdown' id={node.props.id || undefined}>
       <Markdown children={node.props.text}
-        remarkPlugins={[remarkEmoji]}
+        remarkPlugins={[remarkGfm, remarkEmoji]}
         components={{
           a(props) {
             const { children, className, node, ...rest } = props
@@ -44,6 +47,36 @@ export function TMarkdown({ node, theme }: Props) {
                 lang={match ? match[1] : undefined}
                 theme={theme} />
             )
+          },
+          // A GFM table is drawn as the Table component's own table, down to
+          // the scroll container that keeps a wide one from widening the page.
+          table(props) {
+            return (
+              <Table.ScrollContainer minWidth={0} type='native'>
+                <Table className='toolgui-markdown-table' highlightOnHover>
+                  {props.children}
+                </Table>
+              </Table.ScrollContainer>
+            )
+          },
+          thead(props) {
+            return <Table.Thead>{props.children}</Table.Thead>
+          },
+          tbody(props) {
+            return <Table.Tbody>{props.children}</Table.Tbody>
+          },
+          tr(props) {
+            return <Table.Tr>{props.children}</Table.Tr>
+          },
+          // A cell keeps its own props: a column's GFM alignment arrives as
+          // one of them.
+          th(props) {
+            const { children, node, ...rest } = props
+            return <Table.Th {...rest}>{children}</Table.Th>
+          },
+          td(props) {
+            const { children, node, ...rest } = props
+            return <Table.Td {...rest}>{children}</Table.Td>
           }
         }}
       />

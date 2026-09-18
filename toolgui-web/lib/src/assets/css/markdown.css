@@ -1,0 +1,21 @@
+/* The table a Markdown component draws is the Table component's own. These
+   are the rules the typography around it lays on top: a cell padding and a
+   per-cell border of its own, where the table spaces and borders its cells
+   itself. The typography rules match on a class alone, so naming the cell is
+   enough to win. */
+.toolgui-markdown-table :is(th, td) {
+  padding: var(--table-vertical-spacing)
+    var(--table-horizontal-spacing, var(--mantine-spacing-xs));
+  border: none;
+}
+
+/* A task list carries its state in the checkbox, so the bullet next to it is
+   noise. The classes are the ones GFM gives the list and its items. */
+.toolgui-markdown .contains-task-list {
+  padding-inline-start: 0;
+  list-style: none;
+}
+
+.toolgui-markdown .task-list-item input {
+  margin-inline-end: var(--mantine-spacing-xs);
+}

@@ -7,6 +7,7 @@ import { afterEach, expect, test, describe, vi } from 'vitest'
 import { Node } from '@toolgui-web/lib/src/app/Nodes'
 import { TCode } from '@toolgui-web/lib/src/components/tccontent/code'
 import { TMarkdown } from '@toolgui-web/lib/src/components/tccontent/markdown'
+import { TTable } from '@toolgui-web/lib/src/components/tcdata/table'
 
 const RENDER_PROPS = { update: vi.fn(), upload: vi.fn(), theme: 'light' }
 
@@ -54,5 +55,46 @@ describe('code blocks', () => {
     const { container } = markdown('text with `inline` in it')
     expect(container.querySelector('pre')).toBeNull()
     expect(container.querySelector('code').textContent).toBe('inline')
+  })
+})
+
+describe('markdown gfm', () => {
+  test('a table is the table a Table component draws', () => {
+    const own = render(
+      <TTable node={new Node('main/0', {
+        name: 'table_component', id: '',
+        head: ['a', 'b'], table: [['1', '2']],
+      })} {...RENDER_PROPS} />
+    ).container.querySelector('table')
+    const { container } = markdown('| a | b |\n| - | - |\n| 1 | 2 |')
+    const table = container.querySelector('table')
+
+    expect(table).not.toBeNull()
+    // Mantine's own classes are what carry the table's look; the markdown one
+    // adds a class of its own to scope the rules it resets.
+    for (const c of own.classList) expect(table.classList).toContain(c)
+    expect([...table.querySelectorAll('th')].map(e => e.textContent))
+      .toEqual(['a', 'b'])
+    expect([...table.querySelectorAll('td')].map(e => e.textContent))
+      .toEqual(['1', '2'])
+  })
+
+  test('a column keeps its alignment', () => {
+    const { container } = markdown(
+      '| l | c | r |\n| :- | :-: | -: |\n| 1 | 2 | 3 |')
+    expect([...container.querySelectorAll('th')].map(e => e.style.textAlign))
+      .toEqual(['left', 'center', 'right'])
+  })
+
+  test('a shortcode in a cell expands', () => {
+    const { container } = markdown('| a |\n| - |\n| pear :tada: |')
+    expect(container.querySelector('td').textContent).toBe('pear 🎉')
+  })
+
+  test('strikethrough and a task list render', () => {
+    const { container } = markdown('~~gone~~\n\n- [x] done\n- [ ] todo')
+    expect(container.querySelector('del').textContent).toBe('gone')
+    const boxes = [...container.querySelectorAll('input[type=checkbox]')]
+    expect(boxes.map(e => e.checked)).toEqual([true, false])
   })
 })
