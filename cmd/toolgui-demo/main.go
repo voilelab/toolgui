@@ -354,7 +354,11 @@ func newApp() *tgframe.App {
 		app.AddPage(g.Name, g.Title, groupPage(g))
 
 		for _, d := range g.Demos {
-			addComponentPage(app, d)
+			app.AddPageByConfig(&tgframe.PageConfig{
+				Name:   d.Name,
+				Title:  d.Title,
+				Hidden: true,
+			}, demoPage(d))
 		}
 	}
 
@@ -386,15 +390,4 @@ func addPluginDemo(app *tgframe.App) error {
 	d := demos.Plugin()
 	app.AddPage(d.Name, d.Title, demoPage(d))
 	return nil
-}
-
-// addComponentPage adds a component's own page, the one the book links and
-// embeds. Hidden: it is reached by url rather than picked off the nav, which
-// is what keeps the list to the category pages.
-func addComponentPage(app *tgframe.App, d *demos.Demo) {
-	app.AddPageByConfig(&tgframe.PageConfig{
-		Name:   d.Name,
-		Title:  d.Title,
-		Hidden: true,
-	}, demoPage(d))
 }

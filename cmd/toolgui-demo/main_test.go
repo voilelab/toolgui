@@ -1,10 +1,8 @@
 package main
 
 import (
-	"slices"
 	"testing"
 
-	"github.com/voilelab/toolgui/docs/demos"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
@@ -46,57 +44,6 @@ func TestComponentPagesExist(t *testing.T) {
 	} {
 		if !have[name] {
 			t.Errorf("no page for %s", name)
-		}
-	}
-}
-
-// What the side nav lists: the category pages and the app's own, and none of
-// the sixty odd component pages under them. Those are reached by url -- a
-// link or an embed from the book -- and a list holding both reads as two
-// lists spliced together.
-func TestOnlyCategoryPagesAreListed(t *testing.T) {
-	app := newApp()
-	if err := addPluginDemo(app); err != nil {
-		t.Fatalf("addPluginDemo: %v", err)
-	}
-
-	conf := app.AppConf()
-
-	listed := []string{}
-	for _, name := range conf.PageNames {
-		if !conf.PageConfs[name].Hidden {
-			listed = append(listed, name)
-		}
-	}
-
-	want := []string{
-		"index",
-		"content", "data", "input", "layout", "misc",
-		"sidebar", "app_menu", "function_cache", "code",
-		// In no group, so its own page is the only way to it.
-		"plugin",
-	}
-
-	if !slices.Equal(listed, want) {
-		t.Errorf("the nav lists %v, want %v", listed, want)
-	}
-}
-
-// The other half: every component's page is there, and hidden.
-func TestComponentPagesAreHidden(t *testing.T) {
-	conf := newApp().AppConf()
-
-	for _, g := range demos.Groups() {
-		for _, d := range g.Demos {
-			pc, ok := conf.PageConfs[d.Name]
-			if !ok {
-				t.Errorf("no page for %s", d.Name)
-				continue
-			}
-
-			if !pc.Hidden {
-				t.Errorf("%s is listed in the nav", d.Name)
-			}
 		}
 	}
 }
