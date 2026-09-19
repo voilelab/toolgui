@@ -39,7 +39,10 @@ type Block struct {
 	// book names in its {{#include}}.
 	Anchors []string
 
-	// Code is the source between the anchors, exactly as mdBook includes it.
+	// Code is the source between the anchors, dedented: the shared
+	// indentation is the enclosing function's, and the code column is half a
+	// page wide. The book includes the same slice with it, under prose that
+	// has the whole page.
 	Code string
 }
 
@@ -109,7 +112,7 @@ func demo(name, title string, snippets ...snippet) *Demo {
 			ID:      s.id,
 			Run:     s.run,
 			Anchors: s.anchors,
-			Code:    strings.Join(parts, "\n"),
+			Code:    dedent(strings.Join(parts, "\n")),
 		})
 	}
 
@@ -121,6 +124,45 @@ func demo(name, title string, snippets ...snippet) *Demo {
 func (d *Demo) withSidebar(run tgframe.RunFunc) *Demo {
 	d.Sidebar = run
 	return d
+}
+
+// dedent drops the indentation every line of code shares, which for a
+// snippet sliced out of a function body is that function's. A block's
+// anchors are joined first, so the whole block is measured at once and its
+// pieces keep the indentation they have relative to each other.
+//
+// A block holding a line that starts at column 0 -- the middle of a raw
+// string, a top-level declaration -- shares nothing, and is left alone.
+func dedent(code string) string {
+	lines := strings.Split(code, "\n")
+
+	shared := -1
+	for _, l := range lines {
+		if strings.TrimSpace(l) == "" {
+			continue
+		}
+
+		indent := len(l) - len(strings.TrimLeft(l, "\t"))
+		if shared == -1 || indent < shared {
+			shared = indent
+		}
+	}
+
+	if shared <= 0 {
+		return code
+	}
+
+	out := make([]string, len(lines))
+	for i, l := range lines {
+		if strings.TrimSpace(l) == "" {
+			out[i] = ""
+			continue
+		}
+
+		out[i] = l[shared:]
+	}
+
+	return strings.Join(out, "\n")
 }
 
 // Anchored returns the lines of file between the opening and closing anchor
