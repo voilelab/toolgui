@@ -117,4 +117,69 @@ describe('Menu', () => {
     cy.get('#menu_item_clear').click(noScroll)
     cy.contains('Nothing picked yet.').should('exist')
   })
+
+  // The browser's half: the shell listens for the keystroke and sends the
+  // same click the item's own would have. On the desktop the OS dispatches it
+  // off the native menu item, which is not what runs here.
+  describe('Accelerators', () => {
+    // Cypress types into the focused element; the body is what has focus
+    // until something on the page takes it.
+    function press(combo) {
+      cy.get('body').type(combo)
+    }
+
+    it('An accelerator fires the item it was declared on', () => {
+      cy.visit('/app_menu')
+      cy.contains('Nothing picked yet.').should('exist')
+
+      press('{ctrl}e')
+      cy.contains('1. File > Say hello').should('exist')
+
+      // Down a nested submenu, and a different combination for a different
+      // item: the modifiers are matched, not just the key.
+      press('{ctrl}{shift}E')
+      cy.contains('2. FILE > MORE > SAY HELLO LOUDLY').should('exist')
+
+      press('{ctrl}{shift}{backspace}')
+      cy.contains('Nothing picked yet.').should('exist')
+    })
+
+    it('An item shows the combination that fires it', () => {
+      cy.visit('/app_menu')
+
+      openMenu('File').within(() => {
+        cy.contains('.toolgui-menubar-accel', 'Ctrl+E').should('exist')
+      })
+    })
+
+    // A bare key is a shortcut on the page and a keystroke in a field. F2 is
+    // Help > About, and the page has a textbox to prove it with.
+    //
+    // A function key is dispatched rather than typed: cy.type has a sequence
+    // for the modifiers and for Backspace, but none for F1 to F24.
+    //
+    // eventConstructor, because cy.trigger builds a plain Event by default
+    // and assigns the options onto it -- which leaves ctrlKey and the rest
+    // undefined rather than false, and the shell matches a keystroke by every
+    // modifier, the ones the item did not ask for included.
+    it('A bare key stays out of a text field', () => {
+      const f2 = ['keydown',
+        { eventConstructor: 'KeyboardEvent', key: 'F2', code: 'F2' }]
+      const textbox = 'input[id=textbox_component_menu_typing]'
+
+      cy.visit('/app_menu')
+
+      cy.get('body').trigger(...f2)
+      cy.contains('1. Help > About: toolgui').should('exist')
+
+      cy.get(textbox).type('hello')
+      cy.get(textbox).trigger(...f2)
+      cy.contains('2. Help > About: toolgui').should('not.exist')
+      cy.get(textbox).should('have.value', 'hello')
+
+      // A real chord still reaches the menu from in there.
+      cy.get(textbox).type('{ctrl}e')
+      cy.contains('2. File > Say hello').should('exist')
+    })
+  })
 })

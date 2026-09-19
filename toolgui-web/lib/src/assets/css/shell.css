@@ -47,6 +47,15 @@
   font-weight: 400;
 }
 
+/* The accelerator an item shows next to its label. Dimmed and set apart: it
+   says how else to reach the item, and the label is what is being read. */
+.toolgui-menubar-accel {
+  margin-inline-start: 2rem;
+  font-size: var(--mantine-font-size-xs);
+  color: var(--mantine-color-dimmed);
+  white-space: nowrap;
+}
+
 /* App shell: a resizable left column beside the page content. */
 .toolgui-shell {
   display: flex;

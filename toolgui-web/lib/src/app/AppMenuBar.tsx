@@ -3,6 +3,10 @@ import { Button, Divider, Menu } from "@mantine/core"
 
 import { MenuNode } from "./AppConf"
 import { UpdateEvent } from "./UpdateEvent"
+import {
+  Accelerator, formatAccelerator, hasModifier, isMac, matchesEvent,
+  parseAccelerator,
+} from "./accelerator"
 
 import '@toolgui-web/lib/src/assets/css/shell.css'
 
@@ -18,6 +22,64 @@ interface AppMenuBarState {
   open: number | null
 }
 
+// Bound is one item's accelerator, with the click id it fires.
+interface Bound {
+  accel: Accelerator
+  id: string
+}
+
+// bindings walks the tree for every accelerator declared in it. An app that
+// declared none gets an empty list, which is what keeps the listener off the
+// document entirely.
+function bindings(nodes: MenuNode[]): Bound[] {
+  const out: Bound[] = []
+
+  for (const node of nodes) {
+    if (node.type === 'submenu') {
+      out.push(...bindings(node.children || []))
+      continue
+    }
+
+    if (node.type !== 'text' || !node.accelerator) {
+      continue
+    }
+
+    const accel = parseAccelerator(node.accelerator)
+    if (accel) {
+      out.push({ accel, id: node.id })
+    }
+  }
+
+  return out
+}
+
+// isAltGraph reports whether the keystroke carries AltGr, the modifier that
+// puts a third character on a key.
+//
+// Windows, and some layouts elsewhere, report AltGr as Control and Alt held
+// together, so a Ctrl+OptionOrAlt chord and the character AltGr+that key
+// produces arrive as the same event. There is no telling them apart, so the
+// character wins: firing the item would eat a keystroke the visitor meant to
+// type, and the item is still in the menu, while a shortcut that silently
+// swallows text is not something to hand a visitor on a German keyboard.
+function isAltGraph(e: KeyboardEvent): boolean {
+  return typeof e.getModifierState === 'function' &&
+    e.getModifierState('AltGraph')
+}
+
+// isEditable reports whether the keystroke landed in something the visitor is
+// typing into. Mantine's own inputs are all one of these three.
+function isEditable(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null
+  if (!el || !el.tagName) {
+    return false
+  }
+
+  const tag = el.tagName.toLowerCase()
+  return tag === 'input' || tag === 'textarea' || tag === 'select' ||
+    el.isContentEditable
+}
+
 // hasItems reports whether a menu holds anything worth opening a dropdown for.
 // A submenu of nothing but separators draws nothing, so it stays a plain
 // label rather than an empty panel.
@@ -28,9 +90,62 @@ function hasItems(nodes: MenuNode[]): boolean {
 // AppMenuBar is the row above the app: one entry per top level node of the
 // tree the App declared. It is only rendered for an app that declared one.
 export class AppMenuBar extends Component<AppMenuBarProps, AppMenuBarState> {
+  // The accelerators of the tree this bar was given, and which key
+  // CmdOrCtrl stands for here. Both are read once: the tree is the app's and
+  // does not change between runs, and neither does the keyboard.
+  private bindings: Bound[]
+  private mac: boolean
+
+  private onKeyDown = (e: KeyboardEvent) => { this.keyDown(e) }
+
   constructor(props: AppMenuBarProps) {
     super(props)
     this.state = { open: null }
+    this.bindings = bindings(props.menu)
+    this.mac = isMac()
+  }
+
+  // Nothing is listened for on behalf of a menu that declared no accelerator:
+  // the listener is only added once there is something for it to match.
+  componentDidMount() {
+    if (this.bindings.length > 0) {
+      document.addEventListener('keydown', this.onKeyDown)
+    }
+  }
+
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this.onKeyDown)
+  }
+
+  // The browser's half of the feature. On the desktop the OS dispatches an
+  // accelerator off the native menu item and none of this runs.
+  //
+  // A hit is preventDefault'd, which is all a page can do about a combination
+  // the browser has already taken -- and for some of them it is not enough.
+  // The menu documentation says which ones are not reliably the app's.
+  keyDown(e: KeyboardEvent) {
+    // A keystroke the visitor is still composing is not a keystroke yet: an
+    // IME reports the whole composition as one keydown of its own.
+    if (e.isComposing || e.repeat || isAltGraph(e)) {
+      return
+    }
+
+    const typing = isEditable(e.target)
+
+    for (const bound of this.bindings) {
+      // In a text field, only a real chord is an accelerator. A bare key --
+      // and Shift plus one, which is the same key shifted -- is what the
+      // visitor is typing.
+      if (typing && !hasModifier(bound.accel)) {
+        continue
+      }
+
+      if (matchesEvent(bound.accel, e, this.mac)) {
+        e.preventDefault()
+        this.click(bound.id)
+        return
+      }
+    }
   }
 
   // A menu item sends the same click event a Button does; the Go side tells
@@ -64,6 +179,7 @@ export class AppMenuBar extends Component<AppMenuBarProps, AppMenuBarState> {
         case 'text':
           return (
             <Menu.Item key={key} id={node.id}
+              rightSection={this.accelLabel(node.accelerator)}
               onClick={() => { this.click(node.id) }}>
               {node.label}
             </Menu.Item>
@@ -87,6 +203,22 @@ export class AppMenuBar extends Component<AppMenuBarProps, AppMenuBarState> {
         }
       }
     })
+  }
+
+  // What an item shows next to its label, and nothing for an item that
+  // declared no accelerator -- or one this frontend does not understand,
+  // which is nothing to draw a gap for.
+  accelLabel(accel?: string) {
+    const parsed = accel ? parseAccelerator(accel) : null
+    if (!parsed) {
+      return undefined
+    }
+
+    return (
+      <span className="toolgui-menubar-accel">
+        {formatAccelerator(parsed, this.mac)}
+      </span>
+    )
   }
 
   // The button every top level entry wears, submenu or not.

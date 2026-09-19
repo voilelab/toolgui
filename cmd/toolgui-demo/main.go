@@ -77,15 +77,23 @@ func MainPage(p *tgframe.Params) error {
 func demoMenu() *tgframe.Menu {
 	return tgframe.NewMenu().
 		Submenu("File", func(m *tgframe.Menu) {
-			m.Text("Say hello", "hello")
+			// The accelerator is one declaration serving both carriers: the
+			// desktop hangs it off the native item, and the browser shell
+			// listens for the keystroke itself.
+			m.Text("Say hello", "hello", &tgframe.MenuTextConf{
+				Accelerator: "CmdOrCtrl+E",
+			})
 			m.Submenu("More", func(m *tgframe.Menu) {
-				m.Text("Say hello loudly", "hello_loud")
+				m.Text("Say hello loudly", "hello_loud",
+					&tgframe.MenuTextConf{Accelerator: "CmdOrCtrl+Shift+E"})
 			})
 			m.Separator()
-			m.Text("Clear the log", "clear")
+			m.Text("Clear the log", "clear", &tgframe.MenuTextConf{
+				Accelerator: "CmdOrCtrl+Shift+Backspace",
+			})
 		}).
 		Submenu("Help", func(m *tgframe.Menu) {
-			m.Text("About", "about")
+			m.Text("About", "about", &tgframe.MenuTextConf{Accelerator: "f2"})
 		})
 }
 
@@ -96,7 +104,14 @@ const menuLogKey = "demo_menu_log"
 func MenuPage(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "App Menu")
 	tgcomp.Text(p.Main, "The menubar above the app comes from App.SetMenu."+
-		" Pick an item and the run handling the click appends to this log.")
+		" Pick an item and the run handling the click appends to this log."+
+		" The items also carry accelerators, which fire them without the"+
+		" menu being opened.")
+
+	// Here to be typed in: an accelerator with no modifier -- F2, on Help >
+	// About -- stays out of a text field, or it would fire while the field
+	// is being filled in. A chord still reaches the menu from in here.
+	tgcomp.Textbox(p.Main, "Type in me", &tgcomp.TextboxConf{ID: "menu_typing"})
 
 	log, _ := p.State.Get[[]string](menuLogKey)
 

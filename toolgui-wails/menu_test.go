@@ -6,6 +6,7 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 )
 
 // testMenu is the tree the desktop tests translate: one submenu holding all
@@ -13,7 +14,9 @@ import (
 func testMenu() *tgframe.Menu {
 	return tgframe.NewMenu().
 		Submenu("File", func(m *tgframe.Menu) {
-			m.Text("Open", "file_open")
+			m.Text("Open", "file_open", &tgframe.MenuTextConf{
+				Accelerator: "CmdOrCtrl+Shift+O",
+			})
 			m.Submenu("More", func(m *tgframe.Menu) {
 				m.Text("Reload", "file_reload")
 			})
@@ -24,15 +27,28 @@ func testMenu() *tgframe.Menu {
 
 // clickIDs builds the menu with a callback recording what it is handed, and
 // returns the menu plus a function reading the ids clicked so far.
+//
+// The tree goes through an App first, which is where the one Run builds the
+// window from comes from: SetMenu is what normalizes an accelerator, so a
+// test translating the Menu itself would be translating a spelling the
+// window never sees.
 func clickIDs(goos string, frameless bool, m *tgframe.Menu) (
 	*menu.Menu, func() []string) {
 
 	var got []string
-	native := buildMenu(goos, frameless, m.Nodes(), func(id string) {
+	native := buildMenu(goos, frameless, appNodes(m), func(id string) {
 		got = append(got, id)
 	})
 
 	return native, func() []string { return got }
+}
+
+// appNodes is the tree as the window receives it.
+func appNodes(m *tgframe.Menu) []*tgframe.MenuNode {
+	app := tgframe.NewApp()
+	app.SetMenu(m)
+
+	return app.AppConf().Menu
 }
 
 // click fires the item's callback the way Wails does.
@@ -193,7 +209,7 @@ func TestBuildMenuNone(t *testing.T) {
 // TestNativeMenu covers the entry point Run uses. Whatever the platform puts
 // in front of it, the app's own tree is what the menubar ends with.
 func TestNativeMenu(t *testing.T) {
-	native := nativeMenu(false, testMenu().Nodes(), func(string) {})
+	native := nativeMenu(false, appNodes(testMenu()), func(string) {})
 
 	if native == nil {
 		t.Fatal("nativeMenu returned no menu for an app that declares one")
@@ -203,5 +219,53 @@ func TestNativeMenu(t *testing.T) {
 	if last.Type != menu.SubmenuType || last.Label != "File" {
 		t.Fatalf("last item = %s %q, want a submenu labelled File",
 			last.Type, last.Label)
+	}
+}
+
+// TestBuildMenuAccelerator is the desktop's whole half of the feature: the
+// combination the app declared is hung off the native item, and the OS
+// dispatches it. An item that declared none carries none, rather than an
+// empty accelerator the menu would draw a gap for.
+func TestBuildMenuAccelerator(t *testing.T) {
+	native, _ := clickIDs("linux", false, testMenu())
+
+	items := native.Items[0].SubMenu.Items
+
+	open := items[0].Accelerator
+	if open == nil {
+		t.Fatal("Open carries no accelerator")
+	}
+
+	if open.Key != "o" {
+		t.Errorf("Open accelerator key = %q, want %q", open.Key, "o")
+	}
+
+	want := []keys.Modifier{keys.CmdOrCtrlKey, keys.ShiftKey}
+	if len(open.Modifiers) != len(want) {
+		t.Fatalf("Open accelerator modifiers = %v, want %v",
+			open.Modifiers, want)
+	}
+	for i := range want {
+		if open.Modifiers[i] != want[i] {
+			t.Errorf("Open accelerator modifier %d = %q, want %q",
+				i, open.Modifiers[i], want[i])
+		}
+	}
+
+	if items[3].Accelerator != nil {
+		t.Errorf("Quit carries the accelerator %v, want none",
+			items[3].Accelerator)
+	}
+}
+
+// TestAcceleratorUnknown: a combination this build cannot parse costs the
+// item its shortcut, not its place in the menu.
+func TestAcceleratorUnknown(t *testing.T) {
+	if got := accelerator(""); got != nil {
+		t.Errorf("accelerator(\"\") = %v, want nil", got)
+	}
+
+	if got := accelerator("Hyper+o"); got != nil {
+		t.Errorf("accelerator(\"Hyper+o\") = %v, want nil", got)
 	}
 }

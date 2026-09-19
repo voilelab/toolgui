@@ -9,6 +9,12 @@ export interface MenuTextNode {
   type: 'text'
   label: string
   id: string
+
+  // The key combination the item also fires on, normalized by the Go side
+  // ("CmdOrCtrl+Shift+O"), and absent for an item that declared none. The
+  // desktop lets the OS dispatch it; here the menubar listens for it. See
+  // accelerator.ts.
+  accelerator?: string
 }
 
 export interface MenuSeparatorNode {

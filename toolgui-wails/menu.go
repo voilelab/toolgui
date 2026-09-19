@@ -6,6 +6,7 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 
 	"github.com/wailsapp/wails/v2/pkg/menu"
+	"github.com/wailsapp/wails/v2/pkg/menu/keys"
 )
 
 // nativeMenu translates the tree [tgframe.App.SetMenu] declared into the one
@@ -82,11 +83,33 @@ func appendNodes(native *menu.Menu, nodes []*tgframe.MenuNode,
 			// The id is the one the app declared, prefix and all, so the run
 			// handling the click reads it back with tgframe.MenuClicked just
 			// as it does the web menubar's.
-			native.AddText(node.Label, nil, func(*menu.CallbackData) {
-				click(node.ID)
-			})
+			native.AddText(node.Label, accelerator(node.Accelerator),
+				func(*menu.CallbackData) {
+					click(node.ID)
+				})
 		case tgframe.MenuNodeSubmenu:
 			appendNodes(native.AddSubmenu(node.Label), node.Children, click)
 		}
 	}
+}
+
+// accelerator translates the combination the item declared into the one Wails
+// hangs off the menu item, from where the OS dispatches it. This is the whole
+// of the desktop's half of the feature: nothing here listens for a keystroke.
+//
+// The spelling tgframe normalizes to is one Wails parses, so a parse that
+// fails is an accelerator tgframe let through and this build does not know --
+// the item still belongs in the menu, so it goes in without one rather than
+// taking the menu down with it.
+func accelerator(accel string) *keys.Accelerator {
+	if accel == "" {
+		return nil
+	}
+
+	parsed, err := keys.Parse(accel)
+	if err != nil {
+		return nil
+	}
+
+	return parsed
 }
