@@ -14,6 +14,7 @@ export function TRadio({ node, update }: Props) {
   return (
     <Radio.Group
       id={node.props.id}
+      label={node.props.label}
       value={selected == null ? null : String(selected)}
       mb="md"
       onChange={(value) => {

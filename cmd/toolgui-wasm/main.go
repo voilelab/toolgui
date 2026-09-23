@@ -19,10 +19,11 @@ const usage = `toolgui-wasm builds a ToolGUI app into a static site.
 
 Usage:
 
-	toolgui-wasm build [-o dir] [package]
-	toolgui-wasm serve [-o dir] [-addr address] [package]
+	toolgui-wasm build [-o dir] [-ldflags flags] [package]
+	toolgui-wasm serve [-o dir] [-ldflags flags] [-addr address] [package]
 
 The package defaults to the current directory, and the output to ./dist.
+-ldflags is passed to go build as is.
 `
 
 func main() {

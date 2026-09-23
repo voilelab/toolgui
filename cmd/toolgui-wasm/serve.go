@@ -12,14 +12,14 @@ import (
 
 func runServe(args []string) error {
 	addr := ""
-	out, pkg, err := parseBuildFlags("serve", args, func(flags *flag.FlagSet) {
+	opts, err := parseBuildFlags("serve", args, func(flags *flag.FlagSet) {
 		flags.StringVar(&addr, "addr", ":3000", "address to listen on")
 	})
 	if err != nil {
 		return err
 	}
 
-	err = build(out, pkg)
+	err = build(opts)
 	if err != nil {
 		return err
 	}
@@ -30,9 +30,9 @@ func runServe(args []string) error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	log.Printf("serving %s on %s", out, listenURL(addr))
+	log.Printf("serving %s on %s", opts.out, listenURL(addr))
 
-	err = http.ListenAndServe(addr, http.FileServer(http.Dir(out)))
+	err = http.ListenAndServe(addr, http.FileServer(http.Dir(opts.out)))
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
