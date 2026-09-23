@@ -21,30 +21,38 @@ var wasmExecDirs = []string{
 }
 
 func runBuild(args []string) error {
-	out, pkg, err := parseBuildFlags("build", args, nil)
+	opts, err := parseBuildFlags("build", args, nil)
 	if err != nil {
 		return err
 	}
 
-	return build(out, pkg)
+	return build(opts)
+}
+
+// buildOpts is what build and serve share.
+type buildOpts struct {
+	out     string
+	pkg     string
+	ldflags string // passed to go build as -ldflags, e.g. "-s -w"
 }
 
 // parseBuildFlags reads the flags build and serve share. extra registers the
 // ones only the caller wants.
-func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (string, string, error) {
+func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (buildOpts, error) {
 	flags := flag.NewFlagSet(name, flag.ExitOnError)
 	out := flags.String("o", "dist", "directory to write the site into")
+	ldflags := flags.String("ldflags", "", "arguments to pass on each go tool link invocation")
 	if extra != nil {
 		extra(flags)
 	}
 
 	err := flags.Parse(args)
 	if err != nil {
-		return "", "", tgutil.Errorf("%w", err)
+		return buildOpts{}, tgutil.Errorf("%w", err)
 	}
 
 	if flags.NArg() > 1 {
-		return "", "", tgutil.NewError("one package at a time")
+		return buildOpts{}, tgutil.NewError("one package at a time")
 	}
 
 	pkg := "."
@@ -52,12 +60,13 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (str
 		pkg = flags.Arg(0)
 	}
 
-	return *out, pkg, nil
+	return buildOpts{out: *out, pkg: pkg, ldflags: *ldflags}, nil
 }
 
 // build assemble the site in out. Existing files are overwritten, and
 // anything else in out is left alone: it may be someone's web root.
-func build(out, pkg string) error {
+func build(opts buildOpts) error {
+	out := opts.out
 	err := os.MkdirAll(out, 0o755)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
@@ -68,7 +77,7 @@ func build(out, pkg string) error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	err = compile(out, pkg)
+	err = compile(out, opts.pkg, opts.ldflags)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
@@ -107,8 +116,14 @@ func writeFrontend(out string) error {
 
 // compile build pkg for the browser. The go command reports its own errors,
 // so its output goes straight through.
-func compile(out, pkg string) error {
-	cmd := exec.Command("go", "build", "-o", filepath.Join(out, "app.wasm"), pkg)
+func compile(out, pkg, ldflags string) error {
+	args := []string{"build", "-o", filepath.Join(out, "app.wasm")}
+	if ldflags != "" {
+		args = append(args, "-ldflags", ldflags)
+	}
+	args = append(args, pkg)
+
+	cmd := exec.Command("go", args...)
 	cmd.Env = append(os.Environ(), "GOOS=js", "GOARCH=wasm")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

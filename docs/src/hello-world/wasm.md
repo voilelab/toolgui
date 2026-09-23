@@ -52,6 +52,9 @@ go tool toolgui-wasm build -o dist ./cmd/myapp   # the site, into dist/
 go tool toolgui-wasm serve ./cmd/myapp           # the same, at :3000
 ```
 
+`-ldflags` goes through to `go build`, e.g. `-ldflags="-X main.version=1.0"`.
+`-s -w` saves little here: wasm keeps most of its size in code, not symbols.
+
 `serve` is there so the browser gets the binary as `application/wasm` and can
 compile it while it downloads; deploying needs no server at all. Neither
 command deletes anything it did not write, so `-o` can point at a web root.

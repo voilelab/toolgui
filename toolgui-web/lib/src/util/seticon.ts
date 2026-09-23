@@ -9,6 +9,12 @@ function faviconTemplate(icon: string) {
 }
 
 export function setIcon(emoji: string) {
-  const iconEle = document.querySelector(`head > link[rel='icon']`) as Element
+  // Not every index.html ships a <link rel="icon">, so make one if missing.
+  let iconEle = document.querySelector(`head > link[rel='icon']`)
+  if (!iconEle) {
+    iconEle = document.createElement('link')
+    iconEle.setAttribute('rel', 'icon')
+    document.head.appendChild(iconEle)
+  }
   iconEle.setAttribute(`href`, `data:image/svg+xml,${faviconTemplate(emoji)}`)
 }

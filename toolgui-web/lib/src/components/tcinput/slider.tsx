@@ -1,5 +1,5 @@
 import React, { useState } from "react"
-import { Input, Slider } from "@mantine/core"
+import { Input, Slider, Text } from "@mantine/core"
 
 import { stateValues } from "../state"
 import { Props } from "../component_interface"
@@ -13,7 +13,9 @@ export function TSlider({ node, update }: Props) {
     // Mantine's Slider takes no label of its own — its `label` is the value
     // bubble — so the wrapper supplies one. It labels a div rather than a
     // form control, hence labelElement.
-    <Input.Wrapper label={node.props.label} labelElement="div" mb="md">
+    <Input.Wrapper
+      label={<>{node.props.label} <Text span c="dimmed" size="sm">{value}</Text></>}
+      labelElement="div" mb="md">
       <Slider
         id={id}
         min={node.props.min}

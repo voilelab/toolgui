@@ -64,7 +64,7 @@ func TestBuild(t *testing.T) {
 
 	out := t.TempDir()
 
-	err := build(out, "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello")
+	err := build(buildOpts{out: out, pkg: "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello"})
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
@@ -92,13 +92,13 @@ func TestBuildDemoIsStillOneBinary(t *testing.T) {
 	}
 
 	hello := t.TempDir()
-	err := build(hello, "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello")
+	err := build(buildOpts{out: hello, pkg: "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello"})
 	if err != nil {
 		t.Fatalf("build the one page app: %v", err)
 	}
 
 	demo := t.TempDir()
-	err = build(demo, "github.com/voilelab/toolgui/cmd/toolgui-demo")
+	err = build(buildOpts{out: demo, pkg: "github.com/voilelab/toolgui/cmd/toolgui-demo"})
 	if err != nil {
 		t.Fatalf("build the demo: %v", err)
 	}
