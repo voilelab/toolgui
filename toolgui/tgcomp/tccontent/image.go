@@ -119,5 +119,34 @@ func detectImageMIME(bs []byte, fallback string) string {
 	if strings.HasPrefix(mime, "image/") {
 		return mime
 	}
+	if isSVG(bs) {
+		return "image/svg+xml"
+	}
 	return fallback
+}
+
+// isSVG reports whether bs starts with an <svg> root, skipping BOM,
+// whitespace, XML declaration, comments and DOCTYPE.
+func isSVG(bs []byte) bool {
+	bs = bytes.TrimPrefix(bs, []byte("\xEF\xBB\xBF"))
+	for {
+		bs = bytes.TrimLeft(bs, " \t\r\n")
+		var end []byte
+		switch {
+		case bytes.HasPrefix(bs, []byte("<?")):
+			end = []byte("?>")
+		case bytes.HasPrefix(bs, []byte("<!--")):
+			end = []byte("-->")
+		case bytes.HasPrefix(bs, []byte("<!")):
+			end = []byte(">")
+		default:
+			return bytes.HasPrefix(bs, []byte("<svg")) && len(bs) > 4 &&
+				strings.ContainsRune(" \t\r\n>/", rune(bs[4]))
+		}
+		i := bytes.Index(bs, end)
+		if i < 0 {
+			return false
+		}
+		bs = bs[i+len(end):]
+	}
 }

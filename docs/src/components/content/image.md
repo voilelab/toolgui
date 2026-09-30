@@ -16,7 +16,7 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf)
 * `img` is the image.
   * `image.Image`: an image.Image
   * `[]byte`: a byte array, MIME is detected from magic bytes
-    (png, jpeg, gif, webp, bmp, ico); falls back to `Format` if unknown
+    (png, jpeg, gif, webp, bmp, ico, svg); falls back to `Format` if unknown
   * `string`: a url or base64 encoded image
     * example:
       * url: `https://http.cat/100`
