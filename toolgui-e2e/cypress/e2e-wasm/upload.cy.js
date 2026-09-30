@@ -21,7 +21,7 @@ const chunkSize = 1024 * 1024
 // fixture this size would be read into memory, which is what the transport
 // stopped doing.
 function pick(size, name) {
-  cy.get('input[type=file]').then(($input) => {
+  cy.get('input[name=fileupload_component_FileUpload]').then(($input) => {
     const input = $input[0]
     const win = input.ownerDocument.defaultView
 
@@ -50,7 +50,7 @@ describe('Wasm upload', () => {
 
     // Mantine keeps the file input hidden behind its own control, so it is
     // there rather than visible, and it appears once the binary has booted.
-    cy.get('input[type=file]').should('exist')
+    cy.get('input[name=fileupload_component_FileUpload]').should('exist')
 
     pick(uploadSize, 'big.bin')
 
