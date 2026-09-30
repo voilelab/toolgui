@@ -27,6 +27,9 @@ type runState struct {
 
 	ids map[string]bool
 
+	// indexedFileIDs is the subset of ids that accept [FileKey] uploads.
+	indexedFileIDs map[string]bool
+
 	// released holds the ids the run has taken back off the screen, the
 	// contents of a slot it cleared. An id claimed again leaves the set; what
 	// stays is state no component reads any more, and [App.Run] drops it.
@@ -37,9 +40,10 @@ type runState struct {
 
 func newRunState() *runState {
 	return &runState{
-		seq:      runSeq.Add(1),
-		ids:      map[string]bool{},
-		released: map[string]bool{},
+		seq:            runSeq.Add(1),
+		ids:            map[string]bool{},
+		indexedFileIDs: map[string]bool{},
+		released:       map[string]bool{},
 	}
 }
 
@@ -63,6 +67,9 @@ func (r *runState) registerID(comp Component) {
 	}
 
 	r.ids[id] = true
+	if acceptsIndexedFiles(comp) {
+		r.indexedFileIDs[id] = true
+	}
 }
 
 // unregisterID gives comp's id back, so this run may claim it again. The state
@@ -76,6 +83,7 @@ func (r *runState) unregisterID(comp Component) {
 	}
 
 	delete(r.ids, id)
+	delete(r.indexedFileIDs, id)
 	r.released[id] = true
 }
 

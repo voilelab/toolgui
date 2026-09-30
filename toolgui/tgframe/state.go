@@ -38,6 +38,9 @@ type State struct {
 	// name is one of the page's own rather than one the caller made up.
 	runIDs map[string]bool
 
+	// indexedFileIDs is the subset of runIDs that accept [FileKey] uploads.
+	indexedFileIDs map[string]bool
+
 	// menuIDs is the set of click ids the app's menu declares. It is the
 	// app's, not a run's: a menu item belongs to no run, so [State.runIDs]
 	// never holds one, and the two sets stay apart.
@@ -71,18 +74,21 @@ func (s *State) Clone() *State {
 		files:     s.files,
 		downloads: s.downloads,
 		funcCache: maps.Clone(s.funcCache),
-		runIDs:    maps.Clone(s.runIDs),
-		menuIDs:   s.menuIDs,
-		clickID:   s.clickID,
+		runIDs:         maps.Clone(s.runIDs),
+		indexedFileIDs: maps.Clone(s.indexedFileIDs),
+		menuIDs:        s.menuIDs,
+		clickID:        s.clickID,
 	}
 }
 
-// setRunIDs records the component ids a run drew.
-func (s *State) setRunIDs(ids map[string]bool) {
+// setRunIDs records the component ids a run drew, and which of them accept
+// [FileKey] uploads.
+func (s *State) setRunIDs(ids, indexedFileIDs map[string]bool) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
 
 	s.runIDs = maps.Clone(ids)
+	s.indexedFileIDs = maps.Clone(indexedFileIDs)
 }
 
 // setMenuIDs records the click ids the app's menu declares. The map is the
@@ -142,14 +148,21 @@ func splitFileKey(key string) (string, int, bool) {
 }
 
 // HasFileKey reports whether key is one an upload may be stored under: a
-// drawn component's id, or a [FileKey] of one.
+// drawn component's id, or a [FileKey] of a drawn [IndexedFileComponent].
 func (s *State) HasFileKey(key string) bool {
 	if s.HasComponentID(key) {
 		return true
 	}
 
 	id, _, ok := splitFileKey(key)
-	return ok && s.HasComponentID(id)
+	if !ok {
+		return false
+	}
+
+	s.rwLock.RLock()
+	defer s.rwLock.RUnlock()
+
+	return s.indexedFileIDs[id]
 }
 
 // removeIndexedFiles drops every [FileKey] file under id.

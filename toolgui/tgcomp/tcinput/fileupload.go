@@ -6,7 +6,7 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
-var _ tgframe.Component = &fileuploadComponent{}
+var _ tgframe.IndexedFileComponent = &fileuploadComponent{}
 var fileuploadComponentName = "fileupload_component"
 
 type fileuploadComponent struct {
@@ -15,6 +15,11 @@ type fileuploadComponent struct {
 	Accept   string `json:"accept"`
 	Disabled bool   `json:"disabled"`
 	Multiple bool   `json:"multiple"`
+}
+
+// AcceptsIndexedFiles implements [tgframe.IndexedFileComponent].
+func (c *fileuploadComponent) AcceptsIndexedFiles() bool {
+	return c.Multiple
 }
 
 func newFileUploadComponent(label, accept string) *fileuploadComponent {

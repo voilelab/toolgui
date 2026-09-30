@@ -7,6 +7,19 @@ type Component interface {
 	GetID() string
 }
 
+// IndexedFileComponent is a component that takes uploads under [FileKey]s of
+// its id, e.g. a multi-file upload. Only such ids accept indexed uploads.
+type IndexedFileComponent interface {
+	Component
+	AcceptsIndexedFiles() bool
+}
+
+// acceptsIndexedFiles reports whether comp takes uploads under [FileKey]s.
+func acceptsIndexedFiles(comp Component) bool {
+	c, ok := comp.(IndexedFileComponent)
+	return ok && c.AcceptsIndexedFiles()
+}
+
 // keyed is what a component embedding [BaseComponent] gets for free. The
 // container stamps a component's position through it; a component that does
 // not embed BaseComponent is still a Component, it just carries no key of its

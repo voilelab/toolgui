@@ -360,7 +360,7 @@ func (app *App) RunContext(ctx context.Context,
 	// Record it: an upload names a component id, and the state is where that
 	// name is checked.
 	if state != nil {
-		state.setRunIDs(run.ids)
+		state.setRunIDs(run.ids, run.indexedFileIDs)
 	}
 
 	if err != nil {
