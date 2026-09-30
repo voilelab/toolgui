@@ -1,5 +1,13 @@
 import { AppConf, DownloadResult, UpdateEvent, UploadResult } from "@toolgui-web/lib"
 
+// LoadProgress is how far the download of app.wasm has got. total is 0 when
+// the size is unknown; done is set once the last byte is in.
+export interface LoadProgress {
+  loaded: number
+  total: number
+  done?: boolean
+}
+
 // Backend drives the wasm program in its worker. Calls go out as messages and
 // come back by id; packs arrive on their own, the way the websocket transport
 // delivers them.
@@ -12,7 +20,9 @@ export class Backend {
   // onPack is called for every pack, in the order the page produced them.
   // embed is the display mode, which the program is told at boot: a worker's
   // own location is this script, so it cannot read the page's query string.
-  constructor(onPack: (pack: any) => void, embed: boolean = false) {
+  // onProgress follows the download of the binary, until the program starts.
+  constructor(onPack: (pack: any) => void, embed: boolean = false,
+    onProgress?: (progress: LoadProgress) => void) {
     this.worker = new Worker(new URL('../worker.ts', import.meta.url))
 
     let started: () => void
@@ -33,6 +43,10 @@ export class Backend {
 
         case 'pack':
           onPack(msg.pack)
+          break
+
+        case 'progress':
+          onProgress?.({ loaded: msg.loaded, total: msg.total, done: msg.done })
           break
 
         case 'return': {

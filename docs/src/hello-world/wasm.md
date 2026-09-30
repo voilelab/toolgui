@@ -135,11 +135,29 @@ them — so a page function that takes a while leaves the UI responsive.
   Netlify and the like are `https` already.
 * Serve `.wasm` as `application/wasm`, so the browser can compile it while it
   downloads.
-* Compress it. A small app is around 5 MB, about 1.4 MB gzipped; the component
-  demo is 6.7 MB, 1.8 MB gzipped. It is cached after the first load.
+* Compress it. With Go 1.27 the example app is 8.2 MB, 2.2 MB gzipped; the
+  component demo is 10.2 MB, 2.7 MB gzipped. It is cached after the first load,
+  and the page shows how much of it has arrived until then.
+* GitHub Pages gzips it for any browser that asks, which is all of them, so a
+  visitor downloads the gzipped size. DevTools' Network panel shows both: the
+  *transferred* size is what went over the wire, the *resource* size is the
+  binary after decompression. `Content-Encoding: gzip` on the response is how to
+  tell a host does it. A host that does not can serve a precompressed
+  `app.wasm.gz` or `.br` instead, if it can set the header.
 * Keep `SetHashPageNameMode(true)` unless the host can rewrite unknown paths to
   `index.html`.
 * The build uses relative asset URLs, so it works at a site root and under a
   project path like `/toolgui/` without rebuilding.
+
+## Why not TinyGo
+
+TinyGo makes much smaller binaries, but it cannot build a ToolGUI app. Checked
+with TinyGo 0.40.1:
+
+* It supports Go up to 1.25, and this module needs 1.27.
+* Past that, its standard library has no `encoding/json/v2` and no `uuid`,
+  which `tgjson`, `tgframe` and `tgutil` import.
+
+Worth another look when TinyGo catches up with the Go release.
 
 [secure context]: https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
