@@ -15,7 +15,8 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf)
 * `c` is Parent container.
 * `img` is the image.
   * `image.Image`: an image.Image
-  * `[]byte`: a byte array
+  * `[]byte`: a byte array, MIME is detected from magic bytes
+    (png, jpeg, gif, webp, bmp, ico); falls back to `Format` if unknown
   * `string`: a url or base64 encoded image
     * example:
       * url: `https://http.cat/100`
@@ -33,7 +34,8 @@ type ImageConf struct {
 	// Width is the width of the image (e.g. "100px", "50%")
 	Width string
 
-	// Format is the format of the image, default is "png"
+	// Format is the format of the image, default is "png".
+	// For []byte, the MIME is detected from magic bytes; Format is the fallback.
 	Format ImageFormat
 }
 ```
