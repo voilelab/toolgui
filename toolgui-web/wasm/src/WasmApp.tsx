@@ -1,12 +1,13 @@
 import React, { Component } from "react"
 
 import { App, AppConf, dispatchPack, UpdateEvent } from "@toolgui-web/lib"
-import { Backend } from "./api/backend"
+import { Backend, LoadProgress } from "./api/backend"
 
 interface WasmAppState {
   appConf: AppConf | null
   pageName: string
   error: string | null
+  progress: LoadProgress | null
 }
 
 // pageNameFromHash reads the page off the URL. A static host cannot route
@@ -44,6 +45,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
       appConf: null,
       pageName: '',
       error: null,
+      progress: null,
     }
     this.appEle = React.createRef()
 
@@ -56,7 +58,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
       }
 
       dispatchPack(app, pack)
-    }, this.embed)
+    }, this.embed, (progress) => { this.setState({ progress }) })
 
     this.setup().catch((e) => { this.fail(e) })
   }
@@ -104,7 +106,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
     }
 
     if (!this.state.appConf) {
-      return <></>
+      return <Loading progress={this.state.progress} />
     }
 
     return (
@@ -123,4 +125,27 @@ export class WasmApp extends Component<{}, WasmAppState> {
         download={(token) => this.backend.downloadFile(token)} />
     )
   }
+}
+
+// Loading shows the download of app.wasm, which is most of a first visit.
+function Loading({ progress }: { progress: LoadProgress | null }) {
+  if (!progress) {
+    return <div className="tg-loading"><progress /></div>
+  }
+
+  if (progress.done) {
+    return <div className="tg-loading"><progress /><p>Starting…</p></div>
+  }
+
+  const { loaded, total } = progress
+  return (
+    <div className="tg-loading">
+      {total > 0 ? <progress value={loaded} max={total} /> : <progress />}
+      <p>Loading {formatMB(loaded)}{total > 0 ? ` / ${formatMB(total)}` : ''}</p>
+    </div>
+  )
+}
+
+function formatMB(n: number): string {
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
 }

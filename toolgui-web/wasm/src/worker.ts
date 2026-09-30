@@ -123,12 +123,54 @@ async function boot(wasmExecURL: string, wasmURL: string) {
 
 async function instantiate(wasmURL: string, importObject: WebAssembly.Imports) {
   try {
-    return await WebAssembly.instantiateStreaming(fetch(wasmURL), importObject)
+    return await WebAssembly.instantiateStreaming(fetchWithProgress(wasmURL), importObject)
   } catch {
     // A host that serves the binary as something other than application/wasm.
-    const bs = await (await fetch(wasmURL)).arrayBuffer()
+    const bs = await (await fetchWithProgress(wasmURL)).arrayBuffer()
     return await WebAssembly.instantiate(bs, importObject)
   }
+}
+
+// fetchWithProgress fetches url and posts a 'progress' message per chunk read.
+//
+// total is Content-Length only when the response is not compressed: with a
+// Content-Encoding it is the compressed size, while the body counts
+// decompressed bytes. Otherwise total is 0 and only loaded means anything.
+async function fetchWithProgress(url: string): Promise<Response> {
+  const resp = await fetch(url)
+  if (!resp.ok) {
+    throw new Error(`fetch ${url}: ${resp.status} ${resp.statusText}`)
+  }
+
+  if (!resp.body) {
+    return resp
+  }
+
+  const encoding = resp.headers.get('Content-Encoding')
+  const total = !encoding || encoding === 'identity'
+    ? Number(resp.headers.get('Content-Length')) || 0
+    : 0
+
+  let loaded = 0
+  ctx.postMessage({ kind: 'progress', loaded, total })
+
+  const counted = resp.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      loaded += chunk.byteLength
+      ctx.postMessage({ kind: 'progress', loaded, total })
+      controller.enqueue(chunk)
+    },
+    flush() {
+      ctx.postMessage({ kind: 'progress', loaded, total, done: true })
+    },
+  }))
+
+  // Headers carried over: instantiateStreaming checks the Content-Type.
+  return new Response(counted, {
+    status: resp.status,
+    statusText: resp.statusText,
+    headers: resp.headers,
+  })
 }
 
 // upload copies a picked file into the file system Go reads uploads from, and
