@@ -1,4 +1,4 @@
-import React, { useContext } from "react"
+import React, { useContext, useEffect, useRef } from "react"
 import { Button } from "@mantine/core"
 
 import { Props } from '../component_interface'
@@ -12,13 +12,77 @@ import { FormSubmitContext } from "./form_context"
 // transport read the file out of, so waiting costs no heap.
 const REVOKE_DELAY_MS = 10000
 
+// saveBlob hands blob to the browser's download path under filename.
+function saveBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.setAttribute('download', filename)
+  link.href = url
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  setTimeout(() => { URL.revokeObjectURL(url) }, REVOKE_DELAY_MS)
+}
+
 // TDownloadFile saves a file the page offered, fetched by the token the
 // component carries rather than out of the component itself.
 //
 // The href is a blob URL made here, so there is no URI for Go to put in front
 // of the DOM. Saving one still wants an anchor: a click is the only thing that
 // reaches the browser's download path, and React has nothing for it.
-export function TDownloadFile({ node, update, download }: Props) {
+export function TDownloadFile(props: Props) {
+  return props.node.props.lazy
+    ? <TDownloadFileLazy {...props} />
+    : <TDownloadFileEager {...props} />
+}
+
+// TDownloadFileLazy is DownloadFileFunc: the click goes first and the file is
+// made by the run it starts. That run's pack carries a new serial, and a
+// serial arriving after this button's own click is the file to save.
+function TDownloadFileLazy({ node, update, download }: Props) {
+  const color = mantineColor(node.props.color)
+
+  // Set by a click, cleared by the save it asked for. A serial that shows up
+  // without one, as on a remount, saves nothing.
+  const pending = useRef(false)
+
+  const { serial, token, filename } = node.props
+
+  useEffect(() => {
+    if (!serial || !pending.current) {
+      return
+    }
+    pending.current = false
+
+    download(token).then((res) => {
+      if (!res.ok || !res.blob) {
+        console.error('download', res.error)
+        return
+      }
+      saveBlob(res.blob, filename)
+    }).catch((e) => { console.error(e) })
+  }, [serial])
+
+  return (
+    <Button id={node.props.id}
+      color={color}
+      variant={color ? 'filled' : 'default'}
+      disabled={node.props.disabled}
+      onClick={() => {
+        pending.current = true
+        update({
+          type: "click",
+          id: node.props.id,
+        })
+      }}>
+      {node.props.text}
+    </Button>
+  )
+}
+
+function TDownloadFileEager({ node, update, download }: Props) {
   const color = mantineColor(node.props.color)
 
   // Null outside a form. Inside one, an update only queues: nothing reruns the
@@ -55,16 +119,7 @@ export function TDownloadFile({ node, update, download }: Props) {
       return
     }
 
-    const url = URL.createObjectURL(res.blob)
-
-    const link = document.createElement('a')
-    link.setAttribute('download', filename)
-    link.href = url
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-
-    setTimeout(() => { URL.revokeObjectURL(url) }, REVOKE_DELAY_MS)
+    saveBlob(res.blob, filename)
 
     if (!inForm) {
       report()

@@ -700,4 +700,15 @@ describe('Input', () => {
       expect(Cypress.Buffer.compare(got, pattern())).to.eq(0)
     })
   })
+
+  // DownloadFileFunc makes the file on the run the click starts, so the save
+  // follows that run's pack.
+  it('Download File Func saves the file made on click', () => {
+    cy.visit('/input')
+    cy.get('button').contains('Export a timestamp').click()
+    cy.contains('Timestamp exported!').should('exist')
+
+    cy.readFile(path.join(downloadsFolder, 'now.txt'))
+      .should('match', /^\d{4}-\d{2}-\d{2}T/)
+  })
 })

@@ -2,6 +2,7 @@ package tcinput
 
 import (
 	"crypto/md5"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
@@ -23,6 +24,15 @@ type downloadFileComponent struct {
 	MIME     string       `json:"mime"`
 	Color    tcutil.Color `json:"color"`
 	Disabled bool         `json:"disabled"`
+
+	// Lazy marks a [DownloadFileFunc] button: the click comes first, and the
+	// file follows in the pack of the run it started.
+	Lazy bool `json:"lazy,omitzero"`
+
+	// Serial is new on every run that made the file, so the client tells a
+	// fresh file from one it has saved even when the bytes, and so the
+	// token, are the same.
+	Serial string `json:"serial,omitzero"`
 }
 
 func newDownloadFileComponent(text string) *downloadFileComponent {
@@ -101,6 +111,57 @@ func DownloadFile(c *tgframe.Container, text string, body []byte,
 
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
+}
+
+// DownloadFileFunc is [DownloadFile] with the file made on click rather than
+// on every run: gen is called only by the run a click on the button starts,
+// and the client saves what it returns once that run's pack arrives. It spares
+// a page the "prepare, then download" pair of buttons, and a run that is not
+// about the file the cost of building it.
+//
+// An error from gen is shown under the button, which stays so the app user can
+// try again. It reports whether this run is handling a click on it.
+func DownloadFileFunc(c *tgframe.Container, text string,
+	gen func() ([]byte, error), conf ...*DownloadFileConf) bool {
+	cf := tgframe.OneConf("DownloadFileFunc", conf)
+
+	comp := downloadFileComponentFor(text, cf)
+	comp.Lazy = true
+	comp.Filename = cf.Filename
+
+	if c.State == nil {
+		c.Fail(tgutil.NewError("DownloadFileFunc needs a state to keep the file in"))
+		return false
+	}
+
+	if c.State.GetClickID() != comp.ID {
+		c.AddComponent(comp)
+		return false
+	}
+
+	body, err := gen()
+	if err != nil {
+		c.AddComponent(comp)
+		c.Fail(tgutil.Errorf("make the file to download: %w", err))
+		return true
+	}
+
+	if comp.Filename == "" {
+		comp.Filename = fmt.Sprintf("%x", md5.Sum(body))
+	}
+
+	download, err := c.State.SetDownload(comp.ID, comp.Filename, comp.MIME, body)
+	if err != nil {
+		c.AddComponent(comp)
+		c.Fail(tgutil.Errorf("store the file to download: %w", err))
+		return true
+	}
+
+	comp.Token = download.Token()
+	comp.Serial = rand.Text()
+
+	c.AddComponent(comp)
+	return true
 }
 
 // DownloadFileClicked reports whether the click this run is handling is the
