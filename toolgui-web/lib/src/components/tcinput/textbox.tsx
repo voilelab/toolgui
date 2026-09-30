@@ -1,12 +1,20 @@
 import React, { useState } from "react"
 import { Text, TextInput } from "@mantine/core"
 
-import { stateValues } from "../state"
+import { stateValues, syncResetKey } from "../state"
 import { Props } from "../component_interface"
 import { inputBorderStyles } from "../../util/color"
 
-export function TTextbox({ node, update }: Props) {
-  const [value, setValue] = useState<string>(stateValues[node.props.id] || node.props.default)
+// A new reset_key remounts the input, which drops the typed value.
+export function TTextbox(props: Props) {
+  return <TextboxInner key={props.node.props.reset_key ?? ''} {...props} />
+}
+
+function TextboxInner({ node, update }: Props) {
+  const [value, setValue] = useState<string>(() => {
+    syncResetKey(node.props.id, node.props.reset_key)
+    return stateValues[node.props.id] || node.props.default
+  })
 
   return (
     <TextInput

@@ -422,3 +422,70 @@ func TestToggleDefault(t *testing.T) {
 		}
 	})
 }
+
+// TestResetKey pins that a new ResetKey drops the typed text and restores
+// Default, while an unchanged one keeps it.
+func TestResetKey(t *testing.T) {
+	textbox := func(state *tgframe.State, key string) string {
+		return tcinput.Textbox(defaultContainer(state), "Title",
+			&tcinput.TextboxConf{Default: "toolgui", ResetKey: key})
+	}
+	textarea := func(state *tgframe.State, key string) string {
+		return tcinput.Textarea(defaultContainer(state), "Intro",
+			&tcinput.TextareaConf{Default: "toolgui", ResetKey: key})
+	}
+
+	for name, tc := range map[string]struct {
+		id   string
+		call func(*tgframe.State, string) string
+	}{
+		"textbox":  {"textbox_component_Title", textbox},
+		"textarea": {"textarea_component_Intro", textarea},
+	} {
+		t.Run(name, func(t *testing.T) {
+			state := tgframe.NewState()
+			tc.call(state, "a")
+			state.Set(tc.id, "typed")
+
+			if got := tc.call(state, "a"); got != "typed" {
+				t.Errorf("same key = %q, want typed", got)
+			}
+			if got := tc.call(state, "b"); got != "toolgui" {
+				t.Errorf("new key = %q, want the default", got)
+			}
+
+			state.Set(tc.id, "typed again")
+			if got := tc.call(state, "b"); got != "typed again" {
+				t.Errorf("after reset = %q, want typed again", got)
+			}
+		})
+	}
+
+	// A value set before the first draw is an initial value, not a stale one.
+	t.Run("initial value", func(t *testing.T) {
+		state := tgframe.NewState()
+		state.Set("textbox_component_Title", "preset")
+
+		if got := textbox(state, "a"); got != "preset" {
+			t.Errorf("Textbox = %q, want preset", got)
+		}
+	})
+
+	// The recorded key must not live where another component's value can.
+	t.Run("id collision", func(t *testing.T) {
+		state := tgframe.NewState()
+		draw := func() string {
+			c := defaultContainer(state)
+			tcinput.Textbox(c, "A", &tcinput.TextboxConf{
+				Base: tgframe.Base{ID: "foo"}, ResetKey: "k"})
+			return tcinput.Textbox(c, "B",
+				&tcinput.TextboxConf{Base: tgframe.Base{ID: "foo#reset_key"}})
+		}
+
+		draw()
+		state.Set("textbox_component_foo#reset_key", "typed")
+		if got := draw(); got != "typed" {
+			t.Errorf("colliding Textbox = %q, want typed", got)
+		}
+	})
+}

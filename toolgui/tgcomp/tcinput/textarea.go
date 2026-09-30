@@ -10,10 +10,11 @@ var textareaComponentName = "textarea_component"
 
 type textareaComponent struct {
 	*tgframe.BaseComponent
-	Label   string       `json:"label"`
-	Height  int          `json:"height"`
-	Default string       `json:"default"`
-	Color   tcutil.Color `json:"color"`
+	Label    string       `json:"label"`
+	Height   int          `json:"height"`
+	Default  string       `json:"default"`
+	ResetKey string       `json:"reset_key"`
+	Color    tcutil.Color `json:"color"`
 }
 
 func newTextareaComponent(label string) *textareaComponent {
@@ -36,6 +37,10 @@ type TextareaConf struct {
 	// Default is the default value of the textarea.
 	Default string
 
+	// ResetKey drops the app user's input and restores Default whenever it
+	// changes, e.g. a hash of the file the text was filled from.
+	ResetKey string
+
 	// Color defines the color of the textarea
 	Color tcutil.Color
 }
@@ -51,10 +56,12 @@ func Textarea(c *tgframe.Container, label string, conf ...*TextareaConf) string 
 	}
 
 	comp.Default = cf.Default
+	comp.ResetKey = cf.ResetKey
 	comp.Color = cf.Color
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
+	resetOnKeyChange(c.State, comp.ID, comp.ResetKey)
 	val, ok := c.State.Get[string](comp.ID)
 	if !ok {
 		return comp.Default
