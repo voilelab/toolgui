@@ -6,5 +6,6 @@ export interface UploadResult {
 }
 
 // componentID says which fileupload the file belongs to, so a transport can
-// store it per component instead of per file name.
+// store it per component instead of per file name. A multi-file upload
+// appends the file's index: `${componentID}/${i}`.
 export type UploadFunc = (file: File, componentID: string) => Promise<UploadResult>

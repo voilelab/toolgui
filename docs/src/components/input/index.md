@@ -37,6 +37,7 @@ empty hands back a pointer, and `nil` is that emptiness. There is no third case.
 | `TimePicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
 | `DateTimePicker` | `*time.Time` | `*time.Time` | `Default`, `nil` for none |
 | `FileUpload` | — | `*FileObject` | `nil` |
+| `MultiFileUpload` | — | `[]*FileObject` | `nil` |
 
 Two things follow from the table that are worth saying out loud:
 
@@ -46,7 +47,7 @@ Two things follow from the table that are worth saying out loud:
   add up without a conversion in between. `DatePicker` keeps only the day, at
   midnight UTC; `TimePicker` keeps only the clock.
 
-`FileUpload` is the one input with no `Default`: a browser refuses to have a
+`FileUpload` and `MultiFileUpload` are the inputs with no `Default`: a browser refuses to have a
 file input's value set from script, so a default would read back in Go while the
 box on screen stayed empty.
 

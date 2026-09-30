@@ -14,6 +14,7 @@ type fileuploadComponent struct {
 	Label    string `json:"label"`
 	Accept   string `json:"accept"`
 	Disabled bool   `json:"disabled"`
+	Multiple bool   `json:"multiple"`
 }
 
 func newFileUploadComponent(label, accept string) *fileuploadComponent {
@@ -106,4 +107,46 @@ func FileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadC
 	fileObj.Size = int(fileObj.file.Size())
 
 	return fileObj
+}
+
+// MultiFileUpload create a fileupload that takes more than one file and return
+// the selected files, in the order they were picked.
+// Return nil if no file is selected.
+//
+// The i-th file is stored under [tgframe.FileKey] of the component id and i.
+func MultiFileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadConf) []*FileObject {
+	cf := tgframe.OneConf("MultiFileUpload", conf)
+
+	comp := newFileUploadComponent(label, accept)
+	comp.Disabled = cf.Disabled
+	comp.Multiple = true
+	tgframe.SetConfID(comp, cf)
+	c.AddComponent(comp)
+
+	var fileObjs []*FileObject
+	err := c.State.GetObject(comp.ID, &fileObjs)
+	if err != nil {
+		c.Fail(tgutil.Errorf("failed to read the picked files: %w", err))
+		return nil
+	}
+
+	if len(fileObjs) == 0 || len(fileObjs) > tgframe.MaxFileKeyIndex {
+		return nil
+	}
+
+	for i, fileObj := range fileObjs {
+		if fileObj == nil {
+			return nil
+		}
+
+		fileObj.file = c.State.GetFile(tgframe.FileKey(comp.ID, i))
+		if fileObj.file == nil {
+			// Part of the pick never landed: read as no pick, like FileUpload.
+			return nil
+		}
+
+		fileObj.Size = int(fileObj.file.Size())
+	}
+
+	return fileObjs
 }

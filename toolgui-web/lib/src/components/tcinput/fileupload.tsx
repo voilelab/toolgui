@@ -1,45 +1,122 @@
-import React from "react";
+import React, { useState } from "react";
 import { FileInput } from "@mantine/core"
 
 import { stateValues } from "../state"
 import { Props } from "../component_interface";
 
+interface FileMeta {
+  name: string
+  type: string
+  size: number
+}
+
+function fileMeta(file: File): FileMeta {
+  return { name: file.name, type: file.type, size: file.size }
+}
+
+// MAX_FILES is tgframe.MaxFileKeyIndex: the most files one pick may hold.
+const MAX_FILES = 1000
+
+// picks is each multi-file component's latest pick and the upload in flight,
+// so a new pick stops the old one and waits for its last upload to land.
+const picks: Record<string, { gen: number, pending: Promise<unknown> }> = {}
+
 export function TFileupload({ node, update, upload }: Props) {
-  const handleFileChange = async (file: File | null) => {
-    if (!file) {
-      return
-    }
+  const id: string = node.props.id
+  const multiple: boolean = !!node.props.multiple
+  const [error, setError] = useState<string | null>(null)
 
-    const val = await upload(file, node.props.id)
-    if (!val.ok) {
-      console.error(val)
-      return
-    }
-
-    const newFile = {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-    }
-
-    stateValues[node.props.id] = newFile
+  const send = (value: FileMeta | FileMeta[]) => {
+    stateValues[id] = value
     update({
       type: "input",
-      id: node.props.id,
-      value: newFile,
+      id: id,
+      value: value,
     })
+  }
+
+  const handleFileChange = async (picked: File | File[] | null) => {
+    let value: FileMeta | FileMeta[]
+
+    if (multiple) {
+      const files = (picked as File[] | null) ?? []
+      if (files.length === 0) {
+        return
+      }
+
+      if (files.length > MAX_FILES) {
+        setError(`Pick at most ${MAX_FILES} files`)
+        return
+      }
+      setError(null)
+
+      const pick = picks[id] ??= { gen: 0, pending: Promise.resolve() }
+      const gen = ++pick.gen
+
+      // Clear first, so no rerun reads the old pick's names over new bytes.
+      send([])
+      await pick.pending
+
+      // The i-th file goes under `${id}/${i}`, the key Go reads it from.
+      for (let i = 0; i < files.length; i++) {
+        if (pick.gen !== gen) {
+          return
+        }
+
+        const p = upload(files[i], `${id}/${i}`)
+        pick.pending = p.catch(() => { })
+
+        const val = await p
+        if (!val.ok) {
+          console.error(val)
+          setError('Upload failed')
+          return
+        }
+      }
+
+      if (pick.gen !== gen) {
+        return
+      }
+
+      value = files.map(fileMeta)
+    } else {
+      const file = picked as File | null
+      if (!file) {
+        return
+      }
+
+      const val = await upload(file, id)
+      if (!val.ok) {
+        console.error(val)
+        return
+      }
+
+      value = fileMeta(file)
+    }
+
+    send(value)
   };
 
-  const file = stateValues[node.props.id]
+  const value = stateValues[id]
+  let placeholder = 'No file uploaded'
+  if (Array.isArray(value)) {
+    if (value.length > 0) {
+      placeholder = value.map((f: FileMeta) => f.name).join(', ')
+    }
+  } else if (value) {
+    placeholder = value.name
+  }
 
   return (
     <FileInput
-      id={node.props.id}
-      name={node.props.id}
+      id={id}
+      name={id}
       label={node.props.label}
       accept={node.props.accept}
       disabled={node.props.disabled}
-      placeholder={file ? file.name : 'No file uploaded'}
+      multiple={multiple}
+      error={error}
+      placeholder={placeholder}
       mb="md"
       onChange={handleFileChange}
     />

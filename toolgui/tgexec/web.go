@@ -431,8 +431,9 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 
 	// A file is kept under the component it belongs to, so an id the page
 	// never drew names a file nothing reads or releases. Taking one would let
-	// a caller fill the disk under a new name every time.
-	if !state.HasComponentID(componentID) {
+	// a caller fill the disk under a new name every time. A multi-file upload
+	// names its component plus an index.
+	if !state.HasFileKey(componentID) {
 		http.Error(w, "Component ID is not on the page", http.StatusForbidden)
 		return
 	}

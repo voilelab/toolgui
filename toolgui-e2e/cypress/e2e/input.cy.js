@@ -63,16 +63,30 @@ describe('Input', () => {
   it('FileUpload input', () => {
     cy.visit('/input')
     // accept only filters the file picker, so it is the whole of the limit.
-    cy.get('input[type=file]').should('have.attr', 'accept', '.jpg,.png')
+    cy.get('input[name=fileupload_component_FileUpload]')
+      .should('have.attr', 'accept', '.jpg,.png')
 
     // Mantine keeps the file input hidden behind its own control, so the
     // file is handed to the input itself.
-    cy.get('input[type=file]').selectFile('cypress/fixtures/example.png', {
-      force: true,
-    })
+    cy.get('input[name=fileupload_component_FileUpload]')
+      .selectFile('cypress/fixtures/example.png', { force: true })
     cy.contains('FileUpload filename: example.png').should('exist')
     // The bytes reach Go, not just the name.
     cy.contains(/FileUpload bytes length: [1-9]\d*/).should('exist')
+  })
+
+  it('MultiFileUpload input', () => {
+    cy.visit('/input')
+    cy.get('input[name=fileupload_component_MultiFileUpload]')
+      .should('have.attr', 'multiple')
+
+    cy.get('input[name=fileupload_component_MultiFileUpload]').selectFile([
+      'cypress/fixtures/example.png',
+      { contents: Cypress.Buffer.from('hello'), fileName: 'b.png' },
+    ], { force: true })
+    cy.contains(/MultiFileUpload: example\.png \([1-9]\d* bytes\)/)
+      .should('exist')
+    cy.contains('MultiFileUpload: b.png (5 bytes)').should('exist')
   })
 
   it('Checkbox', () => {

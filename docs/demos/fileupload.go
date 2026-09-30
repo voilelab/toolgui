@@ -35,3 +35,14 @@ func fileuploadDemo(p *tgframe.Params) error {
 	// ANCHOR_END: demo
 	return nil
 }
+
+func multiFileUploadDemo(p *tgframe.Params) error {
+	// ANCHOR: multi
+	fileObjs := tgcomp.MultiFileUpload(p.Main, "MultiFileUpload", ".jpg,.png")
+	for _, fileObj := range fileObjs {
+		tgcomp.Text(p.Main, fmt.Sprintf("MultiFileUpload: %s (%d bytes)",
+			fileObj.Name, fileObj.Size))
+	}
+	// ANCHOR_END: multi
+	return nil
+}

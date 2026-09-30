@@ -70,6 +70,23 @@ defer fp.Close()
 img, err := jpeg.Decode(fp)
 ```
 
+## MultiFileUpload
+
+`MultiFileUpload` takes more than one file at once, and returns them in the
+order they were picked. It shares `FileUploadConf` with `FileUpload`.
+
+```go
+func MultiFileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadConf) []*FileObject
+```
+
+* Return the selected file objects. nil if no file is selected, or while any
+  of them is still uploading.
+* A pick holds at most `tgframe.MaxFileKeyIndex` files.
+
+```go
+{{#include ../../../demos/fileupload.go:multi}}
+```
+
 <div data-toolgui-demo="fileupload" data-toolgui-demo-height="640">
 
 ![fileupload component](fileupload.png)

@@ -6,6 +6,8 @@ import (
 	"maps"
 	"math"
 	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
@@ -114,6 +116,50 @@ func (s *State) HasComponentID(id string) bool {
 	return s.runIDs[id]
 }
 
+// MaxFileKeyIndex caps the index in a [FileKey], so a caller cannot fill the
+// disk by uploading under a new index every time.
+const MaxFileKeyIndex = 1000
+
+// FileKey is the key the i-th file of a multi-file upload under id is stored
+// at.
+func FileKey(id string, i int) string {
+	return id + "/" + strconv.Itoa(i)
+}
+
+// splitFileKey is the inverse of [FileKey].
+func splitFileKey(key string) (string, int, bool) {
+	i := strings.LastIndexByte(key, '/')
+	if i < 0 {
+		return "", 0, false
+	}
+
+	n, err := strconv.Atoi(key[i+1:])
+	if err != nil || n < 0 || n >= MaxFileKeyIndex || FileKey(key[:i], n) != key {
+		return "", 0, false
+	}
+
+	return key[:i], n, true
+}
+
+// HasFileKey reports whether key is one an upload may be stored under: a
+// drawn component's id, or a [FileKey] of one.
+func (s *State) HasFileKey(key string) bool {
+	if s.HasComponentID(key) {
+		return true
+	}
+
+	id, _, ok := splitFileKey(key)
+	return ok && s.HasComponentID(id)
+}
+
+// removeIndexedFiles drops every [FileKey] file under id.
+func (s *State) removeIndexedFiles(id string) {
+	s.files.removeWhere(func(key string) bool {
+		owner, _, ok := splitFileKey(key)
+		return ok && owner == id
+	})
+}
+
 // SetClickID set the id of clicked button.
 func (s *State) SetClickID(id string) {
 	s.rwLock.Lock()
@@ -145,6 +191,7 @@ func (s *State) Delete(key string) {
 	s.rwLock.Unlock()
 
 	s.files.remove(key)
+	s.removeIndexedFiles(key)
 	s.downloads.remove(key)
 }
 
@@ -347,7 +394,14 @@ func (s *State) NewFile(name string) (*File, error) {
 }
 
 // PutFile stores file under key, dropping whatever the key held.
+//
+// A multi-file pick is uploaded in order from index 0, so a file at index 0
+// starts a new pick and drops the rest of the previous one.
 func (s *State) PutFile(key string, file *File) {
+	if id, i, ok := splitFileKey(key); ok && i == 0 {
+		s.removeIndexedFiles(id)
+	}
+
 	s.files.put(key, file)
 }
 
