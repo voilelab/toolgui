@@ -571,8 +571,9 @@ describe('Input', () => {
 
     const thumb = 'div[id=slider_component_threshold] [role=slider]'
     const toggle = 'input[id=toggle_component_enabled]'
+    const notify = 'input[id=checkbox_component_notify]'
 
-    result().contains('threshold = 0, enabled = false').should('exist')
+    result().contains('threshold = 0, enabled = false, notify = false').should('exist')
 
     // Inside a form nothing reruns until Submit, so the values move on screen
     // while Go keeps reporting the ones it last received. The on-screen half
@@ -591,11 +592,19 @@ describe('Input', () => {
     cy.get(toggle).click({ force: true })
     cy.get(toggle).should('be.checked')
 
+    // The Checkbox is controlled the same way (TG-84).
+    cy.get(notify).click()
+    cy.get(notify).should('be.checked')
+    cy.get(notify).click()
+    cy.get(notify).should('not.be.checked')
+    cy.get(notify).click()
+    cy.get(notify).should('be.checked')
+
     // And through all of that Go has heard nothing.
-    result().contains('threshold = 0, enabled = false').should('exist')
+    result().contains('threshold = 0, enabled = false, notify = false').should('exist')
 
     result().contains('Submit').click()
-    result().contains('threshold = 25, enabled = true').should('exist')
+    result().contains('threshold = 25, enabled = true, notify = true').should('exist')
   })
 
   it('Form is submitted by a button inside it', () => {

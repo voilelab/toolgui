@@ -59,7 +59,7 @@ holds what was typed before it.
 
 ### Any widget belongs in a form
 
-A slider or a toggle inside a form holds its value like the rest of them, and
+A slider, a toggle or a checkbox inside a form holds its value like the rest of them, and
 hands it over on submit rather than on the drag or the click:
 
 ```go

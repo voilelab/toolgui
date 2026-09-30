@@ -42,16 +42,19 @@ func widgetFormDemo(p *tgframe.Params) error {
 	// ANCHOR: widget
 	var threshold int64
 	var enabled bool
+	var notify bool
 
 	tgcomp.Form(p.Main, &tgcomp.FormConf{ID: "widget_form"}).
 		With(func(c *tgframe.Container) {
 			threshold = tgcomp.Slider(c, "threshold",
 				(&tcinput.SliderConf[int64]{}).SetMax(100).SetStep(25))
 			enabled = tgcomp.Toggle(c, "enabled")
+			notify = tgcomp.Checkbox(c, "notify")
 		})
 
 	tgcomp.Text(p.Main,
-		fmt.Sprintf("threshold = %d, enabled = %v", threshold, enabled))
+		fmt.Sprintf("threshold = %d, enabled = %v, notify = %v",
+			threshold, enabled, notify))
 	// ANCHOR_END: widget
 	return nil
 }
