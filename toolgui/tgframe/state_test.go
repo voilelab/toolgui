@@ -412,3 +412,43 @@ func TestHasFileKey(t *testing.T) {
 		}
 	}
 }
+
+// TestIndexedFilesCleanup checks index 0 starts a new pick, and Delete drops
+// a component's indexed files.
+func TestIndexedFilesCleanup(t *testing.T) {
+	s := NewState()
+	defer s.Destroy()
+
+	for i := range 3 {
+		if _, err := s.SetFile(FileKey("up", i), "a", []byte("x")); err != nil {
+			t.Fatalf("SetFile: %v", err)
+		}
+	}
+
+	if _, err := s.SetFile(FileKey("other", 1), "a", []byte("x")); err != nil {
+		t.Fatalf("SetFile: %v", err)
+	}
+
+	if _, err := s.SetFile(FileKey("up", 0), "b", []byte("y")); err != nil {
+		t.Fatalf("SetFile: %v", err)
+	}
+
+	if s.GetFile(FileKey("up", 0)) == nil {
+		t.Error("expect the new index 0")
+	}
+
+	for _, key := range []string{FileKey("up", 1), FileKey("up", 2)} {
+		if s.GetFile(key) != nil {
+			t.Errorf("expect %s of the previous pick dropped", key)
+		}
+	}
+
+	s.Delete("up")
+	if s.GetFile(FileKey("up", 0)) != nil {
+		t.Error("expect Delete to drop indexed files")
+	}
+
+	if s.GetFile(FileKey("other", 1)) == nil {
+		t.Error("expect another component's file kept")
+	}
+}

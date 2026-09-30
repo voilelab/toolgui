@@ -165,6 +165,23 @@ func (s *fileStore) remove(key string) {
 	}
 }
 
+// removeWhere drops every file whose key match, and their bytes with them.
+func (s *fileStore) removeWhere(match func(key string) bool) {
+	s.lock.Lock()
+	var olds []*File
+	for key, file := range s.files {
+		if match(key) {
+			olds = append(olds, file)
+			delete(s.files, key)
+		}
+	}
+	s.lock.Unlock()
+
+	for _, old := range olds {
+		old.body.remove()
+	}
+}
+
 func (s *fileStore) get(key string) *File {
 	s.lock.Lock()
 	defer s.lock.Unlock()

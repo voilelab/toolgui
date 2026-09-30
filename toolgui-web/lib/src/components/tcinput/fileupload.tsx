@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { FileInput } from "@mantine/core"
 
 import { stateValues } from "../state"
@@ -14,9 +14,26 @@ function fileMeta(file: File): FileMeta {
   return { name: file.name, type: file.type, size: file.size }
 }
 
+// MAX_FILES is tgframe.MaxFileKeyIndex: the most files one pick may hold.
+const MAX_FILES = 1000
+
+// picks is each multi-file component's latest pick and the upload in flight,
+// so a new pick stops the old one and waits for its last upload to land.
+const picks: Record<string, { gen: number, pending: Promise<unknown> }> = {}
+
 export function TFileupload({ node, update, upload }: Props) {
   const id: string = node.props.id
   const multiple: boolean = !!node.props.multiple
+  const [error, setError] = useState<string | null>(null)
+
+  const send = (value: FileMeta | FileMeta[]) => {
+    stateValues[id] = value
+    update({
+      type: "input",
+      id: id,
+      value: value,
+    })
+  }
 
   const handleFileChange = async (picked: File | File[] | null) => {
     let value: FileMeta | FileMeta[]
@@ -27,13 +44,38 @@ export function TFileupload({ node, update, upload }: Props) {
         return
       }
 
+      if (files.length > MAX_FILES) {
+        setError(`Pick at most ${MAX_FILES} files`)
+        return
+      }
+      setError(null)
+
+      const pick = picks[id] ??= { gen: 0, pending: Promise.resolve() }
+      const gen = ++pick.gen
+
+      // Clear first, so no rerun reads the old pick's names over new bytes.
+      send([])
+      await pick.pending
+
       // The i-th file goes under `${id}/${i}`, the key Go reads it from.
       for (let i = 0; i < files.length; i++) {
-        const val = await upload(files[i], `${id}/${i}`)
-        if (!val.ok) {
-          console.error(val)
+        if (pick.gen !== gen) {
           return
         }
+
+        const p = upload(files[i], `${id}/${i}`)
+        pick.pending = p.catch(() => { })
+
+        const val = await p
+        if (!val.ok) {
+          console.error(val)
+          setError('Upload failed')
+          return
+        }
+      }
+
+      if (pick.gen !== gen) {
+        return
       }
 
       value = files.map(fileMeta)
@@ -52,12 +94,7 @@ export function TFileupload({ node, update, upload }: Props) {
       value = fileMeta(file)
     }
 
-    stateValues[id] = value
-    update({
-      type: "input",
-      id: id,
-      value: value,
-    })
+    send(value)
   };
 
   const value = stateValues[id]
@@ -78,6 +115,7 @@ export function TFileupload({ node, update, upload }: Props) {
       accept={node.props.accept}
       disabled={node.props.disabled}
       multiple={multiple}
+      error={error}
       placeholder={placeholder}
       mb="md"
       onChange={handleFileChange}
