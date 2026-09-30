@@ -10,3 +10,14 @@ export function clearState() {
     stateValues = {}
     stateGeneration++
 }
+
+// syncResetKey drops the client's value for id when resetKey differs from the
+// one last seen, so the input falls back to its default. Idempotent.
+export function syncResetKey(id: string, resetKey: string | undefined) {
+    const keyID = id + '#reset_key'
+    const key = resetKey ?? ''
+    if (keyID in stateValues && stateValues[keyID] !== key) {
+        delete stateValues[id]
+    }
+    stateValues[keyID] = key
+}

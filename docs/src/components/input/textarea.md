@@ -27,6 +27,10 @@ type TextareaConf struct {
 	// Default is the default value of the textarea.
 	Default string
 
+	// ResetKey drops the app user's input and restores Default whenever it
+	// changes, e.g. a hash of the file the text was filled from.
+	ResetKey string
+
 	// Color defines the color of the textarea
 	Color tcutil.Color
 }

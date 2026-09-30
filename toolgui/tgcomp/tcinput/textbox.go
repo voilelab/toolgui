@@ -16,6 +16,7 @@ type textboxComponent struct {
 	Password    bool         `json:"password"`
 	Disabled    bool         `json:"disabled"`
 	Default     string       `json:"default"`
+	ResetKey    string       `json:"reset_key"`
 	Color       tcutil.Color `json:"color"`
 }
 
@@ -49,6 +50,10 @@ type TextboxConf struct {
 	// Default value of the textbox.
 	Default string
 
+	// ResetKey drops the app user's input and restores Default whenever it
+	// changes, e.g. a hash of the file the text was filled from.
+	ResetKey string
+
 	// Color defines the color of the textbox
 	Color tcutil.Color
 }
@@ -64,13 +69,31 @@ func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
 	comp.Disabled = cf.Disabled
 	comp.Color = cf.Color
 	comp.Default = cf.Default
+	comp.ResetKey = cf.ResetKey
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
+	resetOnKeyChange(c.State, comp.ID, comp.ResetKey)
 	val, ok := c.State.Get[string](comp.ID)
 	if !ok {
 		return comp.Default
 	}
 
 	return val
+}
+
+// resetOnKeyChange deletes the value under id when resetKey differs from the
+// one seen last run. The first sighting only records it, so a value set
+// before the first draw survives.
+func resetOnKeyChange(s *tgframe.State, id, resetKey string) {
+	keyID := id + "#reset_key"
+	last, ok := s.Get[string](keyID)
+	if ok && last == resetKey {
+		return
+	}
+
+	if ok {
+		s.Delete(id)
+	}
+	s.Set(keyID, resetKey)
 }
