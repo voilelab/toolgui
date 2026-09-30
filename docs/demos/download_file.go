@@ -1,6 +1,8 @@
 package demos
 
 import (
+	"time"
+
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -25,5 +27,22 @@ func downloadFileDemo(p *tgframe.Params) error {
 		tgcomp.Text(p.Main, "Megabyte saved!")
 	}
 	// ANCHOR_END: demo
+	return nil
+}
+
+func downloadFileFuncDemo(p *tgframe.Params) error {
+	// ANCHOR: func
+	// Made on click, so a run that is not about the file never builds it.
+	if tgcomp.DownloadFileFunc(
+		p.Main, "Export a timestamp", func() ([]byte, error) {
+			return []byte(time.Now().Format(time.RFC3339)), nil
+		},
+		&tgcomp.DownloadFileConf{
+			Filename: "now.txt",
+			MIME:     "text/plain",
+		}) {
+		tgcomp.Text(p.Main, "Timestamp exported!")
+	}
+	// ANCHOR_END: func
 	return nil
 }

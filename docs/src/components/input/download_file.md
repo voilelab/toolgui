@@ -50,6 +50,26 @@ It returns whether this run is handling a click on it, the same as
 
 <div data-toolgui-demo="download_file" data-toolgui-demo-height="640"></div>
 
+## Making the file on click
+
+```go
+func DownloadFileFunc(c *tgframe.Container, text string, gen func() ([]byte, error), conf ...*DownloadFileConf) bool
+```
+
+`DownloadFileFunc` draws the same button, but calls `gen` only on the run a
+click on it starts, and the client saves the file when that run's pack
+arrives. A page no longer needs a "Prepare" button that builds the file into
+the state ahead of time, and a run that is not about the file never builds it.
+
+* `conf.Filename` defaults to the file's MD5 in hex, as with `DownloadFile`.
+* An error from `gen` is shown under the button, which stays for a retry.
+* It returns whether this run is handling a click on it, which is also
+  whether `gen` ran.
+
+```go
+{{#include ../../../demos/download_file.go:func}}
+```
+
 ## `DownloadFile` or `DownloadButton`
 
 Both draw the same button. What differs is where the bytes travel.

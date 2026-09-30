@@ -52,6 +52,15 @@ func DownloadFile(
 	return tcinput.DownloadFile(c, text, body, conf...)
 }
 
+// DownloadFileFunc create a button like [DownloadFile] whose file is made
+// by gen only when the button is clicked.
+func DownloadFileFunc(
+	c *tgframe.Container, text string, gen func() ([]byte, error),
+	conf ...*DownloadFileConf) bool {
+
+	return tcinput.DownloadFileFunc(c, text, gen, conf...)
+}
+
 // DownloadFileConf is the configuration for the DownloadFile component.
 type DownloadFileConf = tcinput.DownloadFileConf
 
