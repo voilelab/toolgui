@@ -33,6 +33,7 @@ export function TDatepicker({ node, update }: Props) {
       <TimeInput
         id={id}
         label={node.props.label}
+        mb="md"
         disabled={node.props.disabled}
         defaultValue={stored}
         onChange={(event) => { stateValues[id] = event.currentTarget.value }}
@@ -47,6 +48,7 @@ export function TDatepicker({ node, update }: Props) {
       <DateTimePicker
         id={id}
         label={node.props.label}
+        mb="md"
         disabled={node.props.disabled}
         valueFormat="YYYY-MM-DD HH:mm"
         defaultValue={stored ?
@@ -65,6 +67,7 @@ export function TDatepicker({ node, update }: Props) {
     <DateInput
       id={id}
       label={node.props.label}
+      mb="md"
       disabled={node.props.disabled}
       valueFormat="YYYY-MM-DD"
       defaultValue={stored || null}
