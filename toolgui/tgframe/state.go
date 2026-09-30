@@ -70,10 +70,10 @@ func (s *State) Clone() *State {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
 	return &State{
-		values:    maps.Clone(s.values),
-		files:     s.files,
-		downloads: s.downloads,
-		funcCache: maps.Clone(s.funcCache),
+		values:         maps.Clone(s.values),
+		files:          s.files,
+		downloads:      s.downloads,
+		funcCache:      maps.Clone(s.funcCache),
 		runIDs:         maps.Clone(s.runIDs),
 		indexedFileIDs: maps.Clone(s.indexedFileIDs),
 		menuIDs:        s.menuIDs,
