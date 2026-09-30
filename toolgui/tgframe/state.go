@@ -19,6 +19,10 @@ type State struct {
 	values    map[string]any
 	funcCache map[string]any
 
+	// resetKeys is the last reset key each component id was drawn with. It
+	// is apart from values so it cannot collide with a component's own key.
+	resetKeys map[string]string
+
 	// files is shared with the states cloned from this one, so no two of them
 	// can hand out the same path. On a server its directory waits for the
 	// first upload, so a state that never sees one leaves nothing behind; in
@@ -56,6 +60,7 @@ func NewState() *State {
 		files:     newFileStore(),
 		downloads: newDownloadStore(),
 		funcCache: make(map[string]any),
+		resetKeys: make(map[string]string),
 	}
 }
 
@@ -74,6 +79,7 @@ func (s *State) Clone() *State {
 		files:          s.files,
 		downloads:      s.downloads,
 		funcCache:      maps.Clone(s.funcCache),
+		resetKeys:      maps.Clone(s.resetKeys),
 		runIDs:         maps.Clone(s.runIDs),
 		indexedFileIDs: maps.Clone(s.indexedFileIDs),
 		menuIDs:        s.menuIDs,
@@ -195,12 +201,24 @@ func (s *State) Set(key string, v any) {
 	s.values[key] = v
 }
 
-// Delete drops what key holds -- value, uploaded file and offered download
-// alike. It is how a widget's state is released when the widget leaves the
+// SwapResetKey records resetKey for id and returns the one recorded before,
+// false when there was none.
+func (s *State) SwapResetKey(id, resetKey string) (string, bool) {
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	last, ok := s.resetKeys[id]
+	s.resetKeys[id] = resetKey
+	return last, ok
+}
+
+// Delete drops what key holds -- value, reset key, uploaded file and offered
+// download alike. It is how a widget's state is released when the widget leaves the
 // page for good.
 func (s *State) Delete(key string) {
 	s.rwLock.Lock()
 	delete(s.values, key)
+	delete(s.resetKeys, key)
 	s.rwLock.Unlock()
 
 	s.files.remove(key)

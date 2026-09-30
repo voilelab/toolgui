@@ -6,18 +6,22 @@ export var stateValues: { [key: string]: any } = {}
 // it collected against a session that is gone.
 export var stateGeneration = 0
 
+// resetKeys is the last reset_key each component id was seen with, apart from
+// stateValues so it cannot collide with a component's own key.
+var resetKeys: { [id: string]: string } = {}
+
 export function clearState() {
     stateValues = {}
+    resetKeys = {}
     stateGeneration++
 }
 
 // syncResetKey drops the client's value for id when resetKey differs from the
 // one last seen, so the input falls back to its default. Idempotent.
 export function syncResetKey(id: string, resetKey: string | undefined) {
-    const keyID = id + '#reset_key'
     const key = resetKey ?? ''
-    if (keyID in stateValues && stateValues[keyID] !== key) {
+    if (id in resetKeys && resetKeys[id] !== key) {
         delete stateValues[id]
     }
-    stateValues[keyID] = key
+    resetKeys[id] = key
 }

@@ -86,14 +86,10 @@ func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
 // one seen last run. The first sighting only records it, so a value set
 // before the first draw survives.
 func resetOnKeyChange(s *tgframe.State, id, resetKey string) {
-	keyID := id + "#reset_key"
-	last, ok := s.Get[string](keyID)
-	if ok && last == resetKey {
-		return
-	}
-
-	if ok {
+	last, ok := s.SwapResetKey(id, resetKey)
+	if ok && last != resetKey {
+		// Delete drops the recorded key too, so record it again.
 		s.Delete(id)
+		s.SwapResetKey(id, resetKey)
 	}
-	s.Set(keyID, resetKey)
 }

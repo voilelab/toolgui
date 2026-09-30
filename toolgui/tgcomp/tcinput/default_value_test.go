@@ -470,4 +470,22 @@ func TestResetKey(t *testing.T) {
 			t.Errorf("Textbox = %q, want preset", got)
 		}
 	})
+
+	// The recorded key must not live where another component's value can.
+	t.Run("id collision", func(t *testing.T) {
+		state := tgframe.NewState()
+		draw := func() string {
+			c := defaultContainer(state)
+			tcinput.Textbox(c, "A", &tcinput.TextboxConf{
+				Base: tgframe.Base{ID: "foo"}, ResetKey: "k"})
+			return tcinput.Textbox(c, "B",
+				&tcinput.TextboxConf{Base: tgframe.Base{ID: "foo#reset_key"}})
+		}
+
+		draw()
+		state.Set("textbox_component_foo#reset_key", "typed")
+		if got := draw(); got != "typed" {
+			t.Errorf("colliding Textbox = %q, want typed", got)
+		}
+	})
 }
