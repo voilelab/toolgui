@@ -28,6 +28,9 @@ import (
 // name a component the page drew, so this is the only id one may carry.
 const testComponentID = "fileupload_component_File"
 
+// testMultiComponentID is the multi-file upload the test page draws.
+const testMultiComponentID = "fileupload_component_Files"
+
 // newTestServer starts a server for an app with a single page.
 func newTestServer(t *testing.T) (*httptest.Server, *WebExecutor) {
 	t.Helper()
@@ -35,6 +38,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *WebExecutor) {
 	app := tgframe.NewApp()
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
 		tcinput.FileUpload(p.Main, "File", "")
+		tcinput.MultiFileUpload(p.Main, "Files", "")
 		return nil
 	})
 
@@ -266,7 +270,8 @@ func TestUploadWithUndeclaredComponentID(t *testing.T) {
 }
 
 // TestUploadUnderFileKey checks a multi-file upload's indexed key is taken,
-// and one past [tgframe.MaxFileKeyIndex] is refused.
+// and one past [tgframe.MaxFileKeyIndex] or under a single-file upload is
+// refused.
 func TestUploadUnderFileKey(t *testing.T) {
 	srv, e := newTestServer(t)
 	stateID := newUploadState(t, srv)
@@ -276,9 +281,10 @@ func TestUploadUnderFileKey(t *testing.T) {
 		key  string
 		want int
 	}{
-		{tgframe.FileKey(testComponentID, 1), http.StatusOK},
-		{tgframe.FileKey(testComponentID, tgframe.MaxFileKeyIndex),
+		{tgframe.FileKey(testMultiComponentID, 1), http.StatusOK},
+		{tgframe.FileKey(testMultiComponentID, tgframe.MaxFileKeyIndex),
 			http.StatusForbidden},
+		{tgframe.FileKey(testComponentID, 0), http.StatusForbidden},
 		{tgframe.FileKey("no_such_component", 0), http.StatusForbidden},
 	} {
 		resp, err := srv.Client().Do(

@@ -50,6 +50,14 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
 // ImageConf is the configuration for the Image component.
 type ImageConf = tccontent.ImageConf
 
+// ImageFormat is the format of the image.
+type ImageFormat = tccontent.ImageFormat
+
+const (
+	ImageFormatPNG  = tccontent.ImageFormatPNG
+	ImageFormatJPEG = tccontent.ImageFormatJPEG
+)
+
 // Link create a link component.
 func Link(c *tgframe.Container, text, url string, conf ...*LinkConf) {
 	tccontent.Link(c, text, url, conf...)

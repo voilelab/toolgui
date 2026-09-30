@@ -7,6 +7,8 @@ import (
 	"image"
 	"image/jpeg"
 	"image/png"
+	"net/http"
+	"strings"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -45,7 +47,8 @@ type ImageConf struct {
 	// Width is the width of the image (e.g. "100px", "50%")
 	Width string
 
-	// Format is the format of the image, default is "png"
+	// Format is the format of the image, default is "png".
+	// For []byte, the MIME is detected from magic bytes; Format is the fallback.
 	Format ImageFormat
 }
 
@@ -68,8 +71,9 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
 	case string:
 		uri = v
 	case []byte:
-		uri = fmt.Sprintf("data:image/%s;base64,%s",
-			formatStr, base64.StdEncoding.EncodeToString(v))
+		uri = fmt.Sprintf("data:%s;base64,%s",
+			detectImageMIME(v, "image/"+formatStr),
+			base64.StdEncoding.EncodeToString(v))
 	case image.Image:
 		var imageBuf bytes.Buffer
 		switch cf.Format {
@@ -107,4 +111,42 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
 	tgframe.SetConfID(comp, cf)
 
 	c.AddComponent(comp)
+}
+
+// detectImageMIME sniffs the image MIME from magic bytes, or returns fallback.
+func detectImageMIME(bs []byte, fallback string) string {
+	mime := http.DetectContentType(bs)
+	if strings.HasPrefix(mime, "image/") {
+		return mime
+	}
+	if isSVG(bs) {
+		return "image/svg+xml"
+	}
+	return fallback
+}
+
+// isSVG reports whether bs starts with an <svg> root, skipping BOM,
+// whitespace, XML declaration, comments and DOCTYPE.
+func isSVG(bs []byte) bool {
+	bs = bytes.TrimPrefix(bs, []byte("\xEF\xBB\xBF"))
+	for {
+		bs = bytes.TrimLeft(bs, " \t\r\n")
+		var end []byte
+		switch {
+		case bytes.HasPrefix(bs, []byte("<?")):
+			end = []byte("?>")
+		case bytes.HasPrefix(bs, []byte("<!--")):
+			end = []byte("-->")
+		case bytes.HasPrefix(bs, []byte("<!")):
+			end = []byte(">")
+		default:
+			return bytes.HasPrefix(bs, []byte("<svg")) && len(bs) > 4 &&
+				strings.ContainsRune(" \t\r\n>/", rune(bs[4]))
+		}
+		i := bytes.Index(bs, end)
+		if i < 0 {
+			return false
+		}
+		bs = bs[i+len(end):]
+	}
 }
