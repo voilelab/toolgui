@@ -265,6 +265,40 @@ func TestUploadWithUndeclaredComponentID(t *testing.T) {
 	}
 }
 
+// TestUploadUnderFileKey checks a multi-file upload's indexed key is taken,
+// and one past [tgframe.MaxFileKeyIndex] is refused.
+func TestUploadUnderFileKey(t *testing.T) {
+	srv, e := newTestServer(t)
+	stateID := newUploadState(t, srv)
+	state, _ := e.stateMap.Get(stateID)
+
+	for _, tc := range []struct {
+		key  string
+		want int
+	}{
+		{tgframe.FileKey(testComponentID, 1), http.StatusOK},
+		{tgframe.FileKey(testComponentID, tgframe.MaxFileKeyIndex),
+			http.StatusForbidden},
+		{tgframe.FileKey("no_such_component", 0), http.StatusForbidden},
+	} {
+		resp, err := srv.Client().Do(
+			uploadRequest(t, srv.URL, stateID, tc.key, "hello"))
+		if err != nil {
+			t.Fatalf("upload: %v", err)
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode != tc.want {
+			t.Errorf("%s: StatusCode = %d, want %d", tc.key,
+				resp.StatusCode, tc.want)
+		}
+
+		if stored := state.GetFile(tc.key) != nil; stored != (tc.want == http.StatusOK) {
+			t.Errorf("%s: stored = %v", tc.key, stored)
+		}
+	}
+}
+
 // TestUploadWithoutComponentID checks an upload that doesn't say which
 // component it belongs to is refused rather than stored somewhere arbitrary.
 func TestUploadWithoutComponentID(t *testing.T) {

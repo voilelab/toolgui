@@ -133,6 +133,15 @@ func FileUpload(
 // FileUploadConf is the configuration for the FileUpload component.
 type FileUploadConf = tcinput.FileUploadConf
 
+// MultiFileUpload create a fileupload that takes more than one file and return
+// the selected files.
+func MultiFileUpload(
+	c *tgframe.Container, label, accept string,
+	conf ...*FileUploadConf) []*FileObject {
+
+	return tcinput.MultiFileUpload(c, label, accept, conf...)
+}
+
 // FileObject is what FileUpload hands back: the file the app user picked.
 type FileObject = tcinput.FileObject
 

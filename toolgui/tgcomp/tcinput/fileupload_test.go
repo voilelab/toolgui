@@ -106,3 +106,49 @@ func TestFileObjectWithoutFile(t *testing.T) {
 		t.Error("expect an error reading a file object with no content")
 	}
 }
+
+func TestMultiFileUpload(t *testing.T) {
+	s := tgframe.NewState()
+	defer s.Destroy()
+
+	if MultiFileUpload(newFileUploadContainer(s), "File", "") != nil {
+		t.Error("expect no files before a pick")
+	}
+
+	s.Set(testFileUploadID, []map[string]any{
+		{"name": "a.txt", "type": "text/plain", "size": 100},
+		{"name": "b.txt", "type": "text/plain", "size": 100},
+	})
+
+	if _, err := s.WriteFile(tgframe.FileKey(testFileUploadID, 0), "a.txt",
+		strings.NewReader("hello")); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	// Only the first file has landed.
+	if MultiFileUpload(newFileUploadContainer(s), "File", "") != nil {
+		t.Error("expect no files while one is missing")
+	}
+
+	if _, err := s.WriteFile(tgframe.FileKey(testFileUploadID, 1), "b.txt",
+		strings.NewReader("hi")); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	fileObjs := MultiFileUpload(newFileUploadContainer(s), "File", "")
+	if len(fileObjs) != 2 {
+		t.Fatalf("got %d files, want 2", len(fileObjs))
+	}
+
+	for i, want := range []string{"hello", "hi"} {
+		bs, err := fileObjs[i].Bytes()
+		if err != nil {
+			t.Fatalf("Bytes: %v", err)
+		}
+
+		if string(bs) != want || fileObjs[i].Size != len(want) {
+			t.Errorf("file %d = %q (size %d), want %q", i, bs,
+				fileObjs[i].Size, want)
+		}
+	}
+}

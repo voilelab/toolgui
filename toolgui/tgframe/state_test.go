@@ -389,3 +389,26 @@ func TestFuncCacheCloneIsIndependent(t *testing.T) {
 		t.Errorf("GetFuncCache = %v, %v, want [a], true", got, ok)
 	}
 }
+
+func TestHasFileKey(t *testing.T) {
+	s := NewState()
+	defer s.Destroy()
+
+	s.setRunIDs(map[string]bool{"up": true})
+
+	for key, want := range map[string]bool{
+		"up":                true,
+		FileKey("up", 0):    true,
+		FileKey("up", 999):  true,
+		FileKey("up", 1000): false,
+		"up/-1":             false,
+		"up/01":             false,
+		"up/x":              false,
+		FileKey("other", 0): false,
+		"other":             false,
+	} {
+		if got := s.HasFileKey(key); got != want {
+			t.Errorf("HasFileKey(%q) = %v, want %v", key, got, want)
+		}
+	}
+}

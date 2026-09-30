@@ -6,6 +6,8 @@ import (
 	"maps"
 	"math"
 	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgjson"
@@ -112,6 +114,36 @@ func (s *State) HasComponentID(id string) bool {
 	defer s.rwLock.RUnlock()
 
 	return s.runIDs[id]
+}
+
+// MaxFileKeyIndex caps the index in a [FileKey], so a caller cannot fill the
+// disk by uploading under a new index every time.
+const MaxFileKeyIndex = 1000
+
+// FileKey is the key the i-th file of a multi-file upload under id is stored
+// at.
+func FileKey(id string, i int) string {
+	return id + "/" + strconv.Itoa(i)
+}
+
+// HasFileKey reports whether key is one an upload may be stored under: a
+// drawn component's id, or a [FileKey] of one.
+func (s *State) HasFileKey(key string) bool {
+	if s.HasComponentID(key) {
+		return true
+	}
+
+	i := strings.LastIndexByte(key, '/')
+	if i < 0 {
+		return false
+	}
+
+	n, err := strconv.Atoi(key[i+1:])
+	if err != nil || n < 0 || n >= MaxFileKeyIndex || FileKey(key[:i], n) != key {
+		return false
+	}
+
+	return s.HasComponentID(key[:i])
 }
 
 // SetClickID set the id of clicked button.
