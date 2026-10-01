@@ -457,7 +457,9 @@ func TestMemoError(t *testing.T) {
 // a panic.
 func TestMemoTypeMismatch(t *testing.T) {
 	state := NewState()
-	state.Memo("slot", "k", func() (int, error) { return 1, nil })
+	if _, err := state.Memo("slot", "k", func() (int, error) { return 1, nil }); err != nil {
+		t.Fatalf("Memo error = %v", err)
+	}
 
 	got, err := state.Memo("slot", "k", func() (string, error) { return "s", nil })
 	if err != nil || got != "s" {
