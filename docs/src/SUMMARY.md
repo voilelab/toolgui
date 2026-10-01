@@ -30,6 +30,8 @@
 
 * [Error Handling](architecture/error-handling.md)
 
+* [Testing](architecture/testing.md)
+
 # [Components]()
 
 * [Content Components](components/content/index.md)
