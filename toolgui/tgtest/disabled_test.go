@@ -32,7 +32,11 @@ func TestClickDisabled(t *testing.T) {
 	p.t = tb
 
 	func() {
-		defer func() { recover() }()
+		defer func() {
+			if r := recover(); r != nil && r != tb {
+				panic(r)
+			}
+		}()
 		node.Click()
 	}()
 
