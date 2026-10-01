@@ -19,6 +19,14 @@ type State struct {
 	values    map[string]any
 	funcCache map[string]any
 
+	// memos is what [State.Memo] keeps: one entry per slot, so it does not
+	// grow with every input the page sees.
+	memos map[string]memoEntry
+
+	// memoSeq counts the computations started per slot, so a slower older
+	// one cannot replace what a newer one stored.
+	memoSeq map[string]uint64
+
 	// resetKeys is the last reset key each component id was drawn with. It
 	// is apart from values so it cannot collide with a component's own key.
 	resetKeys map[string]string
@@ -60,6 +68,8 @@ func NewState() *State {
 		files:     newFileStore(),
 		downloads: newDownloadStore(),
 		funcCache: make(map[string]any),
+		memos:     make(map[string]memoEntry),
+		memoSeq:   make(map[string]uint64),
 		resetKeys: make(map[string]string),
 	}
 }
@@ -79,6 +89,8 @@ func (s *State) Clone() *State {
 		files:          s.files,
 		downloads:      s.downloads,
 		funcCache:      maps.Clone(s.funcCache),
+		memos:          maps.Clone(s.memos),
+		memoSeq:        maps.Clone(s.memoSeq),
 		resetKeys:      maps.Clone(s.resetKeys),
 		runIDs:         maps.Clone(s.runIDs),
 		indexedFileIDs: maps.Clone(s.indexedFileIDs),
@@ -492,4 +504,55 @@ func (s *State) GetFuncCache[T any](key string) (T, bool) {
 
 	v, ok := s.funcCache[key].(T)
 	return v, ok
+}
+
+// DeleteFuncCache removes the entry under key from the function cache.
+func (s *State) DeleteFuncCache(key string) {
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	delete(s.funcCache, key)
+}
+
+type memoEntry struct {
+	key   string
+	value any
+}
+
+// Memo returns what fn computed for key, calling fn only when slot does not
+// already hold a result for key. A slot keeps only its latest key, so the
+// cache stays one entry per slot however often the input changes.
+//
+// key should say what fn computes from, as with [State.SetFuncCache]. An
+// error is returned as is and not kept.
+func (s *State) Memo[T any](slot, key string, fn func() (T, error)) (T, error) {
+	s.rwLock.RLock()
+	e, ok := s.memos[slot]
+	s.rwLock.RUnlock()
+
+	if ok && e.key == key {
+		if v, ok := e.value.(T); ok {
+			return v, nil
+		}
+	}
+
+	s.rwLock.Lock()
+	s.memoSeq[slot]++
+	seq := s.memoSeq[slot]
+	s.rwLock.Unlock()
+
+	// fn runs unlocked: it may be slow, and may use the state itself.
+	v, err := fn()
+	if err != nil {
+		return v, err
+	}
+
+	s.rwLock.Lock()
+	defer s.rwLock.Unlock()
+
+	// Only the latest computation for the slot is kept.
+	if s.memoSeq[slot] == seq {
+		s.memos[slot] = memoEntry{key: key, value: v}
+	}
+	return v, nil
 }

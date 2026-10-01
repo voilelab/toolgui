@@ -298,28 +298,25 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 		return nil, err
 	}
 
-	// The key names the function as well as the file, so moving these two
-	// calls around does not change what they read.
-	key := fmt.Sprintf("getFiles_%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
+	// The slot keeps only the latest file's list, so uploading one file after
+	// another does not grow the cache.
+	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
 
-	if v, ok := p.State.GetFuncCache[[]string](key); ok {
-		slog.Info("cache found")
-		return v, nil
-	}
+	return p.State.Memo("getFiles", key, func() ([]string, error) {
+		slog.Info("cache miss")
 
-	// zip reads at an offset, which it can do straight against the file.
-	cbzFp, err := zip.NewReader(fp, int64(f.Size))
-	if err != nil {
-		return nil, err
-	}
+		// zip reads at an offset, which it can do straight against the file.
+		cbzFp, err := zip.NewReader(fp, int64(f.Size))
+		if err != nil {
+			return nil, err
+		}
 
-	ret := []string{}
-	for _, f := range cbzFp.File {
-		ret = append(ret, f.Name)
-	}
-
-	p.State.SetFuncCache(key, ret)
-	return ret, nil
+		ret := []string{}
+		for _, f := range cbzFp.File {
+			ret = append(ret, f.Name)
+		}
+		return ret, nil
+	})
 }
 
 func FuncCachePage(p *tgframe.Params) error {

@@ -1,6 +1,7 @@
 package tgframe
 
 import (
+	"errors"
 	"math"
 	"testing"
 )
@@ -387,6 +388,113 @@ func TestFuncCacheCloneIsIndependent(t *testing.T) {
 
 	if got, ok := state.GetFuncCache[[]string]("files"); !ok || len(got) != 1 {
 		t.Errorf("GetFuncCache = %v, %v, want [a], true", got, ok)
+	}
+}
+
+func TestDeleteFuncCache(t *testing.T) {
+	state := NewState()
+	state.SetFuncCache("files", []string{"a"})
+	state.DeleteFuncCache("files")
+
+	if got, ok := state.GetFuncCache[[]string]("files"); ok {
+		t.Errorf("GetFuncCache = %v, true, want false", got)
+	}
+}
+
+func TestMemo(t *testing.T) {
+	state := NewState()
+
+	calls := 0
+	memo := func(key string) string {
+		t.Helper()
+		v, err := state.Memo("slot", key, func() (string, error) {
+			calls++
+			return "v_" + key, nil
+		})
+		if err != nil {
+			t.Fatalf("Memo(%q) error = %v", key, err)
+		}
+		return v
+	}
+
+	if got := memo("a"); got != "v_a" || calls != 1 {
+		t.Fatalf("Memo(a) = %q, calls %d, want v_a, 1", got, calls)
+	}
+	if got := memo("a"); got != "v_a" || calls != 1 {
+		t.Errorf("Memo(a) again = %q, calls %d, want v_a, 1", got, calls)
+	}
+
+	// A new key replaces the slot's entry rather than adding one.
+	if got := memo("b"); got != "v_b" || calls != 2 {
+		t.Errorf("Memo(b) = %q, calls %d, want v_b, 2", got, calls)
+	}
+	if len(state.memos) != 1 {
+		t.Errorf("len(memos) = %d, want 1", len(state.memos))
+	}
+	if got := memo("a"); got != "v_a" || calls != 3 {
+		t.Errorf("Memo(a) after b = %q, calls %d, want v_a, 3", got, calls)
+	}
+}
+
+func TestMemoError(t *testing.T) {
+	state := NewState()
+	wantErr := errors.New("boom")
+
+	if _, err := state.Memo("slot", "k", func() (int, error) {
+		return 0, wantErr
+	}); !errors.Is(err, wantErr) {
+		t.Fatalf("Memo error = %v, want %v", err, wantErr)
+	}
+
+	// The failure was not kept, so the next call computes again.
+	got, err := state.Memo("slot", "k", func() (int, error) { return 7, nil })
+	if err != nil || got != 7 {
+		t.Errorf("Memo = %v, %v, want 7, nil", got, err)
+	}
+}
+
+// TestMemoTypeMismatch pins that a slot read as another type is a miss, not
+// a panic.
+func TestMemoTypeMismatch(t *testing.T) {
+	state := NewState()
+	if _, err := state.Memo("slot", "k", func() (int, error) { return 1, nil }); err != nil {
+		t.Fatalf("Memo error = %v", err)
+	}
+
+	got, err := state.Memo("slot", "k", func() (string, error) { return "s", nil })
+	if err != nil || got != "s" {
+		t.Errorf("Memo = %q, %v, want s, nil", got, err)
+	}
+}
+
+// TestMemoStaleDoesNotOverwrite pins that an older computation finishing
+// after a newer one does not replace the newer result.
+func TestMemoStaleDoesNotOverwrite(t *testing.T) {
+	state := NewState()
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = state.Memo("slot", "old", func() (string, error) {
+			close(started)
+			<-release
+			return "v_old", nil
+		})
+	}()
+	<-started
+
+	if _, err := state.Memo("slot", "new", func() (string, error) {
+		return "v_new", nil
+	}); err != nil {
+		t.Fatalf("Memo error = %v", err)
+	}
+	close(release)
+	<-done
+
+	if e := state.memos["slot"]; e.key != "new" {
+		t.Errorf("slot key = %q, want new", e.key)
 	}
 }
 
