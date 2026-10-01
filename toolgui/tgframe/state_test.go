@@ -467,6 +467,37 @@ func TestMemoTypeMismatch(t *testing.T) {
 	}
 }
 
+// TestMemoStaleDoesNotOverwrite pins that an older computation finishing
+// after a newer one does not replace the newer result.
+func TestMemoStaleDoesNotOverwrite(t *testing.T) {
+	state := NewState()
+
+	started := make(chan struct{})
+	release := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		_, _ = state.Memo("slot", "old", func() (string, error) {
+			close(started)
+			<-release
+			return "v_old", nil
+		})
+	}()
+	<-started
+
+	if _, err := state.Memo("slot", "new", func() (string, error) {
+		return "v_new", nil
+	}); err != nil {
+		t.Fatalf("Memo error = %v", err)
+	}
+	close(release)
+	<-done
+
+	if e := state.memos["slot"]; e.key != "new" {
+		t.Errorf("slot key = %q, want new", e.key)
+	}
+}
+
 func TestHasFileKey(t *testing.T) {
 	s := NewState()
 	defer s.Destroy()

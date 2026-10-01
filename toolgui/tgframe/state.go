@@ -23,6 +23,10 @@ type State struct {
 	// grow with every input the page sees.
 	memos map[string]memoEntry
 
+	// memoSeq counts the computations started per slot, so a slower older
+	// one cannot replace what a newer one stored.
+	memoSeq map[string]uint64
+
 	// resetKeys is the last reset key each component id was drawn with. It
 	// is apart from values so it cannot collide with a component's own key.
 	resetKeys map[string]string
@@ -65,6 +69,7 @@ func NewState() *State {
 		downloads: newDownloadStore(),
 		funcCache: make(map[string]any),
 		memos:     make(map[string]memoEntry),
+		memoSeq:   make(map[string]uint64),
 		resetKeys: make(map[string]string),
 	}
 }
@@ -85,6 +90,7 @@ func (s *State) Clone() *State {
 		downloads:      s.downloads,
 		funcCache:      maps.Clone(s.funcCache),
 		memos:          maps.Clone(s.memos),
+		memoSeq:        maps.Clone(s.memoSeq),
 		resetKeys:      maps.Clone(s.resetKeys),
 		runIDs:         maps.Clone(s.runIDs),
 		indexedFileIDs: maps.Clone(s.indexedFileIDs),
@@ -530,6 +536,11 @@ func (s *State) Memo[T any](slot, key string, fn func() (T, error)) (T, error) {
 		}
 	}
 
+	s.rwLock.Lock()
+	s.memoSeq[slot]++
+	seq := s.memoSeq[slot]
+	s.rwLock.Unlock()
+
 	// fn runs unlocked: it may be slow, and may use the state itself.
 	v, err := fn()
 	if err != nil {
@@ -539,6 +550,9 @@ func (s *State) Memo[T any](slot, key string, fn func() (T, error)) (T, error) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
 
-	s.memos[slot] = memoEntry{key: key, value: v}
+	// Only the latest computation for the slot is kept.
+	if s.memoSeq[slot] == seq {
+		s.memos[slot] = memoEntry{key: key, value: v}
+	}
 	return v, nil
 }
