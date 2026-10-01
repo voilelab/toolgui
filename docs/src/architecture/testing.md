@@ -54,7 +54,8 @@ client. `p.HasText(s)` reports whether any string the page draws contains `s`.
 | `p.Rerun()` | Run the page again, like the rerun button |
 | `p.Send(event)` | Send any `tgframe.Event` |
 
-Inside a form, inputs are held until the form is submitted, as in the
+Actions on a disabled component fail the test, since a user cannot reach
+them. Inside a form, inputs are held until the form is submitted, as in the
 browser: by `Submit` on the form, or by clicking a button inside it.
 
 ## Errors

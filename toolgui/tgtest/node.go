@@ -74,6 +74,12 @@ func (n *Node) walk(f func(n *Node)) {
 	}
 }
 
+// queueKey is what a form's held events are kept under: the client's key
+// for it, so a named form keeps them when it moves.
+func (n *Node) queueKey() string {
+	return reactKey(n.Key, n.Props)
+}
+
 // form is the form n sits in, nil outside one.
 func (n *Node) form() *Node {
 	for p := n.parent; p != nil; p = p.parent {
@@ -90,19 +96,26 @@ func (n *Node) send(event tgframe.Event) {
 	n.page.t.Helper()
 
 	if form := n.form(); form != nil {
-		n.page.forms[form.Key] = append(n.page.forms[form.Key], event)
+		key := form.queueKey()
+		n.page.forms[key] = append(n.page.forms[key], event)
 		return
 	}
 
 	n.page.Send(event)
 }
 
-func (n *Node) needID(action string) {
+// usable fails the test unless a user could act on n: it has an id and is
+// not disabled.
+func (n *Node) usable(action string) {
 	n.page.t.Helper()
 
 	if n.ID == "" {
 		n.page.t.Fatalf("tgtest: %s on %s at %s, which has no id",
 			action, n.Name, n.Key)
+	}
+
+	if disabled, _ := n.Props["disabled"].(bool); disabled {
+		n.page.t.Fatalf("tgtest: %s on disabled %s", action, n.ID)
 	}
 }
 
@@ -110,7 +123,7 @@ func (n *Node) needID(action string) {
 // any other click waits for the submit.
 func (n *Node) Click() {
 	n.page.t.Helper()
-	n.needID("click")
+	n.usable("click")
 
 	if n.Name == "menu_component" {
 		n.page.t.Fatalf("tgtest: click on menu %s, pick an item with Select", n.ID)
@@ -135,7 +148,7 @@ func (n *Node) Click() {
 // submit.
 func (n *Node) Input(value any) {
 	n.page.t.Helper()
-	n.needID("input")
+	n.usable("input")
 
 	n.send(&tgframe.EventInput{ID: n.ID, Value: n.wire(value)})
 }
@@ -162,7 +175,7 @@ func (n *Node) wire(v any) any {
 // or select slider, or an item of a menu.
 func (n *Node) Select(i int) {
 	n.page.t.Helper()
-	n.needID("select")
+	n.usable("select")
 
 	switch n.Name {
 	case "select_component":
@@ -194,7 +207,7 @@ func (n *Node) Select(i int) {
 // SelectMany picks the options at indexes of a multiselect.
 func (n *Node) SelectMany(indexes ...int) {
 	n.page.t.Helper()
-	n.needID("select")
+	n.usable("select")
 
 	if indexes == nil {
 		indexes = []int{}
@@ -205,7 +218,7 @@ func (n *Node) SelectMany(indexes ...int) {
 // SelectKeys picks the rows of keys in a DataFrame with row keys.
 func (n *Node) SelectKeys(keys ...string) {
 	n.page.t.Helper()
-	n.needID("select")
+	n.usable("select")
 
 	if keys == nil {
 		keys = []string{}
@@ -223,7 +236,7 @@ func (n *Node) Upload(name string, body []byte) {
 // one. Like the browser, the files are stored before the pick is sent.
 func (n *Node) UploadFiles(files ...File) {
 	n.page.t.Helper()
-	n.needID("upload")
+	n.usable("upload")
 
 	t, state := n.page.t, n.page.state
 	multiple, _ := n.Props["multiple"].(bool)
@@ -278,8 +291,8 @@ func (n *Node) Submit() {
 			n.Name, n.Key)
 	}
 
-	events := n.page.forms[n.Key]
-	delete(n.page.forms, n.Key)
+	events := n.page.forms[n.queueKey()]
+	delete(n.page.forms, n.queueKey())
 
 	if events == nil {
 		events = []tgframe.Event{}

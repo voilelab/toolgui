@@ -204,6 +204,17 @@ func (p *Page) wait() {
 
 	p.main = p.forest.snapshot(p, p.mainID, nil)
 	p.sidebar = p.forest.snapshot(p, p.sidebarID, nil)
+
+	// A form gone from the page takes what it held with it.
+	mounted := map[string]bool{}
+	for _, form := range p.FindByName(formComponentName) {
+		mounted[form.queueKey()] = true
+	}
+	for key := range p.forms {
+		if !mounted[key] {
+			delete(p.forms, key)
+		}
+	}
 }
 
 // Main is the main container as the last run left it.

@@ -259,3 +259,79 @@ func TestMenuAndRadio(t *testing.T) {
 		t.Error("expect radio 1")
 	}
 }
+
+// A named form that moves keeps what it held, as React keeps it by id.
+func TestFormQueueFollowsNamedForm(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		if !tgcomp.Checkbox(p.Sidebar, "Hide") {
+			tgcomp.Text(p.Main, "banner")
+		}
+
+		form := tgcomp.Form(p.Main, &tgcomp.FormConf{Base: tgframe.Base{ID: "f"}})
+		a := tgcomp.Textbox(form, "A")
+		tgcomp.Text(p.Main, "a="+a)
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+
+	p.GetByLabel("A").Input("x")
+	p.GetByLabel("Hide").Input(true)
+
+	p.FindByName("form_component")[0].Submit()
+	if !p.HasText("a=x") {
+		t.Error("expect the held value kept across the move")
+	}
+}
+
+// A form gone from the page drops what it held.
+func TestFormQueueDroppedWithForm(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		if !tgcomp.Checkbox(p.Sidebar, "Hide") {
+			form := tgcomp.Form(p.Main, &tgcomp.FormConf{Base: tgframe.Base{ID: "f"}})
+			a := tgcomp.Textbox(form, "A")
+			tgcomp.Text(p.Main, "a="+a)
+		}
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+
+	p.GetByLabel("A").Input("x")
+	p.GetByLabel("Hide").Input(true)
+	p.GetByLabel("Hide").Input(false)
+
+	p.FindByName("form_component")[0].Submit()
+	if p.HasText("a=x") {
+		t.Error("expect the held value dropped with the form")
+	}
+}
+
+// A named node that moves on a failed run is not left in two places.
+func TestMovedNodeOnFailedRun(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		hide := tgcomp.Checkbox(p.Sidebar, "Hide")
+		if !hide {
+			tgcomp.Text(p.Main, "banner")
+		}
+
+		tgcomp.Textbox(p.Main, "Name")
+		if hide {
+			return errors.New("fail")
+		}
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+
+	p.GetByLabel("Hide").Input(true)
+	if p.Err() == nil {
+		t.Fatal("expect the run to fail")
+	}
+
+	if got := len(p.Find(func(n *tgtest.Node) bool {
+		return n.String("label") == "Name"
+	})); got != 1 {
+		t.Errorf("got %d Name textboxes, want 1", got)
+	}
+}

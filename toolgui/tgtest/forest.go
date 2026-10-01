@@ -25,6 +25,20 @@ func (n *fnode) name() string {
 	return s
 }
 
+// reactKey is what the web client keys n by: its id, else position and type.
+func (n *fnode) reactKey() string {
+	return reactKey(n.key, n.props)
+}
+
+func reactKey(key string, props map[string]any) string {
+	if id, _ := props["id"].(string); id != "" {
+		return id
+	}
+
+	name, _ := props["name"].(string)
+	return key + ":" + name
+}
+
 // forest mirrors the web client's node tree (toolgui-web Nodes.ts), so a
 // page is seen the way a browser would show it.
 type forest struct {
@@ -84,6 +98,15 @@ func (f *forest) create(key, parentKey string, index int, props map[string]any) 
 	node.runID = f.runID
 	node.parentKey = parentKey
 	f.nodes[key] = node
+
+	// A named node that moved leaves its old instance behind until endRun,
+	// which a failed run skips. Retire it now, as the web client does.
+	rk := node.reactKey()
+	for staleKey, stale := range f.nodes {
+		if staleKey != key && stale.runID != f.runID && stale.reactKey() == rk {
+			f.remove(staleKey)
+		}
+	}
 
 	for len(parent.children) <= index {
 		parent.children = append(parent.children, nil)
