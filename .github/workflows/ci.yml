@@ -76,6 +76,9 @@ jobs:
       - name: Typecheck lib
         run: yarn workspace @toolgui-web/lib typecheck
 
+      - name: Test lib
+        run: yarn workspace @toolgui-web/lib test
+
       - name: Typecheck app
         run: yarn workspace @toolgui-web/app typecheck
 

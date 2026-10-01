@@ -33,8 +33,9 @@
     "unist-util-visit": "^5.0.0"
   },
   "scripts": {
-    "build": "./node_modules/.bin/babel --out-dir build --source-maps --extensions \".js,.mjs,.jsx,.ts,.tsx\" src",
-    "typecheck": "tsc"
+    "build": "./node_modules/.bin/babel --out-dir build --source-maps --extensions \".js,.mjs,.jsx,.ts,.tsx\" --ignore \"src/**/*.test.ts\" src",
+    "typecheck": "tsc",
+    "test": "vitest run"
   },
   "browserslist": {
     "production": [
@@ -53,6 +54,7 @@
     "@babel/preset-react": "^7.29.7",
     "@babel/preset-typescript": "^7.29.7",
     "@types/mdast": "^4.0.0",
-    "@types/react-syntax-highlighter": "^15.5.13"
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "vitest": "^5.0.0"
   }
 }
