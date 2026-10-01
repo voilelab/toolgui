@@ -137,4 +137,11 @@ URL fragment, `/#/{name}`, so every page is served from `/`:
 app.SetHashPageNameMode(true)
 ```
 
+The fragment starts with `#/`, not a bare `#`. For a page named `novel`:
+
+```text
+http://localhost:3000/#/novel   ✓ opens novel
+http://localhost:3000/#novel    ✗ not a page link
+```
+
 With no fragment, the first page added is shown.

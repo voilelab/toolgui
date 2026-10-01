@@ -29,6 +29,9 @@ func main() {
 }
 ```
 
+Pages are then linked as `/#/{name}` — `#/index` here, not `#index`. See
+[Page name in the URL](../app/page.md#page-name-in-the-url).
+
 `Run` installs the bridge the page talks to and blocks forever, keeping the
 wasm instance alive to answer it.
 
