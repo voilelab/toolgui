@@ -233,7 +233,8 @@ func (n *Node) Upload(name string, body []byte) {
 }
 
 // UploadFiles picks files in a fileupload; a single-file one takes exactly
-// one. Like the browser, the files are stored before the pick is sent.
+// one, and an empty pick fails, since the browser sends nothing for it. Like
+// the browser, the files are stored before the pick is sent.
 func (n *Node) UploadFiles(files ...File) {
 	n.page.t.Helper()
 	n.usable("upload")
@@ -241,6 +242,9 @@ func (n *Node) UploadFiles(files ...File) {
 	t, state := n.page.t, n.page.state
 	multiple, _ := n.Props["multiple"].(bool)
 
+	if len(files) == 0 {
+		t.Fatalf("tgtest: empty pick to %s", n.ID)
+	}
 	if !multiple && len(files) != 1 {
 		t.Fatalf("tgtest: %d files to single-file %s", len(files), n.ID)
 	}
