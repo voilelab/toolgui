@@ -78,9 +78,17 @@ hash of them — or a later run reads back a result for inputs it no longer has.
 Naming the function in the key, as below, keeps two functions that cache on
 the same inputs apart.
 
+`SetFuncCache` only adds: every new key is another entry, kept until the
+state goes away. `DeleteFuncCache` removes one, and `Memo` keeps the cache
+bounded for the common case, a value recomputed whenever its input changes.
+`Memo(slot, key, fn)` returns what `fn` computed for `key`, calling `fn` only
+when `slot` does not already hold `key`. A slot holds only its latest key, so
+a new input replaces the old result instead of piling up beside it. An error
+from `fn` is returned and not kept.
+
 ```go
 // getFiles unarchive cbz file and return list of file names,
-// since unarchive is time-consuming, we use state-level cache to store the result
+// since unarchive is time-consuming, we memo the result
 func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 	// The upload stays on disk, so both the key and the archive are read
 	// through a stream instead of a copy of the file.
@@ -95,29 +103,21 @@ func getFiles(p *tgframe.Params, f *tcinput.FileObject) ([]string, error) {
 		return nil, err
 	}
 
-	// The key is the whole of the namespace, so it names the function as well
-	// as the file it was computed from.
-	key := fmt.Sprintf("getFiles_%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
+	// The slot keeps only the latest file's list.
+	key := fmt.Sprintf("%s_%s_%x", f.Name, f.Type, hash.Sum(nil))
 
-	if v, ok := p.State.GetFuncCache[[]string](key); ok {
-		slog.Debug("cache found")
-		return v, nil
-	}
+	return p.State.Memo("getFiles", key, func() ([]string, error) {
+		cbzFp, err := zip.NewReader(fp, int64(f.Size))
+		if err != nil {
+			return nil, err
+		}
 
-	cbzFp, err := zip.NewReader(fp, int64(f.Size))
-	if err != nil {
-		// don't store nil to cache
-		return nil, err
-	}
-
-	ret := []string{}
-	for _, f := range cbzFp.File {
-		ret = append(ret, f.Name)
-	}
-
-	// ok, we can store to cache
-	p.State.SetFuncCache(key, ret)
-	return ret, nil
+		ret := []string{}
+		for _, f := range cbzFp.File {
+			ret = append(ret, f.Name)
+		}
+		return ret, nil
+	})
 }
 
 func FuncCachePage(p *tgframe.Params) error {
