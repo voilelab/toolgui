@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FileInput } from "@mantine/core"
+import { FileInput, Text } from "@mantine/core"
 
 import { stateGeneration, stateValues } from "../state"
 import { Props } from "../component_interface";
@@ -13,6 +13,30 @@ interface FileMeta {
 
 function fileMeta(file: File): FileMeta {
   return { name: file.name, type: file.type, size: file.size }
+}
+
+// formatSize renders a byte count, e.g. 1536 -> "1.5 KB".
+export function formatSize(bytes: number): string {
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  let n = bytes
+  let i = 0
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024
+    i++
+  }
+  return i === 0 ? `${n} B` : `${n.toFixed(1)} ${units[i]}`
+}
+
+// acceptLabel renders an accept string, e.g. ".csv,image/png" -> "CSV, image/png".
+export function acceptLabel(accept: string | undefined): string {
+  if (!accept) {
+    return ''
+  }
+  return accept.split(',')
+    .map(s => s.trim())
+    .filter(s => s)
+    .map(s => s.startsWith('.') ? s.slice(1).toUpperCase() : s)
+    .join(', ')
 }
 
 // MAX_FILES is tgframe.MaxFileKeyIndex: the most files one pick may hold.
@@ -114,13 +138,14 @@ export function TFileupload({ node, update, upload }: Props) {
   };
 
   const value = stateValues[id]
-  let placeholder = 'No file uploaded'
-  if (Array.isArray(value)) {
-    if (value.length > 0) {
-      placeholder = value.map((f: FileMeta) => f.name).join(', ')
-    }
-  } else if (value) {
-    placeholder = value.name
+  const files: FileMeta[] = Array.isArray(value) ? value : value ? [value] : []
+  const placeholder = files.length > 0 ?
+    files.map(f => f.name).join(', ') : 'No file uploaded'
+
+  const accept = acceptLabel(node.props.accept)
+  const info = [multiple ? 'Multiple files' : 'Single file']
+  if (accept) {
+    info.push(accept)
   }
 
   return (
@@ -135,6 +160,17 @@ export function TFileupload({ node, update, upload }: Props) {
       placeholder={placeholder}
       mb="md"
       onChange={handleFileChange}
+      inputWrapperOrder={['label', 'input', 'description', 'error']}
+      description={
+        <Text component="span" size="xs" display="block">
+          {info.join(' • ')}
+          {files.map((f, i) => (
+            <Text component="span" size="xs" display="block" key={i}>
+              {f.name} • {formatSize(f.size)}{f.type ? ` • ${f.type}` : ''}
+            </Text>
+          ))}
+        </Text>
+      }
     />
   )
 }
