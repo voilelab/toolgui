@@ -37,7 +37,9 @@ that run drew.
 | `p.Main()`, `p.Sidebar()` | The root containers, to walk `Children` |
 
 A `Node` carries the component's `Name`, `ID` and `Props` as sent to the
-client. `p.HasText(s)` reports whether any string the page draws contains `s`.
+client. `p.HasText(s)` reports whether any text the page draws contains `s`;
+props that never reach the screen as text, such as a fileupload's `accept` or
+a link's `url`, don't count.
 
 ## Acting on it
 
@@ -45,7 +47,7 @@ client. `p.HasText(s)` reports whether any string the page draws contains `s`.
 | --- | --- |
 | `n.Click()` | Click a button |
 | `n.Input(v)` | Set a textbox, checkbox, number, ... to `v` |
-| `n.Select(i)` | Pick item `i` (0-based) of a select, radio, select slider or menu |
+| `n.Select(i)` | Pick item `i` (0-based) of a select, radio, select slider or menu; `-1` clears a select, and any other index outside the items fails the test |
 | `n.SelectMany(i...)` | Pick items of a multiselect |
 | `n.SelectKeys(k...)` | Pick rows of a DataFrame with row keys |
 | `n.Upload(name, body)` | Pick a file in a fileupload |

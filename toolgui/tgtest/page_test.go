@@ -335,3 +335,43 @@ func TestMovedNodeOnFailedRun(t *testing.T) {
 		t.Errorf("got %d Name textboxes, want 1", got)
 	}
 }
+
+func TestHasTextOnlyDrawnText(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		tgcomp.FileUpload(p.Main, "Data", ".csv")
+		tgcomp.Link(p.Main, "Docs", "https://example.com/docs")
+		tgcomp.Menu(p.Main, "Act", []string{"open"})
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+
+	for _, want := range []string{"Data", "Docs", "open"} {
+		if !p.HasText(want) {
+			t.Errorf("expect %q", want)
+		}
+	}
+
+	item := p.GetByLabel("Act").Prop("items").([]any)[0].(map[string]any)
+	for _, absent := range []string{".csv", "example.com", item["id"].(string)} {
+		if p.HasText(absent) {
+			t.Errorf("expect %q, which is never drawn as text, not to match", absent)
+		}
+	}
+}
+
+func TestSelectClear(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		i := tgcomp.Select(p.Main, "Fruit", []string{"apple", "pear"})
+		tgcomp.Text(p.Main, fmt.Sprintf("picked %v", i != nil))
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+
+	p.GetByLabel("Fruit").Select(0)
+	p.GetByLabel("Fruit").Select(-1)
+	if !p.HasText("picked false") {
+		t.Error("expect Select(-1) to clear the select")
+	}
+}
