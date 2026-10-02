@@ -17,6 +17,14 @@ var submitsForm = map[string]bool{
 	"button_component": true,
 }
 
+// selectsOne are the components [Node.Select] picks an item of.
+var selectsOne = map[string]bool{
+	"select_component":        true,
+	"radio_component":         true,
+	"select_slider_component": true,
+	"menu_component":          true,
+}
+
 // Node is a component as the last run drew it.
 type Node struct {
 	// Key is where the node sits in the tree, "<parent key>/<index>".
@@ -172,10 +180,24 @@ func (n *Node) wire(v any) any {
 }
 
 // Select picks the item at index i, 0-based: an option of a select, radio
-// or select slider, or an item of a menu.
+// or select slider, or an item of a menu. A select also takes -1, clearing
+// it as the browser can; any other index past the items fails the test.
 func (n *Node) Select(i int) {
 	n.page.t.Helper()
 	n.usable("select")
+
+	if !selectsOne[n.Name] {
+		n.page.t.Fatalf("tgtest: select on %s %s, which picks no single item", n.Name, n.ID)
+	}
+
+	items, _ := n.Props["items"].([]any)
+	lowest := 0
+	if n.Name == "select_component" {
+		lowest = -1
+	}
+	if i < lowest || i >= len(items) {
+		n.page.t.Fatalf("tgtest: %s %s has no item %d", n.Name, n.ID, i)
+	}
 
 	switch n.Name {
 	case "select_component":
@@ -184,11 +206,6 @@ func (n *Node) Select(i int) {
 
 	case "menu_component":
 		// The click names the item, not the menu.
-		items, _ := n.Props["items"].([]any)
-		if i < 0 || i >= len(items) {
-			n.page.t.Fatalf("tgtest: menu %s has no item %d", n.ID, i)
-		}
-
 		item, _ := items[i].(map[string]any)
 		id, _ := item["id"].(string)
 		event := &tgframe.EventClick{ID: id}
