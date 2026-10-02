@@ -141,12 +141,39 @@ func TestWriteManifestFromFile(t *testing.T) {
 }
 
 func TestWriteManifestRejectsBadJSON(t *testing.T) {
-	src := filepath.Join(t.TempDir(), "app.json")
-	writeFile(t, src, `{"name":`)
+	for _, body := range []string{`{"name":`, `null`, `[]`, `"x"`} {
+		src := filepath.Join(t.TempDir(), "app.json")
+		writeFile(t, src, body)
 
-	err := writeManifest(t.TempDir(), src)
-	if err == nil {
-		t.Fatal("expected an error for a broken manifest")
+		err := writeManifest(t.TempDir(), src)
+		if err == nil {
+			t.Errorf("expected an error for manifest %s", body)
+		}
+	}
+}
+
+// Copying assets into a directory inside them would never end.
+func TestWriteAssetsRejectsOutInside(t *testing.T) {
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "icon.png"), "png")
+
+	for _, out := range []string{src, filepath.Join(src, "dist")} {
+		err := writeAssets(src, out)
+		if err == nil {
+			t.Errorf("expected an error for output %s", out)
+		}
+	}
+
+	// A sibling is fine.
+	out := filepath.Join(t.TempDir(), "dist")
+	err := writeAssets(src, out)
+	if err != nil {
+		t.Fatalf("writeAssets: %v", err)
+	}
+
+	_, err = os.Stat(filepath.Join(out, "assets", "icon.png"))
+	if err != nil {
+		t.Errorf("icon not copied: %v", err)
 	}
 }
 

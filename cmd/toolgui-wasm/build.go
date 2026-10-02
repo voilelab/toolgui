@@ -107,7 +107,7 @@ func build(opts buildOpts) error {
 	}
 
 	if opts.assets != "" {
-		err = writeFS(os.DirFS(opts.assets), filepath.Join(out, "assets"))
+		err = writeAssets(opts.assets, out)
 		if err != nil {
 			return tgutil.Errorf("copy assets: %w", err)
 		}
@@ -153,6 +153,27 @@ func writeFS(fsys fs.FS, out string) error {
 	})
 }
 
+// writeAssets copy src to out/assets. An out inside src is refused: the copy
+// would land in the tree being walked and copy itself forever.
+func writeAssets(src, out string) error {
+	absSrc, err := filepath.Abs(src)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	absOut, err := filepath.Abs(out)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	rel, err := filepath.Rel(absSrc, absOut)
+	if err == nil && filepath.IsLocal(rel) {
+		return tgutil.Errorf("output %s is inside assets %s", out, src)
+	}
+
+	return writeFS(os.DirFS(src), filepath.Join(out, "assets"))
+}
+
 // writeManifest write src as out/manifest.json. Without src, the default is
 // written, unless out already has a manifest.json someone put there.
 func writeManifest(out, src string) error {
@@ -185,6 +206,11 @@ func writeManifest(out, src string) error {
 	err = tgjson.Unmarshal(bs, &members)
 	if err != nil {
 		return tgutil.Errorf("manifest %s: %w", src, err)
+	}
+
+	// null unmarshals fine, but a manifest is an object.
+	if members == nil {
+		return tgutil.Errorf("manifest %s: not a json object", src)
 	}
 
 	return os.WriteFile(dst, bs, 0o644)
