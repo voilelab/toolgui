@@ -55,15 +55,7 @@ func TestUploadEmptyPick(t *testing.T) {
 	p := Open(t, app, "index")
 	node := p.GetByLabel("Files")
 
-	tb := &fatalTB{TB: t}
-	p.t = tb
-
-	func() {
-		defer func() { recover() }()
-		node.UploadFiles()
-	}()
-
-	if !tb.failed {
+	if !expectFatal(t, p, func() { node.UploadFiles() }) {
 		t.Error("expect an empty pick to fail")
 	}
 }
