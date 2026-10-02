@@ -142,3 +142,31 @@ test('keeps reconnecting after an error the server may recover from', async () =
   await vi.advanceTimersByTimeAsync(200)
   expect(FakeWebSocket.opened).toHaveLength(2)
 })
+
+// uploadReady connects and hands the socket a state id, which an upload needs.
+async function uploadReady() {
+  const { conn } = await connect()
+  FakeWebSocket.opened[0].onmessage({ data: JSON.stringify({ state_id: 's1' }) })
+  return conn
+}
+
+test('percent-encodes the component id, which a header cannot carry raw', async () => {
+  const conn = await uploadReady()
+  const fetch = vi.fn(async () => ({ ok: true }))
+  globalThis.fetch = fetch as any
+
+  const res = await conn.uploadFile(new File(['a'], 'a.txt'), 'fileupload_component_檔案/0')
+
+  expect(res).toEqual({ ok: true })
+  const init = (fetch.mock.calls[0] as any[])[1]
+  expect(init.headers.COMPONENT_ID).toBe('fileupload_component_%E6%AA%94%E6%A1%88%2F0')
+})
+
+test('reports an upload fetch could not send as failed', async () => {
+  const conn = await uploadReady()
+  globalThis.fetch = vi.fn(async () => { throw new TypeError('Failed to fetch') }) as any
+
+  const res = await conn.uploadFile(new File(['a'], 'a.txt'), 'f')
+
+  expect(res.ok).toBe(false)
+})

@@ -55,7 +55,8 @@ is the Session's, and it is the same on the desktop.
 per component change, and a result pack when the run ends.
 
 File upload is the one thing off this path. The client POSTs to `/api/files`
-with its `state_id` and the `component_id` of the fileupload, and the handler
+with its `state_id` and the percent-encoded `component_id` of the fileupload
+(a header can't carry a non-ASCII label), and the handler
 streams the body to a file of the state's own, so it touches neither the socket
 nor the Session. The page reads that file back through
 [FileUpload](../components/input/fileupload.md), which means an upload only

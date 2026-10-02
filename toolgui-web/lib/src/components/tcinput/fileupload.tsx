@@ -98,6 +98,7 @@ export function TFileupload({ node, update, upload }: Props) {
       return
     }
 
+    setError(null)
     const session = stateGeneration
     const val = await upload(file, id)
     if (stateGeneration !== session) {
@@ -105,6 +106,7 @@ export function TFileupload({ node, update, upload }: Props) {
     }
     if (!val.ok) {
       console.error(val)
+      setError('Upload failed')
       return
     }
 
