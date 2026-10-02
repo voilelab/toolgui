@@ -4,8 +4,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"testing"
+
+	"github.com/voilelab/toolgui/toolgui/tgexec"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
 func TestFindWasmExec(t *testing.T) {
@@ -56,6 +60,117 @@ func TestWriteFrontend(t *testing.T) {
 	}
 }
 
+// The default here and the one WebExecutor serves are the same manifest.
+func TestDefaultManifestMatchesTgexec(t *testing.T) {
+	bs, err := tgjson.Marshal(tgexec.DefaultManifest())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := map[string]any{}
+	err = tgjson.Unmarshal(bs, &want)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !reflect.DeepEqual(defaultManifest, want) {
+		t.Errorf("defaultManifest = %v, tgexec serves %v", defaultManifest, want)
+	}
+}
+
+func readManifest(t *testing.T, out string) map[string]any {
+	t.Helper()
+
+	bs, err := os.ReadFile(filepath.Join(out, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	members := map[string]any{}
+	err = tgjson.Unmarshal(bs, &members)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return members
+}
+
+func TestWriteManifestDefault(t *testing.T) {
+	out := t.TempDir()
+
+	err := writeManifest(out, "")
+	if err != nil {
+		t.Fatalf("writeManifest: %v", err)
+	}
+
+	if got := readManifest(t, out)["name"]; got != "ToolGUI App" {
+		t.Errorf("name = %v, want the default", got)
+	}
+}
+
+// A manifest.json already in the web root is someone's, not ours to replace.
+func TestWriteManifestKeepsExisting(t *testing.T) {
+	out := t.TempDir()
+	writeFile(t, filepath.Join(out, "manifest.json"), `{"name":"Mine"}`)
+
+	err := writeManifest(out, "")
+	if err != nil {
+		t.Fatalf("writeManifest: %v", err)
+	}
+
+	if got := readManifest(t, out)["name"]; got != "Mine" {
+		t.Errorf("name = %v, want the existing one kept", got)
+	}
+}
+
+func TestWriteManifestFromFile(t *testing.T) {
+	out := t.TempDir()
+	writeFile(t, filepath.Join(out, "manifest.json"), `{"name":"Old"}`)
+
+	src := filepath.Join(t.TempDir(), "app.json")
+	writeFile(t, src, `{"name":"My Tool","icons":[{"src":"assets/icon.png"}]}`)
+
+	err := writeManifest(out, src)
+	if err != nil {
+		t.Fatalf("writeManifest: %v", err)
+	}
+
+	if got := readManifest(t, out)["name"]; got != "My Tool" {
+		t.Errorf("name = %v, want the one from -manifest", got)
+	}
+}
+
+func TestWriteManifestRejectsBadJSON(t *testing.T) {
+	src := filepath.Join(t.TempDir(), "app.json")
+	writeFile(t, src, `{"name":`)
+
+	err := writeManifest(t.TempDir(), src)
+	if err == nil {
+		t.Fatal("expected an error for a broken manifest")
+	}
+}
+
+func TestWriteFSOverwrites(t *testing.T) {
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "icons", "icon.png"), "new")
+
+	out := filepath.Join(t.TempDir(), "assets")
+	writeFile(t, filepath.Join(out, "icons", "icon.png"), "old")
+
+	err := writeFS(os.DirFS(src), out)
+	if err != nil {
+		t.Fatalf("writeFS: %v", err)
+	}
+
+	bs, err := os.ReadFile(filepath.Join(out, "icons", "icon.png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(bs) != "new" {
+		t.Errorf("icon = %q, want it overwritten", bs)
+	}
+}
+
 // TestBuild covers the whole command against a real app.
 func TestBuild(t *testing.T) {
 	if testing.Short() {
@@ -69,7 +184,7 @@ func TestBuild(t *testing.T) {
 		t.Fatalf("build: %v", err)
 	}
 
-	for _, name := range []string{"index.html", "app.wasm", "wasm_exec.js"} {
+	for _, name := range []string{"index.html", "manifest.json", "app.wasm", "wasm_exec.js"} {
 		info, err := os.Stat(filepath.Join(out, name))
 		if err != nil {
 			t.Errorf("no %s in the site: %v", name, err)

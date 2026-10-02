@@ -78,5 +78,7 @@ e.SetManifest(&tgexec.Manifest{
 })
 ```
 
-Only the desktop executor has no manifest: the [desktop
+The [browser app](../hello-world/wasm.md#web-manifest) has no server to
+serve it from, so its manifest is a build flag instead. Only the desktop
+executor has no manifest: the [desktop
 app](../hello-world/desktop.md) is not installed through a browser.
