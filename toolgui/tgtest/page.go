@@ -292,7 +292,8 @@ var textProps = map[string]bool{
 // label, a chart series' name.
 var nestedTextProps = map[string]bool{"label": true, "name": true}
 
-// HasText reports whether any text the page draws contains s.
+// HasText reports whether any text the page draws contains s, the value
+// shown in a textbox or textarea included.
 func (p *Page) HasText(s string) bool {
 	return len(p.Find(func(n *Node) bool {
 		for k, v := range n.Props {
@@ -300,8 +301,24 @@ func (p *Page) HasText(s string) bool {
 				return true
 			}
 		}
-		return false
+		return strings.Contains(p.shownValue(n), s)
 	})) > 0
+}
+
+// shownValue is the text in a textbox or textarea as the web client shows
+// it: what was typed, else the default. A password shows none.
+func (p *Page) shownValue(n *Node) string {
+	if n.Name != "textbox_component" && n.Name != "textarea_component" {
+		return ""
+	}
+	if password, _ := n.Props["password"].(bool); password {
+		return ""
+	}
+
+	if v, ok := p.state.Get[string](n.ID); ok && v != "" {
+		return v
+	}
+	return n.String("default")
 }
 
 func hasText(v any, s string) bool {

@@ -39,7 +39,8 @@ that run drew.
 A `Node` carries the component's `Name`, `ID` and `Props` as sent to the
 client. `p.HasText(s)` reports whether any text the page draws contains `s`;
 props that never reach the screen as text, such as a fileupload's `accept` or
-a link's `url`, don't count.
+a link's `url`, don't count. A textbox or textarea counts with the value it
+shows: what was typed, else its default.
 
 ## Acting on it
 

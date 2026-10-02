@@ -375,3 +375,26 @@ func TestSelectClear(t *testing.T) {
 		t.Error("expect Select(-1) to clear the select")
 	}
 }
+
+func TestHasTextShownValue(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		tgcomp.Textbox(p.Main, "Name", &tgcomp.TextboxConf{Default: "Alice"})
+		tgcomp.Textarea(p.Main, "Note", &tgcomp.TextareaConf{Default: "draft"})
+		tgcomp.Textbox(p.Main, "Pass", &tgcomp.TextboxConf{Default: "secret", Password: true})
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+
+	if !p.HasText("Alice") || !p.HasText("draft") {
+		t.Error("expect the defaults shown")
+	}
+	if p.HasText("secret") {
+		t.Error("expect a password not shown")
+	}
+
+	p.GetByLabel("Name").Input("Bob")
+	if !p.HasText("Bob") || p.HasText("Alice") {
+		t.Error("expect the typed value shown in place of the default")
+	}
+}
