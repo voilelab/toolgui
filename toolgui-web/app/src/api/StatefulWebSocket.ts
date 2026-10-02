@@ -268,11 +268,18 @@ export class StatefulWebSocket {
     const formData = new FormData()
     formData.append('file', file, file.name)
 
-    const resp = await fetch(fileUploadURL, {
-      method: 'POST',
-      body: formData,
-      headers: { STATE_ID: this.stateID, COMPONENT_ID: componentID },
-    })
+    // A header value is bytes, so an id from a non-ASCII label is encoded.
+    // fetch rejects rather than answers when it can't send at all.
+    let resp: Response
+    try {
+      resp = await fetch(fileUploadURL, {
+        method: 'POST',
+        body: formData,
+        headers: { STATE_ID: this.stateID, COMPONENT_ID: encodeURIComponent(componentID) },
+      })
+    } catch (e) {
+      return { ok: false, error: `upload failed: ${e}` }
+    }
 
     if (!resp.ok) {
       return { ok: false, error: `upload failed with status ${resp.status}` }

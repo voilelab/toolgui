@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -31,6 +32,9 @@ const testComponentID = "fileupload_component_File"
 // testMultiComponentID is the multi-file upload the test page draws.
 const testMultiComponentID = "fileupload_component_Files"
 
+// testCJKComponentID is a fileupload whose label is not ASCII.
+const testCJKComponentID = "fileupload_component_檔案"
+
 // newTestServer starts a server for an app with a single page.
 func newTestServer(t *testing.T) (*httptest.Server, *WebExecutor) {
 	t.Helper()
@@ -39,6 +43,7 @@ func newTestServer(t *testing.T) (*httptest.Server, *WebExecutor) {
 	app.AddPage("index", "Index", func(p *tgframe.Params) error {
 		tcinput.FileUpload(p.Main, "File", "")
 		tcinput.MultiFileUpload(p.Main, "Files", "")
+		tcinput.FileUpload(p.Main, "檔案", "")
 		return nil
 	})
 
@@ -175,7 +180,7 @@ func waitRun(t *testing.T, ws *websocket.Conn) {
 }
 
 // uploadRequest builds a multipart upload of content for componentID.
-func uploadRequest(t *testing.T, url, stateID, componentID, content string) *http.Request {
+func uploadRequest(t *testing.T, baseURL, stateID, componentID, content string) *http.Request {
 	t.Helper()
 
 	var body bytes.Buffer
@@ -194,7 +199,7 @@ func uploadRequest(t *testing.T, url, stateID, componentID, content string) *htt
 		t.Fatalf("close writer: %v", err)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, url+"/api/files", &body)
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/api/files", &body)
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
@@ -202,7 +207,7 @@ func uploadRequest(t *testing.T, url, stateID, componentID, content string) *htt
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("STATE_ID", stateID)
 	if componentID != "" {
-		req.Header.Set("COMPONENT_ID", componentID)
+		req.Header.Set("COMPONENT_ID", url.PathEscape(componentID))
 	}
 
 	return req
@@ -266,6 +271,49 @@ func TestUploadWithUndeclaredComponentID(t *testing.T) {
 	state, _ := e.stateMap.Get(stateID)
 	if state.GetFile("no_such_component") != nil {
 		t.Error("expect the refused upload to be stored nowhere")
+	}
+}
+
+// TestUploadNonASCIIComponentID checks a percent-encoded id from a non-ASCII
+// label finds its component.
+func TestUploadNonASCIIComponentID(t *testing.T) {
+	srv, e := newTestServer(t)
+	stateID := newUploadState(t, srv)
+
+	resp, err := srv.Client().Do(
+		uploadRequest(t, srv.URL, stateID, testCJKComponentID, "hello"))
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("StatusCode = %d, want 200", resp.StatusCode)
+	}
+
+	state, _ := e.stateMap.Get(stateID)
+	if state.GetFile(testCJKComponentID) == nil {
+		t.Error("expect the upload in the state")
+	}
+}
+
+// TestUploadBadlyEncodedComponentID checks an id that isn't valid
+// percent-encoding is refused.
+func TestUploadBadlyEncodedComponentID(t *testing.T) {
+	srv, _ := newTestServer(t)
+	stateID := newUploadState(t, srv)
+
+	req := uploadRequest(t, srv.URL, stateID, "", "hello")
+	req.Header.Set("COMPONENT_ID", "bad%zz")
+
+	resp, err := srv.Client().Do(req)
+	if err != nil {
+		t.Fatalf("upload: %v", err)
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("StatusCode = %d, want 400", resp.StatusCode)
 	}
 }
 

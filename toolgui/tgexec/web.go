@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"net/http"
+	"net/url"
 
 	toolguiweb "github.com/voilelab/toolgui/toolgui-web"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -422,8 +423,14 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// The file is stored under the component that asked for it, so two
-	// fileuploads offered a file of the same name keep their own.
-	componentID := req.Header.Get("COMPONENT_ID")
+	// fileuploads offered a file of the same name keep their own. The id is
+	// percent-encoded: a header value can't carry a non-ASCII label.
+	componentID, err := url.PathUnescape(req.Header.Get("COMPONENT_ID"))
+	if err != nil {
+		http.Error(w, "Component ID is not percent-encoded", http.StatusBadRequest)
+		return
+	}
+
 	if componentID == "" {
 		http.Error(w, "Component ID is missing", http.StatusBadRequest)
 		return
