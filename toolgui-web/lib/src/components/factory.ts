@@ -54,6 +54,7 @@ import { TTab } from "./tclayout/tab"
 import { TLatex } from "./tccontent/latex"
 import { TExpand } from "./tclayout/expand"
 import { TChatMessage } from "./tcchat/chat_message"
+import { TChatInput } from "./tcchat/chat_input"
 import { TEmpty } from "./tclayout/empty"
 import { TPopover } from "./tclayout/popover"
 import { TDialog } from "./tclayout/dialog"
@@ -91,6 +92,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   dialog_component: TDialog,
 
   chat_message_component: TChatMessage,
+  chat_input_component: TChatInput,
 
   title_component: TTitle,
   subtitle_component: TSubtitle,

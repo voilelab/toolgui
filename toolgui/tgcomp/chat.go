@@ -14,3 +14,13 @@ func ChatMessage(c *tgframe.Container, role string,
 
 // ChatMessageConf is the configuration for the ChatMessage component.
 type ChatMessageConf = tcchat.ChatMessageConf
+
+// ChatInput draws a box to send a chat message, and returns the message and
+// true on the run its send starts.
+func ChatInput(c *tgframe.Container, placeholder string,
+	conf ...*ChatInputConf) (string, bool) {
+	return tcchat.ChatInput(c, placeholder, conf...)
+}
+
+// ChatInputConf is the configuration for the ChatInput component.
+type ChatInputConf = tcchat.ChatInputConf

@@ -11,9 +11,15 @@ import (
 // it sent, in order.
 func chatPacks(t *testing.T, add func(c *tgframe.Container)) []map[string]any {
 	t.Helper()
+	return chatPacksIn(t, "test", add)
+}
+
+// chatPacksIn is chatPacks in a root container with the given id.
+func chatPacksIn(t *testing.T, id string, add func(c *tgframe.Container)) []map[string]any {
+	t.Helper()
 
 	var props []map[string]any
-	c := tgframe.NewContainer("test", tgframe.NewState(), func(pack tgframe.NotifyPack) {
+	c := tgframe.NewContainer(id, tgframe.NewState(), func(pack tgframe.NotifyPack) {
 		bs, err := tgjson.Marshal(pack)
 		if err != nil {
 			t.Fatalf("marshal: %v", err)

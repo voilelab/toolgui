@@ -10,3 +10,19 @@
 .toolgui-chat-message-body > :last-child > :last-child {
   margin-bottom: 0 !important;
 }
+
+/* Stays at the bottom of the window while the page scrolls under it. */
+.toolgui-page-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--mantine-color-body);
+}
+
+.toolgui-page-bottom:empty {
+  display: none;
+}
+
+.toolgui-page-bottom {
+  padding-block: var(--mantine-spacing-sm);
+}

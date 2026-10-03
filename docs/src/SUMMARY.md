@@ -93,6 +93,7 @@
 
 * [Chat Components](components/chat/index.md)
     * [Chat Message](components/chat/chat_message.md)
+    * [Chat Input](components/chat/chat_input.md)
 
 * [Misc Components](components/misc/index.md)
     * [Echo](components/misc/echo.md)
