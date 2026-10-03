@@ -153,7 +153,7 @@ func TestWriteStreamPanic(t *testing.T) {
 		}
 	}()
 
-	streamPacks(t, func(yield func(string, error) bool) { panic("boom") })
+	_, _, _ = streamPacks(t, func(yield func(string, error) bool) { panic("boom") })
 	t.Error("WriteStream returned, want a panic")
 }
 
