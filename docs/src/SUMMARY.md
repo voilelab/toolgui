@@ -91,6 +91,9 @@
     * [Dialog](components/layout/dialog.md)
     * [Tab](components/layout/tab.md)
 
+* [Chat Components](components/chat/index.md)
+    * [Chat Message](components/chat/chat_message.md)
+
 * [Misc Components](components/misc/index.md)
     * [Echo](components/misc/echo.md)
     * [Message](components/misc/message.md)

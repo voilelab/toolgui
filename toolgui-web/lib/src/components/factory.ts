@@ -53,6 +53,7 @@ import { Props } from "./component_interface"
 import { TTab } from "./tclayout/tab"
 import { TLatex } from "./tccontent/latex"
 import { TExpand } from "./tclayout/expand"
+import { TChatMessage } from "./tcchat/chat_message"
 import { TEmpty } from "./tclayout/empty"
 import { TPopover } from "./tclayout/popover"
 import { TDialog } from "./tclayout/dialog"
@@ -88,6 +89,8 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   empty_component: TEmpty,
   popover_component: TPopover,
   dialog_component: TDialog,
+
+  chat_message_component: TChatMessage,
 
   title_component: TTitle,
   subtitle_component: TSubtitle,

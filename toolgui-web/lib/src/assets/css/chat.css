@@ -1,0 +1,12 @@
+.toolgui-chat-message-body {
+  flex: 1;
+  min-width: 0;
+  /* Lines the first line of text up with the avatar. */
+  padding-top: 6px;
+}
+
+/* The message's own padding is the space below its content. Important, as
+   components set their margin inline. */
+.toolgui-chat-message-body > :last-child > :last-child {
+  margin-bottom: 0 !important;
+}

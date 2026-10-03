@@ -109,6 +109,14 @@ var groups = []*Group{
 		},
 	},
 	{
+		Name: "chat", Title: "Chat",
+		Demos: []*Demo{
+			demo("chat_message", "Chat Message",
+				show("show_chat_message", chatMessageDemo, "demo"),
+				show("show_chat_message_stream", chatMessageStreamDemo, "stream")),
+		},
+	},
+	{
 		Name: "misc", Title: "Misc", LeadDivider: true,
 		Demos: []*Demo{
 			demo("echo", "Echo", show("show_echo", echoDemo, "demo")),
