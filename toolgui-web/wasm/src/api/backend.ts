@@ -20,9 +20,10 @@ export class Backend {
   // onPack is called for every pack, in the order the page produced them.
   // embed is the display mode, which the program is told at boot: a worker's
   // own location is this script, so it cannot read the page's query string.
+  // query is the page's query string, handed over for the same reason.
   // onProgress follows the download of the binary, until the program starts.
   constructor(onPack: (pack: any) => void, embed: boolean = false,
-    onProgress?: (progress: LoadProgress) => void) {
+    onProgress?: (progress: LoadProgress) => void, query: string = '') {
     this.worker = new Worker(new URL('../worker.ts', import.meta.url))
 
     let started: () => void
@@ -67,6 +68,7 @@ export class Backend {
       wasmExecURL: assetURL('wasm_exec.js'),
       wasmURL: assetURL('app.wasm'),
       embed,
+      query,
     })
   }
 

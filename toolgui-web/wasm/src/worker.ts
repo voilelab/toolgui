@@ -62,6 +62,10 @@ interface WorkerCtx {
   // read it: the query string it comes from is the page's, and a worker's own
   // location is this script.
   toolguiEmbed?: boolean
+
+  // The page's query string, for a program that reads its own parameters
+  // (`?lang=en`). Set before the wasm program runs, for the same reason.
+  toolguiQuery?: string
 }
 
 const ctx = self as unknown as WorkerCtx
@@ -74,6 +78,7 @@ ctx.onmessage = (event: MessageEvent) => {
   switch (msg.kind) {
     case 'init':
       ctx.toolguiEmbed = !!msg.embed
+      ctx.toolguiQuery = typeof msg.query === 'string' ? msg.query : ''
       boot(msg.wasmExecURL, msg.wasmURL).catch((e) => {
         ctx.postMessage({ kind: 'failed', error: String(e) })
       })

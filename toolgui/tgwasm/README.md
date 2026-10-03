@@ -84,6 +84,11 @@ a page laid out differently in a frame. A worker's own location is its script
 rather than the page's URL, which is why the flag is handed over instead of
 read.
 
+The page's query string crosses the same way, on `globalThis.toolguiQuery`,
+and `tgwasm.Query()` parses it: an app that takes its own parameters, such as
+`?lang=en`, reads them there. Like the flag it is read once, since the query
+cannot change without a page load.
+
 ## An upload is written by the page and read by Go
 
 No bytes cross the boundary. `newUpload` answers with a directory and a file
