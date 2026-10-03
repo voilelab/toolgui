@@ -58,7 +58,8 @@ export class WasmApp extends Component<{}, WasmAppState> {
       }
 
       dispatchPack(app, pack)
-    }, this.embed, (progress) => { this.setState({ progress }) })
+    }, this.embed, (progress) => { this.setState({ progress }) },
+      window.location.search)
 
     this.setup().catch((e) => { this.fail(e) })
   }
