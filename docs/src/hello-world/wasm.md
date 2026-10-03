@@ -81,13 +81,15 @@ The component demo runs in the browser too — `task run_wasm_demo`, and it is
 ```text
 build/
 ├── index.html      the page
+├── manifest.json   the web app manifest
 ├── static/         the frontend bundle and the worker
 ├── wasm_exec.js    the Go runtime shim
 └── app.wasm        your app
 ```
 
-Four static files. Any file server serves them; there is no backend. It does
-have to be an `https` one, though, or `localhost` — see the hosting notes.
+A handful of static files. Any file server serves them; there is no backend.
+It does have to be an `https` one, though, or `localhost` — see the hosting
+notes.
 
 The CLI does nothing a shell cannot:
 
@@ -100,6 +102,36 @@ cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" dist/
 `wasm_exec.js` is copied out of the toolchain that built the binary rather than
 vendored: the two have to match. That is also why the CLI shells out to `go
 build` instead of asking you to run it — one toolchain, both halves.
+
+## Web manifest
+
+The browser reads `manifest.json` before any Go runs, so the app cannot set it
+from `main`. `toolgui-wasm` writes it instead:
+
+```shell
+go tool toolgui-wasm build -manifest manifest.json -assets assets ./cmd/myapp
+```
+
+* `-manifest` is a json file, written as `manifest.json`. It takes the same
+  members `tgexec.Manifest` does, `"icons"` and all.
+* `-assets` is a directory, copied to `assets/`. `assets/icon.png` in it is
+  `"src": "assets/icon.png"` in the manifest.
+* Without `-manifest`, a build writes `tgexec.DefaultManifest()`, unless the
+  output already has a `manifest.json` of its own, which it keeps.
+
+```json
+{
+  "name": "My Tool",
+  "short_name": "My Tool",
+  "start_url": ".",
+  "display": "standalone",
+  "icons": [
+    {"src": "assets/icon.png", "type": "image/png", "sizes": "512x512"}
+  ]
+}
+```
+
+Keep the urls relative, so the site still works under a project path.
 
 ## Where it runs
 
@@ -124,9 +156,9 @@ them — so a page function that takes a while leaves the UI responsive.
   on it, so an upload is bounded by the origin's room for it and not by the
   tab's memory.
 * The binary is public, like any other static asset. No secrets in it.
-* `SetManifest` and `SetAssets` are `WebExecutor` settings, so the browser
-  build does without them. A static site can carry a `manifest.json` and its
-  own files next to `index.html` instead.
+* `SetManifest` and `SetAssets` are `WebExecutor` settings. The browser
+  build takes the same things as build flags instead; see
+  [Web manifest](#web-manifest).
 
 ## Hosting notes
 
