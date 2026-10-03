@@ -114,6 +114,8 @@ var groups = []*Group{
 			demo("chat_message", "Chat Message",
 				show("show_chat_message", chatMessageDemo, "demo"),
 				show("show_chat_message_stream", chatMessageStreamDemo, "stream")),
+			demo("chat_input", "Chat Input",
+				show("show_chat_input", chatInputDemo, "demo")),
 		},
 	},
 	{

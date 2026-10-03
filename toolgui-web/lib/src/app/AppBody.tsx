@@ -7,6 +7,7 @@ import { Forest } from "./Nodes";
 import { UploadFunc } from "./Upload"
 import { DownloadFunc } from "./Download";
 import { ThemeMode } from "../util/theme";
+import { PAGE_BOTTOM_ID } from "./PageBottom";
 
 interface AppBodyProps {
   appConf: AppConf
@@ -39,6 +40,9 @@ export class AppBody extends Component<AppBodyProps> {
             download={async (token) => await this.props.download(token)}
             theme={this.props.themeMode} />
           : <MessagePageNotFound />}
+        {/* Where a pinned chat input is portaled to: last in the page, and
+            sticky, so it stays at the bottom without covering the content. */}
+        <div id={PAGE_BOTTOM_ID} className="toolgui-page-bottom" />
       </div>
     )
   }

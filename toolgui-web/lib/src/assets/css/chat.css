@@ -10,3 +10,38 @@
 .toolgui-chat-message-body > :last-child > :last-child {
   margin-bottom: 0 !important;
 }
+
+/* Stays at the bottom of the window while the page scrolls under it. */
+.toolgui-page-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--mantine-color-body);
+}
+
+.toolgui-page-bottom:empty {
+  display: none;
+}
+
+/* Sticky alone only holds the slot once the page is taller than the window.
+   With a pinned input, the page fills the main column and the slot is pushed
+   to its end, so a short page has it at the bottom too. */
+.toolgui-main:has(> .toolgui-page > .toolgui-page-bottom:not(:empty)) {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolgui-page:has(> .toolgui-page-bottom:not(:empty)) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  width: 100%;
+}
+
+.toolgui-page > .toolgui-page-bottom {
+  margin-top: auto;
+}
+
+.toolgui-page-bottom {
+  padding-block: var(--mantine-spacing-sm);
+}
