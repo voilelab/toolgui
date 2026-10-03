@@ -235,6 +235,10 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     const sidebarNode = this.sidebarNode()
     const hasSidebar = sidebarNode.children.length > 0
 
+    // A list of one is no choice: a single-page app gets no list.
+    const navPages = this.navPages()
+    const hasNavList = navPages.length > 1
+
     const collapsed = this.state.collapsed
     // One string for the tooltip and the accessible name: a tooltip that says
     // something else is what a screen reader and a voice command disagree over.
@@ -273,30 +277,31 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
 
         <div id={navBodyID}
           className={`toolgui-nav-body ${this.state.open ? 'is-open' : ''}`}>
-          <nav className="toolgui-nav-list" aria-label="main navigation">
-            {
-              this.navPages().map(name => {
-                const active = name === this.props.pageName
-                return (
-                  <NavLink key={name}
-                    component="a"
-                    href={this.pageHref(name)}
-                    active={active}
-                    variant="filled"
-                    aria-current={active ? 'page' : undefined}
-                    label={<>
-                      {emojize(this.props.appConf.page_confs[name].emoji || '')}
-                      {this.props.appConf.page_confs[name].title}
-                    </>}
-                    onClick={(e) => { e.preventDefault(); this.jumpToPage(name) }} />
-                )
-              })
-            }
-          </nav>
+          {hasNavList ?
+            <nav className="toolgui-nav-list" aria-label="main navigation">
+              {
+                navPages.map(name => {
+                  const active = name === this.props.pageName
+                  return (
+                    <NavLink key={name}
+                      component="a"
+                      href={this.pageHref(name)}
+                      active={active}
+                      variant="filled"
+                      aria-current={active ? 'page' : undefined}
+                      label={<>
+                        {emojize(this.props.appConf.page_confs[name].emoji || '')}
+                        {this.props.appConf.page_confs[name].title}
+                      </>}
+                      onClick={(e) => { e.preventDefault(); this.jumpToPage(name) }} />
+                  )
+                })
+              }
+            </nav> : ''}
 
           {hasSidebar ?
             <div>
-              <Divider my="sm" />
+              {hasNavList ? <Divider my="sm" /> : ''}
               <TComponent node={sidebarNode}
                 update={(e) => { this.props.update(e) }}
                 upload={async (f, id) => await this.props.upload(f, id)}
