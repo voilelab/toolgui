@@ -58,6 +58,7 @@ export function TChatInput({ node, update }: Props) {
           send()
         }
       }}
+      rightSectionPointerEvents="all"
       rightSection={
         <ActionIcon variant="subtle" aria-label="Send"
           disabled={!canSend} onClick={send}>
