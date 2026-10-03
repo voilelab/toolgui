@@ -8,6 +8,7 @@ import (
 	"flag"
 	"io/fs"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -334,7 +335,18 @@ func writeServiceWorker(out, assets string) error {
 		sum.Write(bs)
 	}
 
-	list, err := tgjson.Marshal(files)
+	// Escaped, so a # or ? in a name stays part of the path.
+	urls := make([]string, 0, len(files))
+	for _, name := range files {
+		segs := strings.Split(name, "/")
+		for i, seg := range segs {
+			segs[i] = url.PathEscape(seg)
+		}
+
+		urls = append(urls, strings.Join(segs, "/"))
+	}
+
+	list, err := tgjson.Marshal(urls)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}

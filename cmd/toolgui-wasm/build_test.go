@@ -350,6 +350,7 @@ func TestWriteServiceWorker(t *testing.T) {
 
 	assets := t.TempDir()
 	writeFile(t, filepath.Join(assets, "icons", "icon.png"), "png")
+	writeFile(t, filepath.Join(assets, "a#b?c d.png"), "png")
 
 	err = writeAssets(assets, out)
 	if err != nil {
@@ -377,6 +378,10 @@ func TestWriteServiceWorker(t *testing.T) {
 		if !strings.Contains(first, name) {
 			t.Errorf("sw.js does not cache %s", name)
 		}
+	}
+
+	if !strings.Contains(first, `"assets/a%23b%3Fc%20d.png"`) {
+		t.Error("sw.js does not escape a # or ? in a file name")
 	}
 
 	if strings.Contains(first, "__VERSION__") || strings.Contains(first, "__FILES__") {
