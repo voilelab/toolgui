@@ -19,6 +19,8 @@ var groups = []*Group{
 			demo("metric", "Metric", show("show_metric", metricDemo, "demo")),
 			demo("badge", "Badge", show("show_badge", badgeDemo, "demo")),
 			demo("image", "Image", show("show_image", imageDemo, "demo")),
+			demo("write_stream", "Write Stream",
+				show("show_write_stream", writeStreamDemo, "demo")),
 			// The column id keeps its typo: it is what the end to end tests
 			// have always named this row.
 			demo("divider", "Divider", show("show_divier", dividerDemo, "demo")),

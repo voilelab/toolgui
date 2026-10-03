@@ -44,6 +44,7 @@
     * [Image](components/content/image.md)
     * [Code](components/content/code.md)
     * [Markdown](components/content/markdown.md)
+    * [Write Stream](components/content/write_stream.md)
     * [Divider](components/content/divider.md)
     * [Link](components/content/link.md)
     * [Link Button](components/content/link_button.md)

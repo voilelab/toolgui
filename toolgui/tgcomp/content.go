@@ -1,6 +1,8 @@
 package tgcomp
 
 import (
+	"iter"
+
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tccontent"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
@@ -123,3 +125,13 @@ func Latex(c *tgframe.Container, text string, conf ...*LatexConf) {
 
 // LatexConf is the configuration for the Latex component.
 type LatexConf = tccontent.LatexConf
+
+// WriteStream writes the chunks of seq into one Markdown as they arrive, and
+// returns the whole text.
+func WriteStream(c *tgframe.Container, seq iter.Seq2[string, error],
+	conf ...*WriteStreamConf) (string, error) {
+	return tccontent.WriteStream(c, seq, conf...)
+}
+
+// WriteStreamConf is the configuration for the WriteStream component.
+type WriteStreamConf = tccontent.WriteStreamConf
