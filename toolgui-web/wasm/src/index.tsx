@@ -5,6 +5,9 @@ import ReactDOM from 'react-dom/client'
 // them.
 import { WasmApp } from './WasmApp'
 import './index.css'
+import { setupOffline } from './offline'
+
+setupOffline().catch((e) => console.error('service worker', e))
 
 const root = ReactDOM.createRoot(document.getElementById('root'))
 root.render(

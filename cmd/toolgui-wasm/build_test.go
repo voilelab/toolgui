@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgexec"
@@ -304,5 +305,91 @@ func writeFile(t *testing.T, name, body string) {
 	err = os.WriteFile(name, []byte(body), 0o644)
 	if err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestMarkIndex(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "index.html")
+	writeFile(t, name, "<html><head>\n  <title>x</title>\n  </head><body></body></html>")
+
+	// Twice: a rebuild into the same directory must not add a second one.
+	for range 2 {
+		err := markIndex(name)
+		if err != nil {
+			t.Fatalf("markIndex: %v", err)
+		}
+	}
+
+	bs, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if n := strings.Count(string(bs), offlineMeta); n != 1 {
+		t.Errorf("%d metas in %s, want 1", n, bs)
+	}
+
+	if strings.Index(string(bs), offlineMeta) > strings.Index(string(bs), "</head>") {
+		t.Errorf("meta outside the head: %s", bs)
+	}
+}
+
+func TestWriteServiceWorker(t *testing.T) {
+	out := t.TempDir()
+
+	err := writeFrontend(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The stub frontend has no head to mark.
+	writeFile(t, filepath.Join(out, "index.html"), "<html><head></head></html>")
+	writeFile(t, filepath.Join(out, "app.wasm"), "wasm")
+	writeFile(t, filepath.Join(out, "wasm_exec.js"), "shim")
+	writeFile(t, filepath.Join(out, "manifest.json"), "{}")
+
+	assets := t.TempDir()
+	writeFile(t, filepath.Join(assets, "icons", "icon.png"), "png")
+
+	err = writeAssets(assets, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sw := func() string {
+		t.Helper()
+
+		err := writeServiceWorker(out, assets)
+		if err != nil {
+			t.Fatalf("writeServiceWorker: %v", err)
+		}
+
+		bs, err := os.ReadFile(filepath.Join(out, "sw.js"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return string(bs)
+	}
+
+	first := sw()
+	for _, name := range []string{`"index.html"`, `"app.wasm"`, `"wasm_exec.js"`, `"manifest.json"`, `"assets/icons/icon.png"`} {
+		if !strings.Contains(first, name) {
+			t.Errorf("sw.js does not cache %s", name)
+		}
+	}
+
+	if strings.Contains(first, "__VERSION__") || strings.Contains(first, "__FILES__") {
+		t.Error("sw.js still has a placeholder")
+	}
+
+	if sw() != first {
+		t.Error("the same files gave another sw.js")
+	}
+
+	// A new binary is a new version, so browsers install it.
+	writeFile(t, filepath.Join(out, "app.wasm"), "wasm 2")
+	if sw() == first {
+		t.Error("a changed app.wasm kept the same sw.js")
 	}
 }
