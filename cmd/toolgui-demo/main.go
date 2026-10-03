@@ -97,54 +97,44 @@ func demoMenu() *tgframe.Menu {
 		})
 }
 
-// menuLogKey is where the menu picks are logged. The state is the session's,
-// so the log survives switching pages.
-const menuLogKey = "demo_menu_log"
-
-// handleMenu logs the menu item this run was started by, if any, and returns
-// what it logged ("" for none).
-func handleMenu(p *tgframe.Params) string {
-	log, _ := p.State.Get[[]string](menuLogKey)
-
-	// Numbered, so a line says which run wrote it: picking the same item
-	// twice reads as two entries rather than as one that may not have moved.
-	var what string
+// menuPick returns what the menu item this run was started by reads as, or ""
+// if the run was not started by one.
+func menuPick(p *tgframe.Params) string {
 	switch {
 	case tgframe.MenuClicked(p, "hello"):
-		what = "File > Say hello"
+		return "File > Say hello"
 	case tgframe.MenuClicked(p, "hello_loud"):
-		what = "FILE > MORE > SAY HELLO LOUDLY"
+		return "FILE > MORE > SAY HELLO LOUDLY"
 	case tgframe.MenuClicked(p, "clear"):
-		p.State.Set(menuLogKey, []string(nil))
-		return "Log cleared"
+		return "File > Clear the log"
 	case tgframe.MenuClicked(p, "about"):
-		what = "Help > About: toolgui " + tgframe.Version()
-	default:
-		return ""
+		return "Help > About: toolgui " + tgframe.Version()
 	}
 
-	log = append(log, fmt.Sprintf("%d. %s", len(log)+1, what))
-	p.State.Set(menuLogKey, log)
-
-	return what
+	return ""
 }
 
-// withMenu wraps a page so the menubar works on it: a pick is logged and
-// toasted, pointing to the App Menu page for the full log.
+// withMenu wraps a page so the menubar does something on it too: a pick is
+// shown as a toast.
 func withMenu(run tgframe.RunFunc) tgframe.RunFunc {
 	return func(p *tgframe.Params) error {
-		if what := handleMenu(p); what != "" {
-			tgcomp.Toast(p.Main, what+" (see App Menu)")
+		if what := menuPick(p); what != "" {
+			tgcomp.Toast(p.Main, what)
 		}
 
 		return run(p)
 	}
 }
 
+// menuLogKey is where the menu page keeps what has been picked. The state is
+// the session's, so the log survives a page func that only draws it.
+const menuLogKey = "demo_menu_log"
+
 func MenuPage(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "App Menu")
-	tgcomp.Text(p.Main, "The menubar above the app comes from App.SetMenu"+
-		" and works on every page. Picks are logged here."+
+	tgcomp.Text(p.Main, "The menubar above the app comes from App.SetMenu."+
+		" Pick an item and the run handling the click appends to this log;"+
+		" on the other pages a pick shows as a toast."+
 		" The items also carry accelerators, which fire them without the"+
 		" menu being opened.")
 
@@ -153,10 +143,19 @@ func MenuPage(p *tgframe.Params) error {
 	// is being filled in. A chord still reaches the menu from in here.
 	tgcomp.Textbox(p.Main, "Type in me", &tgcomp.TextboxConf{ID: "menu_typing"})
 
-	// Handled here rather than by withMenu: the log below is the feedback.
-	handleMenu(p)
-
 	log, _ := p.State.Get[[]string](menuLogKey)
+
+	// Numbered, so a line says which run wrote it: picking the same item
+	// twice reads as two entries rather than as one that may not have moved.
+	switch what := menuPick(p); {
+	case tgframe.MenuClicked(p, "clear"):
+		log = nil
+	case what != "":
+		log = append(log, fmt.Sprintf("%d. %s", len(log)+1, what))
+	}
+
+	p.State.Set(menuLogKey, log)
+
 	if len(log) == 0 {
 		tgcomp.Caption(p.Main, "Nothing picked yet.")
 		return nil
@@ -374,9 +373,10 @@ func newApp() *tgframe.App {
 	// in the manifest main_server.go sets unless that gives its own name.
 	app.SetTitle("ToolGUI Demo")
 
-	// The menubar is the app's, so it is there on every page, and every page
-	// is wrapped in withMenu to handle it. Embedded in the book the row is
-	// dropped along with the rest of the app's chrome.
+	// The menubar is the app's, so it is there on every page. Every page but
+	// App Menu, which logs picks itself, is wrapped in withMenu to answer it.
+	// Embedded in the book the row is dropped along with the rest of the
+	// app's chrome.
 	app.SetMenu(demoMenu())
 
 	app.AddPage("index", "Index", withMenu(MainPage))

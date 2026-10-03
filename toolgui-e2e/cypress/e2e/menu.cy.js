@@ -106,7 +106,7 @@ describe('Menu', () => {
     cy.contains('3. File > Say hello').should('not.exist')
   })
 
-  // The demo handles the menu on every page, not just its own.
+  // The demo answers the menu on every page, not just its own.
   it('An item works from another page too', () => {
     cy.visit('/index')
 
@@ -114,9 +114,6 @@ describe('Menu', () => {
     cy.get('#menu_item_hello').click(noScroll)
     cy.contains('.mantine-Notification-root', 'File > Say hello')
       .should('be.visible')
-
-    cy.get('.toolgui-nav-list a[href="/app_menu"]').click()
-    cy.contains('1. File > Say hello').should('exist')
   })
 
   it('A second submenu has items of its own', () => {
