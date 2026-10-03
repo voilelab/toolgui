@@ -235,9 +235,11 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
     const sidebarNode = this.sidebarNode()
     const hasSidebar = sidebarNode.children.length > 0
 
-    // A list of one is no choice: a single-page app gets no list.
+    // A list holding only the page being read is no choice: a single-page app
+    // gets no list. A not-found route keeps it, as the way back.
     const navPages = this.navPages()
-    const hasNavList = navPages.length > 1
+    const hasNavList = navPages.length > 1 ||
+      (navPages.length === 1 && navPages[0] !== this.props.pageName)
 
     const collapsed = this.state.collapsed
     // One string for the tooltip and the accessible name: a tooltip that says
