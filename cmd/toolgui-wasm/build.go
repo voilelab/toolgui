@@ -1,10 +1,14 @@
 package main
 
 import (
+	"crypto/sha256"
+	_ "embed"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"io/fs"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,6 +54,7 @@ type buildOpts struct {
 	ldflags  string // passed to go build as -ldflags, e.g. "-s -w"
 	manifest string // json file written as manifest.json
 	assets   string // directory copied to assets/
+	offline  bool   // write sw.js, so the site opens with no network
 }
 
 // parseBuildFlags reads the flags build and serve share. extra registers the
@@ -60,6 +65,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 	ldflags := flags.String("ldflags", "", "arguments to pass on each go tool link invocation")
 	manifest := flags.String("manifest", "", "web app manifest json to write as manifest.json")
 	assets := flags.String("assets", "", "directory to copy to assets/, e.g. manifest icons")
+	offline := flags.Bool("offline", false, "write a service worker, so the site opens with no network")
 	if extra != nil {
 		extra(flags)
 	}
@@ -84,6 +90,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 		ldflags:  *ldflags,
 		manifest: *manifest,
 		assets:   *assets,
+		offline:  *offline,
 	}, nil
 }
 
@@ -121,6 +128,13 @@ func build(opts buildOpts) error {
 	err = copyWasmExec(out)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
+	}
+
+	if opts.offline {
+		err = writeServiceWorker(out, opts.assets)
+		if err != nil {
+			return tgutil.Errorf("service worker: %w", err)
+		}
 	}
 
 	log.Printf("built %s", out)
@@ -275,4 +289,112 @@ func findWasmExec(goroot string) (string, error) {
 	}
 
 	return "", tgutil.Errorf("no wasm_exec.js under %s", goroot)
+}
+
+//go:embed sw.js
+var swTemplate string
+
+// offlineMeta tells the page to register sw.js. A page without it unregisters
+// one an earlier -offline build left.
+const offlineMeta = `<meta name="toolgui-sw" content="sw.js" />`
+
+// writeServiceWorker write sw.js caching the files this build wrote, and mark
+// index.html to register it. assets is the -assets directory, if any.
+func writeServiceWorker(out, assets string) error {
+	files, err := fileNames(wasmweb.GetAssets(), "")
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	files = append(files, "app.wasm", "wasm_exec.js", "manifest.json")
+
+	if assets != "" {
+		names, err := fileNames(os.DirFS(assets), "assets/")
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+
+		files = append(files, names...)
+	}
+
+	err = markIndex(filepath.Join(out, "index.html"))
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	// Hashed after index.html is marked, so the version covers what is served.
+	sum := sha256.New()
+	for _, name := range files {
+		bs, err := os.ReadFile(filepath.Join(out, filepath.FromSlash(name)))
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+
+		sum.Write([]byte(name))
+		sum.Write([]byte{0})
+		sum.Write(bs)
+	}
+
+	// Escaped, so a # or ? in a name stays part of the path.
+	urls := make([]string, 0, len(files))
+	for _, name := range files {
+		segs := strings.Split(name, "/")
+		for i, seg := range segs {
+			segs[i] = url.PathEscape(seg)
+		}
+
+		urls = append(urls, strings.Join(segs, "/"))
+	}
+
+	list, err := tgjson.Marshal(urls)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	js := strings.Replace(swTemplate, "__VERSION__", hex.EncodeToString(sum.Sum(nil))[:16], 1)
+	js = strings.Replace(js, "__FILES__", string(list), 1)
+
+	return os.WriteFile(filepath.Join(out, "sw.js"), []byte(js), 0o644)
+}
+
+// fileNames list the files in fsys, each behind prefix.
+func fileNames(fsys fs.FS, prefix string) ([]string, error) {
+	names := []string{}
+	err := fs.WalkDir(fsys, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !entry.IsDir() {
+			names = append(names, prefix+name)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, tgutil.Errorf("%w", err)
+	}
+
+	return names, nil
+}
+
+// markIndex add offlineMeta to the head of index.html.
+func markIndex(name string) error {
+	bs, err := os.ReadFile(name)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	html := string(bs)
+	if strings.Contains(html, offlineMeta) {
+		return nil
+	}
+
+	head := strings.Index(html, "</head>")
+	if head < 0 {
+		return tgutil.Errorf("no </head> in %s", name)
+	}
+
+	html = html[:head] + offlineMeta + "\n  " + html[head:]
+	return os.WriteFile(name, []byte(html), 0o644)
 }

@@ -82,6 +82,7 @@ The component demo runs in the browser too — `task run_wasm_demo`, and it is
 build/
 ├── index.html      the page
 ├── manifest.json   the web app manifest
+├── sw.js           the service worker, with -offline
 ├── static/         the frontend bundle and the worker
 ├── wasm_exec.js    the Go runtime shim
 └── app.wasm        your app
@@ -132,6 +133,26 @@ go tool toolgui-wasm build -manifest manifest.json -assets assets ./cmd/myapp
 ```
 
 Keep the urls relative, so the site still works under a project path.
+
+## Opening offline
+
+`-offline` adds a service worker, so the app opens with no network once it has
+been loaded once:
+
+```shell
+go tool toolgui-wasm build -offline -manifest manifest.json -o dist ./cmd/myapp
+```
+
+* The worker keeps a copy of the files the build wrote and serves it when the
+  network fails. Online it gets out of the way: every load goes to the server
+  and refreshes the copy, so a new build shows up on the next load, as it
+  would without a worker.
+* A build without `-offline` removes the worker on its first load, along with
+  its copy.
+* Only the site's own files are kept. What a page function fetches still needs
+  the network, and the state is still the tab's: offline or not, a reload
+  starts from an empty one.
+* Service workers need a [secure context] too.
 
 ## Where it runs
 
