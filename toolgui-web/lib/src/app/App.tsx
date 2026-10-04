@@ -19,7 +19,7 @@ import { AppConf } from './AppConf';
 import { AppSideNav } from './AppSideNav';
 import { AppMenuBar } from './AppMenuBar';
 import { AppBody } from './AppBody';
-import { setIcon } from '../util/seticon';
+import { setIcon, setIconURL } from '../util/seticon';
 import { emojize } from '../util/emoji';
 import { AppError, Error } from './AppError';
 import { UploadFunc } from './Upload';
@@ -106,13 +106,18 @@ export class App extends Component<AppProps, AppState> {
     let pageFound = true
     if (curconf) {
       document.title = documentTitle(props.appConf, curconf.title)
-      if (curconf.emoji) {
-        setIcon(emojize(curconf.emoji))
-      }
     } else {
       document.title = documentTitle(props.appConf, 'Page not found')
-      setIcon('❓')
       pageFound = false
+    }
+
+    // The app's icon wins over the page emoji.
+    if (props.appConf.icon) {
+      setIconURL(props.appConf.icon)
+    } else if (!curconf) {
+      setIcon('❓')
+    } else if (curconf.emoji) {
+      setIcon(emojize(curconf.emoji))
     }
 
     this.state = {

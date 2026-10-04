@@ -45,6 +45,10 @@ export interface AppConf {
 
   title: string,
 
+  // The favicon url App.SetIcon set, absent for an app that sets none. It
+  // replaces the page emoji in the tab.
+  icon?: string,
+
   main_container_id: string,
   sidebar_container_id: string,
 

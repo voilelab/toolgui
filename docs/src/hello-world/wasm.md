@@ -134,6 +134,20 @@ go tool toolgui-wasm build -manifest manifest.json -assets assets ./cmd/myapp
 
 Keep the urls relative, so the site still works under a project path.
 
+## Icon
+
+`-icon` points the favicon in `index.html` at a url, so the tab, bookmarks
+and crawlers see it before any wasm loads. Ship the file with `-assets`:
+
+```shell
+go tool toolgui-wasm build -assets assets -icon assets/favicon.svg ./cmd/myapp
+```
+
+Once the app loads, the frontend sets the icon again from the app's config:
+the page emoji, unless the app calls
+[`app.SetIcon`](../app/index.md#icon). Set both to the same url to keep one
+icon throughout.
+
 ## Opening offline
 
 `-offline` adds a service worker, so the app opens with no network once it has
