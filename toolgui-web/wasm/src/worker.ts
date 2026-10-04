@@ -12,6 +12,7 @@
 interface Bridge {
   appConf(): string
   onPack(callback: (packJSON: string) => void): void
+  onEvent(callback: (name: string, detailJSON: string) => void): void
   start(pageName: string): void
   update(eventJSON: string): void
   downloadFile(token: string): string
@@ -121,6 +122,11 @@ async function boot(wasmExecURL: string, wasmURL: string) {
   // Registered before the first start, or that run's packs are lost.
   bridge.onPack((packJSON: string) => {
     ctx.postMessage({ kind: 'pack', pack: JSON.parse(packJSON) })
+  })
+
+  // tgwasm.Emit, for the page to dispatch on its window.
+  bridge.onEvent((name: string, detailJSON: string) => {
+    ctx.postMessage({ kind: 'event', name, detail: JSON.parse(detailJSON) })
   })
 
   ctx.postMessage({ kind: 'ready' })

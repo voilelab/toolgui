@@ -89,6 +89,26 @@ and `tgwasm.Query()` parses it: an app that takes its own parameters, such as
 `?lang=en`, reads them there. Like the flag it is read once, since the query
 cannot change without a page load.
 
+## An app can tell the page about something
+
+`tgwasm.Emit(name, detail)` dispatches a `toolgui:<name>` DOM event on the
+window of the page the app is shown in, with `detail`, sent as JSON, as the
+event's detail. The worker hands it to the page through its own message
+channel, so it reaches that tab only — unlike a `BroadcastChannel`, which every
+tab of the site hears. It is for a script of the page's own, such as analytics
+added with `toolgui-wasm -head`:
+
+```go
+tgwasm.Emit("download", map[string]any{"tool": "novel"})
+```
+
+```js
+addEventListener('toolgui:download', (e) => umami.track('download', e.detail))
+```
+
+Emit fails with `ErrNoEventCallback` until the page has registered for events,
+which the frontend does at boot, before the first page runs.
+
 ## An upload is written by the page and read by Go
 
 No bytes cross the boundary. `newUpload` answers with a directory and a file

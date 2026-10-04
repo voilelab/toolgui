@@ -46,6 +46,11 @@ export class Backend {
           onPack(msg.pack)
           break
 
+        case 'event':
+          // Prefixed as tgwasm.EventPrefix, so it cannot pass for a browser event.
+          window.dispatchEvent(new CustomEvent('toolgui:' + msg.name, { detail: msg.detail }))
+          break
+
         case 'progress':
           onProgress?.({ loaded: msg.loaded, total: msg.total, done: msg.done })
           break
