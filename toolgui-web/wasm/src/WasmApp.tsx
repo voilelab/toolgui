@@ -34,7 +34,6 @@ function embedFromSearch(search: string): boolean {
 export class WasmApp extends Component<{}, WasmAppState> {
   appEle: React.RefObject<App>
   backend: Backend
-  onHashChange: () => void = () => {}
 
   // Read once: the query string cannot change without a page load, while the
   // hash changes on every page.
@@ -49,11 +48,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
       progress: null,
     }
     this.appEle = React.createRef()
-  }
 
-  // Not in the constructor: StrictMode builds a throwaway instance, whose
-  // worker would run the page and Emit too.
-  componentDidMount() {
     // Listening before the first run: packs delivered with no listener are
     // lost.
     this.backend = new Backend((pack) => {
@@ -69,20 +64,14 @@ export class WasmApp extends Component<{}, WasmAppState> {
     this.setup().catch((e) => { this.fail(e) })
   }
 
-  componentWillUnmount() {
-    this.backend.terminate()
-    window.removeEventListener('hashchange', this.onHashChange)
-  }
-
   async setup() {
     const appConf = await this.backend.appConf()
 
     // The wasm program stays loaded across pages, so navigation is a new
     // session rather than a page load.
-    this.onHashChange = () => {
+    window.addEventListener('hashchange', () => {
       this.openPage(appConf, pageNameFromHash(appConf))
-    }
-    window.addEventListener('hashchange', this.onHashChange)
+    })
 
     this.openPage(appConf, pageNameFromHash(appConf))
   }
