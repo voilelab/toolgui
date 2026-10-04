@@ -334,6 +334,48 @@ func TestMarkIndex(t *testing.T) {
 	}
 }
 
+func TestWriteHead(t *testing.T) {
+	dir := t.TempDir()
+	index := filepath.Join(dir, "index.html")
+	src := filepath.Join(dir, "head.html")
+	writeFile(t, index, "<html><head>\n  <title>x</title>\n  </head><body></body></html>")
+	writeFile(t, src, "<meta name=\"a\" />\n<meta name=\"b\" />\n")
+
+	// Twice: a rebuild into the same directory must not add a second one.
+	for range 2 {
+		err := writeHead(index, src)
+		if err != nil {
+			t.Fatalf("writeHead: %v", err)
+		}
+	}
+
+	bs, err := os.ReadFile(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	html := string(bs)
+	snippet := "<meta name=\"a\" />\n<meta name=\"b\" />"
+	if n := strings.Count(html, snippet); n != 1 {
+		t.Errorf("%d snippets in %s, want 1", n, bs)
+	}
+
+	if strings.Index(html, snippet) > strings.Index(html, "</head>") {
+		t.Errorf("snippet outside the head: %s", bs)
+	}
+}
+
+func TestWriteHeadMissingFile(t *testing.T) {
+	dir := t.TempDir()
+	index := filepath.Join(dir, "index.html")
+	writeFile(t, index, "<html><head></head></html>")
+
+	err := writeHead(index, filepath.Join(dir, "nope.html"))
+	if err == nil {
+		t.Error("writeHead with a missing file: no error")
+	}
+}
+
 func TestWriteServiceWorker(t *testing.T) {
 	out := t.TempDir()
 

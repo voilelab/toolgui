@@ -60,6 +60,9 @@ var ErrUpdateInterrupt = tgframe.ErrUpdateInterrupt
 type WebExecutor struct {
 	rootAssets map[string][]byte
 
+	// index is the page served for every app page.
+	index string
+
 	stateMap tgutil.UUIDMap[tgframe.State]
 
 	// maxUploadSize is the size cap of one upload request, guarded by confMu.
@@ -70,9 +73,9 @@ type WebExecutor struct {
 
 	app *tgframe.App
 
-	// confMu guards manifest, assets, maxUploadSize and maxMessageSize, which
-	// the app may set at any time, including while handlers are already
-	// serving requests.
+	// confMu guards manifest, assets, headHTML, maxUploadSize and
+	// maxMessageSize, which the app may set at any time, including while
+	// handlers are already serving requests.
 	confMu sync.RWMutex
 
 	// manifest is nil until the app sets one, and nil serves the default.
@@ -80,6 +83,9 @@ type WebExecutor struct {
 
 	// assets is nil until the app sets one.
 	assets fs.FS
+
+	// headHTML is inserted before </head> of the index page.
+	headHTML string
 
 	// allowedOrigins is nil until the app sets some, and holds normalized
 	// origins the update socket takes on top of the app's own.
@@ -99,6 +105,7 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 
 	return &WebExecutor{
 		rootAssets: toolguiweb.GetRootAssets(),
+		index:      toolguiweb.IndexBody,
 
 		stateMap: stateMap,
 
@@ -180,6 +187,37 @@ func (e *WebExecutor) SetAssets(fsys fs.FS) {
 	defer e.confMu.Unlock()
 
 	e.assets = fsys
+}
+
+// SetHeadHTML inserts html into the head of the index page, for what has to
+// be in the static page: crawlers run no script, so meta tags such as Open
+// Graph or CSP, fonts or analytics tags go here rather than through the app.
+//
+//	e.SetHeadHTML(`<meta property="og:title" content="My Tool" />`)
+func (e *WebExecutor) SetHeadHTML(html string) {
+	e.confMu.Lock()
+	defer e.confMu.Unlock()
+
+	e.headHTML = html
+}
+
+// indexBody return the index page with the head html in it.
+func (e *WebExecutor) indexBody() []byte {
+	e.confMu.RLock()
+	head := e.headHTML
+	e.confMu.RUnlock()
+
+	return []byte(insertHead(e.index, head))
+}
+
+// insertHead put snippet before </head> of html.
+func insertHead(html, snippet string) string {
+	i := strings.Index(html, "</head>")
+	if snippet == "" || i < 0 {
+		return html
+	}
+
+	return html[:i] + snippet + "\n" + html[i:]
 }
 
 // SetAllowedOrigins lets pages from these origins open the update websocket,
@@ -591,16 +629,21 @@ func (e *WebExecutor) handleDownload(w http.ResponseWriter, req *http.Request) {
 func (e *WebExecutor) handlePage(resp http.ResponseWriter, req *http.Request) {
 	pageName := req.PathValue("name")
 	body, isRootAssets := e.rootAssets[pageName]
-	if isRootAssets {
+	if isRootAssets && pageName != "index.html" {
 		resp.Write(body)
 		return
 	}
 
-	resp.Write([]byte(toolguiweb.IndexBody))
+	resp.Write(e.indexBody())
 }
 
 func (e *WebExecutor) handleAssets(resp http.ResponseWriter, req *http.Request) {
 	pageName := req.PathValue("name")
+	if pageName == "index.html" {
+		resp.Write(e.indexBody())
+		return
+	}
+
 	body, isRootAssets := e.rootAssets[pageName]
 	if !isRootAssets {
 		resp.WriteHeader(http.StatusNotFound)
@@ -626,7 +669,7 @@ func (e *WebExecutor) handleAsset(resp http.ResponseWriter, req *http.Request) {
 }
 
 func (e *WebExecutor) handleIndex(resp http.ResponseWriter, req *http.Request) {
-	resp.Write([]byte(toolguiweb.IndexBody))
+	resp.Write(e.indexBody())
 }
 
 func (e *WebExecutor) handleManifest(resp http.ResponseWriter, req *http.Request) {

@@ -64,6 +64,20 @@ Both setters read their value per request, and both are safe to call while the
 server is already serving, so an app can swap its manifest or its files at any
 point in its own run.
 
+## Head HTML
+
+Crawlers run no script, so meta tags they read, such as Open Graph, Twitter
+card or CSP, have to be in the page itself, as do font links and analytics
+tags. `SetHeadHTML` inserts html before `</head>` of the page:
+
+```go
+e.SetHeadHTML(`<meta property="og:title" content="My Tool" />
+<meta property="og:image" content="https://example.com/assets/og.png" />`)
+```
+
+Like the other setters, it is read per request and safe to call at any time.
+The browser app takes it as [`-head`](../hello-world/wasm.md#head-html).
+
 ## Other members
 
 `Extra` carries the manifest members the struct doesn't name, and a key there

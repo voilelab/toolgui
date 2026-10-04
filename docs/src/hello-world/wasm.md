@@ -134,6 +134,25 @@ go tool toolgui-wasm build -manifest manifest.json -assets assets ./cmd/myapp
 
 Keep the urls relative, so the site still works under a project path.
 
+## Head HTML
+
+Crawlers run no wasm, so what they read has to be in `index.html` itself:
+Open Graph or Twitter card meta, fonts, a CSP meta, analytics tags.
+`App.SetTitle` runs too late for them. `-head` inserts a file before
+`</head>`:
+
+```shell
+go tool toolgui-wasm build -head head.html ./cmd/myapp
+```
+
+```html
+<meta property="og:title" content="My Tool" />
+<meta property="og:image" content="https://example.com/assets/og.png" />
+```
+
+The server executor does the same with
+[`SetHeadHTML`](../app/manifest.md#head-html).
+
 ## Opening offline
 
 `-offline` adds a service worker, so the app opens with no network once it has
