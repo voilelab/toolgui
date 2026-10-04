@@ -38,6 +38,9 @@ type bridge struct {
 	// onPack is the callback the page registered for packs.
 	onPack js.Value
 
+	// onEvent is the callback the page registered for [Emit].
+	onEvent js.Value
+
 	// lock guards the session and its state: a page func runs on its own
 	// goroutine while calls arrive from the browser's.
 	lock    sync.Mutex
@@ -55,6 +58,7 @@ func newBridge(app *tgframe.App) *bridge {
 	return &bridge{
 		app:     app,
 		onPack:  js.Undefined(),
+		onEvent: js.Undefined(),
 		uploads: map[string]*tgframe.BrowserUpload{},
 	}
 }
@@ -66,6 +70,7 @@ func (b *bridge) install() {
 	js.Global().Set(BridgeName, map[string]any{
 		"appConf":      js.FuncOf(b.jsAppConf),
 		"onPack":       js.FuncOf(b.jsOnPack),
+		"onEvent":      js.FuncOf(b.jsOnEvent),
 		"start":        js.FuncOf(b.jsStart),
 		"update":       js.FuncOf(b.jsUpdate),
 		"downloadFile": js.FuncOf(b.jsDownloadFile),
@@ -73,6 +78,8 @@ func (b *bridge) install() {
 		"uploadFile":   js.FuncOf(b.jsUploadFile),
 		"cancelUpload": js.FuncOf(b.jsCancelUpload),
 	})
+
+	emitter = b
 }
 
 // jsAppConf return the app config as JSON. It's the browser counterpart of
