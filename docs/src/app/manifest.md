@@ -68,7 +68,8 @@ point in its own run.
 
 Crawlers run no script, so meta tags they read, such as Open Graph, Twitter
 card or CSP, have to be in the page itself, as do font links and analytics
-tags. `SetHeadHTML` inserts html before `</head>` of the page:
+tags. `SetHeadHTML` inserts html at the start of the page head, right after the
+charset meta, so a CSP meta covers the links after it:
 
 ```go
 e.SetHeadHTML(`<meta property="og:title" content="My Tool" />

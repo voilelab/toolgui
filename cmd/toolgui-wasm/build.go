@@ -54,7 +54,7 @@ type buildOpts struct {
 	ldflags  string // passed to go build as -ldflags, e.g. "-s -w"
 	manifest string // json file written as manifest.json
 	assets   string // directory copied to assets/
-	head     string // html file inserted before </head> of index.html
+	head     string // html file inserted into the head of index.html
 	offline  bool   // write sw.js, so the site opens with no network
 }
 
@@ -403,7 +403,7 @@ func writeHead(index, src string) error {
 	return insertHead(index, strings.TrimSpace(string(bs)))
 }
 
-// insertHead put snippet before </head> of the file, unless already there.
+// insertHead put snippet in the head of the file, unless already there.
 func insertHead(name, snippet string) error {
 	bs, err := os.ReadFile(name)
 	if err != nil {
@@ -415,11 +415,10 @@ func insertHead(name, snippet string) error {
 		return nil
 	}
 
-	head := strings.Index(html, "</head>")
-	if head < 0 {
-		return tgutil.Errorf("no </head> in %s", name)
+	html, ok := tgutil.InsertHead(html, snippet)
+	if !ok {
+		return tgutil.Errorf("no <head> in %s", name)
 	}
 
-	html = html[:head] + snippet + "\n  " + html[head:]
 	return os.WriteFile(name, []byte(html), 0o644)
 }

@@ -138,8 +138,9 @@ Keep the urls relative, so the site still works under a project path.
 
 Crawlers run no wasm, so what they read has to be in `index.html` itself:
 Open Graph or Twitter card meta, fonts, a CSP meta, analytics tags.
-`App.SetTitle` runs too late for them. `-head` inserts a file before
-`</head>`:
+`App.SetTitle` runs too late for them. `-head` inserts a file at the
+start of the head, right after the charset meta, so a CSP meta covers the links
+after it:
 
 ```shell
 go tool toolgui-wasm build -head head.html ./cmd/myapp

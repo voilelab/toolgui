@@ -681,7 +681,7 @@ func TestSetHeadHTML(t *testing.T) {
 
 	srv, e := newTestServer(t)
 	// The built assets may be a stub with no head.
-	e.index = "<html><head></head><body></body></html>"
+	e.index = "<html><head><title>x</title></head><body></body></html>"
 	e.SetHeadHTML(meta)
 
 	for _, path := range []string{"/index", "/index.html"} {
@@ -697,22 +697,9 @@ func TestSetHeadHTML(t *testing.T) {
 		}
 
 		i := strings.Index(string(body), meta)
-		if i < 0 || i > strings.Index(string(body), "</head>") {
+		if i < 0 || i > strings.Index(string(body), "<title>") {
 			t.Errorf("%s: meta not in the head: %s", path, body)
 		}
-	}
-}
-
-func TestInsertHead(t *testing.T) {
-	html := "<html><head></head></html>"
-
-	if got := insertHead(html, ""); got != html {
-		t.Errorf("empty snippet: %q", got)
-	}
-
-	want := "<html><head><x>\n</head></html>"
-	if got := insertHead(html, "<x>"); got != want {
-		t.Errorf("got %q, want %q", got, want)
 	}
 }
 

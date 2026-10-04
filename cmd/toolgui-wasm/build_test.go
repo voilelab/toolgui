@@ -360,8 +360,9 @@ func TestWriteHead(t *testing.T) {
 		t.Errorf("%d snippets in %s, want 1", n, bs)
 	}
 
-	if strings.Index(html, snippet) > strings.Index(html, "</head>") {
-		t.Errorf("snippet outside the head: %s", bs)
+	// Ahead of the head's links, so a CSP meta covers them.
+	if strings.Index(html, snippet) > strings.Index(html, "<title>") {
+		t.Errorf("snippet not at the start of the head: %s", bs)
 	}
 }
 

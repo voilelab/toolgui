@@ -84,7 +84,7 @@ type WebExecutor struct {
 	// assets is nil until the app sets one.
 	assets fs.FS
 
-	// headHTML is inserted before </head> of the index page.
+	// headHTML is inserted at the start of the index page head.
 	headHTML string
 
 	// allowedOrigins is nil until the app sets some, and holds normalized
@@ -207,17 +207,12 @@ func (e *WebExecutor) indexBody() []byte {
 	head := e.headHTML
 	e.confMu.RUnlock()
 
-	return []byte(insertHead(e.index, head))
-}
-
-// insertHead put snippet before </head> of html.
-func insertHead(html, snippet string) string {
-	i := strings.Index(html, "</head>")
-	if snippet == "" || i < 0 {
-		return html
+	if head == "" {
+		return []byte(e.index)
 	}
 
-	return html[:i] + snippet + "\n" + html[i:]
+	html, _ := tgutil.InsertHead(e.index, head)
+	return []byte(html)
 }
 
 // SetAllowedOrigins lets pages from these origins open the update websocket,
