@@ -28,6 +28,9 @@ func chatInputDemo(p *tgframe.Params) error {
 	}
 
 	if sent {
+		// Kept before streaming: a new send cancels this run mid-stream,
+		// and the message is already gone from the input.
+		*history = append(*history, chatTurn{Role: "user", Text: msg})
 		tgcomp.Markdown(tgcomp.ChatMessage(p.Main, "user"), msg)
 
 		reply, err := tgcomp.WriteStream(
@@ -36,9 +39,7 @@ func chatInputDemo(p *tgframe.Params) error {
 			return err
 		}
 
-		*history = append(*history,
-			chatTurn{Role: "user", Text: msg},
-			chatTurn{Role: "assistant", Text: reply})
+		*history = append(*history, chatTurn{Role: "assistant", Text: reply})
 	}
 	// ANCHOR_END: demo
 	return nil
