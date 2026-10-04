@@ -54,6 +54,7 @@ type buildOpts struct {
 	ldflags  string // passed to go build as -ldflags, e.g. "-s -w"
 	manifest string // json file written as manifest.json
 	assets   string // directory copied to assets/
+	head     string // html file inserted into the head of index.html
 	offline  bool   // write sw.js, so the site opens with no network
 }
 
@@ -65,6 +66,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 	ldflags := flags.String("ldflags", "", "arguments to pass on each go tool link invocation")
 	manifest := flags.String("manifest", "", "web app manifest json to write as manifest.json")
 	assets := flags.String("assets", "", "directory to copy to assets/, e.g. manifest icons")
+	head := flags.String("head", "", "html file to insert into the head of index.html")
 	offline := flags.Bool("offline", false, "write a service worker, so the site opens with no network")
 	if extra != nil {
 		extra(flags)
@@ -90,6 +92,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 		ldflags:  *ldflags,
 		manifest: *manifest,
 		assets:   *assets,
+		head:     *head,
 		offline:  *offline,
 	}, nil
 }
@@ -106,6 +109,13 @@ func build(opts buildOpts) error {
 	err = writeFrontend(out)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
+	}
+
+	if opts.head != "" {
+		err = writeHead(filepath.Join(out, "index.html"), opts.head)
+		if err != nil {
+			return tgutil.Errorf("head: %w", err)
+		}
 	}
 
 	err = writeManifest(out, opts.manifest)
@@ -380,21 +390,35 @@ func fileNames(fsys fs.FS, prefix string) ([]string, error) {
 
 // markIndex add offlineMeta to the head of index.html.
 func markIndex(name string) error {
+	return insertHead(name, offlineMeta)
+}
+
+// writeHead insert the html in src into the head of index.html.
+func writeHead(index, src string) error {
+	bs, err := os.ReadFile(src)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	return insertHead(index, strings.TrimSpace(string(bs)))
+}
+
+// insertHead put snippet in the head of the file, unless already there.
+func insertHead(name, snippet string) error {
 	bs, err := os.ReadFile(name)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
 	html := string(bs)
-	if strings.Contains(html, offlineMeta) {
+	if strings.Contains(html, snippet) {
 		return nil
 	}
 
-	head := strings.Index(html, "</head>")
-	if head < 0 {
-		return tgutil.Errorf("no </head> in %s", name)
+	html, ok := tgutil.InsertHead(html, snippet)
+	if !ok {
+		return tgutil.Errorf("no <head> in %s", name)
 	}
 
-	html = html[:head] + offlineMeta + "\n  " + html[head:]
 	return os.WriteFile(name, []byte(html), 0o644)
 }

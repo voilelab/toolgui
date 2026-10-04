@@ -675,6 +675,34 @@ func TestAssetsAreServed(t *testing.T) {
 	}
 }
 
+// The head html is in the index page, wherever it is served from.
+func TestSetHeadHTML(t *testing.T) {
+	const meta = `<meta property="og:title" content="My Tool" />`
+
+	srv, e := newTestServer(t)
+	// The built assets may be a stub with no head.
+	e.index = "<html><head><title>x</title></head><body></body></html>"
+	e.SetHeadHTML(meta)
+
+	for _, path := range []string{"/index", "/index.html"} {
+		resp, err := http.Get(srv.URL + path)
+		if err != nil {
+			t.Fatalf("get %s: %v", path, err)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+
+		i := strings.Index(string(body), meta)
+		if i < 0 || i > strings.Index(string(body), "<title>") {
+			t.Errorf("%s: meta not in the head: %s", path, body)
+		}
+	}
+}
+
 // An app that gave no fs has no files, rather than a page under /assets/.
 func TestAssetsUnsetIsNotFound(t *testing.T) {
 	srv, _ := newTestServer(t)
