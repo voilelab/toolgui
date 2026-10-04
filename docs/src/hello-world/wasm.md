@@ -148,6 +148,26 @@ the page emoji, unless the app calls
 [`app.SetIcon`](../app/index.md#icon). Set both to the same url to keep one
 icon throughout.
 
+## Head HTML
+
+Crawlers run no wasm, so what they read has to be in `index.html` itself:
+Open Graph or Twitter card meta, fonts, a CSP meta, analytics tags.
+`App.SetTitle` runs too late for them. `-head` inserts a file at the
+start of the head, right after the charset meta, so a CSP meta covers the links
+after it:
+
+```shell
+go tool toolgui-wasm build -head head.html ./cmd/myapp
+```
+
+```html
+<meta property="og:title" content="My Tool" />
+<meta property="og:image" content="https://example.com/assets/og.png" />
+```
+
+The server executor does the same with
+[`SetHeadHTML`](../app/manifest.md#head-html).
+
 ## Opening offline
 
 `-offline` adds a service worker, so the app opens with no network once it has
