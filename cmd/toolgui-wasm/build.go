@@ -6,12 +6,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"flag"
+	"html"
 	"io/fs"
 	"log"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	wasmweb "github.com/voilelab/toolgui/toolgui-web/wasm"
@@ -54,6 +56,7 @@ type buildOpts struct {
 	ldflags  string // passed to go build as -ldflags, e.g. "-s -w"
 	manifest string // json file written as manifest.json
 	assets   string // directory copied to assets/
+	icon     string // favicon url written into index.html
 	head     string // html file inserted into the head of index.html
 	offline  bool   // write sw.js, so the site opens with no network
 }
@@ -66,6 +69,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 	ldflags := flags.String("ldflags", "", "arguments to pass on each go tool link invocation")
 	manifest := flags.String("manifest", "", "web app manifest json to write as manifest.json")
 	assets := flags.String("assets", "", "directory to copy to assets/, e.g. manifest icons")
+	icon := flags.String("icon", "", "favicon url for index.html, e.g. assets/favicon.svg")
 	head := flags.String("head", "", "html file to insert into the head of index.html")
 	offline := flags.Bool("offline", false, "write a service worker, so the site opens with no network")
 	if extra != nil {
@@ -92,6 +96,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 		ldflags:  *ldflags,
 		manifest: *manifest,
 		assets:   *assets,
+		icon:     *icon,
 		head:     *head,
 		offline:  *offline,
 	}, nil
@@ -109,6 +114,13 @@ func build(opts buildOpts) error {
 	err = writeFrontend(out)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
+	}
+
+	if opts.icon != "" {
+		err = writeIcon(filepath.Join(out, "index.html"), opts.icon)
+		if err != nil {
+			return tgutil.Errorf("icon: %w", err)
+		}
 	}
 
 	if opts.head != "" {
@@ -175,6 +187,44 @@ func writeFS(fsys fs.FS, out string) error {
 
 		return os.WriteFile(target, bs, 0o644)
 	})
+}
+
+// linkTag matches a <link> tag attribute by attribute, since the emoji data
+// url the frontend ships has a raw > inside its href. iconRel and iconHref
+// pick the icon link and its href out of one.
+var (
+	linkTag  = regexp.MustCompile(`<link(?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*/?>`)
+	iconRel  = regexp.MustCompile(`\srel\s*=\s*(?:"icon"|'icon'|icon[\s/>])`)
+	iconHref = regexp.MustCompile(`\shref\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+)`)
+)
+
+// writeIcon point the <link rel="icon"> in index.html at icon, so the tab
+// shows it before any wasm loads.
+func writeIcon(name, icon string) error {
+	bs, err := os.ReadFile(name)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	page := string(bs)
+	for _, loc := range linkTag.FindAllStringIndex(page, -1) {
+		link := page[loc[0]:loc[1]]
+		if !iconRel.MatchString(link) {
+			continue
+		}
+
+		href := ` href="` + html.EscapeString(icon) + `"`
+		if iconHref.MatchString(link) {
+			link = iconHref.ReplaceAllLiteralString(link, href)
+		} else {
+			link = "<link" + href + link[len("<link"):]
+		}
+
+		page = page[:loc[0]] + link + page[loc[1]:]
+		return os.WriteFile(name, []byte(page), 0o644)
+	}
+
+	return tgutil.Errorf("no <link rel=\"icon\"> in %s", name)
 }
 
 // writeAssets copy src to out/assets. An out inside src is refused: the copy

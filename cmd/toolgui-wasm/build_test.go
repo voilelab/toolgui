@@ -441,3 +441,43 @@ func TestWriteServiceWorker(t *testing.T) {
 		t.Error("a changed app.wasm kept the same sw.js")
 	}
 }
+
+func TestWriteIcon(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join("..", "..", "toolgui-web", "wasm", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	name := filepath.Join(t.TempDir(), "index.html")
+	writeFile(t, name, string(src))
+
+	err = writeIcon(name, "assets/fav&icon.svg")
+	if err != nil {
+		t.Fatalf("writeIcon: %v", err)
+	}
+
+	bs, err := os.ReadFile(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	page := string(bs)
+	if n := strings.Count(page, `rel="icon"`); n != 1 {
+		t.Errorf("%d icon links, want the one rewritten", n)
+	}
+	if !strings.Contains(page, `href="assets/fav&amp;icon.svg"`) {
+		t.Errorf("icon href not rewritten: %s", page)
+	}
+	if strings.Contains(page, "data:image/svg+xml") {
+		t.Error("the emoji icon is still there")
+	}
+}
+
+func TestWriteIconNoLink(t *testing.T) {
+	name := filepath.Join(t.TempDir(), "index.html")
+	writeFile(t, name, "<html><head></head></html>")
+
+	if err := writeIcon(name, "assets/favicon.svg"); err == nil {
+		t.Error("expected an error for an index.html with no icon link")
+	}
+}

@@ -8,7 +8,13 @@ function faviconTemplate(icon: string) {
   `.trim();
 }
 
+// setIcon sets the favicon to an emoji.
 export function setIcon(emoji: string) {
+  setIconURL(`data:image/svg+xml,${faviconTemplate(emoji)}`)
+}
+
+// setIconURL points the favicon at url.
+export function setIconURL(url: string) {
   // Not every index.html ships a <link rel="icon">, so make one if missing.
   let iconEle = document.querySelector(`head > link[rel='icon']`)
   if (!iconEle) {
@@ -16,5 +22,5 @@ export function setIcon(emoji: string) {
     iconEle.setAttribute('rel', 'icon')
     document.head.appendChild(iconEle)
   }
-  iconEle.setAttribute(`href`, `data:image/svg+xml,${faviconTemplate(emoji)}`)
+  iconEle.setAttribute(`href`, url)
 }

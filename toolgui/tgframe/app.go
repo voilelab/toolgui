@@ -75,6 +75,7 @@ type App struct {
 	pageFuncs map[string]RunFunc
 
 	title string
+	icon  string
 
 	// pluginAssets are the file sets served under [PluginAssetPrefix], by name.
 	// A set is looked up per request, so the lock is what lets one be
@@ -99,6 +100,9 @@ type AppConf struct {
 
 	// Title names the app itself, after the page title in the browser tab.
 	Title string `json:"title"`
+
+	// Icon is the favicon url, absent for an app that sets none.
+	Icon string `json:"icon,omitzero"`
 
 	HashPageNameMode bool `json:"hash_page_name_mode"`
 
@@ -138,6 +142,14 @@ func (app *App) SetHashPageNameMode(v bool) {
 //	app.SetTitle("My Tool")
 func (app *App) SetTitle(v string) {
 	app.title = v
+}
+
+// SetIcon sets the favicon url. It replaces the page emoji in the browser tab
+// for every page; without it, the tab shows the page emoji.
+//
+//	app.SetIcon("assets/favicon.svg")
+func (app *App) SetIcon(url string) {
+	app.icon = url
 }
 
 // SetMenu declares the app's menu. On the web the frontend draws it as a
@@ -243,6 +255,7 @@ func (app *App) AppConf() *AppConf {
 		PageConfs: app.pageConfs,
 
 		Title: app.title,
+		Icon:  app.icon,
 
 		MainContainerID:    realMainContainerID(),
 		SidebarContainerID: realSidebarContainerID(),
