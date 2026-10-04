@@ -77,6 +77,11 @@ export class Backend {
     })
   }
 
+  // terminate stops the worker; nothing it sends after is delivered.
+  terminate() {
+    this.worker.terminate()
+  }
+
   // send posts one message the worker answers by id, whatever it is.
   private async send(msg: any): Promise<any> {
     await this.ready
