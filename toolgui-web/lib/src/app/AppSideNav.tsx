@@ -1,8 +1,9 @@
 import React, { Component } from "react";
-import { ActionIcon, Burger, Button, Divider, Group, Loader, NavLink, Text, Tooltip } from "@mantine/core";
+import { ActionIcon, Burger, Button, Divider, Group, Loader, NavLink, Tooltip } from "@mantine/core";
 import { IconLayoutSidebarLeftCollapse, IconLayoutSidebarLeftExpand } from "@tabler/icons-react";
 
 import { ThemeModeButton } from './ThemeModeButton';
+import { AboutLine } from './AboutDialog';
 import { AppConf } from "./AppConf";
 import { Forest } from "./Nodes";
 import { TComponent } from "../components/factory";
@@ -320,10 +321,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <ThemeModeButton />
           </Group>
 
-          {this.props.appConf.show_version ?
-            <Text className="toolgui-nav-version" size="xs" c="dimmed">
-              toolgui {this.props.appConf.version}
-            </Text> : ''}
+          <AboutLine appConf={this.props.appConf} theme={this.props.themeMode} />
         </div>
       </aside>
 

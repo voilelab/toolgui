@@ -19,7 +19,8 @@ It holds four parts, top to bottom:
      the app follows the browser's `prefers-color-scheme`; the choice is
      remembered afterwards.
    * A spinner, shown while the app is running the Page Func.
-4. The toolgui version the app was built against.
+4. The toolgui version the app was built against. Click it for the
+   [About](#about) dialog.
 
 The page list is the part that scrolls: an app with more pages than the
 column is tall gets a scrollbar on the list, and the sidebar, the controls
@@ -64,3 +65,17 @@ Hide it with:
 app.SetShowVersion(false)
 ```
 
+## About
+
+Clicking the version line opens an About dialog: the app's own introduction
+on top, then the toolgui version with a link to its repo and docs. ESC or the
+close button dismisses it.
+
+Set the introduction, in markdown, with:
+
+```go
+app.SetAbout("# My Tool\nConverts CSV to JSON.")
+```
+
+With `SetShowVersion(false)` the line reads `About` and the dialog shows only
+the introduction; with neither, the line is gone.

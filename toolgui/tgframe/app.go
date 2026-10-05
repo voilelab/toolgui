@@ -76,6 +76,7 @@ type App struct {
 
 	title string
 	icon  string
+	about string
 
 	// pluginAssets are the file sets served under [PluginAssetPrefix], by name.
 	// A set is looked up per request, so the lock is what lets one be
@@ -110,6 +111,10 @@ type AppConf struct {
 	// should show it.
 	Version     string `json:"version"`
 	ShowVersion bool   `json:"show_version"`
+
+	// About is the markdown the About dialog shows, absent for an app that
+	// sets none.
+	About string `json:"about,omitzero"`
 
 	MainContainerID    string `json:"main_container_id"`
 	SidebarContainerID string `json:"sidebar_container_id"`
@@ -201,6 +206,17 @@ func (app *App) SetShowVersion(v bool) {
 	app.showVersion = v
 }
 
+// SetAbout sets the app's own introduction, in markdown. The side nav's
+// version line opens an About dialog that shows it above the toolgui info.
+//
+//	app.SetAbout("# My Tool\nConverts CSV to JSON.")
+//
+// With [App.SetShowVersion] off, the line reads "About" and the dialog shows
+// only this.
+func (app *App) SetAbout(markdown string) {
+	app.about = markdown
+}
+
 // AddPage add a handled page by name, title, and runFunc.
 //
 //	app.AddPage("index", "Index", f})
@@ -264,6 +280,7 @@ func (app *App) AppConf() *AppConf {
 
 		Version:     Version(),
 		ShowVersion: app.showVersion,
+		About:       app.about,
 
 		Menu: app.menuNodes(),
 	}

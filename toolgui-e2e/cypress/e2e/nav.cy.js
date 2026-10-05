@@ -176,6 +176,23 @@ describe('Nav', () => {
     cy.get('.toolgui-nav-version').should('be.visible')
   })
 
+  // The demo sets an About text, so the dialog shows it over the toolgui
+  // info.
+  it('The version line opens the About dialog', () => {
+    cy.visit('/index')
+    cy.get('.toolgui-nav-version').click()
+
+    cy.get('.toolgui-about').within(() => {
+      cy.contains('ToolGUI Demo').should('be.visible')
+      cy.get('.toolgui-about-toolgui').contains(/^toolgui v/)
+      cy.get('a[href="https://github.com/voilelab/toolgui"]')
+        .should('be.visible')
+    })
+
+    cy.get('body').type('{esc}')
+    cy.get('.toolgui-about-toolgui').should('not.exist')
+  })
+
   it('Rerun and theme controls stay reachable', () => {
     cy.visit('/index')
     cy.get('.toolgui-nav-foot').contains('Rerun').should('exist')

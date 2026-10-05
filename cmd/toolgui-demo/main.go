@@ -373,6 +373,10 @@ func newApp() *tgframe.App {
 	// in the manifest main_server.go sets unless that gives its own name.
 	app.SetTitle("ToolGUI Demo")
 
+	// Shown in the About dialog the side nav's version line opens.
+	app.SetAbout("**ToolGUI Demo** walks through every component toolgui " +
+		"ships, one page per component.")
+
 	// The menubar is the app's, so it is there on every page. Every page but
 	// App Menu, which logs picks itself, is wrapped in withMenu to answer it.
 	// Embedded in the book the row is dropped along with the rest of the

@@ -5,15 +5,26 @@ import remarkGfm from 'remark-gfm'
 import { Table, Typography } from '@mantine/core'
 
 import { Props } from '../component_interface'
+import { ThemeMode } from '../../util/theme'
 import { remarkEmoji } from '../../util/remark_emoji'
 import { CodeBlock } from './code'
 
 import '@toolgui-web/lib/src/assets/css/markdown.css'
 
 export function TMarkdown({ node, theme }: Props) {
+  return <MarkdownText text={node.props.text} id={node.props.id} theme={theme} />
+}
+
+// MarkdownText renders markdown outside the component tree, e.g. the About
+// dialog.
+export function MarkdownText({ text, id, theme }: {
+  text: string
+  id?: string
+  theme: ThemeMode
+}) {
   return (
-    <Typography className='toolgui-markdown' id={node.props.id || undefined}>
-      <Markdown children={node.props.text}
+    <Typography className='toolgui-markdown' id={id || undefined}>
+      <Markdown children={text}
         remarkPlugins={[remarkGfm, remarkEmoji]}
         components={{
           a(props) {

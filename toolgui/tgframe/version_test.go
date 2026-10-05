@@ -44,3 +44,16 @@ func TestAppConfShowVersion(t *testing.T) {
 		t.Error("AppConf().ShowVersion = true after SetShowVersion(false)")
 	}
 }
+
+func TestAppConfAbout(t *testing.T) {
+	app := NewApp()
+
+	if got := app.AppConf().About; got != "" {
+		t.Errorf("AppConf().About = %q, want empty by default", got)
+	}
+
+	app.SetAbout("# Hi")
+	if got := app.AppConf().About; got != "# Hi" {
+		t.Errorf("AppConf().About = %q, want %q", got, "# Hi")
+	}
+}

@@ -184,6 +184,13 @@ body.toolgui-resizing {
 .toolgui-nav-version {
   /* A build off a tag reports a pseudo-version, too long for the column. */
   overflow-wrap: anywhere;
+  align-self: flex-start;
+}
+
+/* A button that opens the About dialog, so it reads as one on hover. */
+.toolgui-nav-version:hover,
+.toolgui-nav-version:focus-visible {
+  text-decoration: underline;
 }
 
 /* A page stops widening past this and stays centred, so lines do not run the
