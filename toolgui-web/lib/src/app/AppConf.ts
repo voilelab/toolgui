@@ -57,6 +57,10 @@ export interface AppConf {
   version: string,
   show_version: boolean,
 
+  // The app's own introduction, in markdown, for the About dialog. Absent for
+  // an app that sets none.
+  about?: string,
+
   // Absent for an app that declares no menu, which is what keeps the menubar
   // row out of the DOM.
   menu?: MenuNode[],
