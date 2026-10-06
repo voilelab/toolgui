@@ -293,7 +293,7 @@ var textProps = map[string]bool{
 var nestedTextProps = map[string]bool{"label": true, "name": true}
 
 // HasText reports whether any text the page draws contains s, the value
-// shown in a textbox or textarea included.
+// shown in a textbox, textarea or code input included.
 func (p *Page) HasText(s string) bool {
 	return len(p.Find(func(n *Node) bool {
 		for k, v := range n.Props {
@@ -305,17 +305,22 @@ func (p *Page) HasText(s string) bool {
 	})) > 0
 }
 
-// shownValue is the text in a textbox or textarea as the web client shows
-// it: what was typed, else the default. A password shows none.
+// shownValue is the text in a textbox, textarea or code input as the web
+// client shows it: what was typed, else the default. A password shows none.
 func (p *Page) shownValue(n *Node) string {
-	if n.Name != "textbox_component" && n.Name != "textarea_component" {
+	switch n.Name {
+	case "textbox_component", "textarea_component", "code_input_component":
+	default:
 		return ""
 	}
 	if password, _ := n.Props["password"].(bool); password {
 		return ""
 	}
 
-	if v, ok := p.state.Get[string](n.ID); ok && v != "" {
+	v, ok := p.state.Get[string](n.ID)
+	// A code input shows a cleared value as empty; the others fall back to
+	// the default.
+	if ok && (v != "" || n.Name == "code_input_component") {
 		return v
 	}
 	return n.String("default")

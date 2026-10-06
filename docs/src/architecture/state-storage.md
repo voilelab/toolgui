@@ -138,6 +138,7 @@ explicit `ID` in its conf, in which case the key is that id verbatim.
 | --- | --- | --- |
 | `Textbox` | `textbox_component_<label>` | `string` |
 | `Textarea` | `textarea_component_<label>` | `string` |
+| `CodeInput` | `code_input_component_<label>` | `string` |
 | `Number` | `number_component_<label>` | any number |
 | `Checkbox` | `checkbox_component_<label>` | `bool` |
 | `Select` | `select_component_<label>` | item index, **1-based**; `0` is "nothing selected" |
