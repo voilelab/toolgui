@@ -38,7 +38,7 @@ func WriteStream(c *tgframe.Container, seq iter.Seq2[string, error],
 	}
 
 	comp := newMarkdownComponent("")
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 
 	chunks := pullChunks(seq)

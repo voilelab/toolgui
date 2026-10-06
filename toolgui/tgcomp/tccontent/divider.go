@@ -29,6 +29,6 @@ func Divider(c *tgframe.Container, conf ...*DividerConf) {
 	cf := tgframe.OneConf("Divider", conf)
 
 	comp := newDividerComponent()
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

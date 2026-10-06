@@ -71,7 +71,7 @@ type PluginConf struct {
 //
 // Read what it sends back with [PluginValue].
 func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
-	c.AddComponent(pluginComponentFor(src, tgframe.OneConf("Plugin", conf)))
+	c.AddComponent(pluginComponentFor(c, src, tgframe.OneConf("Plugin", conf)))
 }
 
 // PluginValue returns the latest value the plugin src and conf describe sent
@@ -96,14 +96,14 @@ func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
 // The frontend keys the value by the plugin's own component id, so a plugin
 // can only write to its own state.
 func PluginValue[T any](c *tgframe.Container, src string, conf ...*PluginConf) *T {
-	comp := pluginComponentFor(src, tgframe.OneConf("PluginValue", conf))
+	comp := pluginComponentFor(c, src, tgframe.OneConf("PluginValue", conf))
 
 	return frameValue[T](c, "plugin", comp.ID)
 }
 
 // pluginComponentFor builds the component src and conf describe. Both entry
 // points go through it, so the id PluginValue reads is the one Plugin draws.
-func pluginComponentFor(src string, cf *PluginConf) *pluginComponent {
+func pluginComponentFor(c *tgframe.Container, src string, cf *PluginConf) *pluginComponent {
 	comp := newPluginComponent(src)
 	comp.Props = cf.Props
 	comp.Style = cf.Style
@@ -116,7 +116,7 @@ func pluginComponentFor(src string, cf *PluginConf) *pluginComponent {
 		comp.Height = cf.Height
 	}
 
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	return comp
 }

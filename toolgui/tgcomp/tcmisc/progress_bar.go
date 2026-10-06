@@ -73,7 +73,7 @@ func ProgressBar(c *tgframe.Container, value int, label string, conf ...*Progres
 	cf := tgframe.OneConf("ProgressBar", conf)
 
 	comp := newProgressBarComponent(value, label)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 	return &ProgressBarHandle{comp: comp, container: c}
 }

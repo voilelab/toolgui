@@ -68,6 +68,12 @@ func (c *BaseComponent) SetID(id string) {
 	c.ID = fmt.Sprintf("%s_%s", c.Name, id)
 }
 
+// setScopedID sets the id as given, without the name in front: it is already
+// a full id, put under a scope.
+func (c *BaseComponent) setScopedID(id string) {
+	c.ID = id
+}
+
 // GetKey return component's key.
 func (c *BaseComponent) GetKey() string {
 	return c.key

@@ -31,6 +31,6 @@ func Caption(c *tgframe.Container, text string, conf ...*CaptionConf) {
 	cf := tgframe.OneConf("Caption", conf)
 
 	comp := newCaptionComponent(text)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

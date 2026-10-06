@@ -35,7 +35,7 @@ func Code(c *tgframe.Container, code string, conf ...*CodeConf) {
 	cf := tgframe.OneConf("Code", conf)
 
 	comp := newCodeComponent(code)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	if cf.Language != "" {
 		comp.Lang = cf.Language

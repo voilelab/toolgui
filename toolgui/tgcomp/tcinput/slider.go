@@ -108,7 +108,7 @@ func Slider[T Numeric](
 	comp.Min = orDefault(cf.Min, T(defaultSliderMin))
 	comp.Max = orDefault(cf.Max, T(defaultSliderMax))
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	if comp.Min > comp.Max {
 		panic(fmt.Sprintf("toolgui: Slider %q has min %v above max %v",

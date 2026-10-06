@@ -31,6 +31,6 @@ func HTML(c *tgframe.Container, html string, conf ...*HTMLConf) {
 	cf := tgframe.OneConf("HTML", conf)
 
 	comp := newHTMLComponent(html)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

@@ -198,6 +198,6 @@ func chart(c *tgframe.Container, labels []string, series []ChartSeries,
 	}
 
 	comp := newChartComponent(labels, series, &cf)
-	tgframe.SetConfID(comp, conf)
+	tgframe.SetConfIDIn(c, comp, conf)
 	c.AddComponent(comp)
 }

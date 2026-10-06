@@ -77,7 +77,7 @@ func Toolbar(c *tgframe.Container, conf ...*ToolbarConf) *tgframe.Container {
 	comp := newToolbarComponent()
 	comp.Sticky = cf.Sticky
 	comp.Justify = toolbarJustify(cf.Justify)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	toolbarComp := c.AddComponent(comp)
 	return c.AddContainerTo(toolbarComp, "inner", 0)

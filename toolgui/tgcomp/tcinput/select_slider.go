@@ -64,7 +64,7 @@ func SelectSlider(c *tgframe.Container, label string, items []string,
 	comp := newSelectSliderComponent(label, items)
 	comp.Default = cf.Default
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 

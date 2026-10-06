@@ -43,6 +43,6 @@ func Table(c *tgframe.Container, head []string, table [][]string, conf ...*Table
 	}
 
 	comp := newTableComponent(head, table)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

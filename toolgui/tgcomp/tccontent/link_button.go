@@ -42,6 +42,6 @@ func LinkButton(c *tgframe.Container, text, url string, conf ...*LinkButtonConf)
 
 	comp := newLinkButtonComponent(text, url)
 	comp.Color = cf.Color
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

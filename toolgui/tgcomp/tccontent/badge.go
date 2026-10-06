@@ -38,6 +38,6 @@ func Badge(c *tgframe.Container, text string, conf ...*BadgeConf) {
 
 	comp := newBadgeComponent(text)
 	comp.Color = cf.Color
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

@@ -37,7 +37,7 @@ func Tab(c *tgframe.Container, tabs []string, conf ...*TabConf) []*tgframe.Conta
 	cf := tgframe.OneConf("Tab", conf)
 
 	tabComp := newTabComponent(tabs)
-	tgframe.SetConfID(tabComp, cf)
+	tgframe.SetConfIDIn(c, tabComp, cf)
 
 	comp := c.AddComponent(tabComp)
 

@@ -60,7 +60,7 @@ type IframeConf struct {
 //
 // Read what its guest sends back with [IframeValue].
 func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
-	c.AddComponent(iframeComponentFor(html, tgframe.OneConf("Iframe", conf)))
+	c.AddComponent(iframeComponentFor(c, html, tgframe.OneConf("Iframe", conf)))
 }
 
 // IframeValue returns the latest value the guest of the iframe html and conf
@@ -79,14 +79,14 @@ func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 // The frontend keys the value by the iframe's own component id, so a guest can
 // only write to its own state.
 func IframeValue[T any](c *tgframe.Container, html string, conf ...*IframeConf) *T {
-	comp := iframeComponentFor(html, tgframe.OneConf("IframeValue", conf))
+	comp := iframeComponentFor(c, html, tgframe.OneConf("IframeValue", conf))
 
 	return frameValue[T](c, "iframe", comp.ID)
 }
 
 // iframeComponentFor builds the component html and conf describe. Both entry
 // points go through it, so the id IframeValue reads is the one Iframe draws.
-func iframeComponentFor(html string, cf *IframeConf) *iframeComponent {
+func iframeComponentFor(c *tgframe.Container, html string, cf *IframeConf) *iframeComponent {
 	comp := newIframeComponent(html, cf.Script)
 
 	if cf.Width != "" {
@@ -97,7 +97,7 @@ func iframeComponentFor(html string, cf *IframeConf) *iframeComponent {
 		comp.Height = cf.Height
 	}
 
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	return comp
 }

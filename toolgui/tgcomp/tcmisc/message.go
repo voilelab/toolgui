@@ -77,7 +77,7 @@ func message(c *tgframe.Container, text string, conf *MessageConf, color *tcutil
 	}
 
 	comp.Title = conf.Title
-	tgframe.SetConfID(comp, conf)
+	tgframe.SetConfIDIn(c, comp, conf)
 
 	c.AddComponent(comp)
 }

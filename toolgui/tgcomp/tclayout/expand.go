@@ -41,7 +41,7 @@ func Expand(c *tgframe.Container, title string, expanded bool, conf ...*ExpandCo
 	cf := tgframe.OneConf("Expand", conf)
 
 	expandComp := newExpandComponent(title, expanded)
-	tgframe.SetConfID(expandComp, cf)
+	tgframe.SetConfIDIn(c, expandComp, cf)
 
 	comp := c.AddComponent(expandComp)
 	return c.AddContainerTo(comp, "inner", 0)

@@ -79,7 +79,7 @@ func Menu(c *tgframe.Container, label string, items []string,
 	comp := newMenuComponent(label)
 	comp.Color = cf.Color
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	comp.setItems(items)
 
 	c.AddComponent(comp)
