@@ -96,7 +96,8 @@ until it finishes.
 
 The page reruns only on a user event, so a page opened before the load
 finished keeps showing the loading screen until the user does something. The
-`Refresh` button above is that something. Store the loaded data with one
+`Refresh` button above is that something; the side nav's `Rerun` button does
+the same, but a button on the page is easier to find. Store the loaded data with one
 assignment, as `load()` does, so a run sees either nothing or all of it.
 
 Additional Considerations:
