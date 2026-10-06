@@ -196,6 +196,32 @@ worker and nowhere else. It also never touches the DOM — it sends the same pac
 the update websocket carries, and the React components on the main thread render
 them — so a page function that takes a while leaves the UI responsive.
 
+## Talking to the page
+
+A worker's location is its script, not the page's URL, so what an app needs
+to know about the page is handed over at boot:
+
+* `tgwasm.Query()` is the page's query string, for an app that takes its own
+  parameters such as `?lang=en`. Read once: it cannot change without a reload.
+* `tgwasm.Embedded()` reports `?embed`, the frontend's display mode for a page
+  shown in a frame, for an app laid out differently there.
+
+The other way, `tgwasm.Emit(name, detail)` dispatches a `toolgui:<name>` DOM
+event on the page's window, with `detail` sent as JSON. It reaches that tab
+only, and is for a script of the page's own, such as analytics added with
+[`-head`](#head-html):
+
+```go
+tgwasm.Emit("download", map[string]any{"tool": "novel"})
+```
+
+```js
+addEventListener('toolgui:download', (e) => umami.track('download', e.detail))
+```
+
+`Emit` returns `tgwasm.ErrNoEventCallback` until the frontend has registered
+for events, which it does at boot, before the first page runs.
+
 ## What the browser takes away
 
 * One session per tab, created on load. A reload starts from an empty state:
