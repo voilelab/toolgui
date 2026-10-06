@@ -64,9 +64,11 @@ behind a proxy that authenticates — see
 
 ### Dependency
 
+* [Go](https://go.dev/): version in [`go.mod`](go.mod)
 * [yarn](https://yarnpkg.com/): Frontend
 * [cypress](https://www.cypress.io/): E2E Testing
 * [taskfile](https://taskfile.dev/): Task runner
+* [mdBook](https://rust-lang.github.io/mdBook/): Docs, see [docs/README.md](docs/README.md)
 
 ### Run demo
 
@@ -80,6 +82,14 @@ task run_demo
 task run_todo
 ```
 
+### Run tests
+
+```shell
+task stub_assets
+go test ./...
+task test_wasm   # tgframe/tgwasm under js/wasm; needs Chrome on PATH
+```
+
 ### Run E2E Test
 
 ```shell
@@ -88,8 +98,15 @@ task run_demo
 
 ```shell
 cd toolgui-e2e
-cypress e2e:chrome
-cypress e2e:firefox
+yarn
+yarn e2e:chrome
+yarn e2e:firefox
+```
+
+The browser build has its own run, against `task run_wasm_demo`:
+
+```shell
+task test_e2e_wasm
 ```
 
 ### Desktop app
