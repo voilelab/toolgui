@@ -40,7 +40,7 @@
     "dayjs": "^1.11.13",
     "dompurify": "^3.4.16",
     "emojibase-data": "^17.0.0",
-    "katex": "^0.16.29",
+    "katex": "^0.18.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^9.0.1",
