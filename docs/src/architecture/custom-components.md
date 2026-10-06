@@ -33,9 +33,10 @@ then a variadic conf embedding `tgframe.Base`. That is not decoration: the
 embed is what gives your conf an `ID`, `tgframe.OneConf` is the shared helper
 that turns "none, or one" into a conf you can read without a nil check, and
 `tgframe.SetConfIDIn` is what puts the conf's id on a component, under the
-container's [scope](components.md#scoping-ids-in-a-helper). A third-party
-component that does this is configured exactly like a built-in one, and the
-caller does not have to learn which is which.
+container's [scope](components.md#scoping-ids-in-a-helper) (a component that
+does not embed `tgframe.BaseComponent` implements `tgframe.ScopedIDSetter`
+to take it). A third-party component that does this is configured exactly
+like a built-in one, and the caller does not have to learn which is which.
 
 ```go
 tgcomp.Text(p.Main, "Revenue")

@@ -173,3 +173,22 @@ func TestScopedIDUnambiguous(t *testing.T) {
 		t.Errorf("ScopedID without scope = %q, want x", got)
 	}
 }
+
+// ownIDComponent is a third-party component that does not embed
+// BaseComponent.
+type ownIDComponent struct{ id string }
+
+func (c *ownIDComponent) GetID() string         { return c.id }
+func (c *ownIDComponent) SetID(id string)       { c.id = "own_" + id }
+func (c *ownIDComponent) SetScopedID(id string) { c.id = id }
+
+func TestScopeCustomComponent(t *testing.T) {
+	c := tgframe.NewContainer("x", nil, func(tgframe.NotifyPack) {}).Scope("s")
+
+	comp := &ownIDComponent{}
+	tgframe.SetConfIDIn(c, comp, &tgframe.Base{ID: "a"})
+
+	if want := tgframe.ScopedID("own_a", "s"); comp.id != want {
+		t.Errorf("id = %q, want %q", comp.id, want)
+	}
+}

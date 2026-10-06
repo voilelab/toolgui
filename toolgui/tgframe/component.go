@@ -68,9 +68,9 @@ func (c *BaseComponent) SetID(id string) {
 	c.ID = fmt.Sprintf("%s_%s", c.Name, id)
 }
 
-// setScopedID sets the id as given, without the name in front: it is already
-// a full id, put under a scope.
-func (c *BaseComponent) setScopedID(id string) {
+// SetScopedID sets the id as given, without the name in front: it is already
+// a full id, put under a scope. See [ScopedIDSetter].
+func (c *BaseComponent) SetScopedID(id string) {
 	c.ID = id
 }
 
