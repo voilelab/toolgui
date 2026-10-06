@@ -103,7 +103,11 @@ yarn e2e:chrome
 yarn e2e:firefox
 ```
 
-The browser build has its own run, against `task run_wasm_demo`:
+The browser build has its own run, against the wasm demo:
+
+```shell
+task run_wasm_demo
+```
 
 ```shell
 task test_e2e_wasm
