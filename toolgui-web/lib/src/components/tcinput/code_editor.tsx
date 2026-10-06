@@ -47,6 +47,62 @@ const editorTheme = EditorView.theme({
   ".cm-activeLine, .cm-activeLineGutter": {
     backgroundColor: "var(--mantine-color-default-hover)",
   },
+
+  // The search panel, in Mantine's input and default button look.
+  ".cm-panels": {
+    color: "var(--mantine-color-text)",
+    backgroundColor: "var(--mantine-color-default)",
+  },
+  ".cm-panels-bottom": {
+    borderTop: "1px solid var(--mantine-color-default-border)",
+  },
+  ".cm-panel.cm-search": {
+    padding: "4px 28px 4px 8px",
+    fontSize: "var(--mantine-font-size-xs)",
+  },
+  ".cm-panel.cm-search label": {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    fontSize: "var(--mantine-font-size-xs)",
+  },
+  ".cm-panel.cm-search input[type=checkbox]": {
+    margin: 0,
+    accentColor: "var(--mantine-primary-color-filled)",
+  },
+  ".cm-panel.cm-search [name=close]": {
+    top: "4px",
+    right: "8px",
+    fontSize: "var(--mantine-font-size-lg)",
+    color: "var(--mantine-color-dimmed)",
+    cursor: "pointer",
+  },
+  ".cm-textfield": {
+    fontSize: "var(--mantine-font-size-xs)",
+    color: "var(--mantine-color-text)",
+    backgroundColor: "var(--mantine-color-body)",
+    border: "1px solid var(--mantine-color-default-border)",
+    borderRadius: "var(--mantine-radius-default)",
+    width: "12em",
+    lineHeight: "1.4",
+    padding: "1px 8px",
+    outline: "none",
+    "&:focus": { borderColor: "var(--mantine-primary-color-filled)" },
+  },
+  ".cm-button": {
+    fontSize: "var(--mantine-font-size-xs)",
+    fontWeight: "600",
+    color: "var(--mantine-color-default-color)",
+    backgroundColor: "var(--mantine-color-body)",
+    backgroundImage: "none",
+    border: "1px solid var(--mantine-color-default-border)",
+    borderRadius: "var(--mantine-radius-default)",
+    lineHeight: "1.4",
+    padding: "1px 10px",
+    cursor: "pointer",
+    "&:hover": { backgroundColor: "var(--mantine-color-default-hover)" },
+    "&:active": { backgroundImage: "none", transform: "translateY(1px)" },
+  },
 })
 
 function themeExtension(theme: ThemeMode) {
