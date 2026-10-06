@@ -4,6 +4,7 @@ import { afterEach, expect, test, describe, vi } from 'vitest'
 
 import { EditorView } from '@codemirror/view'
 import { language } from '@codemirror/language'
+import { openSearchPanel } from '@codemirror/search'
 
 import { render } from './render'
 
@@ -64,18 +65,32 @@ describe('TCodeInput', () => {
     expect(view.state.doc.toString()).toBe('typed')
   })
 
-  test('sends the code on blur, once per change', async () => {
+  test('sends the code on focus out, once per change', async () => {
     const { content, view, update } = await renderCode()
 
-    fireEvent.blur(content)
+    fireEvent.focusOut(content)
     expect(update).not.toHaveBeenCalled()
 
     type(view, '\n')
     expect(stateValues.code).toBe('package main\n')
 
-    fireEvent.blur(content)
-    fireEvent.blur(content)
+    fireEvent.focusOut(content)
+    fireEvent.focusOut(content)
     expect(update).toHaveBeenCalledTimes(1)
+    expect(update).toHaveBeenCalledWith(
+      { type: 'input', id: 'code', value: 'package main\n' })
+  })
+
+  test('keeps the code while focus moves to its search panel', async () => {
+    const { content, view, update } = await renderCode()
+
+    type(view, '\n')
+    act(() => { openSearchPanel(view) })
+    const search = view.dom.querySelector('.cm-search input')
+    fireEvent.focusOut(content, { relatedTarget: search })
+    expect(update).not.toHaveBeenCalled()
+
+    fireEvent.focusOut(search)
     expect(update).toHaveBeenCalledWith(
       { type: 'input', id: 'code', value: 'package main\n' })
   })

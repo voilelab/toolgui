@@ -398,4 +398,9 @@ func TestHasTextShownValue(t *testing.T) {
 	if !p.HasText("Bob") || p.HasText("Alice") {
 		t.Error("expect the typed value shown in place of the default")
 	}
+
+	p.GetByLabel("Script").Input("")
+	if p.HasText("fmt.Println()") {
+		t.Error("expect a cleared code input shown empty")
+	}
 }

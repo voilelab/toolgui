@@ -126,15 +126,22 @@ export default function CodeEditor({ node, update, theme }: Props) {
               dirty = true
             }
           }),
-          EditorView.domEventHandlers({
-            blur: (_, v) => { send(v) },
-          }),
         ],
       }),
     })
     view.current = v
 
+    // On the editor's root, not its content: moving to its own search panel
+    // is not leaving the editor.
+    const onFocusOut = (e: FocusEvent) => {
+      if (!v.dom.contains(e.relatedTarget as Node | null)) {
+        send(v)
+      }
+    }
+    v.dom.addEventListener("focusout", onFocusOut)
+
     return () => {
+      v.dom.removeEventListener("focusout", onFocusOut)
       v.destroy()
       view.current = null
     }

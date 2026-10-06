@@ -317,7 +317,10 @@ func (p *Page) shownValue(n *Node) string {
 		return ""
 	}
 
-	if v, ok := p.state.Get[string](n.ID); ok && v != "" {
+	v, ok := p.state.Get[string](n.ID)
+	// A code input shows a cleared value as empty; the others fall back to
+	// the default.
+	if ok && (v != "" || n.Name == "code_input_component") {
 		return v
 	}
 	return n.String("default")
