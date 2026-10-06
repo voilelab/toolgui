@@ -51,6 +51,17 @@ describe('Input', () => {
     cy.contains('Value: testarea: 123')
   })
 
+  it('Code input', () => {
+    const editor = '#code_input_component_Code'
+    cy.visit('/input')
+    cy.get(editor).type('{moveToEnd}# one')
+    cy.get(editor).blur()
+    cy.get('#code_component_code_input_result').should('contain', '# one')
+    // Ctrl+Enter sends without leaving the editor.
+    cy.get(editor).type('{moveToEnd} two{ctrl}{enter}')
+    cy.get('#code_component_code_input_result').should('contain', '# one two')
+  })
+
   it('Textbox input', () => {
     cy.visit('/input')
     cy.get('input[id=textbox_component_Textbox]').type('abc')

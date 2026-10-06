@@ -212,6 +212,16 @@ func SelectSlider(
 // SelectSliderConf is the configuration for the SelectSlider component.
 type SelectSliderConf = tcinput.SelectSliderConf
 
+// CodeInput create a code editor with syntax highlight and return its value.
+func CodeInput(
+	c *tgframe.Container, label string, conf ...*CodeInputConf) string {
+
+	return tcinput.CodeInput(c, label, conf...)
+}
+
+// CodeInputConf is the configuration for the CodeInput component.
+type CodeInputConf = tcinput.CodeInputConf
+
 // Textarea create a textarea and return its value.
 func Textarea(
 	c *tgframe.Container, label string, conf ...*TextareaConf) string {

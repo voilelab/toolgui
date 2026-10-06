@@ -380,13 +380,14 @@ func TestHasTextShownValue(t *testing.T) {
 	app := newApp("index", func(p *tgframe.Params) error {
 		tgcomp.Textbox(p.Main, "Name", &tgcomp.TextboxConf{Default: "Alice"})
 		tgcomp.Textarea(p.Main, "Note", &tgcomp.TextareaConf{Default: "draft"})
+		tgcomp.CodeInput(p.Main, "Script", &tgcomp.CodeInputConf{Default: "fmt.Println()"})
 		tgcomp.Textbox(p.Main, "Pass", &tgcomp.TextboxConf{Default: "secret", Password: true})
 		return nil
 	})
 
 	p := tgtest.Open(t, app, "index")
 
-	if !p.HasText("Alice") || !p.HasText("draft") {
+	if !p.HasText("Alice") || !p.HasText("draft") || !p.HasText("fmt.Println()") {
 		t.Error("expect the defaults shown")
 	}
 	if p.HasText("secret") {

@@ -24,6 +24,7 @@ empty hands back a pointer, and `nil` is that emptiness. There is no third case.
 | --- | --- | --- | --- |
 | `Textbox` | `string` | `string` | `Default` |
 | `Textarea` | `string` | `string` | `Default` |
+| `CodeInput` | `string` | `string` | `Default` |
 | `Checkbox` | `bool` | `bool` | `Default` |
 | `Toggle` | `bool` | `bool` | `Default` |
 | `ColorPicker` | `string` | `string` | `Default`, else `#000000` |

@@ -73,6 +73,11 @@ func TestDefaultValue(t *testing.T) {
 			return tcinput.Textarea(c, "Body", &tcinput.TextareaConf{Default: "toolgui"})
 		}, "toolgui", "typed")
 
+	checkDefault(t, "code input", "code_input_component_Query", "typed",
+		func(c *tgframe.Container) string {
+			return tcinput.CodeInput(c, "Query", &tcinput.CodeInputConf{Default: "toolgui"})
+		}, "toolgui", "typed")
+
 	checkDefault(t, "checkbox", "checkbox_component_Agree", false,
 		func(c *tgframe.Container) bool {
 			return tcinput.Checkbox(c, "Agree", &tcinput.CheckboxConf{Default: true})
@@ -435,12 +440,18 @@ func TestResetKey(t *testing.T) {
 			&tcinput.TextareaConf{Default: "toolgui", ResetKey: key})
 	}
 
+	codeInput := func(state *tgframe.State, key string) string {
+		return tcinput.CodeInput(defaultContainer(state), "Script",
+			&tcinput.CodeInputConf{Default: "toolgui", ResetKey: key})
+	}
+
 	for name, tc := range map[string]struct {
 		id   string
 		call func(*tgframe.State, string) string
 	}{
-		"textbox":  {"textbox_component_Title", textbox},
-		"textarea": {"textarea_component_Intro", textarea},
+		"textbox":    {"textbox_component_Title", textbox},
+		"textarea":   {"textarea_component_Intro", textarea},
+		"code input": {"code_input_component_Script", codeInput},
 	} {
 		t.Run(name, func(t *testing.T) {
 			state := tgframe.NewState()

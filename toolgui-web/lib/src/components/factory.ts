@@ -5,6 +5,7 @@ import { TButton } from "./tcinput/button"
 import { TSelect } from "./tcinput/select"
 import { TMultiselect } from "./tcinput/multiselect"
 import { TTextarea } from "./tcinput/textarea"
+import { TCodeInput } from "./tcinput/code_input"
 import { TFileupload } from "./tcinput/fileupload"
 import { TRadio } from "./tcinput/radio"
 import { TDatepicker } from "./tcinput/datepicker"
@@ -68,6 +69,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   select_component: TSelect,
   multiselect_component: TMultiselect,
   textarea_component: TTextarea,
+  code_input_component: TCodeInput,
   fileupload_component: TFileupload,
   radio_component: TRadio,
   datepicker_component: TDatepicker,

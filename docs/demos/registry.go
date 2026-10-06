@@ -54,6 +54,8 @@ var groups = []*Group{
 		Demos: []*Demo{
 			demo("textarea", "Textarea",
 				show("show_textarea", textareaDemo, "demo")),
+			demo("code_input", "Code Input",
+				show("show_code_input", codeInputDemo, "demo")),
 			demo("textbox", "Textbox", show("show_textbox", textboxDemo, "demo")),
 			demo("fileupload", "FileUpload",
 				show("show_fileupload", fileuploadDemo, "demo"),

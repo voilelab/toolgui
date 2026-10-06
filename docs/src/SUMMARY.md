@@ -60,6 +60,7 @@
 
 * [Input Components](components/input/index.md)
     * [Textarea](components/input/textarea.md)
+    * [Code Input](components/input/code_input.md)
     * [Textbox](components/input/textbox.md)
     * [FileUpload](components/input/fileupload.md)
     * [Download Button](components/input/download_button.md)
