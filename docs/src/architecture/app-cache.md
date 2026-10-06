@@ -86,7 +86,7 @@ func main() {
 	tgApp.AddPage("page1", "Page1", app.Page1)
 
 	// Serves at once; load() keeps running in the background.
-	tgexec.NewWebExecutor(tgApp).StartService(":3000")
+	tgexec.NewWebExecutor(tgApp).StartService("127.0.0.1:3000")
 }
 ```
 
