@@ -56,6 +56,7 @@ The worker publishes `globalThis.toolgui`:
 | `POST /api/files` | `toolgui.newUpload()`, then `toolgui.uploadFile(componentID, name, slot, handle)` or `toolgui.cancelUpload(slot)` |
 | `GET /api/files` | `toolgui.downloadFile(token)` |
 | a page load | `toolgui.start(pageName)` |
+| — | `toolgui.onEvent(callback)`, for [`Emit`](#an-app-can-tell-the-page-about-something) |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both
 transports share a wire format.
@@ -189,5 +190,5 @@ task test_wasm
 It needs a Chrome or Chromium on `PATH`, or `TOOLGUI_BROWSER` pointing at one.
 `scripts/wasmtest` is what drives it: a `go test -exec` wrapper that boots the
 test binary in a dedicated worker and relays its output back. It runs `tgframe`
-and not the rest of `./toolgui/...`, because `tgexec` serves over HTTP and a tab
-has no socket to listen on.
+and `tgwasm`, not the rest of `./toolgui/...`, because `tgexec` serves over HTTP
+and a tab has no socket to listen on.
