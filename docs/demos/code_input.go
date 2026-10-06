@@ -9,9 +9,10 @@ func codeInputDemo(p *tgframe.Params) error {
 	// ANCHOR: demo
 	code := tgcomp.CodeInput(p.Main, "Code",
 		&tgcomp.CodeInputConf{
-			Language: "python",
-			Height:   6,
-			Default:  "def hello(name):\n    return f\"Hello, {name}!\"\n",
+			Language:  "python",
+			Height:    4,
+			MaxHeight: 15,
+			Default:   "def hello(name):\n    return f\"Hello, {name}!\"\n",
 		})
 	tgcomp.Code(p.Main, code,
 		&tgcomp.CodeConf{ID: "code_input_result", Language: "python"})

@@ -25,7 +25,7 @@ import { codeInputBoxStyle } from "./code_input"
 // Colors come from Mantine, so the editor follows the page's light/dark mode.
 const editorTheme = EditorView.theme({
   "&": {
-    height: "100%",
+    maxHeight: "var(--toolgui-code-max)",
     color: "var(--mantine-color-text)",
     backgroundColor: "var(--mantine-color-body)",
     border: "1px solid var(--mantine-color-default-border)",
@@ -35,7 +35,12 @@ const editorTheme = EditorView.theme({
     outline: "none",
     borderColor: "var(--mantine-primary-color-filled)",
   },
+  // Grows with the code; see codeInputBoxStyle for the bounds.
+  ".cm-content, .cm-gutter": {
+    minHeight: "var(--toolgui-code-min)",
+  },
   ".cm-scroller": {
+    overflow: "auto",
     fontFamily: "var(--mantine-font-family-monospace)",
     lineHeight: "1.5",
   },
@@ -237,7 +242,7 @@ export default function CodeEditor({ node, update, theme }: Props) {
       }}
       mb="md">
       <div ref={host} className="toolgui-code-input"
-        style={codeInputBoxStyle(node.props.height)} />
+        style={codeInputBoxStyle(node.props.height, node.props.max_height)} />
     </Input.Wrapper>
   )
 }

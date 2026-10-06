@@ -10,11 +10,12 @@ var codeInputComponentName = "code_input_component"
 
 type codeInputComponent struct {
 	*tgframe.BaseComponent
-	Label    string `json:"label"`
-	Lang     string `json:"lang"`
-	Height   int    `json:"height"`
-	Default  string `json:"default"`
-	ResetKey string `json:"reset_key"`
+	Label     string `json:"label"`
+	Lang      string `json:"lang"`
+	Height    int    `json:"height"`
+	MaxHeight int    `json:"max_height"`
+	Default   string `json:"default"`
+	ResetKey  string `json:"reset_key"`
 }
 
 func newCodeInputComponent(label string) *codeInputComponent {
@@ -37,8 +38,13 @@ type CodeInputConf struct {
 	// leaves the code unhighlighted.
 	Language string
 
-	// Height is the number of lines shown. default value is 10.
+	// Height is the fewest lines shown; the editor grows with the code from
+	// there. default value is 5.
 	Height int
+
+	// MaxHeight is the most lines shown before the editor scrolls. 0 lets it
+	// grow without limit.
+	MaxHeight int
 
 	// Default is the default value of the code input.
 	Default string
@@ -60,8 +66,9 @@ func CodeInput(c *tgframe.Container, label string, conf ...*CodeInputConf) strin
 	}
 	comp.Height = cf.Height
 	if comp.Height == 0 {
-		comp.Height = 10
+		comp.Height = 5
 	}
+	comp.MaxHeight = cf.MaxHeight
 
 	comp.Default = cf.Default
 	comp.ResetKey = cf.ResetKey

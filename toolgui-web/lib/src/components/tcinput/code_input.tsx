@@ -6,11 +6,21 @@ import { Props } from "../component_interface"
 // The editor is a chunk of its own, so a page without one never loads it.
 const CodeEditor = lazy(() => import("./code_editor"))
 
-export function codeInputBoxStyle(height: number): React.CSSProperties {
+// lines is n lines of 1.5em, plus the content's 4px padding top and bottom.
+const lines = (n: number) => `calc(${n} * 1.5em + 8px)`
+
+// codeInputBoxStyle sizes the editor's box: it grows with the code from
+// height lines, up to maxHeight lines when that is set. The editor reads the
+// two bounds from these variables.
+export function codeInputBoxStyle(
+  height: number, maxHeight?: number): React.CSSProperties {
+
   return {
     fontSize: "var(--mantine-font-size-sm)",
-    // Lines of 1.5em, plus the content's padding and the border.
-    height: `calc(${height} * 1.5em + 10px)`,
+    ["--toolgui-code-min" as string]: lines(height),
+    // Plus the border, as the bound is on the editor's outer box.
+    ["--toolgui-code-max" as string]:
+      maxHeight ? `calc(${lines(maxHeight)} + 2px)` : "none",
   }
 }
 
@@ -19,7 +29,10 @@ export function TCodeInput(props: Props) {
   // Holds the editor's place while it loads, so the page does not jump.
   const fallback = (
     <Input.Wrapper label={props.node.props.label} labelElement="div" mb="md">
-      <div style={codeInputBoxStyle(props.node.props.height)} />
+      <div style={{
+        ...codeInputBoxStyle(props.node.props.height),
+        minHeight: `calc(${lines(props.node.props.height)} + 2px)`,
+      }} />
     </Input.Wrapper>
   )
 

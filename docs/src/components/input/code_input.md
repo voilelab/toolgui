@@ -30,8 +30,13 @@ type CodeInputConf struct {
 	// leaves the code unhighlighted.
 	Language string
 
-	// Height is the number of lines shown. default value is 10.
+	// Height is the fewest lines shown; the editor grows with the code from
+	// there. default value is 5.
 	Height int
+
+	// MaxHeight is the most lines shown before the editor scrolls. 0 lets it
+	// grow without limit.
+	MaxHeight int
 
 	// Default is the default value of the code input.
 	Default string
@@ -49,6 +54,12 @@ type CodeInputConf struct {
 ```
 
 <div data-toolgui-demo="code_input"></div>
+
+## Height
+
+The editor starts at `Height` lines and grows as the code gets longer, so the
+whole code shows without scrolling. Set `MaxHeight` to stop growing at that
+many lines; past it the editor scrolls.
 
 ## When the code is sent
 

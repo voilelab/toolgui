@@ -121,6 +121,23 @@ describe('TCodeInput', () => {
     expect(view.state.doc.toString()).toBe('package main')
   })
 
+  test('grows from height lines up to max_height', async () => {
+    const { container } = await renderCode({ height: 3, max_height: 20 })
+    const box = container.querySelector('.toolgui-code-input')
+
+    expect(box.style.getPropertyValue('--toolgui-code-min'))
+      .toBe('calc(3 * 1.5em + 8px)')
+    expect(box.style.getPropertyValue('--toolgui-code-max'))
+      .toBe('calc(calc(20 * 1.5em + 8px) + 2px)')
+  })
+
+  test('grows without limit when max_height is unset', async () => {
+    const { container } = await renderCode()
+    const box = container.querySelector('.toolgui-code-input')
+
+    expect(box.style.getPropertyValue('--toolgui-code-max')).toBe('none')
+  })
+
   test('loads the language to highlight', async () => {
     const { view } = await renderCode({ lang: 'py' })
 
