@@ -103,7 +103,7 @@ func ChatMessage(c *tgframe.Container, role string,
 	cf := tgframe.OneConf("ChatMessage", conf)
 
 	comp := newChatMessageComponent(role, cf.Avatar)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 	return c.AddContainerTo(comp, "inner", 0)

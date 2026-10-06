@@ -31,6 +31,6 @@ func Title(c *tgframe.Container, text string, conf ...*TitleConf) {
 	cf := tgframe.OneConf("Title", conf)
 
 	comp := newTitleComponent(text)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

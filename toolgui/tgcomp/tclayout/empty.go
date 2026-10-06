@@ -57,7 +57,7 @@ func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptySlot {
 	cf := tgframe.OneConf("Empty", conf)
 
 	comp := newEmptyComponent()
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	emptyComp := c.AddComponent(comp)
 	return c.AddSlotTo(emptyComp, "inner", 0)

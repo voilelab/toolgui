@@ -61,7 +61,7 @@ func Radio(c *tgframe.Container, label string, items []string, conf ...*RadioCon
 	comp := newRadioComponent(label, items)
 	comp.Default = normalizeIndex(cf.Default, len(items))
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 
 	idx, ok := c.State.GetNumber[int](comp.ID)

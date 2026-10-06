@@ -31,6 +31,6 @@ func Markdown(c *tgframe.Container, markdown string, conf ...*MarkdownConf) {
 	cf := tgframe.OneConf("Markdown", conf)
 
 	comp := newMarkdownComponent(markdown)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

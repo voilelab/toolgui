@@ -35,7 +35,7 @@ type ColumnConf struct {
 // evenly, so the body is written once here.
 func column(c *tgframe.Container, n uint, equal bool, cf *ColumnConf) []*tgframe.Container {
 	comp := newColumnComponent(equal)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	colsComp := c.AddComponent(comp)
 

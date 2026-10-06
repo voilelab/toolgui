@@ -165,7 +165,7 @@ func Number[T Numeric](
 	comp.Max = cf.Max
 	comp.Step = cf.Step
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	// An integral input cannot step by 0, so an explicit zero step means 1.
 	// Written into the component rather than back into conf: the caller owns

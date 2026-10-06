@@ -67,7 +67,7 @@ func MultiSelect(c *tgframe.Container, label string, items []string,
 	comp.MaxSelections = cf.MaxSelections
 	comp.Placeholder = cf.Placeholder
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 

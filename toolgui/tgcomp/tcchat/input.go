@@ -61,7 +61,7 @@ func ChatInput(c *tgframe.Container, placeholder string,
 	comp.MaxLength = cf.MaxLength
 	comp.Disabled = cf.Disabled
 	comp.Pinned = c.GetID() == mainContainerID
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 

@@ -61,7 +61,7 @@ func DownloadButton(c *tgframe.Container, text string, body []byte, conf ...*Dow
 
 	uri := fmt.Sprintf("data:%s;base64,%s", mime, b64Body)
 
-	comp := downloadButtonComponentFor(text, cf)
+	comp := downloadButtonComponentFor(c, text, cf)
 	comp.URI = uri
 
 	comp.Filename = fmt.Sprintf("%x", md5.Sum([]byte(uri)))
@@ -84,7 +84,7 @@ func DownloadButton(c *tgframe.Container, text string, body []byte, conf ...*Dow
 func DownloadButtonClicked(c *tgframe.Container, text string,
 	conf ...*DownloadButtonConf) bool {
 
-	comp := downloadButtonComponentFor(text,
+	comp := downloadButtonComponentFor(c, text,
 		tgframe.OneConf("DownloadButtonClicked", conf))
 
 	return clicked(c, comp.ID)
@@ -93,13 +93,13 @@ func DownloadButtonClicked(c *tgframe.Container, text string,
 // downloadButtonComponentFor builds the component text and conf describe, all
 // but the body. Both entry points go through it, so the id
 // DownloadButtonClicked reads is the one DownloadButton draws.
-func downloadButtonComponentFor(text string,
+func downloadButtonComponentFor(c *tgframe.Container, text string,
 	cf *DownloadButtonConf) *downloadButtonComponent {
 
 	comp := newDownloadButtonComponent(text)
 	comp.Color = cf.Color
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	return comp
 }

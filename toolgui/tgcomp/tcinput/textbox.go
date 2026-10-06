@@ -70,7 +70,7 @@ func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
 	comp.Color = cf.Color
 	comp.Default = cf.Default
 	comp.ResetKey = cf.ResetKey
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 	resetOnKeyChange(c.State, comp.ID, comp.ResetKey)

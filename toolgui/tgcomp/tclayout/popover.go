@@ -44,7 +44,7 @@ func Popover(c *tgframe.Container, label string, conf ...*PopoverConf) *tgframe.
 
 	popoverComp := newPopoverComponent(label)
 	popoverComp.Disabled = cf.Disabled
-	tgframe.SetConfID(popoverComp, cf)
+	tgframe.SetConfIDIn(c, popoverComp, cf)
 
 	comp := c.AddComponent(popoverComp)
 	return c.AddContainerTo(comp, "inner", 0)

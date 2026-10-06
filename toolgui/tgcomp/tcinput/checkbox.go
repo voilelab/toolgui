@@ -43,7 +43,7 @@ func Checkbox(c *tgframe.Container, label string, conf ...*CheckboxConf) bool {
 	comp := newCheckboxComponent(label)
 	comp.Default = cf.Default
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 

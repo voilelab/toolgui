@@ -58,7 +58,7 @@ func Textarea(c *tgframe.Container, label string, conf ...*TextareaConf) string 
 	comp.Default = cf.Default
 	comp.ResetKey = cf.ResetKey
 	comp.Color = cf.Color
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 	resetOnKeyChange(c.State, comp.ID, comp.ResetKey)

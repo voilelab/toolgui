@@ -32,7 +32,8 @@ reaches the frontend it is a box with two components in it.
 then a variadic conf embedding `tgframe.Base`. That is not decoration: the
 embed is what gives your conf an `ID`, `tgframe.OneConf` is the shared helper
 that turns "none, or one" into a conf you can read without a nil check, and
-`tgframe.SetConfID` is what puts the conf's id on a component. A third-party
+`tgframe.SetConfIDIn` is what puts the conf's id on a component, under the
+container's [scope](components.md#scoping-ids-in-a-helper). A third-party
 component that does this is configured exactly like a built-in one, and the
 caller does not have to learn which is which.
 
@@ -46,9 +47,10 @@ Two things to watch for.
 **Ids have to stay unique.** Everything stateful inside your function claims
 an id, and two calls on one page claim it twice, which fails the run with
 `duplicated component id`. Pass the conf's id down to whatever inside needs
-one, as `Metric` passes `cf.ID` to the box. Components that hold no state —
-`Text`, `Title`, `Markdown` — have no id unless you give them one, so a
-display-only function may never need to.
+one, as `Metric` passes `cf.ID` to the box, or write the inside through
+`c.Scope(...)` so every id under it gets a prefix of its own. Components that
+hold no state — `Text`, `Title`, `Markdown` — have no id unless you give them
+one, so a display-only function may never need to.
 
 **Reading a value back** works the way input components work: the state is
 keyed by id, so read it and return it. `c.State` is the same state the page

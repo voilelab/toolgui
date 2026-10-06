@@ -52,7 +52,7 @@ func Form(c *tgframe.Container, conf ...*FormConf) *tgframe.Container {
 	comp := newFormComponent()
 	comp.SubmitLabel = cf.SubmitLabel
 	comp.HideSubmit = cf.HideSubmit
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	formComp := c.AddComponent(comp)
 	return c.AddContainerTo(formComp, "inner", 0)

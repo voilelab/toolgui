@@ -98,7 +98,7 @@ func Toast(c *tgframe.Container, text string, conf ...*ToastConf) {
 	comp.Icon = cf.Icon
 	comp.DurationMS = toastDuration(cf.Duration)
 	comp.Seq = c.RunSeq()
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 }
