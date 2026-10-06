@@ -65,6 +65,8 @@ func OneConf[T any, PC interface {
 // SetConfID gives comp the id conf carries, and leaves comp's own id alone
 // when the conf carries none. The id is read through the Base every conf
 // embeds, so no component writes a getter for it.
+//
+// It ignores [Container.Scope]; a component draws through [SetConfIDIn].
 func SetConfID(comp Component, conf Conf) {
 	id := conf.base().ID
 	if id == "" {
@@ -74,4 +76,27 @@ func SetConfID(comp Component, conf Conf) {
 	if s, ok := comp.(interface{ SetID(string) }); ok {
 		s.SetID(id)
 	}
+}
+
+// SetConfIDIn is [SetConfID] for comp written through c: the id comp ends up
+// with, derived or from conf, also carries c's [Container.Scope]. Components
+// call it rather than SetConfID, before anything reads comp's id.
+//
+// comp takes the scoped id through [ScopedIDSetter]; one that does not
+// implement it keeps its id unscoped.
+func SetConfIDIn(c *Container, comp Component, conf Conf) {
+	SetConfID(comp, conf)
+
+	if s, ok := comp.(ScopedIDSetter); ok {
+		s.SetScopedID(c.ScopedID(comp.GetID()))
+	}
+}
+
+// ScopedIDSetter is how [SetConfIDIn] hands a component its scoped id.
+// [BaseComponent] implements it; a component that does not embed one
+// implements it itself to take part in [Container.Scope].
+type ScopedIDSetter interface {
+	// SetScopedID sets the id as given: it is already complete, so unlike
+	// SetID it adds no name in front.
+	SetScopedID(id string)
 }

@@ -38,7 +38,7 @@ type ButtonConf struct {
 
 // Button create a button and return true if it's clicked.
 func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
-	comp := buttonComponentFor(label, tgframe.OneConf("Button", conf))
+	comp := buttonComponentFor(c, label, tgframe.OneConf("Button", conf))
 
 	c.AddComponent(comp)
 	return c.State.GetClickID() == comp.ID
@@ -64,18 +64,18 @@ func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 // it's checked against — the same guard an upload naming a component id goes
 // through. A click on a button that was not there is not a click.
 func ButtonClicked(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
-	comp := buttonComponentFor(label, tgframe.OneConf("ButtonClicked", conf))
+	comp := buttonComponentFor(c, label, tgframe.OneConf("ButtonClicked", conf))
 
 	return clicked(c, comp.ID)
 }
 
 // buttonComponentFor builds the component label and conf describe. Both entry
 // points go through it, so the id ButtonClicked reads is the one Button draws.
-func buttonComponentFor(label string, cf *ButtonConf) *buttonComponent {
+func buttonComponentFor(c *tgframe.Container, label string, cf *ButtonConf) *buttonComponent {
 	comp := newButtonComponent(label)
 	comp.Color = cf.Color
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	return comp
 }

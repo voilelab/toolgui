@@ -31,6 +31,6 @@ func Text(c *tgframe.Container, text string, conf ...*TextConf) {
 	cf := tgframe.OneConf("Text", conf)
 
 	comp := newTextComponent(text)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

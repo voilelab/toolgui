@@ -57,7 +57,7 @@ func Metric(c *tgframe.Container, label, value string, conf ...*MetricConf) {
 	comp := newMetricComponent(label, value)
 	comp.Delta = delta
 	comp.Direction, comp.Tone = deltaDirection(delta, cf.DeltaColorInverse)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }
 

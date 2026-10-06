@@ -65,7 +65,7 @@ func Select(c *tgframe.Container, label string, items []string, conf ...*SelectC
 		comp.Default = *def + 1
 	}
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 	idx, ok := c.State.GetNumber[int](comp.ID)

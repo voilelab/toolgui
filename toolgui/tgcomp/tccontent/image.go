@@ -108,7 +108,7 @@ func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
 		comp.Width = cf.Width
 	}
 
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 }

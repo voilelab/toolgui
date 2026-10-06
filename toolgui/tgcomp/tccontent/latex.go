@@ -31,6 +31,6 @@ func Latex(c *tgframe.Container, text string, conf ...*LatexConf) {
 	cf := tgframe.OneConf("Latex", conf)
 
 	comp := newLatexComponent(text)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

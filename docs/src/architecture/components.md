@@ -225,6 +225,51 @@ reports a click only where the button is actually written — which is why
 asking by hand, with `GetClickID()` and a prefix of your own, is not the same
 thing.
 
+### Scoping ids in a helper
+
+A helper that draws inputs — say `addressForm(c)` —
+claims the same ids every time it is called, so calling it twice on one page
+fails with `duplicated component id`. `Container.Scope` fixes that without
+threading a prefix through the helper:
+
+```go
+func addressForm(c *tgframe.Container, kind string) {
+	c = c.Scope(kind)
+
+	// "@billing/textbox_component_City"
+	tgcomp.Textbox(c, "City")
+
+	// "@billing/button_component_save"
+	tgcomp.Button(c, "Save", &tgcomp.ButtonConf{ID: "save"})
+}
+
+addressForm(p.Main, "billing")
+addressForm(p.Main, "shipping")
+```
+
+The scoped container writes into the same place as `c`; only ids change.
+Derived ids and `Conf.ID` alike get the prefix, and so does everything in the
+containers opened from it — `Box`, `Column`, `Form`, `Dialog`, slots. Scopes
+nest: `c.Scope("a").Scope("b")` gives `@a/b/<id>`. The getters above take the
+container, so `ButtonClicked(c, "Save")` on the scoped `c` asks about the
+scoped button.
+
+A scoped id is `@`, the scopes and the id joined by `/`, with `%` and `/` in
+each part escaped, so neither a label nor a scope name can make two different
+scopings read the same, and no unscoped id starts with `@`. Without `Scope`,
+ids are exactly as before.
+
+To name a scoped component outside the page — in a `tgtest` test, or when
+reading state by hand — use `tgframe.ScopedID`, or `c.ScopedID` from the
+container:
+
+```go
+p.Get(tgframe.ScopedID("button_component_save", "billing")).Click()
+```
+
+Scoping is opt-in: nothing scopes by container position on its own, since
+that would change the state key of every existing app.
+
 ## Writing one place more than once
 
 A page function normally writes each place once per run. A slot — what

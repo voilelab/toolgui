@@ -87,7 +87,7 @@ func DownloadFile(c *tgframe.Container, text string, body []byte,
 	conf ...*DownloadFileConf) bool {
 	cf := tgframe.OneConf("DownloadFile", conf)
 
-	comp := downloadFileComponentFor(text, cf)
+	comp := downloadFileComponentFor(c, text, cf)
 
 	comp.Filename = fmt.Sprintf("%x", md5.Sum(body))
 	if cf.Filename != "" {
@@ -125,7 +125,7 @@ func DownloadFileFunc(c *tgframe.Container, text string,
 	gen func() ([]byte, error), conf ...*DownloadFileConf) bool {
 	cf := tgframe.OneConf("DownloadFileFunc", conf)
 
-	comp := downloadFileComponentFor(text, cf)
+	comp := downloadFileComponentFor(c, text, cf)
 	comp.Lazy = true
 	comp.Filename = cf.Filename
 
@@ -174,7 +174,7 @@ func DownloadFileFunc(c *tgframe.Container, text string,
 func DownloadFileClicked(c *tgframe.Container, text string,
 	conf ...*DownloadFileConf) bool {
 
-	comp := downloadFileComponentFor(text,
+	comp := downloadFileComponentFor(c, text,
 		tgframe.OneConf("DownloadFileClicked", conf))
 
 	return clicked(c, comp.ID)
@@ -183,11 +183,11 @@ func DownloadFileClicked(c *tgframe.Container, text string,
 // downloadFileComponentFor builds the component text and conf describe, all
 // but the file itself. Both entry points go through it, so the id
 // DownloadFileClicked reads is the one DownloadFile draws.
-func downloadFileComponentFor(text string,
+func downloadFileComponentFor(c *tgframe.Container, text string,
 	cf *DownloadFileConf) *downloadFileComponent {
 
 	comp := newDownloadFileComponent(text)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	comp.MIME = "application/octet-stream"
 	if cf.MIME != "" {

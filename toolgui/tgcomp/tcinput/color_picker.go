@@ -65,7 +65,7 @@ func ColorPicker(c *tgframe.Container, label string, conf ...*ColorPickerConf) s
 	comp := newColorPickerComponent(label)
 	comp.Default = strings.ToLower(def)
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	c.AddComponent(comp)
 

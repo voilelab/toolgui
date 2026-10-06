@@ -470,7 +470,7 @@ func dataFrame(c *tgframe.Container, head []string, rows dataFrameRows,
 	}
 
 	comp := newDataFrameComponent(head, rows, cf)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 
 	if cf.Selection == SelectionModeNone {

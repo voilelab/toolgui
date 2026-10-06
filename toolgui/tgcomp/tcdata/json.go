@@ -45,7 +45,7 @@ func JSON(c *tgframe.Container, v any, conf ...*JSONConf) {
 	}
 
 	comp := newJSONComponent(serialized)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }
 

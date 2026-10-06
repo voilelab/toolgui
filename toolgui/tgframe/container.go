@@ -1,6 +1,9 @@
 package tgframe
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 var _ Component = &Container{}
 var ContainerComponentName = "container_component"
@@ -20,7 +23,13 @@ type Container struct {
 	// counter is the index the next component added here gets. Containers are
 	// rebuilt on every run, so it starts at 0 each time and a component keeps
 	// its index as long as the page function writes it in the same place.
-	counter int
+	// Shared with the containers [Container.Scope] hands out, which write into
+	// the same place.
+	counter *int
+
+	// scope is what ids claimed through this container are prefixed with, ""
+	// outside any [Container.Scope].
+	scope string
 
 	// run is shared by every container of a run. Nil outside a run.
 	run *runState
@@ -42,6 +51,7 @@ func NewContainer(id string, state *State, notifyComp SendNotifyPackFunc) *Conta
 		},
 		SendNotifyPack: notifyComp,
 		State:          state,
+		counter:        new(int),
 	}
 }
 
@@ -55,8 +65,8 @@ func innerKey(comp Component, idx int) string {
 }
 
 func (c *Container) AddComponent(comp Component) Component {
-	idx := c.counter
-	c.counter++
+	idx := *c.counter
+	*c.counter++
 
 	key := fmt.Sprintf("%s/%d", c.key, idx)
 	if k, ok := comp.(keyed); ok {
@@ -74,8 +84,10 @@ func (c *Container) AddComponent(comp Component) Component {
 
 func (c *Container) AddContainer(id string) *Container {
 	newContainer := NewContainer(id, c.State, c.SendNotifyPack)
+	newContainer.ID = c.ScopedID(newContainer.ID)
 	newContainer.run = c.run
 	newContainer.track = c.track
+	newContainer.scope = c.scope
 	c.AddComponent(newContainer)
 	return newContainer
 }
@@ -110,6 +122,11 @@ func (c *Container) innerContainer(comp Component, suffix string, idx int) *Cont
 		State:          c.State,
 		run:            c.run,
 		track:          c.track,
+		counter:        new(int),
+
+		// comp's id already carries the scope, and so does the one derived
+		// from it below.
+		scope: c.scope,
 	}
 
 	if comp.GetID() != "" {
@@ -154,4 +171,72 @@ func (c *Container) RemoveComponent(comp Component) {
 	if c.run != nil {
 		c.run.unregisterID(comp)
 	}
+}
+
+// Scope returns a container that writes into the same place as c, but
+// prefixes the id of every component written through it with prefix, the
+// derived ids and those given through Conf.ID alike. Containers opened from it
+// inherit the prefix, and scopes nest.
+//
+// It is what lets a helper be called more than once on a page without its ids
+// colliding, and without the helper taking a prefix to pass down:
+//
+//	func addressForm(c *tgframe.Container, kind string) {
+//		c = c.Scope(kind)
+//		tgcomp.Textbox(c, "City") // "@<kind>/textbox_component_City"
+//	}
+//
+// The ids are what [ScopedID] gives, so a test looks a component up by that.
+// Ids claimed outside any scope are left as they are.
+func (c *Container) Scope(prefix string) *Container {
+	scoped := *c
+	scoped.scope = scopePrefix(c.scope, prefix)
+	return &scoped
+}
+
+// ScopedID is id as a component written through c claims it: id itself
+// outside any [Container.Scope], and [ScopedID] of id under c's scopes inside.
+func (c *Container) ScopedID(id string) string {
+	if id == "" || c.scope == "" {
+		return id
+	}
+
+	return c.scope + escapeIDSegment(id)
+}
+
+// ScopedID is the id a component claiming id gets when written through
+// c.Scope(scopes[0]).Scope(scopes[1])…, e.g. for looking it up in a test:
+//
+//	ScopedID("button_component_Save", "a", "b") // "@a/b/button_component_Save"
+//
+// The scopes and the id are joined by "/" after an "@", which no unscoped id
+// starts with, and each part has its "%" and "/" escaped, so a label holding
+// either cannot make two different scopings read the same.
+func ScopedID(id string, scopes ...string) string {
+	if id == "" || len(scopes) == 0 {
+		return id
+	}
+
+	prefix := ""
+	for _, s := range scopes {
+		prefix = scopePrefix(prefix, s)
+	}
+
+	return prefix + escapeIDSegment(id)
+}
+
+// scopePrefix is the prefix of scope s nested in the one outer is the prefix
+// of.
+func scopePrefix(outer, s string) string {
+	if outer == "" {
+		outer = "@"
+	}
+
+	return outer + escapeIDSegment(s) + "/"
+}
+
+var idSegmentEscaper = strings.NewReplacer("%", "%25", "/", "%2F")
+
+func escapeIDSegment(s string) string {
+	return idSegmentEscaper.Replace(s)
 }

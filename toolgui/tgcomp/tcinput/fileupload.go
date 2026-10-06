@@ -85,7 +85,7 @@ func FileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadC
 
 	comp := newFileUploadComponent(label, accept)
 	comp.Disabled = cf.Disabled
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 
 	var fileObj *FileObject
@@ -125,7 +125,7 @@ func MultiFileUpload(c *tgframe.Container, label, accept string, conf ...*FileUp
 	comp := newFileUploadComponent(label, accept)
 	comp.Disabled = cf.Disabled
 	comp.Multiple = true
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 
 	var fileObjs []*FileObject

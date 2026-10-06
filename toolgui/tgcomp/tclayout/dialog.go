@@ -173,7 +173,7 @@ func Dialog(c *tgframe.Container, title string, conf ...*DialogConf) *DialogCont
 	comp := newDialogComponent(title)
 	comp.Width = dialogWidth(cf.Width)
 	comp.Dismissible = boolOr(cf.Dismissible, true)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	if c.State != nil {
 		comp.Opened, _ = c.State.Get[bool](comp.ID)

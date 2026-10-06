@@ -31,6 +31,6 @@ func Subtitle(c *tgframe.Container, text string, conf ...*SubtitleConf) {
 	cf := tgframe.OneConf("Subtitle", conf)
 
 	comp := newSubtitleComponent(text)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }

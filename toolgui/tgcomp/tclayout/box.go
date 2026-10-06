@@ -31,7 +31,7 @@ func Box(c *tgframe.Container, conf ...*BoxConf) *tgframe.Container {
 	cf := tgframe.OneConf("Box", conf)
 
 	comp := newBoxComponent()
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 
 	boxComp := c.AddComponent(comp)
 	return c.AddContainerTo(boxComp, "inner", 0)

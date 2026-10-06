@@ -170,7 +170,7 @@ func (p picker) pick(c *tgframe.Container, label string, def *time.Time,
 		comp.Default = def.Format(p.format)
 	}
 	comp.Disabled = disabled
-	tgframe.SetConfID(comp, conf)
+	tgframe.SetConfIDIn(c, comp, conf)
 	c.AddComponent(comp)
 
 	str, ok := c.State.Get[string](comp.ID)

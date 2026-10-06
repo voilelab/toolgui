@@ -33,6 +33,6 @@ func Link(c *tgframe.Container, text, url string, conf ...*LinkConf) {
 	cf := tgframe.OneConf("Link", conf)
 
 	comp := newLinkComponent(text, url)
-	tgframe.SetConfID(comp, cf)
+	tgframe.SetConfIDIn(c, comp, cf)
 	c.AddComponent(comp)
 }
