@@ -16,6 +16,17 @@ interface Column {
   hidden: boolean
 }
 
+// Cell is a cell as the server sends it: a bare string, read by the column
+// type as before, or a typed cell carrying its sort value apart from what is
+// shown. value is a number (epoch milliseconds for a datetime), a string, or
+// null for a missing cell.
+export type Cell = string | { display: string, value: number | string | null }
+
+// display is what the cell shows, and so what search matches.
+export function display(cell: Cell): string {
+  return typeof cell === "string" ? cell : cell.display
+}
+
 // RowKey is what one row is remembered by: the index the page function wrote
 // it at, or the key the page function named it with when row_keys is set. A
 // key survives the rows changing underneath the table, an index does not.
@@ -25,7 +36,7 @@ type RowKey = number | string
 // they have to travel with them: the key is what a selection is remembered by
 // and what goes back to the server, the index is where the row sits now.
 interface Row {
-  cells: string[]
+  cells: Cell[]
   index: number
   key: RowKey
 }
@@ -42,10 +53,16 @@ type Selection = "none" | "single" | "multi"
 // a fresh empty array.
 const noKeys: string[] = []
 
-// sortKey reads a cell as the value its column type says it holds. Cells that
-// do not parse come back as null and are kept together at the end, so a
-// stray "-" never lands in the middle of the numbers.
-function sortKey(value: string, type: Column["type"]): number | string | null {
+// sortKey reads a cell as the value its column type says it holds. A typed
+// cell's value is taken as is; a string is parsed. Missing cells and strings
+// that do not parse come back as null and are kept together at the end, so
+// a stray "-" never lands in the middle of the numbers.
+export function sortKey(cell: Cell, type: Column["type"]): number | string | null {
+  const value = typeof cell === "string" ? cell : cell.value
+  if (value === null || typeof value === "number") {
+    return value
+  }
+
   switch (type) {
     case "number": {
       // Number("") is 0, which would sort an empty cell among the values.
@@ -70,7 +87,7 @@ function sortKey(value: string, type: Column["type"]): number | string | null {
 // descending, and is applied to the values only: a cell that does not parse
 // sorts last whichever way the column is sorted, which is why descending
 // cannot be the ascending order reversed.
-function compare(a: string, b: string, type: Column["type"], dir: number): number {
+export function compare(a: Cell, b: Cell, type: Column["type"], dir: number): number {
   const ka = sortKey(a, type)
   const kb = sortKey(b, type)
 
@@ -108,7 +125,7 @@ function SortButton({ label, sort, onSort }: {
 
 export function TDataFrame({ node, update }: Props) {
   const head: string[] = node.props.head
-  const rowCells: string[][] = node.props.rows
+  const rowCells: Cell[][] = node.props.rows
   const columns: Column[] = node.props.columns
   const sortable: boolean = node.props.sortable
   const searchable: boolean = node.props.searchable
@@ -189,7 +206,7 @@ export function TDataFrame({ node, update }: Props) {
     }
 
     return rows.filter(row =>
-      row.cells.some(cell => cell.toLowerCase().includes(needle)))
+      row.cells.some(cell => display(cell).toLowerCase().includes(needle)))
   }, [rows, query])
 
   const sorted = useMemo(() => {
@@ -341,7 +358,7 @@ export function TDataFrame({ node, update }: Props) {
                       onChange={() => toggleRow(row.key)} />
                   </Table.Td>}
                 {shown.map(j =>
-                  <Table.Td key={j} ta={columns[j].align}>{row.cells[j]}</Table.Td>)}
+                  <Table.Td key={j} ta={columns[j].align}>{display(row.cells[j])}</Table.Td>)}
               </Table.Tr>
             )}
           </Table.Tbody>

@@ -2,6 +2,7 @@ package demos
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -118,5 +119,44 @@ func dataFrameSingleDemo(p *tgframe.Params) error {
 	tgcomp.Text(p.Main, "Build: "+detail,
 		&tgcomp.TextConf{ID: "dataframe_single_result"})
 	// ANCHOR_END: single
+	return nil
+}
+
+func dataFrameCellsDemo(p *tgframe.Params) error {
+	// ANCHOR: cells
+	type run struct {
+		name string
+		rate float64 // NaN when the run has no result
+	}
+	runs := []run{
+		{"baseline", 0.2941},
+		{"tuned", 0.095},
+		{"pruned", 0.0021},
+		{"crashed", math.NaN()},
+	}
+
+	rows := make([][]tgcomp.Cell, 0, len(runs))
+	for _, r := range runs {
+		// NaN is a missing cell: shown as "-", always sorted last.
+		rate := tgcomp.NumberCell(r.rate)
+		if math.IsNaN(r.rate) {
+			rate = tgcomp.MissingCell().WithDisplay("-")
+		}
+
+		rows = append(rows, []tgcomp.Cell{tgcomp.TextCell(r.name), rate})
+	}
+
+	tgcomp.DataFrameCells(p.Main, []string{"Run", "Hit rate"}, rows,
+		&tgcomp.DataFrameConf{
+			ID: "demo_runs",
+			ColumnConf: []tgcomp.DataFrameColumnConf{
+				{},
+				{
+					Type:   tgcomp.ColumnTypeNumber,
+					Format: &tgcomp.NumberFormat{Decimals: 2, Percent: true},
+				},
+			},
+		})
+	// ANCHOR_END: cells
 	return nil
 }

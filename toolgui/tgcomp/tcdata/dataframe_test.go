@@ -1,9 +1,11 @@
 package tcdata
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcutil"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -630,5 +632,164 @@ func TestDataFrameRowKeysFail(t *testing.T) {
 				t.Errorf("message = %q, want it to contain %q", msg, tc.want)
 			}
 		})
+	}
+}
+
+// pctConf is a text column over a number column shown as a percentage.
+func pctConf() *DataFrameConf {
+	return &DataFrameConf{ColumnConf: []DataFrameColumnConf{
+		{},
+		{Type: ColumnTypeNumber, Format: &NumberFormat{Decimals: 2, Percent: true}},
+	}}
+}
+
+// A string-only DataFrame keeps its cells bare strings on the wire.
+func TestDataFrameStringRowsStayStrings(t *testing.T) {
+	head, rows := twoByTwo()
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrame(c, head, rows)
+	})
+
+	got := props["rows"].([]any)[0].([]any)
+	if got[0] != "1" || got[1] != "2" {
+		t.Errorf("row 0 = %v, want bare strings", got)
+	}
+}
+
+// The string path hands the caller's rows to the wire uncopied.
+func TestDataFrameStringRowsAreNotCopied(t *testing.T) {
+	_, rows := twoByTwo()
+	comp := newDataFrameComponent([]string{"a", "b"}, stringRows(rows),
+		&DataFrameConf{})
+
+	got, ok := comp.Rows.([][]string)
+	if !ok || &got[0] != &rows[0] {
+		t.Errorf("rows = %T, want the caller's [][]string", comp.Rows)
+	}
+}
+
+// A percentage sorts by its value and shows through the column's format;
+// a missing cell goes as a null value.
+func TestDataFrameCellsWire(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrameCells(c, []string{"name", "rate"}, [][]Cell{
+			{TextCell("a"), NumberCell(0.2941)},
+			{TextCell("b"), NumberCell(0.095)},
+			{TextCell("c"), MissingCell().WithDisplay("-")},
+			{TextCell("d"), NumberCell(math.NaN())},
+			{TextCell("e"), NumberCell(0.5).WithDisplay("half")},
+		}, pctConf())
+	})
+
+	rows := props["rows"].([]any)
+	for _, tc := range []struct {
+		row     int
+		display string
+		value   any
+	}{
+		{0, "29.41%", 0.2941},
+		{1, "9.50%", 0.095},
+		{2, "-", nil},
+		{3, "", nil},
+		{4, "half", 0.5},
+	} {
+		row := rows[tc.row].([]any)
+		if row[0] != []string{"a", "b", "c", "d", "e"}[tc.row] {
+			t.Errorf("row %d name = %v, want a bare string", tc.row, row[0])
+		}
+
+		cell := row[1].(map[string]any)
+		if cell["display"] != tc.display || cell["value"] != tc.value {
+			t.Errorf("row %d rate = %v, want display %q value %v",
+				tc.row, cell, tc.display, tc.value)
+		}
+	}
+}
+
+func TestDataFrameCellsNumberFormat(t *testing.T) {
+	for _, tc := range []struct {
+		format *NumberFormat
+		v      float64
+		want   string
+	}{
+		{nil, 1.5, "1.5"},
+		{nil, 3, "3"},
+		{&NumberFormat{Decimals: 2}, 1.005, "1.00"},
+		{&NumberFormat{Decimals: 0}, 2.5, "2"},
+		{&NumberFormat{Decimals: 1, Percent: true}, 0.0021, "0.2%"},
+	} {
+		if got := tc.format.format(tc.v); got != tc.want {
+			t.Errorf("format(%v, %+v) = %q, want %q", tc.v, tc.format, got, tc.want)
+		}
+	}
+}
+
+// A time is sent as epoch milliseconds, the instant the client sorts by.
+func TestDataFrameCellsTime(t *testing.T) {
+	at := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrameCells(c, []string{"at"}, [][]Cell{{TimeCell(at)}},
+			&DataFrameConf{ColumnConf: []DataFrameColumnConf{
+				{Type: ColumnTypeDatetime}}})
+	})
+
+	cell := props["rows"].([]any)[0].([]any)[0].(map[string]any)
+	if cell["display"] != "2026-01-02T03:04:05Z" ||
+		cell["value"] != float64(at.UnixMilli()) {
+		t.Errorf("cell = %v, want RFC 3339 over epoch milliseconds", cell)
+	}
+}
+
+func TestDataFrameCellsFails(t *testing.T) {
+	text := &DataFrameConf{}
+	for _, tc := range []struct {
+		name string
+		want string
+		add  func(c *tgframe.Container)
+	}{
+		{"number in a text column", "holds a NumberCell", func(c *tgframe.Container) {
+			DataFrameCells(c, []string{"a"}, [][]Cell{{NumberCell(1)}}, text)
+		}},
+		{"time in a number column", "holds a TimeCell", func(c *tgframe.Container) {
+			DataFrameCells(c, []string{"a", "b"},
+				[][]Cell{{TextCell("x"), TimeCell(time.Now())}}, pctConf())
+		}},
+		{"infinite number", "infinite", func(c *tgframe.Container) {
+			DataFrameCells(c, []string{"a", "b"},
+				[][]Cell{{TextCell("x"), NumberCell(math.Inf(1))}}, pctConf())
+		}},
+		{"format on a text column", "only a number column", func(c *tgframe.Container) {
+			DataFrame(c, []string{"a"}, [][]string{{"x"}},
+				&DataFrameConf{ColumnConf: []DataFrameColumnConf{
+					{Format: &NumberFormat{}}}})
+		}},
+		{"negative decimals", "negative decimals", func(c *tgframe.Container) {
+			DataFrame(c, []string{"a"}, [][]string{{"1"}},
+				&DataFrameConf{ColumnConf: []DataFrameColumnConf{
+					{Type: ColumnTypeNumber, Format: &NumberFormat{Decimals: -1}}}})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			msg := failMessage(t, tc.add)
+			if !strings.Contains(msg, tc.want) {
+				t.Errorf("message = %q, want it to contain %q", msg, tc.want)
+			}
+		})
+	}
+}
+
+// Missing cells are fine in any column, and a string still goes in a number
+// column, parsed by the client as before.
+func TestDataFrameCellsMixed(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		DataFrameCells(c, []string{"a", "b"}, [][]Cell{
+			{MissingCell(), TextCell("12")},
+			{TextCell("x"), NumberCell(3)},
+		}, pctConf())
+	})
+
+	rows := props["rows"].([]any)
+	if rows[0].([]any)[1] != "12" {
+		t.Errorf("row 0 = %v, want the string kept bare", rows[0])
 	}
 }
