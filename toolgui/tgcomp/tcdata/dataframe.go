@@ -229,7 +229,7 @@ type dataFrameColumn struct {
 type dataFrameComponent struct {
 	*tgframe.BaseComponent
 	Head       []string          `json:"head"`
-	Rows       [][]any           `json:"rows"`
+	Rows       any               `json:"rows"`
 	Columns    []dataFrameColumn `json:"columns"`
 	Sortable   bool              `json:"sortable"`
 	Searchable bool              `json:"searchable"`
@@ -257,7 +257,7 @@ func (c *DataFrameConf) columnConf(i int) DataFrameColumnConf {
 	return c.ColumnConf[i]
 }
 
-func newDataFrameComponent(head []string, rows [][]Cell, conf *DataFrameConf) *dataFrameComponent {
+func newDataFrameComponent(head []string, rows dataFrameRows, conf *DataFrameConf) *dataFrameComponent {
 	columns := make([]dataFrameColumn, len(head))
 	for i := range columns {
 		cc := conf.columnConf(i)
@@ -297,7 +297,7 @@ func newDataFrameComponent(head []string, rows [][]Cell, conf *DataFrameConf) *d
 			ID:   id,
 		},
 		Head:       head,
-		Rows:       wireRows(rows, conf),
+		Rows:       rows.wire(conf),
 		Columns:    columns,
 		Sortable:   boolOr(conf.Sortable, true),
 		Searchable: boolOr(conf.Searchable, true),
@@ -306,22 +306,8 @@ func newDataFrameComponent(head []string, rows [][]Cell, conf *DataFrameConf) *d
 		Selection:  conf.Selection.String(),
 		RowKeys:    rowKeys,
 		DefaultSelection: normalizeRowSelection(
-			conf.DefaultSelection, len(rows), conf.Selection),
+			conf.DefaultSelection, rows.len(), conf.Selection),
 	}
-}
-
-// wireRows settles every cell into what the client receives. Never nil, so
-// the client can iterate it unguarded.
-func wireRows(rows [][]Cell, conf *DataFrameConf) [][]any {
-	out := make([][]any, len(rows))
-	for i, row := range rows {
-		cells := make([]any, len(row))
-		for j, cell := range row {
-			cells[j] = cell.wire(conf.columnConf(j).Format)
-		}
-		out[i] = cells
-	}
-	return out
 }
 
 // normalizeRowSelection puts a selection into the shape DataFrame promises:
@@ -403,7 +389,7 @@ func selectionFromKeys(keys, rowKeys []string, mode SelectionMode) []int {
 func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 	conf ...*DataFrameConf) []int {
 
-	return DataFrameCells(c, head, textCells(rows), conf...)
+	return dataFrame(c, head, stringRows(rows), conf)
 }
 
 // DataFrameCells is [DataFrame] with each cell carrying the value it sorts
@@ -413,6 +399,12 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 // cell in any other column fails the run.
 func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell,
 	conf ...*DataFrameConf) []int {
+
+	return dataFrame(c, head, cellRows(rows), conf)
+}
+
+func dataFrame(c *tgframe.Container, head []string, rows dataFrameRows,
+	conf []*DataFrameConf) []int {
 
 	cf := tgframe.OneConf("DataFrame", conf)
 
@@ -449,25 +441,16 @@ func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell,
 		}
 	}
 
-	for i, row := range rows {
-		if len(row) != len(head) {
-			c.Fail(tgutil.Errorf("len of row %d should equal to len of head", i))
-			return []int{}
-		}
-
-		for j, cell := range row {
-			if err := cell.check(i, head[j], cf.columnConf(j).Type); err != nil {
-				c.Fail(err)
-				return []int{}
-			}
-		}
+	if err := rows.check(head, cf); err != nil {
+		c.Fail(err)
+		return []int{}
 	}
 
 	if len(cf.RowKeys) != 0 {
-		if len(cf.RowKeys) != len(rows) {
+		if len(cf.RowKeys) != rows.len() {
 			c.Fail(tgutil.Errorf(
 				"len of row keys should equal to len of rows, got %d and %d",
-				len(cf.RowKeys), len(rows)))
+				len(cf.RowKeys), rows.len()))
 			return []int{}
 		}
 
@@ -498,7 +481,7 @@ func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell,
 	// rather than handing back comp.DefaultSelection: the component is about
 	// to be serialized, and the caller owns what it gets back.
 	def := func() []int {
-		return normalizeRowSelection(cf.DefaultSelection, len(rows), cf.Selection)
+		return normalizeRowSelection(cf.DefaultSelection, rows.len(), cf.Selection)
 	}
 
 	if len(cf.RowKeys) != 0 {
@@ -524,5 +507,5 @@ func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell,
 		return def()
 	}
 
-	return normalizeRowSelection(idxes, len(rows), cf.Selection)
+	return normalizeRowSelection(idxes, rows.len(), cf.Selection)
 }

@@ -656,6 +656,18 @@ func TestDataFrameStringRowsStayStrings(t *testing.T) {
 	}
 }
 
+// The string path hands the caller's rows to the wire uncopied.
+func TestDataFrameStringRowsAreNotCopied(t *testing.T) {
+	_, rows := twoByTwo()
+	comp := newDataFrameComponent([]string{"a", "b"}, stringRows(rows),
+		&DataFrameConf{})
+
+	got, ok := comp.Rows.([][]string)
+	if !ok || &got[0] != &rows[0] {
+		t.Errorf("rows = %T, want the caller's [][]string", comp.Rows)
+	}
+}
+
 // A percentage sorts by its value and shows through the column's format;
 // a missing cell goes as a null value.
 func TestDataFrameCellsWire(t *testing.T) {

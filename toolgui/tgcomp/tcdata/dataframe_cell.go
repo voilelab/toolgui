@@ -147,13 +147,61 @@ func (c Cell) check(row int, head string, t ColumnType) error {
 	return nil
 }
 
-// textCells lifts a string matrix into cells, row lengths kept.
-func textCells(rows [][]string) [][]Cell {
-	out := make([][]Cell, len(rows))
-	for i, row := range rows {
-		cells := make([]Cell, len(row))
-		for j, s := range row {
-			cells[j] = TextCell(s)
+// dataFrameRows is the rows either entry point takes.
+type dataFrameRows interface {
+	len() int
+	check(head []string, cf *DataFrameConf) error
+	wire(cf *DataFrameConf) any
+}
+
+// stringRows go on the wire as given, with no per-cell copy: the large
+// string tables DataFrame is for pay nothing for typed cells.
+type stringRows [][]string
+
+func (r stringRows) len() int { return len(r) }
+
+func (r stringRows) check(head []string, _ *DataFrameConf) error {
+	for i, row := range r {
+		if len(row) != len(head) {
+			return tgutil.Errorf("len of row %d should equal to len of head", i)
+		}
+	}
+	return nil
+}
+
+// wire is never nil, so the client can iterate it unguarded.
+func (r stringRows) wire(*DataFrameConf) any {
+	if r == nil {
+		return [][]string{}
+	}
+	return [][]string(r)
+}
+
+type cellRows [][]Cell
+
+func (r cellRows) len() int { return len(r) }
+
+func (r cellRows) check(head []string, cf *DataFrameConf) error {
+	for i, row := range r {
+		if len(row) != len(head) {
+			return tgutil.Errorf("len of row %d should equal to len of head", i)
+		}
+
+		for j, cell := range row {
+			if err := cell.check(i, head[j], cf.columnConf(j).Type); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r cellRows) wire(cf *DataFrameConf) any {
+	out := make([][]any, len(r))
+	for i, row := range r {
+		cells := make([]any, len(row))
+		for j, cell := range row {
+			cells[j] = cell.wire(cf.columnConf(j).Format)
 		}
 		out[i] = cells
 	}
