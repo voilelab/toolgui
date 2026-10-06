@@ -148,6 +148,12 @@ type DataFrameColumnConf struct {
 	// Hidden drops the column from the table. Its cells are still searched,
 	// so a row can be found by a value it does not show.
 	Hidden bool
+
+	// Format is how a NumberCell without its own display is shown, the
+	// shortest exact decimal when nil. Formatting happens in Go, so what is
+	// shown is what is searched. Only a ColumnTypeNumber column takes one;
+	// on any other column it fails the run.
+	Format *NumberFormat
 }
 
 // DataFrameConf is the configuration for the DataFrame component. Sorting and
@@ -223,7 +229,7 @@ type dataFrameColumn struct {
 type dataFrameComponent struct {
 	*tgframe.BaseComponent
 	Head       []string          `json:"head"`
-	Rows       [][]string        `json:"rows"`
+	Rows       [][]any           `json:"rows"`
 	Columns    []dataFrameColumn `json:"columns"`
 	Sortable   bool              `json:"sortable"`
 	Searchable bool              `json:"searchable"`
@@ -243,14 +249,18 @@ func boolOr(v *bool, def bool) bool {
 	return *v
 }
 
-func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) *dataFrameComponent {
+// columnConf returns column i's conf, the zero conf when none is given.
+func (c *DataFrameConf) columnConf(i int) DataFrameColumnConf {
+	if len(c.ColumnConf) == 0 {
+		return DataFrameColumnConf{}
+	}
+	return c.ColumnConf[i]
+}
+
+func newDataFrameComponent(head []string, rows [][]Cell, conf *DataFrameConf) *dataFrameComponent {
 	columns := make([]dataFrameColumn, len(head))
 	for i := range columns {
-		var cc DataFrameColumnConf
-		if len(conf.ColumnConf) != 0 {
-			cc = conf.ColumnConf[i]
-		}
-
+		cc := conf.columnConf(i)
 		columns[i] = dataFrameColumn{
 			Type:   cc.Type.String(),
 			Align:  cc.Align.resolve(cc.Type),
@@ -287,7 +297,7 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 			ID:   id,
 		},
 		Head:       head,
-		Rows:       rows,
+		Rows:       wireRows(rows, conf),
 		Columns:    columns,
 		Sortable:   boolOr(conf.Sortable, true),
 		Searchable: boolOr(conf.Searchable, true),
@@ -298,6 +308,20 @@ func newDataFrameComponent(head []string, rows [][]string, conf *DataFrameConf) 
 		DefaultSelection: normalizeRowSelection(
 			conf.DefaultSelection, len(rows), conf.Selection),
 	}
+}
+
+// wireRows settles every cell into what the client receives. Never nil, so
+// the client can iterate it unguarded.
+func wireRows(rows [][]Cell, conf *DataFrameConf) [][]any {
+	out := make([][]any, len(rows))
+	for i, row := range rows {
+		cells := make([]any, len(row))
+		for j, cell := range row {
+			cells[j] = cell.wire(conf.columnConf(j).Format)
+		}
+		out[i] = cells
+	}
+	return out
 }
 
 // normalizeRowSelection puts a selection into the shape DataFrame promises:
@@ -373,7 +397,21 @@ func selectionFromKeys(keys, rowKeys []string, mode SelectionMode) []int {
 //
 // [Table] is the static counterpart: reach for it when the rows are few and
 // already in the order they should be read in.
+//
+// [DataFrameCells] is the same table with typed cells, for values whose
+// display is not their sort order (a percentage, a missing value).
 func DataFrame(c *tgframe.Container, head []string, rows [][]string,
+	conf ...*DataFrameConf) []int {
+
+	return DataFrameCells(c, head, textCells(rows), conf...)
+}
+
+// DataFrameCells is [DataFrame] with each cell carrying the value it sorts
+// by apart from the string it shows, so "29.41%" still sorts as a number
+// and a missing value always sorts last. A [NumberCell] belongs in a
+// ColumnTypeNumber column and a [TimeCell] in a ColumnTypeDatetime one; a
+// cell in any other column fails the run.
+func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell,
 	conf ...*DataFrameConf) []int {
 
 	cf := tgframe.OneConf("DataFrame", conf)
@@ -394,10 +432,34 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 		return []int{}
 	}
 
+	for i, cc := range cf.ColumnConf {
+		if cc.Format == nil {
+			continue
+		}
+		if cc.Type != ColumnTypeNumber {
+			c.Fail(tgutil.Errorf(
+				"column %q has a format, but only a number column takes one",
+				head[i]))
+			return []int{}
+		}
+		if cc.Format.Decimals < 0 {
+			c.Fail(tgutil.Errorf(
+				"column %q has negative decimals %d", head[i], cc.Format.Decimals))
+			return []int{}
+		}
+	}
+
 	for i, row := range rows {
 		if len(row) != len(head) {
 			c.Fail(tgutil.Errorf("len of row %d should equal to len of head", i))
 			return []int{}
+		}
+
+		for j, cell := range row {
+			if err := cell.check(i, head[j], cf.columnConf(j).Type); err != nil {
+				c.Fail(err)
+				return []int{}
+			}
 		}
 	}
 

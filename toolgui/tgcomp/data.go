@@ -1,6 +1,8 @@
 package tgcomp
 
 import (
+	"time"
+
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tcdata"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
@@ -32,6 +34,33 @@ func DataFrame(
 
 	return tcdata.DataFrame(c, head, rows, conf...)
 }
+
+// DataFrameCells is DataFrame with typed cells, each sorting by its value
+// and showing its own string.
+func DataFrameCells(
+	c *tgframe.Container, head []string, rows [][]Cell,
+	conf ...*DataFrameConf) []int {
+
+	return tcdata.DataFrameCells(c, head, rows, conf...)
+}
+
+// Cell is one DataFrameCells cell: a sort value and a display string.
+type Cell = tcdata.Cell
+
+// TextCell is a cell holding s, read the way DataFrame reads its strings.
+func TextCell(s string) Cell { return tcdata.TextCell(s) }
+
+// NumberCell is a cell sorted by v; NaN is a missing cell.
+func NumberCell(v float64) Cell { return tcdata.NumberCell(v) }
+
+// TimeCell is a cell sorted by the instant t.
+func TimeCell(t time.Time) Cell { return tcdata.TimeCell(t) }
+
+// MissingCell is a cell with no value, always sorted last.
+func MissingCell() Cell { return tcdata.MissingCell() }
+
+// NumberFormat is how a number column shows a NumberCell.
+type NumberFormat = tcdata.NumberFormat
 
 // DataFrameConf is the configuration for the DataFrame component.
 type DataFrameConf = tcdata.DataFrameConf

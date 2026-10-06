@@ -93,6 +93,10 @@ type DataFrameColumnConf struct {
 
 	// Hidden drops the column from the table.
 	Hidden bool
+
+	// Format is how a NumberCell without its own display is shown.
+	// Only a ColumnTypeNumber column takes one.
+	Format *NumberFormat
 }
 ```
 
@@ -121,6 +125,54 @@ outright.
 
 A `Hidden` column is still searched, so a row can be found by a value it does
 not show.
+
+### Typed cells
+
+A string column can only sort what it shows. `0.21%` does not parse as a
+number, so a percentage column falls back to sorting text, and `9.5%` lands
+after `29.41%`. `DataFrameCells` takes cells that carry the value to sort by
+apart from the string to show:
+
+```go
+func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell, conf ...*DataFrameConf) []int
+```
+
+| Cell                | Sorted by                     | Shown as                          | Column             |
+| ------------------- | ----------------------------- | --------------------------------- | ------------------ |
+| `TextCell(s)`       | `s`, read by the column type  | `s`                               | any                |
+| `NumberCell(v)`     | `v`                           | `v` through the column's `Format` | `ColumnTypeNumber` |
+| `TimeCell(t)`       | the instant `t`               | `t` as RFC 3339                   | `ColumnTypeDatetime` |
+| `MissingCell()`     | always last, either direction | empty                             | any                |
+
+`.WithDisplay(s)` replaces what any cell shows without touching how it sorts.
+`NumberCell(math.NaN())` is a `MissingCell()`. A `NumberCell` or `TimeCell`
+in a column of any other type, or an infinite `NumberCell`, fails the run and
+draws an error placeholder.
+
+`DataFrame` is `DataFrameCells` with every string a `TextCell`, so a string
+table behaves, and is sent, exactly as before.
+
+`Format` is a `NumberFormat`:
+
+```go
+type NumberFormat struct {
+	// Decimals is how many digits follow the point.
+	Decimals int
+
+	// Percent shows the value times 100 followed by "%".
+	Percent bool
+}
+```
+
+With no `Format` a number is shown as its shortest exact decimal. Formatting
+happens in Go, not in the browser, so the string the page function can
+predict is the string shown — and the string searched: search always matches
+what the user sees, never the sort value. A `Format` on a column that is not
+`ColumnTypeNumber`, or negative `Decimals`, fails the run.
+
+```go
+{{#include ../../../demos/dataframe.go:cells}}
+```
 
 ### Selection
 
@@ -241,7 +293,8 @@ and a third click drops the sort and gives the rows back in the order the page
 function wrote them.
 
 The search box keeps the rows holding what is typed, matched
-case-insensitively against every cell of the row, hidden columns included.
+case-insensitively against what every cell of the row shows, hidden columns
+included.
 
 Sorting, searching and paging are all client state. Nothing is sent to the
 server, so the page function does not rerun and no other component on the page
