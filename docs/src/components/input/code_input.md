@@ -25,8 +25,8 @@ type CodeInputConf struct {
 	tgframe.Base // ID
 
 	// Language is the language to highlight, leave empty to use `go`.
-	// Supported: go, python, javascript, typescript, jsx, tsx, json, sql,
-	// html, css, markdown, yaml, shell. "text" or any other value
+	// Supported: go, python, javascript, typescript, jsx, tsx, json, cpp,
+	// sql, html, css, markdown, yaml, shell. "text" or any other value
 	// leaves the code unhighlighted.
 	Language string
 

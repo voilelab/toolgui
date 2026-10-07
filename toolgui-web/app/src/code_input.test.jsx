@@ -145,6 +145,13 @@ describe('TCodeInput', () => {
       expect(view.state.facet(language)?.name).toBe('python'))
   })
 
+  test('loads C++ by its alias', async () => {
+    const { view } = await renderCode({ lang: 'C++' })
+
+    await waitFor(() =>
+      expect(view.state.facet(language)?.name).toBe('cpp'))
+  })
+
   test('leaves an unknown language as plain text', async () => {
     const { view } = await renderCode({ lang: 'cobol' })
 
