@@ -14,6 +14,7 @@ const loaders: { [lang: string]: () => Promise<Extension> } = {
   tsx: () => import("@codemirror/lang-javascript")
     .then((m) => m.javascript({ jsx: true, typescript: true })),
   json: () => import("@codemirror/lang-json").then((m) => m.json()),
+  cpp: () => import("@codemirror/lang-cpp").then((m) => m.cpp()),
   sql: () => import("@codemirror/lang-sql").then((m) => m.sql()),
   html: () => import("@codemirror/lang-html").then((m) => m.html()),
   css: () => import("@codemirror/lang-css").then((m) => m.css()),
@@ -26,6 +27,7 @@ const loaders: { [lang: string]: () => Promise<Extension> } = {
 const aliases: { [lang: string]: string } = {
   golang: "go", py: "python", js: "javascript", ts: "typescript",
   md: "markdown", yml: "yaml", sh: "shell", bash: "shell",
+  "c++": "cpp", cxx: "cpp", cc: "cpp",
 }
 
 // loadLanguage resolves to the highlighting for lang, or null when lang is
