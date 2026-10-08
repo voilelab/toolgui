@@ -48,3 +48,6 @@ tgcomp.ScatterChart(p.Main,
 		YLabel: "ms",
 	})
 ```
+
+`XLogScale` and `YLogScale` put either axis on a log scale; every point's x or
+y on that axis must be > 0. See [Chart](chart.md#log-scale).

@@ -46,3 +46,19 @@ func areaChartDemo(p *tgframe.Params) error {
 	// ANCHOR_END: area
 	return nil
 }
+
+func logChartDemo(p *tgframe.Params) error {
+	// ANCHOR: log
+	tgcomp.LineChart(p.Main,
+		[]string{"v1", "v2", "v3", "v4", "v5"},
+		[]tgcomp.ChartSeries{
+			{Name: "downloads", Values: []float64{3, 40, 520, 6800, 91000}},
+		},
+		&tgcomp.ChartConf{
+			ID:        "demo_log",
+			YLogScale: true,
+			YLabel:    "downloads",
+		})
+	// ANCHOR_END: log
+	return nil
+}

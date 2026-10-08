@@ -42,6 +42,8 @@ the conf says; `Chart` follows the conf.
 | `Height`  | CSS height of the chart.                             | `300px`         |
 | `XLabel`  | Title of the x axis, hidden when empty.              | none            |
 | `YLabel`  | Title of the y axis, hidden when empty.              | none            |
+| `YLogScale` | Draw the y axis on a log scale. See [Log scale](#log-scale). | `false` |
+| `XLogScale` | Draw the x axis on a log scale, scatter only. See [Log scale](#log-scale). | `false` |
 
 A chart is placed by position like everything else, so it does not need an id
 to be updated in place across runs. Give it one when a test or a stylesheet
@@ -67,11 +69,34 @@ has to name it, or when the page draws two charts you want to tell apart.
 {{#include ../../../demos/chart.go:area}}
 ```
 
-<div data-toolgui-demo="chart" data-toolgui-demo-height="800">
+### Log scale
+
+```go
+{{#include ../../../demos/chart.go:log}}
+```
+
+<div data-toolgui-demo="chart" data-toolgui-demo-height="1100">
 
 ![chart component](chart.png)
 
 </div>
+
+## Log scale
+
+`YLogScale` draws the y axis on a log scale, so data spanning several orders
+of magnitude does not crowd the small values onto the baseline. `XLogScale`
+does the same for the x axis of a [Scatter Chart](scatter_chart.md), the only
+kind whose x axis carries values.
+
+A log axis has no 0, so these draw an error placeholder instead of the chart
+and fail the run:
+
+* `XLogScale` on a line, bar or area chart: their x axis is categories.
+* `YLogScale` together with `Stacked`: stacked segments add up linearly.
+* Any value ≤ 0 on a log axis.
+
+Bars and area fills, which start from 0 on a linear axis, start from the
+bottom of a log axis instead.
 
 ## Notes
 

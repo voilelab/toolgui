@@ -94,6 +94,14 @@ type ChartConf struct {
 
 	// YLabel is the title of the y axis, hidden when empty.
 	YLabel string
+
+	// YLogScale draws the y axis on a log scale. Every y value must be > 0,
+	// and it cannot be combined with Stacked.
+	YLogScale bool
+
+	// XLogScale draws the x axis on a log scale. Only ChartKindScatter has a
+	// value x axis; every x must be > 0.
+	XLogScale bool
 }
 
 type chartComponent struct {
@@ -105,6 +113,8 @@ type chartComponent struct {
 	Height  string        `json:"height"`
 	XLabel  string        `json:"x_label"`
 	YLabel  string        `json:"y_label"`
+	YLog    bool          `json:"y_log_scale"`
+	XLog    bool          `json:"x_log_scale"`
 }
 
 func newChartComponent(labels []string, series []ChartSeries, conf *ChartConf) *chartComponent {
@@ -124,6 +134,8 @@ func newChartComponent(labels []string, series []ChartSeries, conf *ChartConf) *
 		Height:  height,
 		XLabel:  conf.XLabel,
 		YLabel:  conf.YLabel,
+		YLog:    conf.YLogScale,
+		XLog:    conf.XLogScale,
 	}
 }
 
@@ -171,6 +183,11 @@ func chart(c *tgframe.Container, labels []string, series []ChartSeries,
 		cf.Kind = *kind
 	}
 
+	if err := checkLogScale(series, &cf); err != nil {
+		c.Fail(err)
+		return
+	}
+
 	for _, s := range series {
 		if cf.Kind == ChartKindScatter {
 			if len(s.Values) != 0 {
@@ -200,4 +217,45 @@ func chart(c *tgframe.Container, labels []string, series []ChartSeries,
 	comp := newChartComponent(labels, series, &cf)
 	tgframe.SetConfIDIn(c, comp, conf)
 	c.AddComponent(comp)
+}
+
+// checkLogScale rejects what a log axis cannot draw: a category x axis, stacked
+// segments (they add up linearly) and values <= 0.
+func checkLogScale(series []ChartSeries, cf *ChartConf) error {
+	if cf.XLogScale && cf.Kind != ChartKindScatter {
+		return tgutil.Errorf(
+			"XLogScale needs a value x axis, only a scatter chart has one")
+	}
+
+	if cf.YLogScale && cf.Stacked {
+		return tgutil.Errorf("YLogScale cannot be combined with Stacked")
+	}
+
+	for _, s := range series {
+		if cf.YLogScale {
+			for _, v := range s.Values {
+				if v <= 0 {
+					return tgutil.Errorf(
+						"series %q has value %v, a log y axis needs values > 0",
+						s.Name, v)
+				}
+			}
+		}
+
+		for _, p := range s.Points {
+			if cf.YLogScale && p.Y <= 0 {
+				return tgutil.Errorf(
+					"series %q has y %v, a log y axis needs values > 0",
+					s.Name, p.Y)
+			}
+
+			if cf.XLogScale && p.X <= 0 {
+				return tgutil.Errorf(
+					"series %q has x %v, a log x axis needs values > 0",
+					s.Name, p.X)
+			}
+		}
+	}
+
+	return nil
 }

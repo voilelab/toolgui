@@ -10,6 +10,7 @@ import {
   LineController,
   LineElement,
   LinearScale,
+  LogarithmicScale,
   PointElement,
   ScatterController,
   Tooltip,
@@ -23,7 +24,7 @@ import { Props } from "../component_interface"
 // every controller and scale instead.
 Chart.register(
   BarController, BarElement, LineController, LineElement, PointElement,
-  ScatterController, CategoryScale, LinearScale, Filler, Legend, Tooltip)
+  ScatterController, CategoryScale, LinearScale, LogarithmicScale, Filler, Legend, Tooltip)
 
 // Categorical palette, validated for both themes. Slots are handed out in
 // order and never cycled: a chart with more series than slots has to name its
@@ -147,6 +148,7 @@ function buildConfig(props: any, theme: string, surface: string): any {
   const area = props.kind === 'area'
   const bar = props.kind === 'bar'
   const scatter = props.kind === 'scatter'
+  const yLog = !!props.y_log_scale
   const chrome = chromes[theme]
   // A scatter chart sends an empty label list, and draws its markers either
   // way.
@@ -192,8 +194,11 @@ function buildConfig(props: any, theme: string, surface: string): any {
       borderJoinStyle: 'round',
       borderCapStyle: 'round',
       // Stacked areas fill down to the series below, except the bottom one,
-      // which has nothing under it. Everything else fills to the axis.
-      fill: area ? (props.stacked && index > 0 ? '-1' : 'origin') : false,
+      // which has nothing under it. Everything else fills to the axis; a log
+      // axis has no 0, so it fills to the bottom instead.
+      fill: area
+        ? (props.stacked && index > 0 ? '-1' : (yLog ? 'start' : 'origin'))
+        : false,
       pointRadius: showPoints ? 4 : 0,
       pointHoverRadius: 5,
       // A ring in the surface color keeps a marker legible where it crosses
@@ -227,7 +232,9 @@ function buildConfig(props: any, theme: string, surface: string): any {
       scales: {
         x: {
           // A scatter chart's x carries values, not categories.
-          type: scatter ? 'linear' : 'category',
+          type: scatter
+            ? (props.x_log_scale ? 'logarithmic' : 'linear')
+            : 'category',
           stacked: props.stacked,
           // A category axis reads off its labels; a value axis needs the grid
           // to follow a point back to a tick.
@@ -241,11 +248,13 @@ function buildConfig(props: any, theme: string, surface: string): any {
           },
         },
         y: {
+          type: yLog ? 'logarithmic' : 'linear',
           stacked: props.stacked,
           // Bars and area fills encode magnitude by their length, so a
           // truncated baseline would overstate the differences. It also keeps
           // the fill target inside the plot, which is what makes it visible.
-          beginAtZero: bar || area,
+          // A log axis has no 0: bars and fills start from its bottom.
+          beginAtZero: (bar || area) && !yLog,
           grid: { color: chrome.grid },
           border: { display: false },
           ticks: { color: chrome.tick },
