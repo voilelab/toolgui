@@ -175,4 +175,6 @@ test('getUpdateURI carries the page query', () => {
   expect(getUpdateURI('detail', 'group=a')).toMatch(/\/api\/update\/detail\?group=a$/)
   expect(getUpdateURI('detail', '')).toMatch(/\/api\/update\/detail$/)
   expect(getUpdateURI('頁', '')).toMatch(/\/api\/update\/%E9%A0%81$/)
+  expect(getUpdateURI('detail', 'value=#section'))
+    .toMatch(/\/api\/update\/detail\?value=%23section$/)
 })

@@ -177,14 +177,17 @@ func (t *ToolGUI) drainMenuClicks() {
 // an empty state, the same as loading another page in the browser. query is
 // the page query, `group=a`, read as [tgframe.Params.Query].
 func (t *ToolGUI) Start(pageName, query string) error {
-	values, err := tgframe.ParseQuery(query)
-	if err != nil {
-		return tgutil.Errorf("%w", err)
-	}
-
 	t.lock.Lock()
 
+	// Closed whatever comes of the start: the frontend has already switched
+	// page, so the old session must not draw into it.
 	t.closeSession()
+
+	values, err := tgframe.ParseQuery(query)
+	if err != nil {
+		t.lock.Unlock()
+		return tgutil.Errorf("%w", err)
+	}
 
 	state := tgframe.NewState()
 	session, err := tgframe.NewSession(t.app, pageName, values, state, t.send)

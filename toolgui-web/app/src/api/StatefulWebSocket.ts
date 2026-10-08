@@ -49,9 +49,11 @@ function getSocketURI() {
   return `${scheme}://${window.location.host}`
 }
 
-// The page query rides on the socket url, as `?group=a`.
+// The page query rides on the socket url, as `?group=a`. Re-encoded, so a raw
+// `#` from the hash cannot make it a fragment, which WebSocket rejects.
 export function getUpdateURI(pageName: string, query: string) {
-  const q = query ? `?${query}` : ''
+  const encoded = new URLSearchParams(query).toString()
+  const q = encoded ? `?${encoded}` : ''
   return `${getSocketURI()}/api/update/${encodeURIComponent(pageName)}${q}`
 }
 

@@ -183,14 +183,25 @@ func TestToolGUIStartPassesQuery(t *testing.T) {
 	}
 }
 
+// A refused query still closes the session before it: the frontend has
+// already switched page.
 func TestToolGUIStartOversizedQuery(t *testing.T) {
-	backend, _ := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
 		return nil
 	}))
+
+	if err := backend.Start(testPageName, ""); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
 
 	query := "x=" + strings.Repeat("a", tgframe.MaxQuerySize)
 	if err := backend.Start(testPageName, query); !errors.Is(err, tgframe.ErrQueryTooLarge) {
 		t.Fatalf("Start = %v, want ErrQueryTooLarge", err)
+	}
+
+	if backend.currentSession() != nil {
+		t.Error("the previous session is still open")
 	}
 }
 
