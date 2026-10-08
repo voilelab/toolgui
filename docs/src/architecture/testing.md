@@ -42,20 +42,26 @@ props that never reach the screen as text, such as a fileupload's `accept` or
 a link's `url`, don't count. A textbox or textarea counts with the value it
 shows: what was typed, else its default.
 
+`Props` keys are the json names, not the Go field names, e.g. `row_keys` for
+`DataFrameConf.RowKeys`. `n.RowKeys()` reads that one as a `[]string`.
+
 ## Acting on it
 
 | Method | Does |
 | --- | --- |
 | `n.Click()` | Click a button |
 | `n.Input(v)` | Set a textbox, checkbox, number, ... to `v` |
-| `n.Select(i)` | Pick item `i` (0-based) of a select, radio, select slider or menu; `-1` clears a select, and any other index outside the items fails the test |
-| `n.SelectMany(i...)` | Pick items of a multiselect |
-| `n.SelectKeys(k...)` | Pick rows of a DataFrame with row keys |
+| `n.Select(i)` | Pick item `i` (0-based) of a select, radio, select slider or menu, or row `i` of a single-select DataFrame; `-1` clears a select, and any other index outside the items fails the test |
+| `n.SelectMany(i...)` | Pick items of a multiselect, or rows of a multi-select DataFrame |
+| `n.SelectKeys(k...)` | Pick rows of a DataFrame with row keys, by key |
 | `n.Upload(name, body)` | Pick a file in a fileupload |
 | `n.UploadFiles(files...)` | Pick files in a multi-file upload |
 | `n.Submit()` | Submit a form |
 | `p.Rerun()` | Run the page again, like the rerun button |
 | `p.Send(event)` | Send any `tgframe.Event` |
+
+A DataFrame row is picked by the index it was written at, keyed or not:
+with `RowKeys` set, tgtest sends that row's key, as the browser does.
 
 Actions on a disabled component fail the test, since a user cannot reach
 them. Inside a form, inputs are held until the form is submitted, as in the

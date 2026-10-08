@@ -404,3 +404,44 @@ func TestHasTextShownValue(t *testing.T) {
 		t.Error("expect a cleared code input shown empty")
 	}
 }
+
+func TestSelectDataFrameRows(t *testing.T) {
+	rows := [][]string{{"web-1"}, {"web-2"}, {"db-1"}}
+
+	app := newApp("index", func(p *tgframe.Params) error {
+		one := tgcomp.DataFrame(p.Main, []string{"one"}, rows,
+			&tgcomp.DataFrameConf{Selection: tgcomp.SelectionModeSingle})
+		tgcomp.Text(p.Main, fmt.Sprintf("one %v", one))
+
+		keyed := tgcomp.DataFrame(p.Main, []string{"keyed"}, rows,
+			&tgcomp.DataFrameConf{
+				Selection: tgcomp.SelectionModeMulti,
+				RowKeys:   []string{"w1", "w2", "d1"},
+			})
+		tgcomp.Text(p.Main, fmt.Sprintf("keyed %v", keyed))
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+	frames := p.FindByName("dataframe_component")
+	if len(frames) != 2 {
+		t.Fatalf("got %d dataframes, want 2", len(frames))
+	}
+	one, keyed := frames[0], frames[1]
+
+	if got := one.RowKeys(); len(got) != 0 {
+		t.Errorf("RowKeys of an unkeyed table = %v, want empty", got)
+	}
+	if got := strings.Join(keyed.RowKeys(), ","); got != "w1,w2,d1" {
+		t.Errorf("RowKeys = %s, want w1,w2,d1", got)
+	}
+
+	one.Select(1)
+	keyed.SelectMany(2, 0)
+
+	for _, want := range []string{"one [1]", "keyed [0 2]"} {
+		if !p.HasText(want) {
+			t.Errorf("expect %q", want)
+		}
+	}
+}
