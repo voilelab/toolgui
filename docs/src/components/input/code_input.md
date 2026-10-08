@@ -69,5 +69,5 @@ macOS). Leaving the editor without a change sends nothing.
 
 ## Keyboard
 
-`Tab` indents rather than moving focus. To leave the editor by keyboard, press
+`Tab` indents rather than moving focus: a tab for `go`, two spaces otherwise. To leave the editor by keyboard, press
 `Esc` and then `Tab`.
