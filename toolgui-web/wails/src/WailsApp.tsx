@@ -16,6 +16,10 @@ interface WailsAppState {
 export class WailsApp extends Component<{}, WailsAppState> {
   appEle: React.RefObject<App>
 
+  // currentQuery is the page query as Params.ReplaceQuery last left it. It is
+  // kept out of state.query, which keys App: replacing it is no new page.
+  currentQuery: string = ''
+
   constructor(props: {}) {
     super(props)
     this.state = {
@@ -49,6 +53,7 @@ export class WailsApp extends Component<{}, WailsAppState> {
   // Start runs after the commit, so the ref the pack listener needs is set.
   // There is no address bar, so the query lives here.
   openPage(appConf: AppConf, pageName: string, query: string) {
+    this.currentQuery = query
     this.setState({ appConf, pageName, query }, () => {
       backend().Start(pageName, query).catch((e) => { console.error(e) })
     })
@@ -76,6 +81,7 @@ export class WailsApp extends Component<{}, WailsAppState> {
         appConf={this.state.appConf}
         pageName={this.state.pageName}
         onNavigate={(name, query) => { this.jumpToPage(name, query) }}
+        onReplaceQuery={(query) => { this.currentQuery = query }}
         update={(event: UpdateEvent) => {
           sendEvent(event).catch((e) => { console.error(e) })
         }}

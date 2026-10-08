@@ -97,6 +97,16 @@ export class WasmApp extends Component<{}, WasmAppState> {
     this.openPage(this.state.appConf, { name, query })
   }
 
+  // replaceQuery keeps the address bar in step with Params.ReplaceQuery. Only
+  // hash mode has the page in the URL. replaceState fires no hashchange, so
+  // the session stays.
+  replaceQuery(query: string) {
+    if (this.state.appConf.hash_page_name_mode) {
+      window.history.replaceState(window.history.state, '',
+        pageHref(this.state.pageName, query, true))
+    }
+  }
+
   fail(e: any) {
     console.error(e)
     this.setState({ error: String(e) })
@@ -122,6 +132,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
         pageName={this.state.pageName}
         embed={this.embed}
         onNavigate={(name, query) => { this.jumpToPage(name, query) }}
+        onReplaceQuery={(query) => { this.replaceQuery(query) }}
         update={(event: UpdateEvent) => {
           this.backend.update(event).catch((e) => { console.error(e) })
         }}

@@ -46,10 +46,11 @@ type Page struct {
 	mainID    string
 	sidebarID string
 
-	// mu guards forest and lastErr, which the run goroutine writes.
+	// mu guards forest, lastErr and query, which the run goroutine writes.
 	mu      sync.Mutex
 	forest  *forest
 	lastErr error
+	query   url.Values
 
 	results chan *tgframe.ResultPack
 	result  *tgframe.ResultPack
@@ -105,6 +106,7 @@ func Open(t testing.TB, app *tgframe.App, pageName string,
 		results:   make(chan *tgframe.ResultPack, 16),
 		forms:     map[string][]tgframe.Event{},
 		timeout:   DefaultTimeout,
+		query:     cloneQuery(oc.query),
 	}
 
 	session, err := tgframe.NewSession(app, pageName, oc.query, p.state,
@@ -133,6 +135,25 @@ func (p *Page) SetTimeout(d time.Duration) {
 // State is the state the page runs on, for what the actions don't cover.
 func (p *Page) State() *tgframe.State {
 	return p.state
+}
+
+// Query is the page query as the address bar would show it: the one the page
+// was opened with, or what the last [tgframe.Params.ReplaceQuery] of a run
+// that finished set.
+func (p *Page) Query() url.Values {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return cloneQuery(p.query)
+}
+
+func cloneQuery(q url.Values) url.Values {
+	clone := make(url.Values, len(q))
+	for k, vs := range q {
+		clone[k] = append([]string(nil), vs...)
+	}
+
+	return clone
 }
 
 // Result is the result pack of the last run.
@@ -172,8 +193,9 @@ func (p *Page) receive(pack any) error {
 	}
 
 	var head struct {
-		Success *bool `json:"success"`
-		Ready   *bool `json:"ready"`
+		Success      *bool      `json:"success"`
+		Ready        *bool      `json:"ready"`
+		ReplaceQuery url.Values `json:"replace_query"`
 	}
 	if err := tgjson.Unmarshal(bs, &head); err != nil {
 		return err
@@ -194,6 +216,9 @@ func (p *Page) receive(pack any) error {
 
 	case head.Ready != nil:
 		p.forest.beginRun()
+
+	case head.ReplaceQuery != nil:
+		p.query = head.ReplaceQuery
 
 	default:
 		var notify notifyPack

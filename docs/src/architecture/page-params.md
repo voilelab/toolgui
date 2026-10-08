@@ -1,8 +1,8 @@
 # Page Parameters
 
 > Design note (TG-88). It records the decisions that the implementation tickets
-> build on. `Params.Query` and `PageLink` are implemented (TG-96).
-> `ReplaceQuery` (TG-97) and `SetStickyQuery` (TG-98) are not yet.
+> build on. `Params.Query` and `PageLink` (TG-96) and `ReplaceQuery` (TG-97)
+> are implemented. `SetStickyQuery` (TG-98) is not yet.
 
 An analysis tool needs three things that pages cannot do today:
 
@@ -131,6 +131,47 @@ URL; the framework has no rule for it.
   reload, no new session, no history entry per selection. The session stores
   the new query, so later runs and reconnects see it. It replaces the whole
   page query, and the page passes every key it wants to keep.
+* The pack is sent when the run ends, just before its result, and only for a
+  run no newer event cut. So when runs are interrupted, the value of the last
+  finished run is the one that stays. A query over the 8 KiB cap fails the run
+  (`run.err`) and nothing is sent.
+
+### Example: a shareable selection
+
+The URL seeds the Select in the sidebar. Each run writes the selection back,
+so the address bar always opens this view:
+
+```go
+var groups = []string{"a", "b", "c"}
+
+func Detail(p *tgframe.Params) error {
+	// Untrusted: only a known group seeds the input.
+	conf := &tgcomp.SelectConf{}
+	if def := slices.Index(groups, p.Query.Get("group")); def >= 0 {
+		conf.SetDefault(def)
+	}
+	idx := tgcomp.Select(p.Sidebar, "Group", groups, conf)
+
+	// The whole query: keys not set here are dropped.
+	q := url.Values{}
+	if idx != nil {
+		q.Set("group", groups[*idx])
+	}
+	p.ReplaceQuery(q)
+
+	if idx == nil {
+		tgcomp.Text(p.Main, "Pick a group.")
+		return nil
+	}
+	tgcomp.Text(p.Main, "Group "+groups[*idx])
+	return nil
+}
+```
+
+Open `/detail?group=b` and `b` is selected. Pick `c` and the address bar reads
+`/detail?group=c`, with no reload and no new history entry. A reload or the
+copied URL opens `c`. Unchanged runs send nothing, because the session only
+sends a query that differs from the one it holds.
 
 ## Shared selection: sticky URL keys, not shared state
 

@@ -84,7 +84,8 @@ On the desktop there is no address bar, and the query comes from a
 [Page Link](../components/content/page_link.md).
 
 `Query` is never nil: a page opened without a query gets an empty one. Each run
-gets its own copy, and the query stays the same for every run of the page.
+gets its own copy. It stays the same for every run until the page calls
+`ReplaceQuery`.
 
 **It is untrusted input.** Anyone can build a link and send it to a user.
 Validate what you read: look a value up in a known set, and never use it as a
@@ -109,13 +110,40 @@ A query over 8 KiB encoded (`tgframe.MaxQuerySize`) is refused: the page does
 not open, the same as a page name the app does not have.
 
 To link to a page with a query, use
-[Page Link](../components/content/page_link.md). In a test, open the page with
-`tgtest.WithQuery`:
+[Page Link](../components/content/page_link.md).
+
+### Writing the query back
+
+`ReplaceQuery` writes the user's choice back into the address bar, so a copied
+URL opens the page as it is now:
+
+```go
+q := url.Values{}
+if idx != nil {
+	q.Set("group", groups[*idx])
+}
+p.ReplaceQuery(q)
+```
+
+* No reload, no new session, and no history entry: Back still leaves the page.
+* It replaces the whole page query. Pass every key you want to keep.
+* It takes effect when the run ends. A run cut by a newer event changes
+  nothing, and the last call of a run wins.
+* Later runs read the new value as `Query`, and so does a reconnect.
+* Over 8 KiB encoded, it fails the run (`run.err`) and the address bar stays.
+* On the desktop there is no address bar; the query is only kept in memory.
+
+### Testing
+
+In a test, open the page with `tgtest.WithQuery`, and read what
+`ReplaceQuery` left with `Page.Query`:
 
 ```go
 p := tgtest.Open(t, app, "detail", tgtest.WithQuery(url.Values{
 	"group": {"a"},
 }))
+p.GetByLabel("Group").Select(2)
+p.Query().Get("group") // "c"
 ```
 
 See [Page Parameters](../architecture/page-params.md) for the design.
