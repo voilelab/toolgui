@@ -21,6 +21,7 @@ package tgtest
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -63,10 +64,36 @@ type Page struct {
 	timeout time.Duration
 }
 
+// OpenOption configures [Open].
+type OpenOption func(*openConf)
+
+type openConf struct {
+	query url.Values
+}
+
+// WithQuery opens the page with a page query, as a link to
+// `/detail?group=a` would. The page reads it as [tgframe.Params.Query].
+//
+//	p := tgtest.Open(t, app, "detail", tgtest.WithQuery(url.Values{
+//		"group": {"a"},
+//	}))
+func WithQuery(query url.Values) OpenOption {
+	return func(c *openConf) {
+		c.query = query
+	}
+}
+
 // Open opens page pageName of app and runs it once. The page is closed when
 // the test ends.
-func Open(t testing.TB, app *tgframe.App, pageName string) *Page {
+func Open(t testing.TB, app *tgframe.App, pageName string,
+	opts ...OpenOption) *Page {
+
 	t.Helper()
+
+	var oc openConf
+	for _, opt := range opts {
+		opt(&oc)
+	}
 
 	conf := app.AppConf()
 	p := &Page{
@@ -80,7 +107,8 @@ func Open(t testing.TB, app *tgframe.App, pageName string) *Page {
 		timeout:   DefaultTimeout,
 	}
 
-	session, err := tgframe.NewSession(app, pageName, p.state, p.receive)
+	session, err := tgframe.NewSession(app, pageName, oc.query, p.state,
+		p.receive)
 	if err != nil {
 		p.state.Destroy()
 		t.Fatalf("tgtest: open page %q: %v", pageName, err)

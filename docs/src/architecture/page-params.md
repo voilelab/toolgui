@@ -1,8 +1,8 @@
 # Page Parameters
 
-> Design note (TG-88). Nothing here is implemented yet. It records the decisions
-> that the implementation tickets build on: TG-96 (`Params.Query`, `PageLink`),
-> TG-97 (`ReplaceQuery`) and TG-98 (`SetStickyQuery`).
+> Design note (TG-88). It records the decisions that the implementation tickets
+> build on. `Params.Query` and `PageLink` are implemented (TG-96).
+> `ReplaceQuery` (TG-97) and `SetStickyQuery` (TG-98) are not yet.
 
 An analysis tool needs three things that pages cannot do today:
 
@@ -13,7 +13,7 @@ An analysis tool needs three things that pages cannot do today:
 * **Selections that survive a page switch**: a group picked on one page is
   still picked on the next one.
 
-## Today
+## Before this design
 
 * Each page load opens its own session. The web frontend keeps the `state_id`
   only in JavaScript, so navigating to another page starts with an empty state

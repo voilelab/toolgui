@@ -123,10 +123,17 @@ func (b *bridge) jsOnPack(this js.Value, args []js.Value) any {
 // jsStart open a session on the given page and draw it once. Calling it again
 // switches page: the previous session is closed and the new one starts from an
 // empty state, the same as loading another page in the browser.
+//
+// The second argument is the page query, `group=a` of `#/detail?group=a`.
 func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	pageName := ""
 	if len(args) > 0 {
 		pageName = args[0].String()
+	}
+
+	rawQuery := ""
+	if len(args) > 1 && args[1].Type() == js.TypeString {
+		rawQuery = args[1].String()
 	}
 
 	detached := new(atomic.Bool)
@@ -138,7 +145,11 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	}
 
 	state := tgframe.NewState()
-	session, err := tgframe.NewSession(b.app, pageName, state, send)
+	query, err := tgframe.ParseQuery(rawQuery)
+	var session *tgframe.Session
+	if err == nil {
+		session, err = tgframe.NewSession(b.app, pageName, query, state, send)
+	}
 
 	b.lock.Lock()
 	closeOld := b.detachSession()
@@ -160,8 +171,8 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	b.runs.do(func() {
 		closeOld()
 		if err != nil {
-			// Only the page name can fail here, and a retry would fail the
-			// same way.
+			// Only the page name or the query can fail here, and a retry
+			// would fail the same way.
 			b.sendResult(&tgframe.ResultPack{
 				Error: err.Error(),
 				Fatal: true,

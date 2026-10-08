@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
-import { StatefulWebSocket } from './StatefulWebSocket'
+import { StatefulWebSocket, getUpdateURI } from './StatefulWebSocket'
 
 // FakeWebSocket stands in for the browser's, so a test can decide when a
 // socket opens, what it delivers and when it closes.
@@ -169,4 +169,10 @@ test('reports an upload fetch could not send as failed', async () => {
   const res = await conn.uploadFile(new File(['a'], 'a.txt'), 'f')
 
   expect(res.ok).toBe(false)
+})
+
+test('getUpdateURI carries the page query', () => {
+  expect(getUpdateURI('detail', 'group=a')).toMatch(/\/api\/update\/detail\?group=a$/)
+  expect(getUpdateURI('detail', '')).toMatch(/\/api\/update\/detail$/)
+  expect(getUpdateURI('頁', '')).toMatch(/\/api\/update\/%E9%A0%81$/)
 })

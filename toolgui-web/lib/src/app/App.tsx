@@ -26,24 +26,8 @@ import { UploadFunc } from './Upload';
 import { DownloadFunc } from './Download';
 import { ThemeMode, preferredThemeMode, themeModeManager } from '../util/theme';
 import { ThemeModeSync } from './ThemeModeSync';
-
-// pageNameFromLocation reads the page name off the URL.
-function pageNameFromLocation(appConf: AppConf): string {
-  if (!appConf.hash_page_name_mode) {
-    return window.location.pathname.substring(1)
-  }
-
-  if (window.location.hash) {
-    // should be #/{name}
-    return window.location.hash.substring(2)
-  }
-
-  if (appConf.page_names.length > 0) {
-    return appConf.page_names[0]
-  }
-
-  return ''
-}
+import { pageFromLocation } from './pageurl';
+import { PageNav, PageNavContext, newPageNav } from './PageNav';
 
 // documentTitle puts the app title after the page's, so a tab says which page
 // of which app it holds. Either one alone stands on its own.
@@ -74,7 +58,7 @@ interface AppProps {
   // webview) drive the routing. Left out, the page comes from window.location
   // and navigating moves the browser.
   pageName?: string
-  onNavigate?: (name: string) => void
+  onNavigate?: (name: string, query: string) => void
 
   // embed drops the app's own chrome -- the page list, the controls, the
   // version line -- and leaves the page itself. For an iframe, where the
@@ -96,11 +80,15 @@ export class App extends Component<AppProps, AppState> {
   // stored one comes back through themeModeManager.
   private defaultColorScheme: ThemeMode
 
+  // How PageLink and the side nav move to another page.
+  private pageNav: PageNav
+
   constructor(props: AppProps) {
     super(props);
 
     const pageName = props.pageName !== undefined ?
-      props.pageName : pageNameFromLocation(props.appConf)
+      props.pageName : pageFromLocation(window.location,
+        props.appConf.hash_page_name_mode, props.appConf.page_names).name
 
     const curconf = this.props.appConf.page_confs[pageName]
     let pageFound = true
@@ -132,6 +120,7 @@ export class App extends Component<AppProps, AppState> {
     }
 
     this.defaultColorScheme = preferredThemeMode()
+    this.pageNav = newPageNav(props.appConf.hash_page_name_mode, props.onNavigate)
   }
 
   startUpdate() {
@@ -222,52 +211,54 @@ export class App extends Component<AppProps, AppState> {
     return (
       <MantineProvider defaultColorScheme={this.defaultColorScheme}
         colorSchemeManager={themeModeManager}>
-        {/* Where every Toast lands. Above the dialogs and their popovers: a
-            toast is transient and says what just happened, so whatever it was
-            fired from must not cover it. */}
-        <Notifications zIndex={getDefaultZIndex('max')} />
+        <PageNavContext.Provider value={this.pageNav}>
+          {/* Where every Toast lands. Above the dialogs and their popovers: a
+              toast is transient and says what just happened, so whatever it was
+              fired from must not cover it. */}
+          <Notifications zIndex={getDefaultZIndex('max')} />
 
-        <ThemeModeSync>
-          {(themeMode) =>
-            // The frame is a column: the menubar row, and the shell's two
-            // columns under it. An app that declares no menu gets no row --
-            // the frame is then the shell in a wrapper, and --tg-menubar-h
-            // stays 0, so every 100vh the shell is built on still holds.
-            <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
-              {menu ?
-                <AppMenuBar menu={menu}
-                  update={(e) => { this.props.update(e) }} /> : ''}
+          <ThemeModeSync>
+            {(themeMode) =>
+              // The frame is a column: the menubar row, and the shell's two
+              // columns under it. An app that declares no menu gets no row --
+              // the frame is then the shell in a wrapper, and --tg-menubar-h
+              // stays 0, so every 100vh the shell is built on still holds.
+              <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
+                {menu ?
+                  <AppMenuBar menu={menu}
+                    update={(e) => { this.props.update(e) }} /> : ''}
 
-              <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
-                {this.props.embed ? '' :
-                  <AppSideNav
-                    appConf={this.props.appConf}
-                    forest={this.state.forest}
-                    running={this.state.running}
-                    pageFound={this.state.pageFound}
-                    pageName={this.state.pageName}
-                    onNavigate={this.props.onNavigate}
-                    rerun={() => { this.props.update({}) }}
-                    update={(e) => { this.props.update(e) }}
-                    upload={async (f, id) => await this.props.upload(f, id)}
-                    download={async (token) => await this.props.download(token)}
-                    themeMode={themeMode} />}
+                <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
+                  {this.props.embed ? '' :
+                    <AppSideNav
+                      appConf={this.props.appConf}
+                      forest={this.state.forest}
+                      running={this.state.running}
+                      pageFound={this.state.pageFound}
+                      pageName={this.state.pageName}
+                      pageNav={this.pageNav}
+                      rerun={() => { this.props.update({}) }}
+                      update={(e) => { this.props.update(e) }}
+                      upload={async (f, id) => await this.props.upload(f, id)}
+                      download={async (token) => await this.props.download(token)}
+                      themeMode={themeMode} />}
 
-                <main className="toolgui-main">
-                  <AppBody
-                    appConf={this.props.appConf}
-                    pageFound={this.state.pageFound}
-                    forest={this.state.forest}
-                    update={(e) => { this.props.update(e) }}
-                    upload={async (f, id) => await this.props.upload(f, id)}
-                    download={async (token) => await this.props.download(token)}
-                    themeMode={themeMode} />
+                  <main className="toolgui-main">
+                    <AppBody
+                      appConf={this.props.appConf}
+                      pageFound={this.state.pageFound}
+                      forest={this.state.forest}
+                      update={(e) => { this.props.update(e) }}
+                      upload={async (f, id) => await this.props.upload(f, id)}
+                      download={async (token) => await this.props.download(token)}
+                      themeMode={themeMode} />
 
-                  <AppError error={this.state.error} />
-                </main>
-              </div>
-            </div>}
-        </ThemeModeSync>
+                    <AppError error={this.state.error} />
+                  </main>
+                </div>
+              </div>}
+          </ThemeModeSync>
+        </PageNavContext.Provider>
       </MantineProvider>
     )
   }

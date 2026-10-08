@@ -49,8 +49,10 @@ function getSocketURI() {
   return `${scheme}://${window.location.host}`
 }
 
-function getUpdateURI(pageName: string) {
-  return `${getSocketURI()}/api/update/${pageName}`
+// The page query rides on the socket url, as `?group=a`.
+export function getUpdateURI(pageName: string, query: string) {
+  const q = query ? `?${query}` : ''
+  return `${getSocketURI()}/api/update/${encodeURIComponent(pageName)}${q}`
 }
 
 export class StatefulWebSocket {
@@ -68,13 +70,17 @@ export class StatefulWebSocket {
   /** Receive pack from connected websocket. */
   recv: (pack: any) => void
 
+  /** The page query, encoded. Read on every connect. */
+  query: () => string
+
   /** Call when stateID is assigned a new value from server. */
   onStateIDChange: () => void = () => { }
 
   /** Call when state change from TryConnect to Connected. */
   onConnect: () => void = () => { }
 
-  constructor(pageName: string, recv: (pack: any) => void) {
+  constructor(pageName: string, recv: (pack: any) => void,
+    query: () => string = () => '') {
     this.state = WebSocketState.Initial
     this.pageName = pageName
     this.conn = null
@@ -82,6 +88,7 @@ export class StatefulWebSocket {
     this.retryWaitMS = 0
     this.connectedAt = 0
     this.recv = recv
+    this.query = query
   }
 
   init() {
@@ -194,7 +201,7 @@ export class StatefulWebSocket {
   }
 
   tryConnect() {
-    this.conn = new WebSocket(getUpdateURI(this.pageName))
+    this.conn = new WebSocket(getUpdateURI(this.pageName, this.query()))
     var that = this
 
     this.conn.onopen = function () {

@@ -37,7 +37,7 @@ func newRunner(t *testing.T, page func(p *tgframe.Params, seen *clickRun)) *runn
 		return nil
 	})
 
-	session, err := tgframe.NewSession(app, "test", tgframe.NewState(),
+	session, err := tgframe.NewSession(app, "test", nil, tgframe.NewState(),
 		func(pack any) error {
 			if result, ok := pack.(*tgframe.ResultPack); ok {
 				r.done <- result

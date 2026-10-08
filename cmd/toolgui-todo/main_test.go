@@ -22,7 +22,7 @@ func newRunner(t *testing.T) *runner {
 	app.AddPage("main", "Main", Main)
 
 	r := &runner{packs: make(chan any, 256)}
-	session, err := tgframe.NewSession(app, "main", tgframe.NewState(), func(pack any) error {
+	session, err := tgframe.NewSession(app, "main", nil, tgframe.NewState(), func(pack any) error {
 		r.packs <- pack
 		return nil
 	})

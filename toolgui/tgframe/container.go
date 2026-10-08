@@ -162,6 +162,16 @@ func (c *Container) RunSeq() uint64 {
 	return c.run.seq
 }
 
+// HasPage reports whether the app running this container has a page named
+// name. Outside a run there is no app to ask, and it reports true.
+func (c *Container) HasPage(name string) bool {
+	if c.run == nil || c.run.app == nil {
+		return true
+	}
+
+	return c.run.app.HasPage(name)
+}
+
 // RemoveComponent takes comp off the screen and gives back its own id, not
 // those of anything it added below, so this run may claim it again and
 // [App.Run] drops the state under an id nothing claims, as [Slot.Clear] does.

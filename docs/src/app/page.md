@@ -49,6 +49,8 @@ type Params struct {
 	State   *State
 	Main    *Container
 	Sidebar *Container
+
+	Query url.Values
 }
 ```
 
@@ -65,6 +67,58 @@ The `State` in `Params` provided for
 
 1. The component that need to pass state. For example: the checked state of checkbox.
 2. The state that user need to store. For example: The todo items in the Todo App.
+
+## Page query
+
+`Query` is the page query the page was opened with. It sits right after the
+page name, wherever the name is:
+
+| Mode | URL | `Query` |
+| --- | --- | --- |
+| Web, path mode | `/detail?group=a` | `group=a` |
+| Web, hash mode | `/#/detail?group=a` | `group=a` |
+| Browser build | `/?embed=1#/detail?group=a` | `group=a` |
+
+The real query string in hash mode (`?embed=1`) is the app's, not the page's.
+On the desktop there is no address bar, and the query comes from a
+[Page Link](../components/content/page_link.md).
+
+`Query` is never nil: a page opened without a query gets an empty one. Each run
+gets its own copy, and the query stays the same for every run of the page.
+
+**It is untrusted input.** Anyone can build a link and send it to a user.
+Validate what you read: look a value up in a known set, and never use it as a
+path, a command or SQL without checking it. The framework never writes it into
+the `State`. To seed an input from it, set the input's default; once the user
+picks something, the state wins:
+
+```go
+func Detail(p *tgframe.Params) error {
+	group := p.Query.Get("group")
+
+	conf := &tgcomp.SelectConf{}
+	if def := slices.Index(groups, group); def >= 0 {
+		conf.SetDefault(def)
+	}
+	idx := tgcomp.Select(p.Sidebar, "Group", groups, conf)
+	...
+}
+```
+
+A query over 8 KiB encoded (`tgframe.MaxQuerySize`) is refused: the page does
+not open, the same as a page name the app does not have.
+
+To link to a page with a query, use
+[Page Link](../components/content/page_link.md). In a test, open the page with
+`tgtest.WithQuery`:
+
+```go
+p := tgtest.Open(t, app, "detail", tgtest.WithQuery(url.Values{
+	"group": {"a"},
+}))
+```
+
+See [Page Parameters](../architecture/page-params.md) for the design.
 
 ## Interrupting a run
 

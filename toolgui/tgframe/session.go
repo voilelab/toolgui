@@ -3,6 +3,7 @@ package tgframe
 import (
 	"context"
 	"log/slog"
+	"net/url"
 	"sync"
 	"sync/atomic"
 
@@ -48,6 +49,7 @@ type SendPackFunc func(pack any) error
 type Session struct {
 	app      *App
 	pageName string
+	query    url.Values
 	state    *State
 	send     SendPackFunc
 
@@ -75,10 +77,19 @@ type Session struct {
 }
 
 // NewSession return a Session running page `pageName` of app with state.
-// Return an error if the page does not exist.
-func NewSession(app *App, pageName string, state *State, send SendPackFunc) (*Session, error) {
+// query is the page query every run reads as [Params.Query]; nil is an empty
+// one. Return an error if the page does not exist, or wrapping
+// [ErrQueryTooLarge] if query is over [MaxQuerySize] encoded. Either is fatal:
+// the same request would fail the same way.
+func NewSession(app *App, pageName string, query url.Values,
+	state *State, send SendPackFunc) (*Session, error) {
+
 	if !app.HasPage(pageName) {
 		return nil, tgutil.Errorf("%w: `%s`", ErrPageNotFound, pageName)
+	}
+
+	if err := checkQuery(query); err != nil {
+		return nil, tgutil.Errorf("%w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -86,6 +97,7 @@ func NewSession(app *App, pageName string, state *State, send SendPackFunc) (*Se
 	return &Session{
 		app:      app,
 		pageName: pageName,
+		query:    cloneQuery(query),
 		state:    state,
 		send:     send,
 
@@ -170,8 +182,8 @@ func (s *Session) HandleEvent(event Event) {
 		defer cancelRun()
 		defer s.endRun()
 
-		err := s.app.RunContextWithHandlingPanic(
-			runCtx, s.pageName, s.state, sendNotifyPack)
+		err := s.app.runContextWithHandlingPanic(
+			runCtx, s.pageName, s.query, s.state, sendNotifyPack)
 
 		// Cancelled means the run was cut, so what it came back with is how
 		// it unwound, not a failure, and the run replacing it is about to

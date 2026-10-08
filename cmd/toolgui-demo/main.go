@@ -209,6 +209,7 @@ func blockRow(p *tgframe.Params, b demos.Block) error {
 		State:   p.State,
 		Main:    compCol,
 		Sidebar: p.Sidebar,
+		Query:   p.Query,
 	})
 	if err != nil {
 		return err

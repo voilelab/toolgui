@@ -5,7 +5,7 @@ import { AppConf, DownloadResult, UpdateEvent, UploadResult } from "@toolgui-web
 // carries, so both lanes share a wire format.
 interface Backend {
   AppConf(): Promise<string>
-  Start(pageName: string): Promise<void>
+  Start(pageName: string, query: string): Promise<void>
   Update(eventJSON: string): Promise<void>
   UploadFileStart(name: string): Promise<string>
   UploadFileChunk(uploadID: string, dataBase64: string): Promise<void>
