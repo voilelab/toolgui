@@ -13,6 +13,7 @@
   },
   "resolutions": {
     "@types/react": "^19.2.0",
+    "katex": "^0.18.2",
     "prismjs": "^1.30.0",
     "@types/react-dom": "^19.2.0"
   },
