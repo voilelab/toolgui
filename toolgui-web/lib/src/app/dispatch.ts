@@ -21,5 +21,10 @@ export function dispatchPack(app: App, pack: any) {
     return
   }
 
+  if (pack.replace_query !== undefined) {
+    app.replaceQuery(pack.replace_query)
+    return
+  }
+
   app.receiveNotifyPack(pack)
 }

@@ -2,6 +2,7 @@ package tgframe
 
 import (
 	"errors"
+	"net/url"
 	"sync/atomic"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -40,6 +41,11 @@ type runState struct {
 	app *App
 
 	err error
+
+	// query is what [Params.ReplaceQuery] last took; queryReplaced tells an
+	// empty one from no call.
+	query         url.Values
+	queryReplaced bool
 }
 
 func newRunState() *runState {

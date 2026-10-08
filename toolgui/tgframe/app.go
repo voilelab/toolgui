@@ -55,6 +55,36 @@ type Params struct {
 	// use it as a path, a command or SQL unchecked. The framework never
 	// writes it into the State; to seed an input, set its Conf.Default.
 	Query url.Values
+
+	run *runState
+}
+
+// ReplaceQuery replaces the page query in the address bar with q, so a copied
+// URL opens the page as it is now. There is no reload, no new session and no
+// history entry. It replaces the whole query: pass every key to keep.
+//
+// It takes effect when the run ends, and only if no newer event cut it. Later
+// runs read q as [Params.Query], and so does a reconnect. The last call of a
+// run wins. A q over [MaxQuerySize] encoded fails the run and changes nothing.
+// On the desktop there is no address bar; the query is only kept in memory.
+//
+//	q := url.Values{}
+//	q.Set("group", group)
+//	p.ReplaceQuery(q)
+func (p *Params) ReplaceQuery(q url.Values) {
+	if p.run == nil {
+		return
+	}
+
+	// A failed call is still the last one: drop what an earlier call set.
+	if err := checkQuery(q); err != nil {
+		p.run.query, p.run.queryReplaced = nil, false
+		p.run.fail(tgutil.Errorf("ReplaceQuery: %w", err))
+		return
+	}
+
+	p.run.query = cloneQuery(q)
+	p.run.queryReplaced = true
 }
 
 // RunFunc is the type of a function handling page
@@ -321,14 +351,18 @@ func (app *App) RunWithHandlingPanic(
 func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
 
-	return app.runContextWithHandlingPanic(ctx, name, nil, state, notifyFunc)
+	return app.runContextWithHandlingPanic(
+		ctx, name, nil, state, notifyFunc, nil)
 }
 
+// replaceQueryFunc takes the query a run passed to [Params.ReplaceQuery].
+type replaceQueryFunc func(url.Values)
+
 // runContextWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
-// page query.
+// page query, and onReplace to take what [Params.ReplaceQuery] got.
 func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	name string, query url.Values, state *State,
-	notifyFunc SendNotifyPackFunc) (err error) {
+	notifyFunc SendNotifyPackFunc, onReplace replaceQueryFunc) (err error) {
 
 	defer func() {
 		r := recover()
@@ -351,7 +385,7 @@ func (app *App) runContextWithHandlingPanic(ctx context.Context,
 		}
 	}()
 
-	err = app.runContext(ctx, name, query, state, notifyFunc)
+	err = app.runContext(ctx, name, query, state, notifyFunc, onReplace)
 	return
 }
 
@@ -365,11 +399,14 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 // page func as [Params.Context]. [Params.Query] is empty.
 func (app *App) RunContext(ctx context.Context,
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
-	return app.runContext(ctx, name, nil, state, notifyFunc)
+	return app.runContext(ctx, name, nil, state, notifyFunc, nil)
 }
 
+// runContext runs a page. onReplace, if not nil, gets the query of the last
+// valid [Params.ReplaceQuery] of a run that was not cut.
 func (app *App) runContext(ctx context.Context, name string,
-	query url.Values, state *State, notifyFunc SendNotifyPackFunc) error {
+	query url.Values, state *State, notifyFunc SendNotifyPackFunc,
+	onReplace replaceQueryFunc) error {
 	pageFunc, ok := app.pageFuncs[name]
 	if !ok {
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
@@ -402,6 +439,7 @@ func (app *App) runContext(ctx context.Context, name string,
 		Main:    newMain,
 		Sidebar: newSidebar,
 		Query:   cloneQuery(query),
+		run:     run,
 	})
 
 	// A cut run stopped partway, so the run before it is still what the
@@ -411,6 +449,10 @@ func (app *App) runContext(ctx context.Context, name string,
 	// before this, and one watching the context returns here.
 	if ctx.Err() != nil {
 		return NewPageError(err)
+	}
+
+	if onReplace != nil && run.queryReplaced {
+		onReplace(run.query)
 	}
 
 	// The page function returned, so what it claimed is what is on the screen.

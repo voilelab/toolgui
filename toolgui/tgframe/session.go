@@ -49,9 +49,12 @@ type SendPackFunc func(pack any) error
 type Session struct {
 	app      *App
 	pageName string
-	query    url.Values
-	state    *State
-	send     SendPackFunc
+
+	// query is the page query, replaced by [Params.ReplaceQuery]. It's only
+	// touched with running held.
+	query url.Values
+	state *State
+	send  SendPackFunc
 
 	// handling serializes the stop-apply-run sequence, so an event can't
 	// have its stop signal cleared by the event before it.
@@ -182,8 +185,10 @@ func (s *Session) HandleEvent(event Event) {
 		defer cancelRun()
 		defer s.endRun()
 
+		var replaced url.Values
 		err := s.app.runContextWithHandlingPanic(
-			runCtx, s.pageName, s.query, s.state, sendNotifyPack)
+			runCtx, s.pageName, s.query, s.state, sendNotifyPack,
+			func(q url.Values) { replaced = q })
 
 		// Cancelled means the run was cut, so what it came back with is how
 		// it unwound, not a failure, and the run replacing it is about to
@@ -191,6 +196,12 @@ func (s *Session) HandleEvent(event Event) {
 		// what leaves an app's own context.Canceled a reportable error.
 		if runCtx.Err() != nil {
 			return
+		}
+
+		// Before the result, so the client has the new query by the time it
+		// sees the run end.
+		if replaced != nil {
+			s.replaceQuery(replaced)
 		}
 
 		if err != nil {
@@ -212,6 +223,22 @@ func (s *Session) Close() {
 	s.cancel()
 	s.beginRun()
 	s.endRun()
+}
+
+// replaceQuery stores q as the query of later runs and tells the client, if it
+// differs from the current one. It runs with s.running held, which is what
+// orders it before the next run reads s.query.
+func (s *Session) replaceQuery(q url.Values) {
+	if q.Encode() == s.query.Encode() {
+		return
+	}
+
+	s.query = q
+
+	err := s.sendPack(&QueryPack{ReplaceQuery: q})
+	if err != nil {
+		slog.Error("send query pack", "error", err)
+	}
 }
 
 // sendPack send a pack to the client. Sends are serialized, so a transport

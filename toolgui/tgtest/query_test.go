@@ -2,6 +2,7 @@ package tgtest_test
 
 import (
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 
@@ -104,5 +105,37 @@ func TestPageLinkUnknownPage(t *testing.T) {
 
 	if len(p.FindByName("page_link_component")) != 0 {
 		t.Error("an unknown page drew a link")
+	}
+}
+
+func TestReplaceQuery(t *testing.T) {
+	groups := []string{"a", "b", "c"}
+	app := newApp("detail", func(p *tgframe.Params) error {
+		conf := &tgcomp.SelectConf{}
+		if def := slices.Index(groups, p.Query.Get("group")); def >= 0 {
+			conf.SetDefault(def)
+		}
+
+		q := url.Values{}
+		if idx := tgcomp.Select(p.Main, "Group", groups, conf); idx != nil {
+			q.Set("group", groups[*idx])
+		}
+		p.ReplaceQuery(q)
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "detail", tgtest.WithQuery(url.Values{
+		"group": {"b"},
+	}))
+	if got := p.Query().Get("group"); got != "b" {
+		t.Errorf("Query before select = %q", got)
+	}
+
+	p.GetByLabel("Group").Select(2)
+	if err := p.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if got := p.Query().Encode(); got != "group=c" {
+		t.Errorf("Query = %q, want group=c", got)
 	}
 }

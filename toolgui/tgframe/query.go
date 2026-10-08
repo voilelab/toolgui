@@ -30,6 +30,13 @@ func ParseQuery(raw string) (url.Values, error) {
 	return query, nil
 }
 
+// QueryPack tells the client to replace the page query in its address bar,
+// without a reload or a history entry. See [Params.ReplaceQuery].
+type QueryPack struct {
+	// ReplaceQuery is never nil, so the client always reads an object.
+	ReplaceQuery url.Values `json:"replace_query"`
+}
+
 // checkQuery reports whether query fits in [MaxQuerySize].
 func checkQuery(query url.Values) error {
 	if len(query.Encode()) > MaxQuerySize {

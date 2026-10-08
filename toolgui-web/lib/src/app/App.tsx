@@ -26,7 +26,7 @@ import { UploadFunc } from './Upload';
 import { DownloadFunc } from './Download';
 import { ThemeMode, preferredThemeMode, themeModeManager } from '../util/theme';
 import { ThemeModeSync } from './ThemeModeSync';
-import { pageFromLocation } from './pageurl';
+import { PageQuery, encodeQuery, pageFromLocation, pageHref } from './pageurl';
 import { PageNav, PageNavContext, newPageNav } from './PageNav';
 
 // documentTitle puts the app title after the page's, so a tab says which page
@@ -59,6 +59,10 @@ interface AppProps {
   // and navigating moves the browser.
   pageName?: string
   onNavigate?: (name: string, query: string) => void
+
+  // onReplaceQuery takes the encoded page query Params.ReplaceQuery set. Left
+  // out, it replaces the query in the address bar.
+  onReplaceQuery?: (query: string) => void
 
   // embed drops the app's own chrome -- the page list, the controls, the
   // version line -- and leaves the page itself. For an iframe, where the
@@ -174,6 +178,19 @@ export class App extends Component<AppProps, AppState> {
         console.error('Notify pack type error', pack.type)
       }
     }
+  }
+
+  // replaceQuery swaps the page query for the one Params.ReplaceQuery set: no
+  // reload, no new session, no history entry.
+  replaceQuery(query: PageQuery) {
+    const q = encodeQuery(query)
+    if (this.props.onReplaceQuery) {
+      this.props.onReplaceQuery(q)
+      return
+    }
+
+    window.history.replaceState(window.history.state, '',
+      pageHref(this.state.pageName, q, this.props.appConf.hash_page_name_mode))
   }
 
   finishUpdate(pack: any) {
