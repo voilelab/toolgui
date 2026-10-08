@@ -24,6 +24,7 @@
     * [App Cache](architecture/app-cache.md)
     * [Session Cache](architecture/session-cache.md)
     * [State Cache](architecture/state-cache.md)
+    * [Page Parameters](architecture/page-params.md)
 
 * [Components](architecture/components.md)
     * [Custom Components](architecture/custom-components.md)
