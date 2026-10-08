@@ -132,25 +132,27 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	}
 	b.lock.Unlock()
 
-	b.runs.do(func() {
-		closeOld()
-		if err == nil {
-			session.HandleEvent(&tgframe.EventEmpty{})
-		}
-	})
-
 	if err != nil {
 		// The state never became the bridge's, so nothing else will let go of
 		// what it holds.
 		state.Destroy()
-
-		// Only the page name can fail here, and a retry would fail the same
-		// way.
-		b.sendResult(&tgframe.ResultPack{
-			Error: err.Error(),
-			Fatal: true,
-		})
 	}
+
+	// The fatal result goes in order too: a queued run of the old session
+	// would otherwise clear it with its ready pack.
+	b.runs.do(func() {
+		closeOld()
+		if err != nil {
+			// Only the page name can fail here, and a retry would fail the
+			// same way.
+			b.sendResult(&tgframe.ResultPack{
+				Error: err.Error(),
+				Fatal: true,
+			})
+			return
+		}
+		session.HandleEvent(&tgframe.EventEmpty{})
+	})
 
 	return nil
 }
