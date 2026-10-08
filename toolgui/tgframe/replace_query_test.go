@@ -101,6 +101,24 @@ func TestReplaceQueryTooLarge(t *testing.T) {
 	}
 }
 
+// An oversized call after a valid one still wins: nothing is sent.
+func TestReplaceQueryTooLargeDropsEarlierCall(t *testing.T) {
+	session, recorder := newTestSession(t, func(p *Params) error {
+		p.ReplaceQuery(url.Values{"x": {"1"}})
+		p.ReplaceQuery(url.Values{"x": {strings.Repeat("a", MaxQuerySize)}})
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+	if result := <-recorder.results; result.Success {
+		t.Error("expect the run to fail")
+	}
+	if packs, _ := queryPacks(recorder); len(packs) != 0 {
+		t.Errorf("earlier query sent: %v", packs)
+	}
+}
+
 // A cut run's ReplaceQuery is dropped; the run that finishes decides.
 func TestReplaceQueryCutRunDropped(t *testing.T) {
 	var runs atomic.Int32

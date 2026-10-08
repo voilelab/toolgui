@@ -76,7 +76,9 @@ func (p *Params) ReplaceQuery(q url.Values) {
 		return
 	}
 
+	// A failed call is still the last one: drop what an earlier call set.
 	if err := checkQuery(q); err != nil {
+		p.run.query, p.run.queryReplaced = nil, false
 		p.run.fail(tgutil.Errorf("ReplaceQuery: %w", err))
 		return
 	}
