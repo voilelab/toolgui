@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/voilelab/toolgui/toolgui/tgcomp"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
 )
 
 // timerApp's pages wait for a JavaScript timer and ignore their context, the
 // way a page func awaiting IndexedDB does. Each finished run sends its page
-// name to runs.
-func timerApp(runs chan<- string) *tgframe.App {
+// name to runs; with draw, it then draws "<name>-page".
+func timerApp(runs chan<- string, draw bool) *tgframe.App {
 	app := tgframe.NewApp()
 
 	page := func(name string) tgframe.RunFunc {
@@ -29,6 +30,9 @@ func timerApp(runs chan<- string) *tgframe.App {
 			js.Global().Call("setTimeout", f, 10)
 			<-fired
 
+			if draw {
+				tgcomp.Text(p.Main, name+"-page")
+			}
 			runs <- name
 			return nil
 		}
@@ -44,7 +48,7 @@ func timerApp(runs chan<- string) *tgframe.App {
 // waited for the run would keep the timer it needs from ever firing.
 func TestCallsDoNotWaitForTheRun(t *testing.T) {
 	runs := make(chan string, 8)
-	b := newBridge(timerApp(runs))
+	b := newBridge(timerApp(runs, false))
 	defer stopped(b)()
 
 	onPack := js.FuncOf(func(js.Value, []js.Value) any { return nil })
@@ -77,7 +81,7 @@ func TestCallsDoNotWaitForTheRun(t *testing.T) {
 // so a fatal sent ahead of one would be lost.
 func TestFatalStartComesAfterQueuedRuns(t *testing.T) {
 	runs := make(chan string, 8)
-	b := newBridge(timerApp(runs))
+	b := newBridge(timerApp(runs, false))
 	defer stopped(b)()
 
 	var packs []string
@@ -100,5 +104,47 @@ func TestFatalStartComesAfterQueuedRuns(t *testing.T) {
 
 	if len(packs) == 0 || !strings.Contains(packs[len(packs)-1], `"fatal":true`) {
 		t.Errorf("last pack = %v, want the fatal result", packs)
+	}
+}
+
+// TestOldSessionIsFencedOnStart checks nothing of the page left behind reaches
+// the page started after it, though its close waits behind a queued update.
+func TestOldSessionIsFencedOnStart(t *testing.T) {
+	runs := make(chan string, 8)
+	b := newBridge(timerApp(runs, true))
+	defer stopped(b)()
+
+	var packs []string
+	onPack := js.FuncOf(func(_ js.Value, args []js.Value) any {
+		packs = append(packs, args[0].String())
+		return nil
+	})
+	defer onPack.Release()
+	b.jsOnPack(js.Undefined(), []js.Value{onPack.Value})
+
+	start := js.FuncOf(b.jsStart)
+	defer start.Release()
+	update := js.FuncOf(b.jsUpdate)
+	defer update.Release()
+
+	start.Invoke("index")
+	update.Invoke(`{"type":""}`)
+	start.Invoke("other")
+	switched := len(packs)
+
+	settle(b)
+	// Long enough for every timer to fire and every run to end.
+	time.Sleep(200 * time.Millisecond)
+	settle(b)
+
+	after := strings.Join(packs[switched:], "\n")
+	if strings.Contains(after, "index-page") {
+		t.Errorf("the old page drew after the switch:\n%s", after)
+	}
+	if n := strings.Count(after, `"ready":true`); n != 1 {
+		t.Errorf("%d ready packs after the switch, want only the new page's:\n%s", n, after)
+	}
+	if !strings.Contains(after, "other-page") {
+		t.Errorf("the new page never drew:\n%s", after)
 	}
 }

@@ -5,6 +5,7 @@ package tgwasm
 import (
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"syscall/js"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -22,6 +23,9 @@ var ErrNoSession = tgutil.NewError("no session, call start first")
 // ErrNoUpload is returned for a file the bridge never reserved, or reserved
 // for a session that is over.
 var ErrNoUpload = tgutil.NewError("no such upload")
+
+// errDetached is what a session left behind by a start gets for its sends.
+var errDetached = tgutil.NewError("session replaced by a later start")
 
 // ErrNoDownload is returned for a download token this state's runs never
 // handed out, or one a later run replaced.
@@ -46,6 +50,10 @@ type bridge struct {
 	lock    sync.Mutex
 	session *tgframe.Session
 	state   *tgframe.State
+
+	// detached cuts the session's sends off the page once a start replaces
+	// it, as its close may wait behind queued runs.
+	detached *atomic.Bool
 
 	// uploads are the files reserved for the page and not yet handed back,
 	// keyed by the name the store gave them. An upload is two calls -- one to
@@ -121,14 +129,23 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 		pageName = args[0].String()
 	}
 
+	detached := new(atomic.Bool)
+	send := func(pack any) error {
+		if detached.Load() {
+			return errDetached
+		}
+		return b.send(pack)
+	}
+
 	state := tgframe.NewState()
-	session, err := tgframe.NewSession(b.app, pageName, state, b.send)
+	session, err := tgframe.NewSession(b.app, pageName, state, send)
 
 	b.lock.Lock()
 	closeOld := b.detachSession()
 	if err == nil {
 		b.state = state
 		b.session = session
+		b.detached = detached
 	}
 	b.lock.Unlock()
 
@@ -434,6 +451,11 @@ func (b *bridge) detachSession() (closeSession func()) {
 	session, state := b.session, b.state
 	b.session = nil
 	b.state = nil
+
+	if b.detached != nil {
+		b.detached.Store(true)
+		b.detached = nil
+	}
 
 	// The reservations go with the state that made them, so a handover that
 	// arrives after this finds no slot and closes what it was given. The
