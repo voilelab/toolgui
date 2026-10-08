@@ -43,6 +43,7 @@ func TestStartDestroysTheStateItReplaces(t *testing.T) {
 	}
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("other")})
+	settle(b)
 
 	if b.state == state {
 		t.Fatal("expect start to open a state of its own")
@@ -196,10 +197,19 @@ func jsError(v js.Value) error {
 func stopped(b *bridge) func() {
 	return func() {
 		b.lock.Lock()
-		defer b.lock.Unlock()
+		closeSession := b.detachSession()
+		b.lock.Unlock()
 
-		b.closeSession()
+		settle(b)
+		closeSession()
 	}
+}
+
+// settle waits for the runs start and update queued so far.
+func settle(b *bridge) {
+	done := make(chan struct{})
+	b.runs.do(func() { close(done) })
+	<-done
 }
 
 // TestUploadFileStoresWhatThePageWrote checks the handover: the bridge names a
