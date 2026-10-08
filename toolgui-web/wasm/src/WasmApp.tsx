@@ -1,23 +1,23 @@
 import React, { Component } from "react"
 
-import { App, AppConf, dispatchPack, UpdateEvent } from "@toolgui-web/lib"
+import {
+  App, AppConf, dispatchPack, PageLocation, pageFromLocation, pageHref,
+  UpdateEvent,
+} from "@toolgui-web/lib"
 import { Backend, LoadProgress } from "./api/backend"
 
 interface WasmAppState {
   appConf: AppConf | null
   pageName: string
+  query: string
   error: string | null
   progress: LoadProgress | null
 }
 
-// pageNameFromHash reads the page off the URL. A static host cannot route
-// paths, so the hash is the only place a page name can live.
-function pageNameFromHash(appConf: AppConf): string {
-  if (window.location.hash.startsWith('#/')) {
-    return window.location.hash.substring(2)
-  }
-
-  return appConf.page_names.length > 0 ? appConf.page_names[0] : ''
+// pageFromHash reads the page off the URL. A static host cannot route paths,
+// so the hash is the only place a page name can live: `#/detail?group=a`.
+function pageFromHash(appConf: AppConf): PageLocation {
+  return pageFromLocation(window.location, true, appConf.page_names)
 }
 
 // embedFromSearch reads the embed flag off the URL. embed is a display mode of
@@ -44,6 +44,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
     this.state = {
       appConf: null,
       pageName: '',
+      query: '',
       error: null,
       progress: null,
     }
@@ -70,30 +71,30 @@ export class WasmApp extends Component<{}, WasmAppState> {
     // The wasm program stays loaded across pages, so navigation is a new
     // session rather than a page load.
     window.addEventListener('hashchange', () => {
-      this.openPage(appConf, pageNameFromHash(appConf))
+      this.openPage(appConf, pageFromHash(appConf))
     })
 
-    this.openPage(appConf, pageNameFromHash(appConf))
+    this.openPage(appConf, pageFromHash(appConf))
   }
 
   // openPage renders the page and asks the backend for a session on it. start
   // runs after the commit, so the ref the pack listener needs is set.
-  openPage(appConf: AppConf, pageName: string) {
+  openPage(appConf: AppConf, { name, query }: PageLocation) {
     this.appEle.current?.clearState()
 
-    this.setState({ appConf, pageName }, () => {
-      this.backend.start(pageName).catch((e) => { this.fail(e) })
+    this.setState({ appConf, pageName: name, query }, () => {
+      this.backend.start(name, query).catch((e) => { this.fail(e) })
     })
   }
 
-  jumpToPage(pageName: string) {
+  jumpToPage(name: string, query: string) {
     if (this.state.appConf.hash_page_name_mode) {
       // Let the URL drive, so a page stays linkable and Back works.
-      window.location.hash = '#/' + pageName
+      window.location.hash = pageHref(name, query, true)
       return
     }
 
-    this.openPage(this.state.appConf, pageName)
+    this.openPage(this.state.appConf, { name, query })
   }
 
   fail(e: any) {
@@ -113,12 +114,14 @@ export class WasmApp extends Component<{}, WasmAppState> {
     return (
       // key remounts App on navigation, which resets its component tree the
       // way a page load does on the web.
-      <App key={this.state.pageName}
+      // The query is in the key too: a link to the same page with other
+      // parameters is a new page load.
+      <App key={`${this.state.pageName}?${this.state.query}`}
         ref={this.appEle}
         appConf={this.state.appConf}
         pageName={this.state.pageName}
         embed={this.embed}
-        onNavigate={(name) => { this.jumpToPage(name) }}
+        onNavigate={(name, query) => { this.jumpToPage(name, query) }}
         update={(event: UpdateEvent) => {
           this.backend.update(event).catch((e) => { console.error(e) })
         }}

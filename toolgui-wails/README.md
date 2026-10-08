@@ -47,7 +47,7 @@ webview dependencies below.
 | `GET /api/app` | `window.go.tgwails.ToolGUI.AppConf()` |
 | update websocket | `Update(eventJSON)` + the `toolgui:pack` event |
 | `POST /api/files` | `UploadFileStart` + `UploadFileChunk` + `UploadFileFinish` |
-| a page load | `Start(pageName)` |
+| a page load | `Start(pageName, query)` |
 | the menubar the frontend draws | the window's own, from `options.App.Menu` |
 
 Payloads cross as JSON strings — the same ones the websocket carries, so both

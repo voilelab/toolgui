@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/fs"
 	"log"
+	"net/url"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -44,6 +45,16 @@ type Params struct {
 	State   *State
 	Main    *Container
 	Sidebar *Container
+
+	// Query is the page query the page was opened with: `group=a` in
+	// `/detail?group=a` or `#/detail?group=a`. It is never nil, and each run
+	// gets its own copy.
+	//
+	// It is untrusted input: anyone can build a link and send it to a user.
+	// Validate what you read -- look a value up in a known set -- and never
+	// use it as a path, a command or SQL unchecked. The framework never
+	// writes it into the State; to seed an input, set its Conf.Default.
+	Query url.Values
 }
 
 // RunFunc is the type of a function handling page
@@ -308,7 +319,16 @@ func (app *App) RunWithHandlingPanic(
 // Return a error wrap with ErrPanic if encounter panic. A panicked error keeps
 // its chain, so errors.Is still finds [ErrUpdateInterrupt] under [ErrPanic].
 func (app *App) RunContextWithHandlingPanic(ctx context.Context,
-	name string, state *State, notifyFunc SendNotifyPackFunc) (err error) {
+	name string, state *State, notifyFunc SendNotifyPackFunc) error {
+
+	return app.runContextWithHandlingPanic(ctx, name, nil, state, notifyFunc)
+}
+
+// runContextWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
+// page query.
+func (app *App) runContextWithHandlingPanic(ctx context.Context,
+	name string, query url.Values, state *State,
+	notifyFunc SendNotifyPackFunc) (err error) {
 
 	defer func() {
 		r := recover()
@@ -331,7 +351,7 @@ func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 		}
 	}()
 
-	err = app.RunContext(ctx, name, state, notifyFunc)
+	err = app.runContext(ctx, name, query, state, notifyFunc)
 	return
 }
 
@@ -342,9 +362,14 @@ func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) er
 }
 
 // RunContext run a page which named `name` with state, and hands ctx to the
-// page func as [Params.Context].
+// page func as [Params.Context]. [Params.Query] is empty.
 func (app *App) RunContext(ctx context.Context,
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
+	return app.runContext(ctx, name, nil, state, notifyFunc)
+}
+
+func (app *App) runContext(ctx context.Context, name string,
+	query url.Values, state *State, notifyFunc SendNotifyPackFunc) error {
 	pageFunc, ok := app.pageFuncs[name]
 	if !ok {
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
@@ -358,6 +383,7 @@ func (app *App) RunContext(ctx context.Context,
 	}
 
 	run := newRunState()
+	run.app = app
 
 	newMain := NewContainer(MainContainerID, state, notifyFunc)
 	newMain.run = run
@@ -375,6 +401,7 @@ func (app *App) RunContext(ctx context.Context,
 		State:   state,
 		Main:    newMain,
 		Sidebar: newSidebar,
+		Query:   cloneQuery(query),
 	})
 
 	// A cut run stopped partway, so the run before it is still what the

@@ -105,9 +105,10 @@ export class Backend {
     return JSON.parse(await this.call('appConf'))
   }
 
-  // start opens a session on a page and draws it once.
-  start(pageName: string): Promise<void> {
-    return this.call('start', pageName)
+  // start opens a session on a page and draws it once. query is the page
+  // query, `group=a`.
+  start(pageName: string, query: string): Promise<void> {
+    return this.call('start', pageName, query)
   }
 
   update(event: UpdateEvent): Promise<void> {

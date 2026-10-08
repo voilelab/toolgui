@@ -317,6 +317,19 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		return
 	}
 
+	// The page query rides on the socket url. Turned away before a state is
+	// taken, like an unknown page. Its values stay out of the log.
+	query, err := tgframe.ParseQuery(ws.Request().URL.RawQuery)
+	if err != nil {
+		jsonCodec.Send(ws, &tgframe.ResultPack{
+			Error:   err.Error(),
+			Success: false,
+			Fatal:   true,
+		})
+		slog.Error("page query", "page", pageName, "error", err)
+		return
+	}
+
 	// A connection that finishes the handshake and then says nothing holds a
 	// goroutine and an fd for as long as it likes, so the first message has a
 	// deadline. It is lifted once the message lands: after that the socket is
@@ -326,7 +339,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	}
 
 	var pack stateIDPack
-	err := jsonCodec.Receive(ws, &pack)
+	err = jsonCodec.Receive(ws, &pack)
 
 	if derr := ws.SetReadDeadline(time.Time{}); derr != nil {
 		slog.Error("clear state id deadline", "error", derr)
@@ -379,15 +392,20 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		})
 	}
 
-	session, err := tgframe.NewSession(e.app, pageName, state,
+	session, err := tgframe.NewSession(e.app, pageName, query, state,
 		func(pack any) error { return jsonCodec.Send(ws, pack) })
 	if err != nil {
-		// NewSession only fails on the page name, so a retry would fail the
-		// same way. The state is nobody's again either way.
+		// Both checked above, so a retry would fail the same way. The state
+		// is nobody's again either way.
 		e.stateMap.SetAlive(stateID, false)
 
+		msg := "page not found"
+		if errors.Is(err, tgframe.ErrQueryTooLarge) {
+			msg = tgframe.ErrQueryTooLarge.Error()
+		}
+
 		jsonCodec.Send(ws, &tgframe.ResultPack{
-			Error:   "page not found",
+			Error:   msg,
 			Success: false,
 			Fatal:   true,
 		})

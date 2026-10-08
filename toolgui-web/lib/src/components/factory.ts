@@ -34,6 +34,7 @@ import { TMarkdown } from "./tccontent/markdown"
 import { TCode } from "./tccontent/code"
 import { TLink } from "./tccontent/link"
 import { TLinkButton } from "./tccontent/link_button"
+import { TPageLink } from "./tccontent/page_link"
 import { TCaption } from "./tccontent/caption"
 import { TMetric } from "./tccontent/metric"
 import { TBadge } from "./tccontent/badge"
@@ -107,6 +108,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   code_component: TCode,
   link_component: TLink,
   link_button_component: TLinkButton,
+  page_link_component: TPageLink,
   latex_component: TLatex,
   caption_component: TCaption,
   metric_component: TMetric,

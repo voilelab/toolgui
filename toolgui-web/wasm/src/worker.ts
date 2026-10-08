@@ -13,7 +13,7 @@ interface Bridge {
   appConf(): string
   onPack(callback: (packJSON: string) => void): void
   onEvent(callback: (name: string, detailJSON: string) => void): void
-  start(pageName: string): void
+  start(pageName: string, query: string): void
   update(eventJSON: string): void
   downloadFile(token: string): string
   newUpload(): string

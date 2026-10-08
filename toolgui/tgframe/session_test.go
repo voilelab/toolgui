@@ -71,7 +71,7 @@ func newTestSession(t *testing.T, runFunc RunFunc) (*Session, *packRecorder) {
 	app.AddPage(testPageName, "Test", runFunc)
 
 	recorder := newPackRecorder()
-	session, err := NewSession(app, testPageName, NewState(), recorder.send)
+	session, err := NewSession(app, testPageName, nil, NewState(), recorder.send)
 	if err != nil {
 		t.Fatalf("NewSession: %v", err)
 	}
@@ -85,7 +85,7 @@ func addTestComponent(p *Params, id string) {
 
 func TestNewSessionUnknownPage(t *testing.T) {
 	app := NewApp()
-	_, err := NewSession(app, "nope", NewState(), func(any) error { return nil })
+	_, err := NewSession(app, "nope", nil, NewState(), func(any) error { return nil })
 	if err == nil {
 		t.Fatal("expect an error for an unknown page")
 	}

@@ -2,6 +2,8 @@ package tgwails
 
 import (
 	"encoding/base64"
+	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -134,7 +136,7 @@ func TestToolGUIStartRunsPage(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	err := backend.Start(testPageName)
+	err := backend.Start(testPageName, "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -158,8 +160,48 @@ func TestToolGUIStartUnknownPage(t *testing.T) {
 		return nil
 	}))
 
-	if backend.Start("nope") == nil {
+	if backend.Start("nope", "") == nil {
 		t.Fatal("expect an error for an unknown page")
+	}
+}
+
+func TestToolGUIStartPassesQuery(t *testing.T) {
+	got := make(chan string, 1)
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		got <- p.Query.Get("group")
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName, "group=a"); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	if g := <-got; g != "a" {
+		t.Errorf("group = %q, want a", g)
+	}
+}
+
+// A refused query still closes the session before it: the frontend has
+// already switched page.
+func TestToolGUIStartOversizedQuery(t *testing.T) {
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+
+	if err := backend.Start(testPageName, ""); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	query := "x=" + strings.Repeat("a", tgframe.MaxQuerySize)
+	if err := backend.Start(testPageName, query); !errors.Is(err, tgframe.ErrQueryTooLarge) {
+		t.Fatalf("Start = %v, want ErrQueryTooLarge", err)
+	}
+
+	if backend.currentSession() != nil {
+		t.Error("the previous session is still open")
 	}
 }
 
@@ -173,7 +215,7 @@ func TestToolGUIUpdateReruns(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	err := backend.Start(testPageName)
+	err := backend.Start(testPageName, "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -199,7 +241,7 @@ func TestToolGUIUpdateBadEvent(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	err := backend.Start(testPageName)
+	err := backend.Start(testPageName, "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -242,7 +284,7 @@ func TestToolGUIClickMenu(t *testing.T) {
 	backend, events := newTestToolGUI(t, app)
 	defer backend.shutdown(t.Context())
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -298,7 +340,7 @@ func TestToolGUIQueueMenuClickOrder(t *testing.T) {
 	backend, events := newTestToolGUI(t, app)
 	defer backend.shutdown(t.Context())
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -395,7 +437,7 @@ func TestToolGUIUploadFileChunk(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	err := backend.Start(testPageName)
+	err := backend.Start(testPageName, "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -426,7 +468,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -466,7 +508,7 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -532,7 +574,7 @@ func TestToolGUIUploadFileUnknownID(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -556,7 +598,7 @@ func TestToolGUIStartDropsPendingUploads(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -566,7 +608,7 @@ func TestToolGUIStartDropsPendingUploads(t *testing.T) {
 		t.Fatalf("UploadFileStart: %v", err)
 	}
 
-	if err := backend.Start(testPageName); err != nil {
+	if err := backend.Start(testPageName, ""); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
 	events.waitResult(t)
@@ -584,7 +626,7 @@ func TestToolGUIUploadFileBadBase64(t *testing.T) {
 	}))
 	defer backend.shutdown(t.Context())
 
-	err := backend.Start(testPageName)
+	err := backend.Start(testPageName, "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -620,7 +662,7 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 	backend, events := newTestToolGUI(t, app)
 	defer backend.shutdown(t.Context())
 
-	err := backend.Start("first")
+	err := backend.Start("first", "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -636,7 +678,7 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 		t.Fatalf("expect the value in the state, got %q", got)
 	}
 
-	err = backend.Start("second")
+	err = backend.Start("second", "")
 	if err != nil {
 		t.Fatalf("Start: %v", err)
 	}

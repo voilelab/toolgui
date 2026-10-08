@@ -35,6 +35,10 @@ type runState struct {
 	// stays is state no component reads any more, and [App.Run] drops it.
 	released map[string]bool
 
+	// app is the app running the page, nil for a container made outside a
+	// run.
+	app *App
+
 	err error
 }
 

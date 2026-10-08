@@ -1,6 +1,6 @@
 import React, { Component } from "react"
 
-import { App, dispatchPack } from "@toolgui-web/lib"
+import { App, dispatchPack, pageFromLocation } from "@toolgui-web/lib"
 import { AppConf } from "@toolgui-web/lib"
 import { StatefulWebSocket } from "./api/StatefulWebSocket"
 import { getAppConf } from "./api/AppConfAPI"
@@ -29,21 +29,15 @@ export class WSApp extends Component<{}, WSState> {
   async setup() {
     const appConf = await getAppConf()
 
-    var pageName = ''
-    if (appConf.hash_page_name_mode) {
-      if (window.location.hash) {
-        // should be #/{name}
-        pageName = window.location.hash.substring(2)
-      } else if (appConf.page_names.length > 0) {
-        pageName = appConf.page_names[0]
-      }
-    } else {
-      pageName = window.location.pathname.substring(1)
-    }
+    const pageName = pageFromLocation(window.location,
+      appConf.hash_page_name_mode, appConf.page_names).name
 
+    // The query is read on every connect, so a reconnect sees the address
+    // bar as it is now.
     const conn = new StatefulWebSocket(pageName, pack => {
       dispatchPack(this.appEle.current, pack)
-    })
+    }, () => pageFromLocation(window.location,
+      appConf.hash_page_name_mode, appConf.page_names).query)
 
     conn.onConnect = () => {
       this.state.conn.send({})

@@ -2,6 +2,7 @@ package tgcomp
 
 import (
 	"iter"
+	"net/url"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp/tccontent"
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -67,6 +68,16 @@ func Link(c *tgframe.Container, text, url string, conf ...*LinkConf) {
 
 // LinkConf is the configuration for the Link component.
 type LinkConf = tccontent.LinkConf
+
+// PageLink create a link to another page of the app, opened with query.
+func PageLink(c *tgframe.Container, text, page string,
+	query url.Values, conf ...*PageLinkConf) {
+
+	tccontent.PageLink(c, text, page, query, conf...)
+}
+
+// PageLinkConf is the configuration for the PageLink component.
+type PageLinkConf = tccontent.PageLinkConf
 
 // LinkButton create a link that is drawn as a button.
 func LinkButton(

@@ -49,6 +49,7 @@
     * [Divider](components/content/divider.md)
     * [Link](components/content/link.md)
     * [Link Button](components/content/link_button.md)
+    * [Page Link](components/content/page_link.md)
     * [Latex](components/content/latex.md)
     * [Emoji Shortcodes](components/content/emoji.md)
 

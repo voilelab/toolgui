@@ -73,6 +73,20 @@ describe('Content', () => {
       .and('contain', 'Link Button')
   })
 
+  // The page reads n off its own query, so the link and the page it opens
+  // check each other.
+  it('Page Link opens the page with its query', () => {
+    cy.visit('/page_link?n=3')
+    cy.get('#column_component_show_page_link_0').within(() => {
+      cy.contains('n = 3').should('exist')
+      cy.get('a').should('have.attr', 'href', '/page_link?n=4').click()
+    })
+
+    cy.location('search').should('eq', '?n=4')
+    cy.get('#column_component_show_page_link_0')
+      .contains('n = 4').should('exist')
+  })
+
   it('Latex works', () => {
     cy.visit('/content')
     cy.get('mi').contains('E').should('exist')

@@ -27,6 +27,8 @@ var groups = []*Group{
 			demo("link", "Link", show("show_link", linkDemo, "demo")),
 			demo("link_button", "Link Button",
 				show("show_link_button", linkButtonDemo, "demo")),
+			demo("page_link", "Page Link",
+				show("show_page_link", pageLinkDemo, "demo")),
 			demo("latex", "Latex", show("show_latex", latexDemo, "demo")),
 			demo("emoji", "Emoji", show("show_emoji", emojiDemo, "text", "markdown")),
 		},

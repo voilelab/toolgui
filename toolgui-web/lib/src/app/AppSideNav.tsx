@@ -17,6 +17,7 @@ import {
   storeNavCollapsed, storeNavWidth,
 } from "../util/sidenav";
 import { emojize } from "../util/emoji";
+import { PageNav } from "./PageNav";
 
 import '@toolgui-web/lib/src/assets/css/shell.css'
 
@@ -26,7 +27,7 @@ interface AppSideNavProps {
   running: boolean
   pageFound: boolean
   pageName: string
-  onNavigate?: (name: string) => void
+  pageNav: PageNav
   rerun: () => void
   update: (e: UpdateEvent) => void
   upload: UploadFunc
@@ -193,29 +194,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
 
   jumpToPage(name: string) {
     this.setState({ open: false })
-
-    if (this.props.onNavigate) {
-      this.props.onNavigate(name)
-      return
-    }
-
-    if (this.props.appConf.hash_page_name_mode) {
-      window.location.href = '#/' + name
-      window.location.reload();
-    } else {
-      window.location.href = '/' + name
-    }
-  }
-
-  // pageHref keeps the anchors real links. A transport with its own
-  // navigation has no URL to point at, so it gets the hash form; the click
-  // handler cancels the default either way.
-  pageHref(name: string) {
-    if (this.props.onNavigate || this.props.appConf.hash_page_name_mode) {
-      return '#/' + name
-    }
-
-    return '/' + name
+    this.props.pageNav.navigate(name, '')
   }
 
   sidebarNode() {
@@ -288,7 +267,7 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
                   return (
                     <NavLink key={name}
                       component="a"
-                      href={this.pageHref(name)}
+                      href={this.props.pageNav.href(name, '')}
                       active={active}
                       variant="filled"
                       aria-current={active ? 'page' : undefined}
