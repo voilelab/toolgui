@@ -14,7 +14,8 @@ go build -o /tmp/wasmtest ./scripts/wasmtest
 GOOS=js GOARCH=wasm go test -exec /tmp/wasmtest ./scripts/benchdf -run TestReport -v \
   -args -report
 
-# Browser side: click -> pack -> paint (needs the web assets built)
+# Browser side: click -> pack -> paint. Needs the web assets built and
+# Playwright with its Chromium: npm i -g playwright && npx playwright install chromium
 go run ./scripts/benchdf -addr 127.0.0.1:3100
 go run ./cmd/toolgui-wasm serve -addr 127.0.0.1:3200 ./scripts/benchdf
 NODE_PATH=$(npm root -g) node scripts/benchdf/measure.cjs

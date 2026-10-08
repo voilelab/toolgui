@@ -4,13 +4,14 @@
 //
 //	go run ./scripts/benchdf -addr 127.0.0.1:3100
 //	go run ./cmd/toolgui-wasm serve -addr 127.0.0.1:3200 ./scripts/benchdf
+//	npm i -g playwright && npx playwright install chromium
 //	NODE_PATH=$(npm root -g) node scripts/benchdf/measure.cjs
 const { chromium } = require('playwright')
 
 const WEB = process.env.WEB_URL || 'http://127.0.0.1:3100/'
 const WASM = process.env.WASM_URL || 'http://127.0.0.1:3200/#/'
 const ROWS = [0, 1000, 3000, 10000]
-const REPS = Number(process.env.REPS || 10)
+const REPS = Number(process.env.REPS || 30)
 
 // Runs before the app: taps the transport ahead of the app's own listener.
 function probe() {
