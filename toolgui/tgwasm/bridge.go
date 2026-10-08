@@ -52,6 +52,11 @@ type bridge struct {
 	// reserve, one to hand over -- because the writing in between is the
 	// page's and cannot be awaited from here.
 	uploads map[string]*tgframe.BrowserUpload
+
+	// runs does the part of start and update that waits for a page func, in
+	// the order they were called. They are called from JavaScript, and a
+	// page func waiting on a promise needs the call to return first.
+	runs *serial
 }
 
 func newBridge(app *tgframe.App) *bridge {
@@ -60,6 +65,7 @@ func newBridge(app *tgframe.App) *bridge {
 		onPack:  js.Undefined(),
 		onEvent: js.Undefined(),
 		uploads: map[string]*tgframe.BrowserUpload{},
+		runs:    newSerial(),
 	}
 }
 
@@ -115,17 +121,28 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 		pageName = args[0].String()
 	}
 
-	b.lock.Lock()
-
-	b.closeSession()
-
 	state := tgframe.NewState()
 	session, err := tgframe.NewSession(b.app, pageName, state, b.send)
+
+	b.lock.Lock()
+	closeOld := b.detachSession()
+	if err == nil {
+		b.state = state
+		b.session = session
+	}
+	b.lock.Unlock()
+
+	b.runs.do(func() {
+		closeOld()
+		if err == nil {
+			session.HandleEvent(&tgframe.EventEmpty{})
+		}
+	})
+
 	if err != nil {
 		// The state never became the bridge's, so nothing else will let go of
 		// what it holds.
 		state.Destroy()
-		b.lock.Unlock()
 
 		// Only the page name can fail here, and a retry would fail the same
 		// way.
@@ -133,15 +150,8 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 			Error: err.Error(),
 			Fatal: true,
 		})
-		return nil
 	}
 
-	b.state = state
-	b.session = session
-
-	b.lock.Unlock()
-
-	session.HandleEvent(&tgframe.EventEmpty{})
 	return nil
 }
 
@@ -154,11 +164,14 @@ func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
 		return nil
 	}
 
-	err := session.HandleRawEvent([]byte(args[0].String()))
-	if err != nil {
-		// HandleRawEvent already reported it to the page.
-		slog.Error("handle event", "error", err)
-	}
+	raw := []byte(args[0].String())
+	b.runs.do(func() {
+		err := session.HandleRawEvent(raw)
+		if err != nil {
+			// HandleRawEvent already reported it to the page.
+			slog.Error("handle event", "error", err)
+		}
+	})
 
 	return nil
 }
@@ -404,7 +417,9 @@ func (b *bridge) currentSession() *tgframe.Session {
 	return b.session
 }
 
-// closeSession must be called with lock held.
+// detachSession takes the session off the bridge and returns what closes it,
+// which waits for its page func and so must not run on a JavaScript call.
+// It must be called with lock held.
 //
 // The state is destroyed, not merely dropped: what it holds is not all the
 // garbage collector's to reclaim. In the browser its uploads are files in the
@@ -413,17 +428,8 @@ func (b *bridge) currentSession() *tgframe.Session {
 // long as the tab lived. [tgframe.Session.Close] does not do it -- the web
 // executor destroys the state out of its own session map -- so it is done
 // here, the way the desktop executor does.
-func (b *bridge) closeSession() {
-	if b.session == nil {
-		return
-	}
-
-	b.session.Close()
-
-	if b.state != nil {
-		b.state.Destroy()
-	}
-
+func (b *bridge) detachSession() (closeSession func()) {
+	session, state := b.session, b.state
 	b.session = nil
 	b.state = nil
 
@@ -432,4 +438,13 @@ func (b *bridge) closeSession() {
 	// directory removal the destroy started chases what the page is still
 	// writing until it lets go, which is what takes the file with it.
 	clear(b.uploads)
+
+	return func() {
+		if session != nil {
+			session.Close()
+		}
+		if state != nil {
+			state.Destroy()
+		}
+	}
 }
