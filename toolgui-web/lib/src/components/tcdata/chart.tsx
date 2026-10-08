@@ -253,8 +253,10 @@ function buildConfig(props: any, theme: string, surface: string): any {
           // Bars and area fills encode magnitude by their length, so a
           // truncated baseline would overstate the differences. It also keeps
           // the fill target inside the plot, which is what makes it visible.
-          // A log axis has no 0: bars and fills start from its bottom.
-          beginAtZero: (bar || area) && !yLog,
+          // A log axis has no 0; there chart.js reads this as extending the
+          // bottom a decade below the smallest value, so the smallest bar
+          // still shows.
+          beginAtZero: bar || area,
           grid: { color: chrome.grid },
           border: { display: false },
           ticks: { color: chrome.tick },

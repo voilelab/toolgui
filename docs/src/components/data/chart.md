@@ -96,7 +96,7 @@ and fail the run:
 * Any value ≤ 0 on a log axis.
 
 Bars and area fills, which start from 0 on a linear axis, start from the
-bottom of a log axis instead.
+bottom of a log axis instead, one decade below the smallest value.
 
 ## Notes
 
