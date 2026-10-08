@@ -19,3 +19,8 @@
 .toolgui-markdown .task-list-item input {
   margin-inline-end: var(--mantine-spacing-xs);
 }
+
+/* A `$$...$$` formula: a wide one scrolls instead of widening the page. */
+.toolgui-markdown math[display="block"] {
+  overflow-x: auto;
+}

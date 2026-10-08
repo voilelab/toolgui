@@ -2,11 +2,14 @@ import React from 'react'
 
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 import { Table, Typography } from '@mantine/core'
 
 import { Props } from '../component_interface'
 import { ThemeMode } from '../../util/theme'
 import { remarkEmoji } from '../../util/remark_emoji'
+import { remarkMathGuard } from '../../util/remark_math'
 import { CodeBlock } from './code'
 
 import '@toolgui-web/lib/src/assets/css/markdown.css'
@@ -25,7 +28,10 @@ export function MarkdownText({ text, id, theme }: {
   return (
     <Typography className='toolgui-markdown' id={id || undefined}>
       <Markdown children={text}
-        remarkPlugins={[remarkGfm, remarkEmoji]}
+        // Math goes first, so `a_1` or `\\` inside `$...$` isn't read as
+        // markdown. MathML only, like the Latex component: no KaTeX CSS/fonts.
+        remarkPlugins={[remarkMath, remarkMathGuard, remarkGfm, remarkEmoji]}
+        rehypePlugins={[[rehypeKatex, { output: 'mathml' }]]}
         components={{
           a(props) {
             const { children, className, node, ...rest } = props
