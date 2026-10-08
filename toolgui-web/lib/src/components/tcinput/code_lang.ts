@@ -1,9 +1,11 @@
 import type { Extension } from "@codemirror/state"
-import { StreamLanguage } from "@codemirror/language"
+import { StreamLanguage, indentUnit } from "@codemirror/language"
 
 // Each language is its own chunk, loaded on first use.
 const loaders: { [lang: string]: () => Promise<Extension> } = {
-  go: () => import("@codemirror/lang-go").then((m) => m.go()),
+  // gofmt indents with tabs.
+  go: () => import("@codemirror/lang-go")
+    .then((m) => [m.go(), indentUnit.of("\t")]),
   python: () => import("@codemirror/lang-python").then((m) => m.python()),
   javascript: () =>
     import("@codemirror/lang-javascript").then((m) => m.javascript()),
