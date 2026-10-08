@@ -29,6 +29,7 @@ describe('Data', () => {
 
     cy.get('canvas#chart_component_demo_bar').should('exist')
     cy.get('canvas#chart_component_demo_area').should('exist')
+    cy.get('canvas#chart_component_demo_log').should('exist')
   })
 
   it('Scatter chart test', () => {

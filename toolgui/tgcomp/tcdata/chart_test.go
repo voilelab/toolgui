@@ -235,3 +235,92 @@ func TestChartFailsOnPointsWithoutScatter(t *testing.T) {
 		t.Errorf("message = %q, want it to name the points", msg)
 	}
 }
+
+func TestChartLogScaleProps(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		ScatterChart(c, []ChartSeries{
+			{Name: "p95", Points: []ChartPoint{{X: 1, Y: 10}, {X: 100, Y: 1000}}},
+		}, &ChartConf{XLogScale: true, YLogScale: true})
+	})
+
+	if props["x_log_scale"] != true || props["y_log_scale"] != true {
+		t.Errorf("x_log_scale = %v, y_log_scale = %v, want both true",
+			props["x_log_scale"], props["y_log_scale"])
+	}
+}
+
+func TestChartLogScaleFails(t *testing.T) {
+	tests := []struct {
+		name string
+		add  func(c *tgframe.Container)
+		want string
+	}{
+		{
+			name: "x log on category axis",
+			add: func(c *tgframe.Container) {
+				LineChart(c, []string{"Jan"}, []ChartSeries{
+					{Name: "s", Values: []float64{1}},
+				}, &ChartConf{XLogScale: true})
+			},
+			want: "only a scatter chart",
+		},
+		{
+			name: "y log with stacked",
+			add: func(c *tgframe.Container) {
+				AreaChart(c, []string{"Jan"}, []ChartSeries{
+					{Name: "s", Values: []float64{1}},
+				}, &ChartConf{YLogScale: true, Stacked: true})
+			},
+			want: "Stacked",
+		},
+		{
+			name: "y log with zero value",
+			add: func(c *tgframe.Container) {
+				BarChart(c, []string{"Jan", "Feb"}, []ChartSeries{
+					{Name: "s", Values: []float64{1, 0}},
+				}, &ChartConf{YLogScale: true})
+			},
+			want: "log y axis needs values > 0",
+		},
+		{
+			name: "y log with negative point",
+			add: func(c *tgframe.Container) {
+				ScatterChart(c, []ChartSeries{
+					{Name: "s", Points: []ChartPoint{{X: 1, Y: -1}}},
+				}, &ChartConf{YLogScale: true})
+			},
+			want: "log y axis needs values > 0",
+		},
+		{
+			name: "x log with zero point",
+			add: func(c *tgframe.Container) {
+				ScatterChart(c, []ChartSeries{
+					{Name: "s", Points: []ChartPoint{{X: 0, Y: 1}}},
+				}, &ChartConf{XLogScale: true})
+			},
+			want: "log x axis needs values > 0",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := failMessage(t, tt.add)
+			if !strings.Contains(msg, tt.want) {
+				t.Errorf("message = %q, want it to contain %q", msg, tt.want)
+			}
+		})
+	}
+}
+
+// A non-positive value is fine on a linear axis.
+func TestChartLinearAllowsNonPositive(t *testing.T) {
+	props := addComponent(t, func(c *tgframe.Container) {
+		BarChart(c, []string{"Jan"}, []ChartSeries{
+			{Name: "s", Values: []float64{-1}},
+		})
+	})
+
+	if props["name"] != chartComponentName {
+		t.Errorf("name = %v, want %v", props["name"], chartComponentName)
+	}
+}
