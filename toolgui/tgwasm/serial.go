@@ -38,6 +38,8 @@ func (s *serial) loop() {
 				break
 			}
 			f := s.queue[0]
+			// Cleared so a done func, and the session it holds, can be freed.
+			s.queue[0] = nil
 			s.queue = s.queue[1:]
 			s.mu.Unlock()
 
