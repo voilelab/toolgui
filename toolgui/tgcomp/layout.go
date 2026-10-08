@@ -84,6 +84,28 @@ func EqColumn5(c *tgframe.Container, conf ...*ColumnConf) (
 	return tclayout.EqColumn5(c, conf...)
 }
 
+// Grid lays what is written into it out in equal cells, as many to a row as
+// fit, wrapping when the width runs out.
+func Grid(c *tgframe.Container, conf ...*GridConf) *tgframe.Container {
+	return tclayout.Grid(c, conf...)
+}
+
+// GridConf is the configuration for the Grid component.
+type GridConf = tclayout.GridConf
+
+// GridDefaultMinColWidth is the column width, in px, of a grid given none.
+const GridDefaultMinColWidth = tclayout.GridDefaultMinColWidth
+
+// The gaps a Grid may leave between its cells.
+const (
+	GridGapNone = tclayout.GridGapNone
+	GridGapXS   = tclayout.GridGapXS
+	GridGapSM   = tclayout.GridGapSM
+	GridGapMD   = tclayout.GridGapMD
+	GridGapLG   = tclayout.GridGapLG
+	GridGapXL   = tclayout.GridGapXL
+)
+
 // Toolbar creates a row of controls and returns the container they go into.
 // What is written inside lines up horizontally rather than taking a row of the
 // page each.

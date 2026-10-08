@@ -100,6 +100,7 @@ var groups = []*Group{
 			demo("box", "Box", show("show_box", boxDemo, "demo")),
 			demo("empty", "Empty", show("show_empty", emptyDemo, "demo")),
 			demo("column", "Column", show("show_col", columnDemo, "demo")),
+			demo("grid", "Grid", show("show_grid", gridDemo, "demo")),
 			demo("toolbar", "Toolbar",
 				show("show_toolbar", toolbarDemo, "demo"),
 				show("show_toolbar_sticky", toolbarStickyDemo, "sticky"),

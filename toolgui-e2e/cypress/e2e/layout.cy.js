@@ -31,6 +31,21 @@ describe('Layout spec', () => {
     })
   })
 
+  it('Grid wraps its cells and keeps the last row aligned', () => {
+    cy.visit('/grid')
+
+    cy.get('#grid_component_kpi > div > *').should($cells => {
+      const rects = [...$cells].map(c => c.getBoundingClientRect())
+      const first = rects[0]
+      const last = rects[rects.length - 1]
+
+      expect(rects).to.have.length(5)
+      // More than one row, and every cell as wide as the first.
+      expect(last.top).to.be.greaterThan(first.top)
+      rects.forEach(r => expect(r.width).to.be.closeTo(first.width, 1))
+    })
+  })
+
   it('A sticky toolbar stays at the top of a scrolled page', () => {
     cy.visit('/toolbar')
 

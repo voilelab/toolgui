@@ -23,6 +23,7 @@ import { TContainer } from "./tclayout/container"
 import { TBox } from "./tclayout/box"
 import { TColumn } from "./tclayout/column"
 import { TToolbar } from "./tclayout/toolbar"
+import { TGrid } from "./tclayout/grid"
 
 import { TTitle } from "./tccontent/title"
 import { TImage } from "./tccontent/image"
@@ -87,6 +88,7 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
   box_component: TBox,
   column_component: TColumn,
   toolbar_component: TToolbar,
+  grid_component: TGrid,
   tab_component: TTab,
   expand_component: TExpand,
   empty_component: TEmpty,
