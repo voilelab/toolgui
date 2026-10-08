@@ -109,7 +109,12 @@ tgcomp.PageLink(p.Main, "Open", "detail", url.Values{
 })
 
 // Write the address bar: keep the current view shareable.
-p.ReplaceQuery(url.Values{"group": {groups[*idx]}})
+// idx is nil when nothing is selected, so the key is dropped.
+q := url.Values{}
+if idx != nil {
+	q.Set("group", groups[*idx])
+}
+p.ReplaceQuery(q)
 ```
 
 Precedence follows from how `Conf.Default` already behaves. The URL decides the
