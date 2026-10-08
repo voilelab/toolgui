@@ -9,7 +9,10 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgjson"
 )
 
-const formComponentName = "form_component"
+const (
+	formComponentName      = "form_component"
+	dataFrameComponentName = "dataframe_component"
+)
 
 // submitsForm are the components whose click sends the form they sit in, as
 // on the web client. Any other click inside a form only waits for the submit.
@@ -58,6 +61,26 @@ type File struct {
 // Prop returns the prop key, nil without one.
 func (n *Node) Prop(key string) any {
 	return n.Props[key]
+}
+
+// RowKeys returns the row keys of a DataFrame, the "row_keys" prop; empty
+// without them.
+func (n *Node) RowKeys() []string {
+	return n.strings("row_keys")
+}
+
+// strings returns the prop key as a []string, nil unless it is a list.
+func (n *Node) strings(key string) []string {
+	items, ok := n.Props[key].([]any)
+	if !ok {
+		return nil
+	}
+
+	out := make([]string, len(items))
+	for i, item := range items {
+		out[i], _ = item.(string)
+	}
+	return out
 }
 
 // String returns the prop key as a string, "" unless it is one.
@@ -180,11 +203,17 @@ func (n *Node) wire(v any) any {
 }
 
 // Select picks the item at index i, 0-based: an option of a select, radio
-// or select slider, or an item of a menu. A select also takes -1, clearing
-// it as the browser can; any other index past the items fails the test.
+// or select slider, an item of a menu, or a row of a single-select
+// DataFrame. A select also takes -1, clearing it as the browser can; any
+// other index past the items fails the test.
 func (n *Node) Select(i int) {
 	n.page.t.Helper()
 	n.usable("select")
+
+	if n.Name == dataFrameComponentName {
+		n.selectRows("single", []int{i})
+		return
+	}
 
 	if !selectsOne[n.Name] {
 		n.page.t.Fatalf("tgtest: select on %s %s, which picks no single item", n.Name, n.ID)
@@ -221,15 +250,65 @@ func (n *Node) Select(i int) {
 	}
 }
 
-// SelectMany picks the options at indexes of a multiselect.
+// SelectMany picks the options at indexes of a multiselect, or the rows at
+// indexes of a multi-select DataFrame. An index past the items fails the
+// test.
 func (n *Node) SelectMany(indexes ...int) {
 	n.page.t.Helper()
 	n.usable("select")
+
+	if n.Name == dataFrameComponentName {
+		n.selectRows("multi", indexes)
+		return
+	}
+
+	items, _ := n.Props["items"].([]any)
+	n.inRange(indexes, len(items))
 
 	if indexes == nil {
 		indexes = []int{}
 	}
 	n.send(&tgframe.EventSelect{ID: n.ID, Values: indexes})
+}
+
+// selectRows picks the rows at indexes of a DataFrame whose selection is
+// mode. A keyed one is sent the keys of those rows, as the browser does.
+func (n *Node) selectRows(mode string, indexes []int) {
+	n.page.t.Helper()
+
+	if got, _ := n.Props["selection"].(string); got != mode {
+		n.page.t.Fatalf("tgtest: %s select on dataframe %s, whose selection is %q",
+			mode, n.ID, got)
+	}
+
+	rows, _ := n.Props["rows"].([]any)
+	n.inRange(indexes, len(rows))
+
+	keys := n.RowKeys()
+	if len(keys) == 0 {
+		if indexes == nil {
+			indexes = []int{}
+		}
+		n.send(&tgframe.EventSelect{ID: n.ID, Values: indexes})
+		return
+	}
+
+	picked := make([]string, len(indexes))
+	for j, i := range indexes {
+		picked[j] = keys[i]
+	}
+	n.send(&tgframe.EventSelect{ID: n.ID, Keys: picked})
+}
+
+// inRange fails the test unless every index is below count.
+func (n *Node) inRange(indexes []int, count int) {
+	n.page.t.Helper()
+
+	for _, i := range indexes {
+		if i < 0 || i >= count {
+			n.page.t.Fatalf("tgtest: %s %s has no item %d", n.Name, n.ID, i)
+		}
+	}
 }
 
 // SelectKeys picks the rows of keys in a DataFrame with row keys.

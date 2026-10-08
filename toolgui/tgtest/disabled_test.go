@@ -108,3 +108,34 @@ func TestSelectOutOfRange(t *testing.T) {
 		}
 	}
 }
+
+func TestSelectDataFrameOutOfRange(t *testing.T) {
+	app := tgframe.NewApp()
+	app.AddPage("index", "index", func(p *tgframe.Params) error {
+		tgcomp.DataFrame(p.Main, []string{"single"}, [][]string{{"a"}},
+			&tgcomp.DataFrameConf{Selection: tgcomp.SelectionModeSingle})
+		tgcomp.DataFrame(p.Main, []string{"multi"}, [][]string{{"a"}},
+			&tgcomp.DataFrameConf{
+				Selection: tgcomp.SelectionModeMulti,
+				RowKeys:   []string{"k"},
+			})
+		return nil
+	})
+
+	p := Open(t, app, "index")
+	frames := p.FindByName("dataframe_component")
+	single, multi := frames[0], frames[1]
+
+	cases := map[string]func(){
+		"index past the rows":       func() { single.Select(1) },
+		"negative index":            func() { single.Select(-1) },
+		"keyed index past the rows": func() { multi.SelectMany(0, 1) },
+		"Select on multi":           func() { multi.Select(0) },
+		"SelectMany on single":      func() { single.SelectMany(0) },
+	}
+	for name, f := range cases {
+		if !expectFatal(t, p, f) {
+			t.Errorf("%s: expect a fail", name)
+		}
+	}
+}
