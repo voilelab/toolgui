@@ -1,0 +1,17 @@
+.toolgui-grid {
+  display: grid;
+  margin-bottom: 1rem;
+}
+
+/* The container a grid hands out is a div of its own; contents makes what
+   was written into it the cells of the grid. */
+.toolgui-grid > div {
+  display: contents;
+}
+
+/* The grid's gap spaces the cells, so a cell's own bottom margin would only
+   double it. min-width:0 keeps wide content inside its cell. */
+.toolgui-grid > div > * {
+  min-width: 0;
+  margin-bottom: 0 !important;
+}
