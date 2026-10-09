@@ -100,6 +100,16 @@ finished keeps showing the loading screen until the user does something. The
 the same, but a button on the page is easier to find. Store the loaded data with one
 assignment, as `load()` does, so a run sees either nothing or all of it.
 
+## In wasm
+
+In a wasm build the process is one browser tab, so a Go global is the app
+state for that tab and for one user. That is a valid place for data the page
+needs across page switches, for example the submissions made so far. It lasts
+until the tab reloads or closes.
+
+For data that has to survive a reload, such as drafts and records, use the
+[persistent store](wasm-store.md).
+
 Additional Considerations:
 
 - Cache Invalidation: As the application runs, the underlying data sources might change. It's crucial to have a strategy to invalidate cached data when necessary to ensure consistency. This could involve periodically refreshing the cache or implementing mechanisms to detect changes in the source data.
