@@ -1,8 +1,8 @@
 # Page Parameters
 
 > Design note (TG-88). It records the decisions that the implementation tickets
-> build on. `Params.Query` and `PageLink` (TG-96), `ReplaceQuery` (TG-97) and
-> `Navigate` (TG-103) are implemented. `SetStickyQuery` (TG-98) is not yet.
+> build on. `Params.Query` and `PageLink` (TG-96), `ReplaceQuery` (TG-97),
+> `Navigate` (TG-103) and `SetStickyQuery` (TG-98) are implemented.
 
 An analysis tool needs three things that pages cannot do today:
 
