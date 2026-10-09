@@ -469,3 +469,27 @@ func TestWaitForRerunAll(t *testing.T) {
 		t.Error("expect new drawn after RerunAll")
 	}
 }
+
+// Components a rerun keeps unchanged arrive as keep packs and stay drawn.
+func TestRerunKeepsUnchanged(t *testing.T) {
+	app := newApp("index", func(p *tgframe.Params) error {
+		tgcomp.Title(p.Main, "Fixed")
+		box := tgcomp.Box(p.Main)
+		tgcomp.Text(box, "Inside")
+		if tgcomp.Toggle(p.Main, "Show") {
+			tgcomp.Text(p.Main, "Shown")
+		}
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+	p.GetByLabel("Show").Input(true)
+	if !p.HasText("Fixed") || !p.HasText("Inside") || !p.HasText("Shown") {
+		t.Fatal("expect Fixed, Inside and Shown drawn")
+	}
+
+	p.GetByLabel("Show").Input(false)
+	if !p.HasText("Fixed") || !p.HasText("Inside") || p.HasText("Shown") {
+		t.Error("expect Fixed and Inside kept, Shown gone")
+	}
+}

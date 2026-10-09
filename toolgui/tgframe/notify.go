@@ -1,9 +1,16 @@
 package tgframe
 
+import "encoding/json/jsontext"
+
 const (
 	NotifyTypeCreate = 1
 	NotifyTypeUpdate = 2
 	NotifyTypeDelete = 3
+
+	// NotifyTypeKeep places the node the client already holds at the key, as
+	// a create of the same props would. A [Session] sends it in place of a
+	// create whose component bytes did not change since the client got them.
+	NotifyTypeKeep = 4
 )
 
 // NotifyPack is the interface that notify packs must implement.
@@ -45,6 +52,38 @@ func NewNotifyPackCreate(parentKey string, index int, key string, comp Component
 		Index:     index,
 		Key:       key,
 		Component: comp,
+	}
+}
+
+// notifyPackCreateRaw is a create pack with its component already marshaled,
+// which the session needed to compare it anyway.
+type notifyPackCreateRaw struct {
+	*notifyPackBase
+	ParentKey string         `json:"parent_key"`
+	Index     int            `json:"index"`
+	Key       string         `json:"key"`
+	Component jsontext.Value `json:"component"`
+}
+
+var _ NotifyPack = &notifyPackKeep{}
+
+type notifyPackKeep struct {
+	*notifyPackBase
+	ParentKey string `json:"parent_key"`
+	Index     int    `json:"index"`
+	Key       string `json:"key"`
+}
+
+// NewNotifyPackKeep creates a new notify pack for keeping the component the
+// client holds at key, placed at index of parentKey.
+func NewNotifyPackKeep(parentKey string, index int, key string) *notifyPackKeep {
+	return &notifyPackKeep{
+		notifyPackBase: &notifyPackBase{
+			Type: NotifyTypeKeep,
+		},
+		ParentKey: parentKey,
+		Index:     index,
+		Key:       key,
 	}
 }
 

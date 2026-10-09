@@ -61,8 +61,12 @@ type Session struct {
 	// have its stop signal cleared by the event before it.
 	handling sync.Mutex
 
-	// sendLock serializes the calls to send.
+	// sendLock serializes the calls to send, and guards sent.
 	sendLock sync.Mutex
+
+	// sent is what the client holds, so an unchanged component goes out as a
+	// keep pack. Per session: a new page or a reconnect starts empty.
+	sent *sentCache
 
 	// ctx is cancelled by Close. Every run derives its context from it, so
 	// closing stops whatever is running.
@@ -123,6 +127,7 @@ func NewSession(app *App, pageName string, query url.Values,
 		query:    cloneQuery(query),
 		state:    state,
 		send:     send,
+		sent:     newSentCache(),
 
 		ctx:    ctx,
 		cancel: cancel,
@@ -189,7 +194,7 @@ func (s *Session) startRun(event Event) {
 	s.rerunLock.Unlock()
 
 	// tell client we cut the previous runner
-	err := s.sendPack(&ReadyPack{Ready: true})
+	err := s.sendReady()
 	if err != nil {
 		slog.Error("send ready pack", "error", err)
 	}
@@ -208,7 +213,7 @@ func (s *Session) startRun(event Event) {
 			panic(ErrUpdateInterrupt)
 		}
 
-		err := s.sendPack(pack)
+		err := s.sendNotify(pack)
 		if err != nil {
 			panic(err)
 		}
@@ -247,7 +252,7 @@ func (s *Session) startRun(event Event) {
 			return
 		}
 
-		s.sendResult(&ResultPack{Success: true})
+		s.sendSuccess()
 	}()
 }
 
@@ -347,6 +352,46 @@ func (s *Session) sendPack(pack any) error {
 	defer s.sendLock.Unlock()
 
 	return s.send(pack)
+}
+
+// sendReady starts a run on the client and in the cache alike.
+func (s *Session) sendReady() error {
+	s.sendLock.Lock()
+	defer s.sendLock.Unlock()
+
+	s.sent.beginRun()
+	return s.send(&ReadyPack{Ready: true})
+}
+
+// sendNotify sends pack, or the keep pack standing for it.
+func (s *Session) sendNotify(pack NotifyPack) error {
+	s.sendLock.Lock()
+	defer s.sendLock.Unlock()
+
+	out, err := s.sent.filter(pack)
+	if err != nil {
+		return err
+	}
+
+	err = s.send(out)
+	if c, ok := pack.(*notifyPackCreate); ok && err != nil {
+		// The client may never have got it: don't keep it next run.
+		s.sent.remove(c.Key)
+	}
+	return err
+}
+
+// sendSuccess ends a run on the client and in the cache alike. Only a success
+// drops what the run did not send; a failed or cut run leaves the tree alone.
+func (s *Session) sendSuccess() {
+	s.sendLock.Lock()
+	defer s.sendLock.Unlock()
+
+	s.sent.endRun()
+	err := s.send(&ResultPack{Success: true})
+	if err != nil {
+		slog.Error("send result pack", "error", err)
+	}
 }
 
 // sendResult send a result pack. A failed send is only logged: it means the
