@@ -38,6 +38,11 @@ type sentCache struct {
 	// client drops when a named component moves.
 	byID map[string]map[string]bool
 
+	// scanned is the run each id was last scanned in. After a scan every key
+	// holding the id is sent this run, and a key gains an id only by being
+	// sent, so one scan per id per run is enough.
+	scanned map[string]uint64
+
 	seq uint64
 
 	// buf is reused across marshals, so a keep allocates nothing for the
@@ -50,6 +55,8 @@ func newSentCache() *sentCache {
 		seed:  maphash.MakeSeed(),
 		nodes: map[string]*sentNode{},
 		byID:  map[string]map[string]bool{},
+
+		scanned: map[string]uint64{},
 	}
 }
 
@@ -130,7 +137,8 @@ func (c *sentCache) create(key, id string, bs []byte) bool {
 	// The client retires a node of the same id this run has not sent, with
 	// its subtree. A node without an id is keyed by its position, so it
 	// never collides with another key.
-	if id != "" {
+	if id != "" && c.scanned[id] != c.seq {
+		c.scanned[id] = c.seq
 		for other := range c.byID[id] {
 			if other != key && c.nodes[other].seq != c.seq {
 				c.remove(other)
@@ -178,5 +186,6 @@ func (c *sentCache) unindex(key, id string) {
 	delete(c.byID[id], key)
 	if len(c.byID[id]) == 0 {
 		delete(c.byID, id)
+		delete(c.scanned, id)
 	}
 }
