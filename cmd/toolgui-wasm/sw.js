@@ -6,17 +6,20 @@
 // is only for when the network fails, and is refreshed by every load that
 // reaches it.
 //
-// toolgui-wasm fills in VERSION, a hash of the files, and FILES, their paths
-// relative to this script.
+// toolgui-wasm fills in VERSION, a hash of the files, FILES, their paths
+// relative to this script, and LAZY, the -lazy-assets paths: those are not
+// fetched on install, only kept once the page fetches them.
 
 const VERSION = '__VERSION__'
 const FILES = __FILES__
+const LAZY = __LAZY__
 
 // The scope keeps two apps on one origin out of each other's caches.
 const PREFIX = `toolgui-sw:${self.registration.scope}:`
 const CACHE = PREFIX + VERSION
 
 const URLS = new Set(FILES.map((name) => new URL(name, self.location).href))
+const LAZY_URLS = new Set(LAZY.map((name) => new URL(name, self.location).href))
 const INDEX = new URL('index.html', self.location).href
 
 self.addEventListener('install', (event) => {
@@ -31,8 +34,10 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    let first = true
     for (const name of await caches.keys()) {
       if (name.startsWith(PREFIX) && name !== CACHE) {
+        first = false
         await caches.delete(name)
       }
     }
@@ -40,8 +45,33 @@ self.addEventListener('activate', (event) => {
     // So the first visit, which loaded before this worker, works offline
     // from here on too.
     await self.clients.claim()
+
+    if (first) {
+      await keepEarlyLazy()
+    }
   })())
 })
+
+// keepEarlyLazy keep the lazy files the first visit fetched before this
+// worker controlled it, from the http cache: nothing is downloaded. Only on
+// the first install, as an update could find an older build's copy there.
+async function keepEarlyLazy() {
+  const cache = await caches.open(CACHE)
+  await Promise.all([...LAZY_URLS].map(async (url) => {
+    if (await cache.match(url)) {
+      return
+    }
+
+    try {
+      const resp = await fetch(url, { cache: 'only-if-cached', mode: 'same-origin' })
+      if (resp.ok) {
+        await cache.put(url, resp)
+      }
+    } catch {
+      // Not fetched yet: kept on its first fetch through this worker.
+    }
+  }))
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
@@ -54,13 +84,13 @@ self.addEventListener('fetch', (event) => {
   url.search = ''
   url.hash = ''
 
-  // The app root is index.html. Anything else not in FILES is left alone: the
-  // site may share its directory with other pages.
+  // The app root is index.html. Anything else not in FILES or LAZY is left
+  // alone: the site may share its directory with other pages.
   let key = url.href
   if (req.mode === 'navigate' && key === self.registration.scope) {
     key = INDEX
   }
-  if (!URLS.has(key)) {
+  if (!URLS.has(key) && !LAZY_URLS.has(key)) {
     return
   }
 

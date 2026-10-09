@@ -206,13 +206,21 @@ func TestBuild(t *testing.T) {
 	}
 
 	out := t.TempDir()
+	lazy := t.TempDir()
+	writeFile(t, filepath.Join(lazy, "runtime.wasm"), "runtime")
 
-	err := build(buildOpts{out: out, pkg: "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello"})
+	err := build(buildOpts{out: out, pkg: "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello", lazy: lazy})
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
 
-	for _, name := range []string{"index.html", "manifest.json", "app.wasm", "wasm_exec.js"} {
+	// Without -offline, -lazy-assets is a plain copy.
+	_, err = os.Stat(filepath.Join(out, "sw.js"))
+	if err == nil {
+		t.Error("sw.js written without -offline")
+	}
+
+	for _, name := range []string{"index.html", "manifest.json", "app.wasm", "wasm_exec.js", "assets/runtime.wasm"} {
 		info, err := os.Stat(filepath.Join(out, name))
 		if err != nil {
 			t.Errorf("no %s in the site: %v", name, err)
@@ -400,10 +408,18 @@ func TestWriteServiceWorker(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	lazy := t.TempDir()
+	writeFile(t, filepath.Join(lazy, "pyodide", "pyodide.wasm"), "py")
+
+	err = writeAssets(lazy, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	sw := func() string {
 		t.Helper()
 
-		err := writeServiceWorker(out, assets)
+		err := writeServiceWorker(out, assets, lazy)
 		if err != nil {
 			t.Fatalf("writeServiceWorker: %v", err)
 		}
@@ -427,7 +443,16 @@ func TestWriteServiceWorker(t *testing.T) {
 		t.Error("sw.js does not escape a # or ? in a file name")
 	}
 
-	if strings.Contains(first, "__VERSION__") || strings.Contains(first, "__FILES__") {
+	// Lazy files are listed apart, so install does not fetch them.
+	files, lazyList, _ := strings.Cut(first, "const LAZY = ")
+	if strings.Contains(files, "pyodide") {
+		t.Error("sw.js precaches a lazy asset")
+	}
+	if !strings.HasPrefix(lazyList, `["assets/pyodide/pyodide.wasm"]`) {
+		t.Errorf("sw.js lazy list = %.60q", lazyList)
+	}
+
+	if strings.Contains(first, "__VERSION__") || strings.Contains(first, "__FILES__") || strings.Contains(first, "__LAZY__") {
 		t.Error("sw.js still has a placeholder")
 	}
 
@@ -437,8 +462,66 @@ func TestWriteServiceWorker(t *testing.T) {
 
 	// A new binary is a new version, so browsers install it.
 	writeFile(t, filepath.Join(out, "app.wasm"), "wasm 2")
-	if sw() == first {
+	second := sw()
+	if second == first {
 		t.Error("a changed app.wasm kept the same sw.js")
+	}
+
+	// So is a new lazy file, which drops the old copy.
+	writeFile(t, filepath.Join(out, "assets", "pyodide", "pyodide.wasm"), "py 2")
+	if sw() == second {
+		t.Error("a changed lazy asset kept the same sw.js")
+	}
+}
+
+func TestWriteServiceWorkerNoLazy(t *testing.T) {
+	out := t.TempDir()
+	writeFile(t, filepath.Join(out, "index.html"), "<html><head></head></html>")
+	writeFile(t, filepath.Join(out, "app.wasm"), "wasm")
+	writeFile(t, filepath.Join(out, "wasm_exec.js"), "shim")
+	writeFile(t, filepath.Join(out, "manifest.json"), "{}")
+
+	err := writeServiceWorker(out, "", "")
+	if err != nil {
+		t.Fatalf("writeServiceWorker: %v", err)
+	}
+
+	bs, err := os.ReadFile(filepath.Join(out, "sw.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(bs), "const LAZY = []") {
+		t.Error("sw.js without -lazy-assets has no empty LAZY")
+	}
+}
+
+func TestCheckAssetConflict(t *testing.T) {
+	assets := t.TempDir()
+	writeFile(t, filepath.Join(assets, "icon.png"), "png")
+	writeFile(t, filepath.Join(assets, "lib", "a.js"), "a")
+
+	for _, name := range []string{
+		"icon.png",   // same file
+		"lib/a.js",   // same file, nested
+		"icon.png/x", // a file used as a directory
+		"lib",        // a directory used as a file
+	} {
+		lazy := t.TempDir()
+		writeFile(t, filepath.Join(lazy, filepath.FromSlash(name)), "x")
+
+		err := checkAssetConflict(assets, lazy)
+		if err == nil {
+			t.Errorf("no error for lazy %s", name)
+		}
+	}
+
+	lazy := t.TempDir()
+	writeFile(t, filepath.Join(lazy, "lib", "b.js"), "b")
+	writeFile(t, filepath.Join(lazy, "pyodide", "pyodide.wasm"), "py")
+
+	err := checkAssetConflict(assets, lazy)
+	if err != nil {
+		t.Errorf("checkAssetConflict: %v", err)
 	}
 }
 
