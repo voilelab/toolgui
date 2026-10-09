@@ -95,15 +95,18 @@ describe('Forest', () => {
     }
   })
 
-  test('updates a node in place when it stays in the same place', () => {
+  // A new reference is what tells the renderer to redraw it; the earlier
+  // forest is left as it was.
+  test('replaces a node whose props change, leaving the old one', () => {
     var f = new Forest([MAIN, SIDEBAR])
 
     f = runPage(f, add => { add(MAIN, { name: 'progress_bar_component', id: '', value: 1 }) })
     const first = f.nodes[`${MAIN}/0`]
 
     f = runPage(f, add => { add(MAIN, { name: 'progress_bar_component', id: '', value: 2 }) })
-    expect(f.nodes[`${MAIN}/0`]).toBe(first)
+    expect(f.nodes[`${MAIN}/0`]).not.toBe(first)
     expect(f.nodes[`${MAIN}/0`].props.value).toBe(2)
+    expect(first.props.value).toBe(1)
   })
 
   test('replaces the node when the component type changes under it', () => {
