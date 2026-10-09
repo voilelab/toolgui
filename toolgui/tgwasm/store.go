@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"hash/crc32"
 	"io/fs"
+	"maps"
 	"regexp"
 	"slices"
 	"strings"
@@ -42,6 +43,10 @@ const (
 
 // storeReadGap is the pause between those reads. A variable for tests.
 var storeReadGap = 100 * time.Millisecond
+
+// storeCompactSlack is how far a log may outgrow twice its live data before
+// an open compacts it. A variable for tests.
+var storeCompactSlack int64 = 64 << 10
 
 // storeFiles are the two generations of a log.
 var storeFiles = [2]string{"a", "b"}
@@ -340,19 +345,9 @@ func (s *Store) openOwner(dir js.Value) error {
 		// Nothing committed yet: start a new generation in a.
 		i = 0
 		gen := max(logs[0].gen, logs[1].gen) + 1
-		rec := append(encodeHeader(gen), encodeCommit()...)
+		rec := encodeSnapshot(gen, nil)
 
-		if err := files[0].truncate(0); err != nil {
-			return tgutil.Errorf("%w", err)
-		}
-
-		if n, err := files[0].write(rec, 0); err != nil {
-			return tgutil.Errorf("%w", err)
-		} else if n != len(rec) {
-			return tgutil.Errorf("wrote %d of %d bytes", n, len(rec))
-		}
-
-		if err := files[0].flush(); err != nil {
+		if err := writeGen(files[0], rec); err != nil {
 			return tgutil.Errorf("%w", err)
 		}
 
@@ -360,6 +355,22 @@ func (s *Store) openOwner(dir js.Value) error {
 	}
 
 	f, l := files[i], logs[i]
+
+	// Compact into the other file. The old one is kept as it is: a crash or
+	// a read-only tab mid-compaction still finds it complete.
+	if snap := encodeSnapshot(l.gen+1, l.data); l.good > 2*int64(len(snap))+storeCompactSlack {
+		j := 1 - i
+
+		if err := writeGen(files[j], snap); err == nil {
+			f = files[j]
+			l.good, l.size = int64(len(snap)), int64(len(snap))
+		} else {
+			// Over quota, most likely. Keep the old log and free the space;
+			// an uncommitted generation is ignored anyway.
+			_ = files[j].truncate(0)
+			_ = files[j].flush()
+		}
+	}
 
 	// Drop a torn tail, so the next append is not lost behind it.
 	if l.good < l.size {
@@ -475,6 +486,30 @@ func pickLog(logs [2]parsedLog) (int, error) {
 	return -1, nil
 }
 
+// writeGen replace f's contents with a whole generation and flush. It
+// empties f first, so a crash mid-write leaves a torn tail, not new records
+// in front of old bytes.
+func writeGen(f logFile, rec []byte) error {
+	if err := f.truncate(0); err != nil {
+		return err
+	}
+
+	if err := f.flush(); err != nil {
+		return err
+	}
+
+	n, err := f.write(rec, 0)
+	if err != nil {
+		return err
+	}
+
+	if n != len(rec) {
+		return tgutil.Errorf("wrote %d of %d bytes", n, len(rec))
+	}
+
+	return f.flush()
+}
+
 // logFile is what the owner appends through. An interface so tests can fail
 // a write.
 type logFile interface {
@@ -586,6 +621,18 @@ func encodeHeader(gen uint64) []byte {
 
 func encodeCommit() []byte {
 	return encodeRecord([]byte{opCommit})
+}
+
+// encodeSnapshot return a whole generation: header, data in key order,
+// commit.
+func encodeSnapshot(gen uint64, data map[string][]byte) []byte {
+	rec := encodeHeader(gen)
+
+	for _, k := range slices.Sorted(maps.Keys(data)) {
+		rec = append(rec, encodeSet(k, data[k])...)
+	}
+
+	return append(rec, encodeCommit()...)
 }
 
 func encodeSet(key string, value []byte) []byte {
