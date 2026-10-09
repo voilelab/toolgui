@@ -224,7 +224,9 @@ func TestSentCacheUpdateDropsHash(t *testing.T) {
 
 	c.beginRun()
 	c.create("k", "", []byte(`{}`))
-	c.filter(NewNotifyPackUpdate(comp))
+	if _, err := c.filter(NewNotifyPackUpdate(comp)); err != nil {
+		t.Fatal(err)
+	}
 
 	c.beginRun()
 	if c.create("k", "", []byte(`{}`)) {
@@ -282,7 +284,7 @@ func TestSessionFailedSendIsNotKept(t *testing.T) {
 	s, err := NewSession(app, testPageName, nil, NewState(), func(pack any) error {
 		if _, ok := pack.(*notifyPackCreateRaw); ok && fail {
 			fail = false
-			r.send(&ResultPack{Error: "send"})
+			_ = r.send(&ResultPack{Error: "send"})
 			return errors.New("send")
 		}
 		return r.send(pack)
