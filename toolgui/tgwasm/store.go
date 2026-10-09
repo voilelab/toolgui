@@ -358,8 +358,9 @@ func (s *Store) openOwner(dir js.Value) error {
 
 	// Compact into the other file. The old one is kept as it is: a crash or
 	// a read-only tab mid-compaction still finds it complete.
-	if snap := encodeSnapshot(l.gen+1, l.data); l.good > 2*int64(len(snap))+storeCompactSlack {
+	if l.good > 2*snapshotSize(l.data)+storeCompactSlack {
 		j := 1 - i
+		snap := encodeSnapshot(l.gen+1, l.data)
 
 		if err := writeGen(files[j], snap); err == nil {
 			f = files[j]
@@ -633,6 +634,18 @@ func encodeSnapshot(gen uint64, data map[string][]byte) []byte {
 	}
 
 	return append(rec, encodeCommit()...)
+}
+
+// snapshotSize return len(encodeSnapshot(gen, data)) without encoding it.
+func snapshotSize(data map[string][]byte) int64 {
+	n := int64(recordHead+1+len(storeMagic)+1+8) + recordHead + 1
+
+	for k, v := range data {
+		klen := len(binary.AppendUvarint(nil, uint64(len(k))))
+		n += int64(recordHead + 1 + klen + len(k) + len(v))
+	}
+
+	return n
 }
 
 func encodeSet(key string, value []byte) []byte {

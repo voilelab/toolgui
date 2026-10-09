@@ -636,6 +636,13 @@ func TestEncodeSnapshot(t *testing.T) {
 		t.Fatalf("data = %q", l.data)
 	}
 
+	big := map[string][]byte{"": nil, strings.Repeat("k", 300): []byte(strings.Repeat("v", 70000))}
+	for _, data := range []map[string][]byte{nil, l.data, big} {
+		if got, want := snapshotSize(data), len(encodeSnapshot(7, data)); got != int64(want) {
+			t.Fatalf("snapshotSize = %d, want %d", got, want)
+		}
+	}
+
 	if !slices.Equal(snap, encodeSnapshot(7, map[string][]byte{"a": []byte("1"), "b": []byte("2")})) {
 		t.Fatal("encodeSnapshot is not deterministic")
 	}
