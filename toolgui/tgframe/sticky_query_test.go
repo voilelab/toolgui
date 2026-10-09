@@ -26,8 +26,9 @@ func TestSetStickyQuery(t *testing.T) {
 		t.Errorf("StickyQuery = %v, want [group day]", got)
 	}
 
-	app.SetStickyQuery()
-	if got := app.AppConf().StickyQuery; len(got) != 0 {
-		t.Errorf("StickyQuery = %v after SetStickyQuery(), want none", got)
+	// An empty, non-nil slice drops the keys too.
+	app.SetStickyQuery([]string{}...)
+	if got := app.AppConf().StickyQuery; got != nil {
+		t.Errorf("StickyQuery = %#v after SetStickyQuery(), want nil", got)
 	}
 }

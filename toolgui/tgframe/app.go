@@ -320,6 +320,10 @@ func (app *App) SetAbout(markdown string) {
 //
 // Calling it again replaces the keys; no keys drops them.
 func (app *App) SetStickyQuery(keys ...string) {
+	if len(keys) == 0 {
+		app.stickyQuery = nil
+		return
+	}
 	app.stickyQuery = slices.Clone(keys)
 }
 
