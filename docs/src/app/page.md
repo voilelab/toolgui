@@ -169,8 +169,6 @@ p.Query().Get("group") // "c"
 page, q, ok := p.Navigated() // "detail", id=0004, true
 ```
 
-See [Page Parameters](../architecture/page-params.md) for the design.
-
 ## Interrupting a run
 
 A page function runs again on every event, and the run before it is cut short.
