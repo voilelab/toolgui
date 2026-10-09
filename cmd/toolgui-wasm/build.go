@@ -12,8 +12,10 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 
 	wasmweb "github.com/voilelab/toolgui/toolgui-web/wasm"
@@ -56,6 +58,7 @@ type buildOpts struct {
 	ldflags  string // passed to go build as -ldflags, e.g. "-s -w"
 	manifest string // json file written as manifest.json
 	assets   string // directory copied to assets/
+	lazy     string // directory copied to assets/, cached on first use
 	icon     string // favicon url written into index.html
 	head     string // html file inserted into the head of index.html
 	offline  bool   // write sw.js, so the site opens with no network
@@ -69,6 +72,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 	ldflags := flags.String("ldflags", "", "arguments to pass on each go tool link invocation")
 	manifest := flags.String("manifest", "", "web app manifest json to write as manifest.json")
 	assets := flags.String("assets", "", "directory to copy to assets/, e.g. manifest icons")
+	lazy := flags.String("lazy-assets", "", "directory to copy to assets/, kept offline only once fetched, e.g. large runtimes")
 	icon := flags.String("icon", "", "favicon url for index.html, e.g. assets/favicon.svg")
 	head := flags.String("head", "", "html file to insert into the head of index.html")
 	offline := flags.Bool("offline", false, "write a service worker, so the site opens with no network")
@@ -96,6 +100,7 @@ func parseBuildFlags(name string, args []string, extra func(*flag.FlagSet)) (bui
 		ldflags:  *ldflags,
 		manifest: *manifest,
 		assets:   *assets,
+		lazy:     *lazy,
 		icon:     *icon,
 		head:     *head,
 		offline:  *offline,
@@ -135,10 +140,24 @@ func build(opts buildOpts) error {
 		return tgutil.Errorf("%w", err)
 	}
 
+	if opts.assets != "" && opts.lazy != "" {
+		err = checkAssetConflict(opts.assets, opts.lazy)
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+	}
+
 	if opts.assets != "" {
 		err = writeAssets(opts.assets, out)
 		if err != nil {
 			return tgutil.Errorf("copy assets: %w", err)
+		}
+	}
+
+	if opts.lazy != "" {
+		err = writeAssets(opts.lazy, out)
+		if err != nil {
+			return tgutil.Errorf("copy lazy assets: %w", err)
 		}
 	}
 
@@ -153,7 +172,7 @@ func build(opts buildOpts) error {
 	}
 
 	if opts.offline {
-		err = writeServiceWorker(out, opts.assets)
+		err = writeServiceWorker(out, opts.assets, opts.lazy)
 		if err != nil {
 			return tgutil.Errorf("service worker: %w", err)
 		}
@@ -246,6 +265,43 @@ func writeAssets(src, out string) error {
 	}
 
 	return writeFS(os.DirFS(src), filepath.Join(out, "assets"))
+}
+
+// checkAssetConflict refuse -assets and -lazy-assets that both write a path
+// under assets/, or where one has a file the other uses as a directory.
+func checkAssetConflict(assets, lazy string) error {
+	names, err := fileNames(os.DirFS(assets), "")
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	lazyNames, err := fileNames(os.DirFS(lazy), "")
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	files := map[string]bool{}
+	dirs := map[string]bool{}
+	for _, name := range names {
+		files[name] = true
+		for dir := path.Dir(name); dir != "."; dir = path.Dir(dir) {
+			dirs[dir] = true
+		}
+	}
+
+	for _, name := range lazyNames {
+		if files[name] || dirs[name] {
+			return tgutil.Errorf("assets/%s is in both -assets and -lazy-assets", name)
+		}
+
+		for dir := path.Dir(name); dir != "."; dir = path.Dir(dir) {
+			if files[dir] {
+				return tgutil.Errorf("assets/%s is in both -assets and -lazy-assets", dir)
+			}
+		}
+	}
+
+	return nil
 }
 
 // writeManifest write src as out/manifest.json. Without src, the default is
@@ -359,8 +415,9 @@ var swTemplate string
 const offlineMeta = `<meta name="toolgui-sw" content="sw.js" />`
 
 // writeServiceWorker write sw.js caching the files this build wrote, and mark
-// index.html to register it. assets is the -assets directory, if any.
-func writeServiceWorker(out, assets string) error {
+// index.html to register it. assets and lazy are the -assets and -lazy-assets
+// directories, if any; lazy ones are cached when fetched, not on install.
+func writeServiceWorker(out, assets, lazy string) error {
 	files, err := fileNames(wasmweb.GetAssets(), "")
 	if err != nil {
 		return tgutil.Errorf("%w", err)
@@ -377,14 +434,23 @@ func writeServiceWorker(out, assets string) error {
 		files = append(files, names...)
 	}
 
+	lazyFiles := []string{}
+	if lazy != "" {
+		lazyFiles, err = fileNames(os.DirFS(lazy), "assets/")
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+	}
+
 	err = markIndex(filepath.Join(out, "index.html"))
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
 	// Hashed after index.html is marked, so the version covers what is served.
+	// Lazy files count too, so a new runtime drops the old one's copy.
 	sum := sha256.New()
-	for _, name := range files {
+	for _, name := range slices.Concat(files, lazyFiles) {
 		bs, err := os.ReadFile(filepath.Join(out, filepath.FromSlash(name)))
 		if err != nil {
 			return tgutil.Errorf("%w", err)
@@ -395,9 +461,28 @@ func writeServiceWorker(out, assets string) error {
 		sum.Write(bs)
 	}
 
-	// Escaped, so a # or ? in a name stays part of the path.
-	urls := make([]string, 0, len(files))
-	for _, name := range files {
+	list, err := urlList(files)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	lazyList, err := urlList(lazyFiles)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	js := strings.Replace(swTemplate, "__VERSION__", hex.EncodeToString(sum.Sum(nil))[:16], 1)
+	js = strings.Replace(js, "__FILES__", list, 1)
+	js = strings.Replace(js, "__LAZY__", lazyList, 1)
+
+	return os.WriteFile(filepath.Join(out, "sw.js"), []byte(js), 0o644)
+}
+
+// urlList marshal names as a json array of urls. Escaped, so a # or ? in a
+// name stays part of the path.
+func urlList(names []string) (string, error) {
+	urls := make([]string, 0, len(names))
+	for _, name := range names {
 		segs := strings.Split(name, "/")
 		for i, seg := range segs {
 			segs[i] = url.PathEscape(seg)
@@ -406,15 +491,12 @@ func writeServiceWorker(out, assets string) error {
 		urls = append(urls, strings.Join(segs, "/"))
 	}
 
-	list, err := tgjson.Marshal(urls)
+	bs, err := tgjson.Marshal(urls)
 	if err != nil {
-		return tgutil.Errorf("%w", err)
+		return "", tgutil.Errorf("%w", err)
 	}
 
-	js := strings.Replace(swTemplate, "__VERSION__", hex.EncodeToString(sum.Sum(nil))[:16], 1)
-	js = strings.Replace(js, "__FILES__", string(list), 1)
-
-	return os.WriteFile(filepath.Join(out, "sw.js"), []byte(js), 0o644)
+	return string(bs), nil
 }
 
 // fileNames list the files in fsys, each behind prefix.
