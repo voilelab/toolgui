@@ -34,8 +34,9 @@ type ResultPack struct {
 	Fatal bool `json:"fatal,omitzero"`
 }
 
-// SendPackFunc sends a pack ([NotifyPack], [ReadyPack] or [ResultPack]) to the
-// GUI client. It's the only thing a [Session] needs from a transport.
+// SendPackFunc sends a pack ([NotifyPack], [ReadyPack], [ResultPack],
+// [QueryPack] or [NavigatePack]) to the GUI client. It's the only thing a
+// [Session] needs from a transport.
 // A Session serializes its calls, so it doesn't have to be safe for
 // concurrent use.
 type SendPackFunc func(pack any) error
@@ -186,9 +187,10 @@ func (s *Session) HandleEvent(event Event) {
 		defer s.endRun()
 
 		var replaced url.Values
+		var navigate *Navigation
 		err := s.app.runContextWithHandlingPanic(
 			runCtx, s.pageName, s.query, s.state, sendNotifyPack,
-			func(q url.Values) { replaced = q })
+			func(q url.Values, nav *Navigation) { replaced, navigate = q, nav })
 
 		// Cancelled means the run was cut, so what it came back with is how
 		// it unwound, not a failure, and the run replacing it is about to
@@ -200,7 +202,10 @@ func (s *Session) HandleEvent(event Event) {
 
 		// Before the result, so the client has the new query by the time it
 		// sees the run end.
-		if replaced != nil {
+		switch {
+		case navigate != nil:
+			s.sendNavigate(navigate)
+		case replaced != nil:
 			s.replaceQuery(replaced)
 		}
 
@@ -238,6 +243,15 @@ func (s *Session) replaceQuery(q url.Values) {
 	err := s.sendPack(&QueryPack{ReplaceQuery: q})
 	if err != nil {
 		slog.Error("send query pack", "error", err)
+	}
+}
+
+// sendNavigate tells the client to open another page. The client leaves for
+// a new session, so this one keeps its page and query.
+func (s *Session) sendNavigate(nav *Navigation) {
+	err := s.sendPack(&NavigatePack{Navigate: nav})
+	if err != nil {
+		slog.Error("send navigate pack", "error", err)
 	}
 }
 

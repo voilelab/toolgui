@@ -46,11 +46,13 @@ type Page struct {
 	mainID    string
 	sidebarID string
 
-	// mu guards forest, lastErr and query, which the run goroutine writes.
-	mu      sync.Mutex
-	forest  *forest
-	lastErr error
-	query   url.Values
+	// mu guards forest, lastErr, query and navigate, which the run goroutine
+	// writes.
+	mu       sync.Mutex
+	forest   *forest
+	lastErr  error
+	query    url.Values
+	navigate *tgframe.Navigation
 
 	results chan *tgframe.ResultPack
 	result  *tgframe.ResultPack
@@ -147,6 +149,19 @@ func (p *Page) Query() url.Values {
 	return cloneQuery(p.query)
 }
 
+// Navigated is the page and query the last run sent the user to with
+// [tgframe.Params.Navigate]. ok is false when it went nowhere.
+func (p *Page) Navigated() (page string, query url.Values, ok bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.navigate == nil {
+		return "", nil, false
+	}
+
+	return p.navigate.Page, cloneQuery(p.navigate.Query), true
+}
+
 func cloneQuery(q url.Values) url.Values {
 	clone := make(url.Values, len(q))
 	for k, vs := range q {
@@ -193,9 +208,10 @@ func (p *Page) receive(pack any) error {
 	}
 
 	var head struct {
-		Success      *bool      `json:"success"`
-		Ready        *bool      `json:"ready"`
-		ReplaceQuery url.Values `json:"replace_query"`
+		Success      *bool               `json:"success"`
+		Ready        *bool               `json:"ready"`
+		ReplaceQuery url.Values          `json:"replace_query"`
+		Navigate     *tgframe.Navigation `json:"navigate"`
 	}
 	if err := tgjson.Unmarshal(bs, &head); err != nil {
 		return err
@@ -216,9 +232,13 @@ func (p *Page) receive(pack any) error {
 
 	case head.Ready != nil:
 		p.forest.beginRun()
+		p.navigate = nil
 
 	case head.ReplaceQuery != nil:
 		p.query = head.ReplaceQuery
+
+	case head.Navigate != nil:
+		p.navigate = head.Navigate
 
 	default:
 		var notify notifyPack

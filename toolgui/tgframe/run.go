@@ -46,6 +46,10 @@ type runState struct {
 	// empty one from no call.
 	query         url.Values
 	queryReplaced bool
+
+	// navigate is what [Params.Navigate] last took, nil for no call. It wins
+	// over query.
+	navigate *Navigation
 }
 
 func newRunState() *runState {

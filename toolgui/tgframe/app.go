@@ -87,6 +87,45 @@ func (p *Params) ReplaceQuery(q url.Values) {
 	p.run.queryReplaced = true
 }
 
+// Navigate opens page with q as its [Params.Query], as a click on a
+// tgcomp.PageLink would: a new session with a new state, and a history
+// entry, so Back returns here. page is a page name of this app, never a URL.
+//
+// It takes effect when the run ends, and only if no newer event cut it. The
+// last call of a run wins, and it wins over [Params.ReplaceQuery]. An unknown
+// page or a q over [MaxQuerySize] encoded fails the run, goes nowhere and
+// drops an earlier ReplaceQuery of the run.
+//
+//	sel := tgcomp.DataFrame(p.Main, head, rows, &tgcomp.DataFrameConf{
+//		Selection: tgcomp.SelectionModeSingle,
+//	})
+//	if len(sel) == 1 {
+//		p.Navigate("detail", url.Values{"id": {ids[sel[0]]}})
+//	}
+func (p *Params) Navigate(page string, q url.Values) {
+	if p.run == nil {
+		return
+	}
+
+	// A failed call is still the last one: drop what an earlier call set,
+	// ReplaceQuery's too, since Navigate would have won over it.
+	p.run.navigate = nil
+
+	if p.run.app != nil && !p.run.app.HasPage(page) {
+		p.run.query, p.run.queryReplaced = nil, false
+		p.run.fail(tgutil.Errorf("Navigate: %w: `%s`", ErrPageNotFound, page))
+		return
+	}
+
+	if err := checkQuery(q); err != nil {
+		p.run.query, p.run.queryReplaced = nil, false
+		p.run.fail(tgutil.Errorf("Navigate: %w", err))
+		return
+	}
+
+	p.run.navigate = &Navigation{Page: page, Query: cloneQuery(q)}
+}
+
 // RunFunc is the type of a function handling page
 type RunFunc func(*Params) error
 
@@ -355,14 +394,16 @@ func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 		ctx, name, nil, state, notifyFunc, nil)
 }
 
-// replaceQueryFunc takes the query a run passed to [Params.ReplaceQuery].
-type replaceQueryFunc func(url.Values)
+// runEndFunc takes what a run that was not cut asked of its session: the
+// query of [Params.ReplaceQuery] or the page of [Params.Navigate], nil for
+// none. At most one is set; navigate wins.
+type runEndFunc func(replaced url.Values, navigate *Navigation)
 
 // runContextWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
-// page query, and onReplace to take what [Params.ReplaceQuery] got.
+// page query, and onEnd to take what the run asked of its session.
 func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	name string, query url.Values, state *State,
-	notifyFunc SendNotifyPackFunc, onReplace replaceQueryFunc) (err error) {
+	notifyFunc SendNotifyPackFunc, onEnd runEndFunc) (err error) {
 
 	defer func() {
 		r := recover()
@@ -385,7 +426,7 @@ func (app *App) runContextWithHandlingPanic(ctx context.Context,
 		}
 	}()
 
-	err = app.runContext(ctx, name, query, state, notifyFunc, onReplace)
+	err = app.runContext(ctx, name, query, state, notifyFunc, onEnd)
 	return
 }
 
@@ -402,11 +443,11 @@ func (app *App) RunContext(ctx context.Context,
 	return app.runContext(ctx, name, nil, state, notifyFunc, nil)
 }
 
-// runContext runs a page. onReplace, if not nil, gets the query of the last
-// valid [Params.ReplaceQuery] of a run that was not cut.
+// runContext runs a page. onEnd, if not nil, gets what the last valid
+// [Params.ReplaceQuery] or [Params.Navigate] of a run that was not cut set.
 func (app *App) runContext(ctx context.Context, name string,
 	query url.Values, state *State, notifyFunc SendNotifyPackFunc,
-	onReplace replaceQueryFunc) error {
+	onEnd runEndFunc) error {
 	pageFunc, ok := app.pageFuncs[name]
 	if !ok {
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
@@ -451,8 +492,13 @@ func (app *App) runContext(ctx context.Context, name string,
 		return NewPageError(err)
 	}
 
-	if onReplace != nil && run.queryReplaced {
-		onReplace(run.query)
+	if onEnd != nil {
+		switch {
+		case run.navigate != nil:
+			onEnd(nil, run.navigate)
+		case run.queryReplaced:
+			onEnd(run.query, nil)
+		}
 	}
 
 	// The page function returned, so what it claimed is what is on the screen.
