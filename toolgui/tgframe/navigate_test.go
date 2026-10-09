@@ -179,3 +179,21 @@ func TestNavigateWithoutSession(t *testing.T) {
 
 	(&Params{}).Navigate("x", nil)
 }
+
+// A failed Navigate leaves the address bar alone too.
+func TestNavigateFailedDropsReplaceQuery(t *testing.T) {
+	session, recorder := newNavigateSession(t, func(p *Params) error {
+		p.ReplaceQuery(url.Values{"x": {"1"}})
+		p.Navigate("nope", nil)
+		return nil
+	})
+	defer session.Close()
+
+	session.HandleEvent(&EventEmpty{})
+	if r := <-recorder.results; r.Success {
+		t.Error("an unknown page passed")
+	}
+	if packs, _ := queryPacks(recorder); len(packs) != 0 {
+		t.Errorf("query packs = %v", packs)
+	}
+}

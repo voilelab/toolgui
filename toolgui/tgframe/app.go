@@ -93,7 +93,8 @@ func (p *Params) ReplaceQuery(q url.Values) {
 //
 // It takes effect when the run ends, and only if no newer event cut it. The
 // last call of a run wins, and it wins over [Params.ReplaceQuery]. An unknown
-// page or a q over [MaxQuerySize] encoded fails the run and goes nowhere.
+// page or a q over [MaxQuerySize] encoded fails the run, goes nowhere and
+// drops an earlier ReplaceQuery of the run.
 //
 //	sel := tgcomp.DataFrame(p.Main, head, rows, &tgcomp.DataFrameConf{
 //		Selection: tgcomp.SelectionModeSingle,
@@ -106,15 +107,18 @@ func (p *Params) Navigate(page string, q url.Values) {
 		return
 	}
 
-	// A failed call is still the last one: drop what an earlier call set.
+	// A failed call is still the last one: drop what an earlier call set,
+	// ReplaceQuery's too, since Navigate would have won over it.
 	p.run.navigate = nil
 
 	if p.run.app != nil && !p.run.app.HasPage(page) {
+		p.run.query, p.run.queryReplaced = nil, false
 		p.run.fail(tgutil.Errorf("Navigate: %w: `%s`", ErrPageNotFound, page))
 		return
 	}
 
 	if err := checkQuery(q); err != nil {
+		p.run.query, p.run.queryReplaced = nil, false
 		p.run.fail(tgutil.Errorf("Navigate: %w", err))
 		return
 	}
