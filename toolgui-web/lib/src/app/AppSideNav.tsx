@@ -285,9 +285,9 @@ export class AppSideNav extends Component<AppSideNavProps, AppSideNavState> {
             <div>
               {hasNavList ? <Divider my="sm" /> : ''}
               <TComponent node={sidebarNode}
-                update={(e) => { this.props.update(e) }}
-                upload={async (f, id) => await this.props.upload(f, id)}
-                download={async (token) => await this.props.download(token)}
+                update={this.props.update}
+                upload={this.props.upload}
+                download={this.props.download}
                 theme={this.props.themeMode} />
             </div> : ''}
 

@@ -72,21 +72,21 @@ interface AppProps {
   embed?: boolean
 }
 
-interface AppState {
-  forest: Forest
-  running: boolean
-  pageFound: boolean
-  pageName: string
-  error: Error | null
-}
-
-export class App extends Component<AppProps, AppState> {
+export class App extends Component<AppProps> {
   // What to start in until the visitor has stored a choice of their own; the
   // stored one comes back through themeModeManager.
   private defaultColorScheme: ThemeMode
 
   // How PageLink and the side nav move to another page.
   private pageNav: PageNav
+
+  private pageFound: boolean
+  private pageName: string
+
+  // Holds the run. App itself renders only the providers, and re-renders
+  // with its parent alone: MantineProvider hands out a new context value on
+  // every render, which re-renders every Mantine component on the page.
+  private frame = React.createRef<AppFrame>()
 
   constructor(props: AppProps) {
     super(props);
@@ -113,19 +113,115 @@ export class App extends Component<AppProps, AppState> {
       setIcon(emojize(curconf.emoji))
     }
 
+    this.pageFound = pageFound
+    this.pageName = pageName
+    this.defaultColorScheme = preferredThemeMode()
+    this.pageNav = newPageNav(props.appConf.hash_page_name_mode, props.onNavigate)
+  }
+
+  startUpdate() {
+    this.frame.current?.startUpdate()
+  }
+
+  receiveNotifyPack(pack: any) {
+    this.frame.current?.receiveNotifyPack(pack)
+  }
+
+  finishUpdate(pack: any) {
+    this.frame.current?.finishUpdate(pack)
+  }
+
+  // replaceQuery swaps the page query for the one Params.ReplaceQuery set: no
+  // reload, no new session, no history entry.
+  replaceQuery(query: PageQuery) {
+    const q = encodeQuery(query)
+    if (this.props.onReplaceQuery) {
+      this.props.onReplaceQuery(q)
+      return
+    }
+
+    window.history.replaceState(window.history.state, '',
+      pageHref(this.pageName, q, this.props.appConf.hash_page_name_mode))
+  }
+
+  // navigate opens the page Params.Navigate named, as a PageLink click would:
+  // a new session and a history entry. Only a page of this app is taken.
+  navigate(name: string, query: PageQuery) {
+    if (!this.props.appConf.page_confs[name]) {
+      console.error('Navigate to unknown page', name)
+      return
+    }
+
+    this.pageNav.navigate(name, query)
+  }
+
+  clearState() {
+    clearState()
+  }
+
+  render() {
+    // Mantine holds the color scheme, so there is one source of truth for the
+    // theme; ThemeModeSync reads it back out for the app.
+    return (
+      <MantineProvider defaultColorScheme={this.defaultColorScheme}
+        colorSchemeManager={themeModeManager}>
+        <PageNavContext.Provider value={this.pageNav}>
+          {/* Where every Toast lands. Above the dialogs and their popovers: a
+              toast is transient and says what just happened, so whatever it was
+              fired from must not cover it. */}
+          <Notifications zIndex={getDefaultZIndex('max')} />
+
+          <AppFrame ref={this.frame}
+            appConf={this.props.appConf}
+            update={this.props.update}
+            upload={this.props.upload}
+            download={this.props.download}
+            embed={this.props.embed}
+            pageFound={this.pageFound}
+            pageName={this.pageName}
+            pageNav={this.pageNav} />
+        </PageNavContext.Provider>
+      </MantineProvider>
+    )
+  }
+}
+
+interface AppFrameProps {
+  appConf: AppConf
+  update: (event: any) => void
+  upload: UploadFunc
+  download: DownloadFunc
+  embed?: boolean
+  pageFound: boolean
+  pageName: string
+  pageNav: PageNav
+}
+
+interface AppFrameState {
+  forest: Forest
+  running: boolean
+  error: Error | null
+}
+
+// AppFrame is the app's chrome and page, and the run they show.
+class AppFrame extends Component<AppFrameProps, AppFrameState> {
+  // Made once: the rendered components are memoized, and a callback that is
+  // new on every render would re-render all of them.
+  private update = (e: any) => { this.props.update(e) }
+  private upload: UploadFunc = async (f, id) => await this.props.upload(f, id)
+  private download: DownloadFunc = async (token) => await this.props.download(token)
+
+  constructor(props: AppFrameProps) {
+    super(props)
+
     this.state = {
       forest: new Forest([
         props.appConf.main_container_id,
         props.appConf.sidebar_container_id,
       ]),
       running: false,
-      pageFound: pageFound,
-      pageName: pageName,
       error: null,
     }
-
-    this.defaultColorScheme = preferredThemeMode()
-    this.pageNav = newPageNav(props.appConf.hash_page_name_mode, props.onNavigate)
   }
 
   startUpdate() {
@@ -192,30 +288,6 @@ export class App extends Component<AppProps, AppState> {
     }
   }
 
-  // replaceQuery swaps the page query for the one Params.ReplaceQuery set: no
-  // reload, no new session, no history entry.
-  replaceQuery(query: PageQuery) {
-    const q = encodeQuery(query)
-    if (this.props.onReplaceQuery) {
-      this.props.onReplaceQuery(q)
-      return
-    }
-
-    window.history.replaceState(window.history.state, '',
-      pageHref(this.state.pageName, q, this.props.appConf.hash_page_name_mode))
-  }
-
-  // navigate opens the page Params.Navigate named, as a PageLink click would:
-  // a new session and a history entry. Only a page of this app is taken.
-  navigate(name: string, query: PageQuery) {
-    if (!this.props.appConf.page_confs[name]) {
-      console.error('Navigate to unknown page', name)
-      return
-    }
-
-    this.pageNav.navigate(name, query)
-  }
-
   finishUpdate(pack: any) {
     this.setState((prevState) => {
       const newForest = prevState.forest.swallowCopy()
@@ -236,70 +308,54 @@ export class App extends Component<AppProps, AppState> {
     })
   }
 
-  clearState() {
-    clearState()
-  }
-
   render() {
     // Embed mode is the page on its own, so the menubar goes with the rest of
     // the app's chrome. An empty tree counts as none.
     const menu = !this.props.embed && this.props.appConf.menu?.length ?
       this.props.appConf.menu : null
 
-    // Mantine holds the color scheme, so there is one source of truth for the
-    // theme; ThemeModeSync reads it back out for the app.
     return (
-      <MantineProvider defaultColorScheme={this.defaultColorScheme}
-        colorSchemeManager={themeModeManager}>
-        <PageNavContext.Provider value={this.pageNav}>
-          {/* Where every Toast lands. Above the dialogs and their popovers: a
-              toast is transient and says what just happened, so whatever it was
-              fired from must not cover it. */}
-          <Notifications zIndex={getDefaultZIndex('max')} />
+      <ThemeModeSync>
+        {(themeMode) =>
+          // The frame is a column: the menubar row, and the shell's two
+          // columns under it. An app that declares no menu gets no row --
+          // the frame is then the shell in a wrapper, and --tg-menubar-h
+          // stays 0, so every 100vh the shell is built on still holds.
+          <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
+            {menu ?
+              <AppMenuBar menu={menu}
+                update={(e) => { this.props.update(e) }} /> : ''}
 
-          <ThemeModeSync>
-            {(themeMode) =>
-              // The frame is a column: the menubar row, and the shell's two
-              // columns under it. An app that declares no menu gets no row --
-              // the frame is then the shell in a wrapper, and --tg-menubar-h
-              // stays 0, so every 100vh the shell is built on still holds.
-              <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
-                {menu ?
-                  <AppMenuBar menu={menu}
-                    update={(e) => { this.props.update(e) }} /> : ''}
+            <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
+              {this.props.embed ? '' :
+                <AppSideNav
+                  appConf={this.props.appConf}
+                  forest={this.state.forest}
+                  running={this.state.running}
+                  pageFound={this.props.pageFound}
+                  pageName={this.props.pageName}
+                  pageNav={this.props.pageNav}
+                  rerun={() => { this.props.update({}) }}
+                  update={this.update}
+                  upload={this.upload}
+                  download={this.download}
+                  themeMode={themeMode} />}
 
-                <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
-                  {this.props.embed ? '' :
-                    <AppSideNav
-                      appConf={this.props.appConf}
-                      forest={this.state.forest}
-                      running={this.state.running}
-                      pageFound={this.state.pageFound}
-                      pageName={this.state.pageName}
-                      pageNav={this.pageNav}
-                      rerun={() => { this.props.update({}) }}
-                      update={(e) => { this.props.update(e) }}
-                      upload={async (f, id) => await this.props.upload(f, id)}
-                      download={async (token) => await this.props.download(token)}
-                      themeMode={themeMode} />}
+              <main className="toolgui-main">
+                <AppBody
+                  appConf={this.props.appConf}
+                  pageFound={this.props.pageFound}
+                  forest={this.state.forest}
+                  update={this.update}
+                  upload={this.upload}
+                  download={this.download}
+                  themeMode={themeMode} />
 
-                  <main className="toolgui-main">
-                    <AppBody
-                      appConf={this.props.appConf}
-                      pageFound={this.state.pageFound}
-                      forest={this.state.forest}
-                      update={(e) => { this.props.update(e) }}
-                      upload={async (f, id) => await this.props.upload(f, id)}
-                      download={async (token) => await this.props.download(token)}
-                      themeMode={themeMode} />
-
-                    <AppError error={this.state.error} />
-                  </main>
-                </div>
-              </div>}
-          </ThemeModeSync>
-        </PageNavContext.Provider>
-      </MantineProvider>
+                <AppError error={this.state.error} />
+              </main>
+            </div>
+          </div>}
+      </ThemeModeSync>
     )
   }
 }

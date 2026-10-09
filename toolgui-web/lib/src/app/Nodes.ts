@@ -26,17 +26,31 @@ export class Node {
   get reactKey(): string {
     return this.props.id || `${this.key}:${this.props.name}`
   }
+
+  clone(): Node {
+    const ret = new Node(this.key, this.props)
+    ret.children = [...this.children]
+    ret.runID = this.runID
+    ret.parentKey = this.parentKey
+    return ret
+  }
 }
 
+// A Forest copy never changes a node's props or children in place: the node is
+// replaced, and so is every node above it. The renderer skips a node whose
+// reference has not changed, so everything a pack did not touch stays as is.
 export class Forest {
   nodes: { [key: string]: Node }
   rootNodeIDs: string[]
   runID: number
+  // Nodes this copy made, which no earlier copy shares.
+  private owned: Set<Node>
 
   constructor(rootNodeIDs: string[]) {
     this.rootNodeIDs = rootNodeIDs
     this.nodes = {}
     this.runID = NO_RUN_ID
+    this.owned = new Set()
 
     for (const id of rootNodeIDs) {
       this.nodes[id] = new Node(id, {
@@ -54,6 +68,27 @@ export class Forest {
     ret.nodes = { ...this.nodes }
     ret.runID = this.runID
     return ret
+  }
+
+  // own returns the node at key as one this copy may change, replacing it and
+  // its ancestors with copies the first time.
+  private own(key: string): Node {
+    const node = this.nodes[key]
+    if (this.owned.has(node)) {
+      return node
+    }
+
+    const copy = node.clone()
+    this.owned.add(copy)
+    this.nodes[key] = copy
+
+    const parentNode = this.nodes[node.parentKey]
+    const index = parentNode ? parentNode.children.indexOf(node) : -1
+    if (index >= 0) {
+      this.own(node.parentKey).children[index] = copy
+    }
+
+    return copy
   }
 
   // beginRun opens a run. Every node the run sends is stamped with the new id,
@@ -78,15 +113,21 @@ export class Forest {
     const oldNode = this.nodes[key]
 
     // A different component type at this position is a different node, so it
-    // does not inherit the old one's children.
-    const node = oldNode && oldNode.props.name === props.name
-      ? oldNode
-      : new Node(key, props)
+    // does not inherit the old one's children. The same props keep the old
+    // reference, so the renderer skips it.
+    let node: Node
+    if (oldNode && oldNode.props.name === props.name) {
+      node = oldNode.props === props ? oldNode : this.own(key)
+      node.props = props
+    } else {
+      node = new Node(key, props)
+      this.owned.add(node)
+      this.nodes[key] = node
+    }
 
-    node.props = props
+    // Neither is rendered, so a node shared with an earlier copy can take them.
     node.runID = this.runID
     node.parentKey = parentKey
-    this.nodes[key] = node
 
     // A node this run has not sent renders under the same key when a named
     // component moves between positions. Two children under one key is what
@@ -100,7 +141,9 @@ export class Forest {
 
     // The index is the component's position among its container's children,
     // counted by the container as the page function writes it.
-    parentNode.children[index] = node
+    if (this.nodes[parentKey].children[index] !== node) {
+      this.own(parentKey).children[index] = node
+    }
   }
 
   // keepNode places the node already at key as a create of its own props
@@ -121,7 +164,9 @@ export class Forest {
       return
     }
 
-    this.nodes[key].props = props
+    if (this.nodes[key].props !== props) {
+      this.own(key).props = props
+    }
   }
 
   // removeNode takes the node at key off the tree, and the subtree under it
@@ -137,8 +182,9 @@ export class Forest {
     }
 
     const parentNode = this.nodes[node.parentKey]
-    if (parentNode) {
-      parentNode.children = parentNode.children.filter(n => n !== node)
+    if (parentNode && parentNode.children.includes(node)) {
+      const owned = this.own(node.parentKey)
+      owned.children = owned.children.filter(n => n !== node)
     }
     delete this.nodes[key]
 
@@ -164,8 +210,13 @@ export class Forest {
     }
 
     // Also closes the gaps a shorter run left in the children arrays.
-    for (const node of Object.values(this.nodes)) {
-      node.children = node.children.filter(n => n && n.runID === this.runID)
+    // Array.from, not every: every skips the gaps.
+    const live = (n: Node | undefined) => !!n && n.runID === this.runID
+    for (const key of Object.keys(this.nodes)) {
+      if (!Array.from(this.nodes[key].children).every(live)) {
+        const node = this.own(key)
+        node.children = node.children.filter(live)
+      }
     }
   }
 }

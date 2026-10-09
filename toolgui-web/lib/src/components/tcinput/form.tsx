@@ -1,4 +1,4 @@
-import React, { useRef } from "react"
+import React, { useCallback, useRef } from "react"
 import { Button } from "@mantine/core"
 
 import { Props } from "../component_interface"
@@ -37,9 +37,10 @@ export function TForm({ node, update, upload, download, theme }: Props) {
     collectEvent.current = []
   }
 
-  const handleUpdate = (event: UpdateEvent) => {
+  // Stable, so the memoized fields inside are not re-rendered by the form's.
+  const handleUpdate = useCallback((event: UpdateEvent) => {
     queue().push(event)
-  }
+  }, [])
 
   return (
     <div id={node.props.id || undefined}>
