@@ -17,4 +17,7 @@ jobs:
     steps:
     - uses: golang/govulncheck-action@v1
       with:
+        # Scan with the Go go.mod pins, not the runner's cached one.
+        go-version-input: ''
+        go-version-file: go.mod
         go-package: ./...
