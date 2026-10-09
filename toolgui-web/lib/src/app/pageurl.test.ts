@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  encodeQuery, pageFromLocation, pageHref, splitPagePart, withStickyQuery,
+  encodeQuery, pageFromLocation, pageHref, splitPagePart, withStickyQuery, MAX_QUERY_SIZE,
 } from './pageurl'
 
 const loc = (pathname: string, search: string, hash: string) =>
@@ -95,6 +95,11 @@ describe('withStickyQuery', () => {
 
   it('copies a key listed twice once', () => {
     expect(withStickyQuery('', 'group=a', ['group', 'group'])).toBe('group=a')
+  })
+
+  it('drops the sticky keys past the size cap', () => {
+    const big = 'g=' + 'x'.repeat(MAX_QUERY_SIZE - 2)
+    expect(withStickyQuery('id=1', big, ['g'])).toBe('id=1')
   })
 
   it('changes nothing without sticky keys', () => {

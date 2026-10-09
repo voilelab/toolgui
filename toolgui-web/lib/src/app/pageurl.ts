@@ -80,15 +80,21 @@ export function pageHref(name: string, query: PageQuery, hashMode: boolean): str
   return (hashMode ? '#/' : '/') + part
 }
 
+// MAX_QUERY_SIZE is tgframe.MaxQuerySize: a longer page query is refused.
+export const MAX_QUERY_SIZE = 8 * 1024
+
 // withStickyQuery adds the sticky keys of the current page query to query,
-// for App.SetStickyQuery. A key query sets itself wins.
+// for App.SetStickyQuery. A key query sets itself wins. Keys that would push
+// the query over MAX_QUERY_SIZE are dropped, so the page still opens.
 export function withStickyQuery(
   query: PageQuery, current: string, keys: string[]): string {
 
-  const params = new URLSearchParams(encodeQuery(query))
+  const base = encodeQuery(query)
   if (keys.length === 0) {
-    return params.toString()
+    return base
   }
+
+  const params = new URLSearchParams(base)
 
   // A key the link names with no value is still its own.
   const own = new Set(params.keys())
@@ -108,5 +114,6 @@ export function withStickyQuery(
     own.add(key)
   }
 
-  return params.toString()
+  const merged = params.toString()
+  return merged.length > MAX_QUERY_SIZE ? base : merged
 }
