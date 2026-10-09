@@ -35,9 +35,9 @@ export class AppBody extends Component<AppBodyProps> {
       <div className="toolgui-page">
         {this.props.pageFound ?
           <TComponent node={this.rootNode()}
-            update={(e) => { this.props.update(e) }}
-            upload={async (f, id) => await this.props.upload(f, id)}
-            download={async (token) => await this.props.download(token)}
+            update={this.props.update}
+            upload={this.props.upload}
+            download={this.props.download}
             theme={this.props.themeMode} />
           : <MessagePageNotFound />}
         {/* Where a pinned chat input is portaled to: last in the page, and

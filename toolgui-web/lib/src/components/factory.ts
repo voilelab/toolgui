@@ -1,4 +1,4 @@
-import type React from "react"
+import React from "react"
 import { TTextbox } from "./tcinput/textbox"
 import { TCheckbox } from "./tcinput/checkbox"
 import { TButton } from "./tcinput/button"
@@ -131,11 +131,13 @@ const creatorMap: { [id: string]: ((props: Props) => React.JSX.Element) } = {
 }
 
 
-export function TComponent(props: Props) {
+// Memoized: Forest replaces a node whenever its props or children change, so
+// a node with the same reference renders the same.
+export const TComponent = React.memo(function TComponent(props: Props) {
   const name = props.node.props.name
   if (!(name in creatorMap)) {
     throw new Error(`unsupported component type: ${name}`);
   }
 
   return creatorMap[name](props)
-}
+})

@@ -67,3 +67,19 @@ Browser, Toggle click to next paint (median of 30, two runs each):
 | 1000  | 49.1/49.5  | 42.6/44.9 | 47.1/46.6   | 45.7/46.0  |
 | 3000  | 65.0/79.0  | 42.3/45.8 | 80.6/96.6   | 79.4/80.2  |
 | 10000 | 97.3/97.0  | 64.8/79.7 | 230.2/247.1 | 180.9/211.6|
+
+## TG-100: skip unchanged nodes
+
+Nodes are memoized on their reference, and `Forest` replaces a node (and its
+ancestors) only when its props or children change. `MantineProvider` moved
+out of what re-renders per pack: it builds a new context value on every
+render, which re-rendered every Mantine component on the page.
+
+Browser, web, Toggle click to next paint (median of 30, two runs each):
+
+| rows  | before    | after     |
+|------:|----------:|----------:|
+| 1000  | 46.2/47.0 | 14.2/14.2 |
+| 3000  | 55.7/56.1 | 30.0/30.2 |
+
+What is left at 3000 rows is mostly the browser's style and layout, not JS.
