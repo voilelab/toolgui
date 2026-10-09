@@ -90,6 +90,19 @@ and `tgwasm.Query()` parses it: an app that takes its own parameters, such as
 `?lang=en`, reads them there. Like the flag it is read once, since the query
 cannot change without a page load.
 
+`tgwasm.AssetURL(name)` answers the absolute URL of a file copied with
+`toolgui-wasm -assets`, such as a script to load from the worker:
+
+```go
+u, err := tgwasm.AssetURL("pyodide/pyodide.js")
+```
+
+It is resolved against the directory of the app's `index.html`, which the page
+posts at boot on `globalThis.toolguiBase` — not the worker's location — so it
+holds under `toolgui-wasm serve`, a GitHub Pages sub path, and in a frame.
+Each segment is escaped, so `#`, `?` and spaces stay part of the name; an
+absolute name or `..` is an error.
+
 ## An app can tell the page about something
 
 `tgwasm.Emit(name, detail)` dispatches a `toolgui:<name>` DOM event on the

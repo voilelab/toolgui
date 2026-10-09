@@ -74,6 +74,7 @@ export class Backend {
       wasmURL: assetURL('app.wasm'),
       embed,
       query,
+      base: new URL('.', document.baseURI).href,
     })
   }
 
