@@ -477,12 +477,19 @@ func TestWriteServiceWorker(t *testing.T) {
 
 func TestWriteServiceWorkerNoLazy(t *testing.T) {
 	out := t.TempDir()
+
+	// The real frontend has more files than the stub; sw.js hashes them all.
+	err := writeFrontend(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	writeFile(t, filepath.Join(out, "index.html"), "<html><head></head></html>")
 	writeFile(t, filepath.Join(out, "app.wasm"), "wasm")
 	writeFile(t, filepath.Join(out, "wasm_exec.js"), "shim")
 	writeFile(t, filepath.Join(out, "manifest.json"), "{}")
 
-	err := writeServiceWorker(out, "", "")
+	err = writeServiceWorker(out, "", "")
 	if err != nil {
 		t.Fatalf("writeServiceWorker: %v", err)
 	}
