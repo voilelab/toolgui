@@ -18,3 +18,6 @@ jobs:
     - uses: golang/govulncheck-action@v1
       with:
         go-package: ./...
+        # Pin to go.mod, not the action's default stable
+        go-version-input: ''
+        go-version-file: go.mod
