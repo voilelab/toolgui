@@ -184,6 +184,16 @@ func (p *Page) Send(event tgframe.Event) {
 	p.wait()
 }
 
+// Wait waits for a run the page didn't start itself, such as one
+// [tgframe.App.RerunAll] triggered, and reads back what it drew.
+//
+//	app.RerunAll()
+//	p.Wait()
+func (p *Page) Wait() {
+	p.t.Helper()
+	p.wait()
+}
+
 // receive is the session's [tgframe.SendPackFunc]. Packs go through json and
 // are routed like the web client does, so the tree is what a browser sees.
 func (p *Page) receive(pack any) error {

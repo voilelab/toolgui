@@ -133,6 +133,10 @@ type App struct {
 	// menubar out of the frontend's DOM entirely.
 	menu    *Menu
 	menuIDs map[string]bool
+
+	// sessions are the open sessions, for [App.RerunAll].
+	sessions     map[*Session]struct{}
+	sessionsLock sync.Mutex
 }
 
 // AppConf store configs for frontend
@@ -172,6 +176,7 @@ func NewApp() *App {
 		pageFuncs: make(map[string]RunFunc),
 
 		pluginAssets: make(map[string]fs.FS),
+		sessions:     make(map[*Session]struct{}),
 
 		showVersion: true,
 	}
@@ -480,6 +485,55 @@ func (app *App) runContext(ctx context.Context, name string,
 
 	// A component the page gave up on is the page's own report too.
 	return NewPageError(run.err)
+}
+
+// RerunAll reruns every open page, as if its user pressed the rerun button.
+// Call it when data the pages read has changed, e.g. a background load
+// finished, so pages already open show it.
+//
+// It returns at once and never cuts a run: a page in the middle of a run is
+// rerun once that run ends. Calls while a page is running fold into one rerun.
+func (app *App) RerunAll() {
+	app.rerunSessions(func(*Session) bool { return true })
+}
+
+// RerunPage is [App.RerunAll] for the open pages named in names only.
+func (app *App) RerunPage(names ...string) {
+	set := make(map[string]bool, len(names))
+	for _, name := range names {
+		set[name] = true
+	}
+
+	app.rerunSessions(func(s *Session) bool { return set[s.pageName] })
+}
+
+func (app *App) rerunSessions(match func(*Session) bool) {
+	app.sessionsLock.Lock()
+	sessions := make([]*Session, 0, len(app.sessions))
+	for s := range app.sessions {
+		if match(s) {
+			sessions = append(sessions, s)
+		}
+	}
+	app.sessionsLock.Unlock()
+
+	for _, s := range sessions {
+		s.requestRerun()
+	}
+}
+
+func (app *App) addSession(s *Session) {
+	app.sessionsLock.Lock()
+	defer app.sessionsLock.Unlock()
+
+	app.sessions[s] = struct{}{}
+}
+
+func (app *App) removeSession(s *Session) {
+	app.sessionsLock.Lock()
+	defer app.sessionsLock.Unlock()
+
+	delete(app.sessions, s)
 }
 
 // HasPage return existence of page which named `name`.
