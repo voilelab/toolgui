@@ -19,28 +19,31 @@ export function TForm({ node, update, upload, download, theme }: Props) {
   // that is gone, so the queue is dropped rather than replayed into the new
   // one.
   const generation = useRef(stateGeneration)
-  const queue = () => {
+  // Reads only refs, so it can stay the same across renders.
+  const queue = useCallback(() => {
     if (generation.current !== stateGeneration) {
       generation.current = stateGeneration
       collectEvent.current = []
     }
 
     return collectEvent.current
-  }
+  }, [])
 
-  const submit = () => {
+  // Stable, like handleUpdate below: a new context value would re-render
+  // every submit control in the form.
+  const submit = useCallback(() => {
     update({
       type: "form",
       events: queue(),
     })
 
     collectEvent.current = []
-  }
+  }, [update, queue])
 
   // Stable, so the memoized fields inside are not re-rendered by the form's.
   const handleUpdate = useCallback((event: UpdateEvent) => {
     queue().push(event)
-  }, [])
+  }, [queue])
 
   return (
     <div id={node.props.id || undefined}>
