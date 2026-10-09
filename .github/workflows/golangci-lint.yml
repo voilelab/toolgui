@@ -30,7 +30,5 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.14.0
-          # Built by the Go above: a release binary from an older Go can't
-          # read the stdlib export data of a newer one.
-          install-mode: goinstall
+          # v2.14: reads go1.27.2's export data
+          version: v2.14
