@@ -93,6 +93,10 @@ describe('withStickyQuery', () => {
     expect(withStickyQuery('id=1', 'x=2', ['group'])).toBe('id=1')
   })
 
+  it('copies a key listed twice once', () => {
+    expect(withStickyQuery('', 'group=a', ['group', 'group'])).toBe('group=a')
+  })
+
   it('changes nothing without sticky keys', () => {
     expect(withStickyQuery({ id: ['1'] }, 'group=a', [])).toBe('id=1')
   })

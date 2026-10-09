@@ -104,6 +104,8 @@ export function withStickyQuery(
     for (const value of cur.getAll(key)) {
       params.append(key, value)
     }
+    // A key listed twice is copied once.
+    own.add(key)
   }
 
   return params.toString()
