@@ -25,6 +25,8 @@ Usage:
 The package defaults to the current directory, and the output to ./dist.
 -ldflags is passed to go build as is. -manifest is written as manifest.json,
 and -assets is copied to assets/, where the manifest's icons can point.
+-manifest also adds the head tags iOS reads in place of it, unless -head has
+them: apple-touch-icon, apple-mobile-web-app-title and theme-color.
 -icon replaces the favicon url in index.html, e.g. assets/favicon.svg.
 -head is an html file inserted into the head of index.html, e.g. meta tags.
 -offline writes a service worker, so the site opens with no network.
