@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"log"
 	"net/url"
+	"slices"
 	"sync"
 
 	"github.com/voilelab/toolgui/toolgui/tgutil"
@@ -167,6 +168,9 @@ type App struct {
 	hashPageNameMode bool
 	showVersion      bool
 
+	// stickyQuery are the page query keys [App.SetStickyQuery] carries over.
+	stickyQuery []string
+
 	// menu is the tree [App.SetMenu] took, and menuIDs the click ids in it.
 	// Both are nil until an app declares a menu, which is what keeps the
 	// menubar out of the frontend's DOM entirely.
@@ -205,6 +209,10 @@ type AppConf struct {
 
 	// Menu is the app's menu tree, absent for an app that declares none.
 	Menu []*MenuNode `json:"menu,omitzero"`
+
+	// StickyQuery are the page query keys the frontend carries to the next
+	// page, absent for an app that sets none.
+	StickyQuery []string `json:"sticky_query,omitzero"`
 }
 
 // NewApp return App
@@ -302,6 +310,19 @@ func (app *App) SetAbout(markdown string) {
 	app.about = markdown
 }
 
+// SetStickyQuery declares page query keys shared across pages, such as a
+// group picked in the sidebar. The side nav copies them from the current page
+// query into the page it opens, and a PageLink adds them unless it sets them
+// itself. The server is not involved: a page keeps the value in its URL with
+// [Params.ReplaceQuery].
+//
+//	app.SetStickyQuery("group")
+//
+// Calling it again replaces the keys; no keys drops them.
+func (app *App) SetStickyQuery(keys ...string) {
+	app.stickyQuery = slices.Clone(keys)
+}
+
 // AddPage add a handled page by name, title, and runFunc.
 //
 //	app.AddPage("index", "Index", f})
@@ -368,6 +389,8 @@ func (app *App) AppConf() *AppConf {
 		About:       app.about,
 
 		Menu: app.menuNodes(),
+
+		StickyQuery: app.stickyQuery,
 	}
 }
 

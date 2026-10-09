@@ -79,3 +79,32 @@ export function pageHref(name: string, query: PageQuery, hashMode: boolean): str
 
   return (hashMode ? '#/' : '/') + part
 }
+
+// withStickyQuery adds the sticky keys of the current page query to query,
+// for App.SetStickyQuery. A key query sets itself wins.
+export function withStickyQuery(
+  query: PageQuery, current: string, keys: string[]): string {
+
+  const params = new URLSearchParams(encodeQuery(query))
+  if (keys.length === 0) {
+    return params.toString()
+  }
+
+  // A key the link names with no value is still its own.
+  const own = new Set(params.keys())
+  if (query && typeof query !== 'string') {
+    Object.keys(query).forEach((key) => { own.add(key) })
+  }
+
+  const cur = new URLSearchParams(current)
+  for (const key of keys) {
+    if (own.has(key)) {
+      continue
+    }
+    for (const value of cur.getAll(key)) {
+      params.append(key, value)
+    }
+  }
+
+  return params.toString()
+}

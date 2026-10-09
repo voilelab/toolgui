@@ -59,6 +59,8 @@ interface AppProps {
   // webview) drive the routing. Left out, the page comes from window.location
   // and navigating moves the browser.
   pageName?: string
+  // query is the page query pageName was opened with, encoded.
+  query?: string
   onNavigate?: (name: string, query: string) => void
 
   // onReplaceQuery takes the encoded page query Params.ReplaceQuery set. Left
@@ -78,6 +80,11 @@ interface AppState {
   pageFound: boolean
   pageName: string
   error: Error | null
+
+  // The page query as last opened or replaced, and the PageNav built on it:
+  // a new PageNav redraws the links for the sticky keys it carries.
+  query: string
+  pageNav: PageNav
 }
 
 export class App extends Component<AppProps, AppState> {
@@ -85,15 +92,14 @@ export class App extends Component<AppProps, AppState> {
   // stored one comes back through themeModeManager.
   private defaultColorScheme: ThemeMode
 
-  // How PageLink and the side nav move to another page.
-  private pageNav: PageNav
-
   constructor(props: AppProps) {
     super(props);
 
-    const pageName = props.pageName !== undefined ?
-      props.pageName : pageFromLocation(window.location,
-        props.appConf.hash_page_name_mode, props.appConf.page_names).name
+    const loc = props.pageName !== undefined ?
+      { name: props.pageName, query: props.query || '' } :
+      pageFromLocation(window.location,
+        props.appConf.hash_page_name_mode, props.appConf.page_names)
+    const pageName = loc.name
 
     const curconf = this.props.appConf.page_confs[pageName]
     let pageFound = true
@@ -122,10 +128,17 @@ export class App extends Component<AppProps, AppState> {
       pageFound: pageFound,
       pageName: pageName,
       error: null,
+      query: loc.query,
+      pageNav: this.newPageNav(loc.query),
     }
 
     this.defaultColorScheme = preferredThemeMode()
-    this.pageNav = newPageNav(props.appConf.hash_page_name_mode, props.onNavigate)
+  }
+
+  // newPageNav is how PageLink and the side nav move to another page.
+  newPageNav(query: string): PageNav {
+    return newPageNav(this.props.appConf.hash_page_name_mode,
+      this.props.onNavigate, query, this.props.appConf.sticky_query || [])
   }
 
   startUpdate() {
@@ -196,6 +209,10 @@ export class App extends Component<AppProps, AppState> {
   // reload, no new session, no history entry.
   replaceQuery(query: PageQuery) {
     const q = encodeQuery(query)
+    if (q !== this.state.query) {
+      this.setState({ query: q, pageNav: this.newPageNav(q) })
+    }
+
     if (this.props.onReplaceQuery) {
       this.props.onReplaceQuery(q)
       return
@@ -213,7 +230,7 @@ export class App extends Component<AppProps, AppState> {
       return
     }
 
-    this.pageNav.navigate(name, query)
+    this.state.pageNav.navigate(name, query)
   }
 
   finishUpdate(pack: any) {
@@ -251,7 +268,7 @@ export class App extends Component<AppProps, AppState> {
     return (
       <MantineProvider defaultColorScheme={this.defaultColorScheme}
         colorSchemeManager={themeModeManager}>
-        <PageNavContext.Provider value={this.pageNav}>
+        <PageNavContext.Provider value={this.state.pageNav}>
           {/* Where every Toast lands. Above the dialogs and their popovers: a
               toast is transient and says what just happened, so whatever it was
               fired from must not cover it. */}
@@ -276,7 +293,7 @@ export class App extends Component<AppProps, AppState> {
                       running={this.state.running}
                       pageFound={this.state.pageFound}
                       pageName={this.state.pageName}
-                      pageNav={this.pageNav}
+                      pageNav={this.state.pageNav}
                       rerun={() => { this.props.update({}) }}
                       update={(e) => { this.props.update(e) }}
                       upload={async (f, id) => await this.props.upload(f, id)}

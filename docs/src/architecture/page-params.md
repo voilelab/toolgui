@@ -246,6 +246,46 @@ from the current page query into the new page URL. `PageLink` adds them too,
 unless the link sets them itself. The selection is in the URL because the page
 called `ReplaceQuery`, so the URL alone carries it. The server is not involved.
 
+* The side nav's `<a href>` carries the keys too, so a middle-click opens the
+  page with the same selection.
+* `p.Navigate` goes through the same path as a `PageLink`, so it adds them as
+  well.
+* Without `SetStickyQuery`, links are exactly as before.
+
+### Example: a group shared by two pages
+
+Both pages draw the same sidebar Select and keep it in the URL:
+
+```go
+var groups = []string{"a", "b", "c"}
+
+func groupSelect(p *tgframe.Params) *int {
+	conf := &tgcomp.SelectConf{}
+	if def := slices.Index(groups, p.Query.Get("group")); def >= 0 {
+		conf.SetDefault(def)
+	}
+	idx := tgcomp.Select(p.Sidebar, "Group", groups, conf)
+
+	q := url.Values{}
+	if idx != nil {
+		q.Set("group", groups[*idx])
+	}
+	p.ReplaceQuery(q)
+	return idx
+}
+
+func Summary(p *tgframe.Params) error { groupSelect(p); return nil }
+func Detail(p *tgframe.Params) error  { groupSelect(p); return nil }
+
+// in main:
+app.AddPage("summary", "Summary", Summary)
+app.AddPage("detail", "Detail", Detail)
+app.SetStickyQuery("group")
+```
+
+On `/summary?group=b`, the side nav links to `/detail?group=b`, and Detail
+opens with `b` selected.
+
 This does not affect TG-90 / TG-95 (`App.RerunAll`). There is no shared state
 to watch, so the rerun mechanism stays as designed.
 

@@ -31,6 +31,68 @@ button opens is a bar that fits the screen: the list is capped there too, so
 the controls under it are where they can be reached rather than below every
 link the app has.
 
+## Shared selection
+
+A choice that belongs to every page -- a group picked in the sidebar -- can
+follow the user from page to page. Declare its query key sticky:
+
+```go
+app.SetStickyQuery("group")
+```
+
+The page list then copies `group` from the current page query into the page
+it opens, and so does a [PageLink](../components/content/page_link.md) that
+does not set `group` itself. Other keys are left behind. Each page keeps its
+choice in the URL with `p.ReplaceQuery`, and reads it back from `p.Query`:
+
+```go
+var groups = []string{"a", "b", "c"}
+
+// groupSelect draws the shared Select. Both pages call it.
+func groupSelect(p *tgframe.Params) *int {
+	// Untrusted: only a known group seeds the input.
+	conf := &tgcomp.SelectConf{}
+	if def := slices.Index(groups, p.Query.Get("group")); def >= 0 {
+		conf.SetDefault(def)
+	}
+	idx := tgcomp.Select(p.Sidebar, "Group", groups, conf)
+
+	q := url.Values{}
+	if idx != nil {
+		q.Set("group", groups[*idx])
+	}
+	p.ReplaceQuery(q)
+	return idx
+}
+
+func Summary(p *tgframe.Params) error {
+	if idx := groupSelect(p); idx != nil {
+		tgcomp.Text(p.Main, "Summary of "+groups[*idx])
+	}
+	return nil
+}
+
+func Detail(p *tgframe.Params) error {
+	if idx := groupSelect(p); idx != nil {
+		tgcomp.Text(p.Main, "Detail of "+groups[*idx])
+	}
+	return nil
+}
+
+func main() {
+	app := tgframe.NewApp()
+	app.AddPage("summary", "Summary", Summary)
+	app.AddPage("detail", "Detail", Detail)
+	app.SetStickyQuery("group")
+	// ...
+}
+```
+
+Pick `b` on Summary and the link to Detail reads `/detail?group=b`, so Detail
+opens with `b` selected. The links are real URLs: a middle-click opens the
+page in a new tab with the same group. It works the same in hash mode, wasm
+and Wails; Wails just has no address bar to show it.
+
 ## Width
 
 Drag the column's right edge to resize it, between 180px and 480px. The handle
