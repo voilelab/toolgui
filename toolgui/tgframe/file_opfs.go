@@ -4,7 +4,6 @@ package tgframe
 
 import (
 	"crypto/rand"
-	"fmt"
 	"io"
 	"log/slog"
 	"strconv"
@@ -14,6 +13,7 @@ import (
 	"syscall/js"
 	"time"
 
+	"github.com/voilelab/toolgui/toolgui/internal/opfs"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -73,160 +73,6 @@ const (
 // a test does not have to sit through them.
 var opfsRemoveGap = 5 * time.Second
 
-// opfsCreate and opfsRecursive are the option objects the directory calls
-// take. They are never written to, so one of each is enough.
-var (
-	opfsCreate    = map[string]any{"create": true}
-	opfsRecursive = map[string]any{"recursive": true}
-
-	opfsUint8Array = js.Global().Get("Uint8Array")
-)
-
-// opfsAt is the {at: offset} a read or a write takes. The offset crosses as a
-// float64 because [js.ValueOf] takes no int64, and no browser will hold a
-// file anywhere near where that loses a byte.
-func opfsAt(off int64) map[string]any {
-	return map[string]any{"at": float64(off)}
-}
-
-// opfsCall calls a method and returns what JavaScript threw as an error
-// instead of panicking with it. A write past the origin's quota arrives this
-// way, and an upload the browser has no room for is a thing that happens
-// rather than a bug: it has to reach the caller as an error, so the run
-// reports it like any other failure.
-func opfsCall(v js.Value, method string, args ...any) (res js.Value, err error) {
-	defer func() {
-		r := recover()
-		if r == nil {
-			return
-		}
-
-		e, ok := r.(js.Error)
-		if !ok {
-			panic(r)
-		}
-
-		res, err = js.Undefined(), fmt.Errorf("%s: %w", method, opfsErr(e.Value))
-	}()
-
-	return v.Call(method, args...), nil
-}
-
-// opfsAwait blocks until p settles. It must not be called from a [js.Func]
-// callback: the event loop is stopped for the length of one, so the promise
-// would never settle and the wait would never end.
-func opfsAwait(p js.Value) (js.Value, error) {
-	type settled struct {
-		value js.Value
-		err   error
-	}
-
-	ch := make(chan settled, 1)
-
-	var onValue, onReason js.Func
-
-	release := func() {
-		onValue.Release()
-		onReason.Release()
-	}
-
-	onValue = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		ch <- settled{value: opfsFirst(args)}
-		release()
-		return nil
-	})
-
-	onReason = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		ch <- settled{err: opfsErr(opfsFirst(args))}
-		release()
-		return nil
-	})
-
-	if _, err := opfsCall(p, "then", onValue, onReason); err != nil {
-		release()
-		return js.Undefined(), err
-	}
-
-	s := <-ch
-	return s.value, s.err
-}
-
-// opfsAwaitCall calls a method that answers with a promise and waits for it.
-func opfsAwaitCall(v js.Value, method string, args ...any) (js.Value, error) {
-	p, err := opfsCall(v, method, args...)
-	if err != nil {
-		return js.Undefined(), err
-	}
-
-	return opfsAwait(p)
-}
-
-// opfsDetach lets p run to completion without waiting for it, logging a
-// rejection. Removing a file goes this way: it happens under the store's
-// lock, and on the JavaScript callback stack when an upload replaces one.
-func opfsDetach(p js.Value, what string) {
-	var onValue, onReason js.Func
-
-	release := func() {
-		onValue.Release()
-		onReason.Release()
-	}
-
-	onValue = js.FuncOf(func(_ js.Value, _ []js.Value) any {
-		release()
-		return nil
-	})
-
-	onReason = js.FuncOf(func(_ js.Value, args []js.Value) any {
-		slog.Error(what, "error", opfsErr(opfsFirst(args)))
-		release()
-		return nil
-	})
-
-	if _, err := opfsCall(p, "then", onValue, onReason); err != nil {
-		release()
-		slog.Error(what, "error", err)
-	}
-}
-
-func opfsFirst(args []js.Value) js.Value {
-	if len(args) == 0 {
-		return js.Undefined()
-	}
-
-	return args[0]
-}
-
-// opfsErr turns a JavaScript error value into a Go error, keeping the name the
-// caller needs to tell one failure from another -- QuotaExceededError for a
-// full origin, NoModificationAllowedError for a file somebody else holds.
-func opfsErr(v js.Value) error {
-	if v.Type() != js.TypeObject {
-		return tgutil.Errorf("%s", opfsString(v))
-	}
-
-	name, message := opfsString(v.Get("name")), opfsString(v.Get("message"))
-
-	switch {
-	case name != "" && message != "":
-		return tgutil.Errorf("%s: %s", name, message)
-	case name != "":
-		return tgutil.Errorf("%s", name)
-	case message != "":
-		return tgutil.Errorf("%s", message)
-	default:
-		return tgutil.NewError("rejected with no reason")
-	}
-}
-
-func opfsString(v js.Value) string {
-	if v.Type() != js.TypeString {
-		return ""
-	}
-
-	return v.String()
-}
-
 // opfsRoot is the directory the states' directories live in, opened once. The
 // chain of promises that gets there runs on a goroutine, and everything that
 // needs the handle waits for it.
@@ -261,39 +107,12 @@ func (r *opfsRoot) open() {
 }
 
 func opfsOpenRoot() (js.Value, error) {
-	// A sync access handle is the only way to read and write without awaiting
-	// anything, and a dedicated Web Worker is the only place it exists. The Go
-	// program has to run in one; see toolgui/tgwasm/README.md.
-	if handle := js.Global().Get("FileSystemFileHandle"); !handle.Truthy() ||
-		handle.Get("prototype").Get("createSyncAccessHandle").Type() != js.TypeFunction {
-		return js.Undefined(), tgutil.NewError(
-			"no synchronous file access here: the Go program has to run in a" +
-				" dedicated Web Worker")
-	}
-
-	// The origin private file system belongs to a secure context, so a build
-	// served over plain http from anything but localhost has none. That is a
-	// hosting requirement rather than something to degrade around: falling
-	// back to the heap would quietly put every upload back where this build
-	// stopped keeping them, and the page would have no way to know.
-	if secure := js.Global().Get("isSecureContext"); secure.Type() == js.TypeBoolean &&
-		!secure.Bool() {
-		return js.Undefined(), tgutil.NewError(
-			"no origin private file system: this is not a secure context, so" +
-				" the site has to be served over https, or from localhost")
-	}
-
-	storage := js.Global().Get("navigator").Get("storage")
-	if !storage.Truthy() || storage.Get("getDirectory").Type() != js.TypeFunction {
-		return js.Undefined(), tgutil.NewError("no origin private file system")
-	}
-
-	origin, err := opfsAwaitCall(storage, "getDirectory")
+	origin, err := opfs.Origin()
 	if err != nil {
 		return js.Undefined(), tgutil.Errorf("%w", err)
 	}
 
-	root, err := opfsAwaitCall(origin, "getDirectoryHandle", opfsRootName, opfsCreate)
+	root, err := opfs.AwaitCall(origin, "getDirectoryHandle", opfsRootName, opfs.Create)
 	if err != nil {
 		return js.Undefined(), tgutil.Errorf("%w", err)
 	}
@@ -347,7 +166,7 @@ func opfsSweep(root js.Value) {
 			continue
 		}
 
-		if _, err := opfsAwaitCall(root, "removeEntry", name, opfsRecursive); err != nil {
+		if _, err := opfs.AwaitCall(root, "removeEntry", name, opfs.Recursive); err != nil {
 			slog.Warn("remove an orphaned state directory",
 				"dir", name, "error", err)
 			continue
@@ -377,25 +196,25 @@ func opfsOrphaned(root js.Value, name string) bool {
 		return false
 	}
 
-	dir, err := opfsAwaitCall(root, "getDirectoryHandle", name)
+	dir, err := opfs.AwaitCall(root, "getDirectoryHandle", name)
 	if err != nil {
 		// Not a directory, or gone between the listing and here.
 		return false
 	}
 
-	lockFile, err := opfsAwaitCall(dir, "getFileHandle", opfsLockName)
+	lockFile, err := opfs.AwaitCall(dir, "getFileHandle", opfsLockName)
 	if err != nil {
 		// Old enough to judge, and it never got as far as a lock file.
 		return true
 	}
 
-	lock, err := opfsAwaitCall(lockFile, "createSyncAccessHandle")
+	lock, err := opfs.AwaitCall(lockFile, "createSyncAccessHandle")
 	if err != nil {
 		// Refused, so somebody holds it: a live state, here or in another tab.
 		return false
 	}
 
-	if _, err := opfsCall(lock, "close"); err != nil {
+	if _, err := opfs.Call(lock, "close"); err != nil {
 		slog.Warn("close a swept lock", "dir", name, "error", err)
 	}
 
@@ -405,7 +224,7 @@ func opfsOrphaned(root js.Value, name string) bool {
 // opfsNames lists what a directory holds. The iterator is async, so this is
 // one promise per entry.
 func opfsNames(dir js.Value) ([]string, error) {
-	it, err := opfsCall(dir, "keys")
+	it, err := opfs.Call(dir, "keys")
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
@@ -413,7 +232,7 @@ func opfsNames(dir js.Value) ([]string, error) {
 	var names []string
 
 	for {
-		res, err := opfsAwaitCall(it, "next")
+		res, err := opfs.AwaitCall(it, "next")
 		if err != nil {
 			return nil, tgutil.Errorf("%w", err)
 		}
@@ -539,7 +358,7 @@ func (b *opfsBodies) setup() error {
 
 	b.name = opfsStateName()
 
-	dir, err := opfsAwaitCall(root, "getDirectoryHandle", b.name, opfsCreate)
+	dir, err := opfs.AwaitCall(root, "getDirectoryHandle", b.name, opfs.Create)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
@@ -548,12 +367,12 @@ func (b *opfsBodies) setup() error {
 	// remove either way. Nothing reads it while err is set.
 	b.dir = dir
 
-	lockFile, err := opfsAwaitCall(dir, "getFileHandle", opfsLockName, opfsCreate)
+	lockFile, err := opfs.AwaitCall(dir, "getFileHandle", opfsLockName, opfs.Create)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
-	lock, err := opfsAwaitCall(lockFile, "createSyncAccessHandle")
+	lock, err := opfs.AwaitCall(lockFile, "createSyncAccessHandle")
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
@@ -574,12 +393,12 @@ func (b *opfsBodies) create() (*opfsBody, error) {
 	name := strconv.Itoa(b.seq)
 	b.mu.Unlock()
 
-	file, err := opfsAwaitCall(b.dir, "getFileHandle", name, opfsCreate)
+	file, err := opfs.AwaitCall(b.dir, "getFileHandle", name, opfs.Create)
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
 
-	handle, err := opfsAwaitCall(file, "createSyncAccessHandle")
+	handle, err := opfs.AwaitCall(file, "createSyncAccessHandle")
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
@@ -791,7 +610,7 @@ func (b *opfsBodies) removeDir() {
 	// before the first try rather than after the last: a directory this fails
 	// to remove is one the next startup's sweep has to be able to judge.
 	if b.lock.Truthy() {
-		if _, err := opfsCall(b.lock, "close"); err != nil {
+		if _, err := opfs.Call(b.lock, "close"); err != nil {
 			slog.Error("release a state directory lock",
 				"dir", b.name, "error", err)
 		}
@@ -809,7 +628,7 @@ func (b *opfsBodies) removeDir() {
 			time.Sleep(opfsRemoveGap)
 		}
 
-		_, last = opfsAwaitCall(root, "removeEntry", b.name, opfsRecursive)
+		_, last = opfs.AwaitCall(root, "removeEntry", b.name, opfs.Recursive)
 		if last == nil {
 			return
 		}
@@ -885,7 +704,7 @@ func (b *opfsBody) adopt(handle js.Value) (int64, error) {
 
 	b.handle = handle
 
-	size, err := opfsCall(handle, "getSize")
+	size, err := opfs.Call(handle, "getSize")
 	if err != nil {
 		return 0, tgutil.Errorf("%w", err)
 	}
@@ -901,7 +720,7 @@ func (b *opfsBody) open() (FileReader, error) {
 		return nil, tgutil.Errorf("%w", b.noHandle())
 	}
 
-	size, err := opfsCall(b.handle, "getSize")
+	size, err := opfs.Call(b.handle, "getSize")
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
@@ -954,14 +773,14 @@ func (b *opfsBody) write(r io.Reader, atEnd bool) (int64, error) {
 // when it is replacing what is there rather than appending to it.
 func (b *opfsBody) writeStart(atEnd bool) (int64, error) {
 	if !atEnd {
-		if _, err := opfsCall(b.handle, "truncate", 0); err != nil {
+		if _, err := opfs.Call(b.handle, "truncate", 0); err != nil {
 			return 0, tgutil.Errorf("%w", err)
 		}
 
 		return 0, nil
 	}
 
-	size, err := opfsCall(b.handle, "getSize")
+	size, err := opfs.Call(b.handle, "getSize")
 	if err != nil {
 		return 0, tgutil.Errorf("%w", err)
 	}
@@ -972,14 +791,14 @@ func (b *opfsBody) writeStart(atEnd bool) (int64, error) {
 // writeChunk copies bs through the body's typed array and writes it at off.
 func (b *opfsBody) writeChunk(bs []byte, off int64) error {
 	if !b.buf.Truthy() {
-		b.buf = opfsUint8Array.New(opfsChunkSize)
+		b.buf = opfs.Uint8Array.New(opfsChunkSize)
 	}
 
 	js.CopyBytesToJS(b.buf, bs)
 
 	view := b.buf
 	if len(bs) < opfsChunkSize {
-		v, err := opfsCall(b.buf, "subarray", 0, len(bs))
+		v, err := opfs.Call(b.buf, "subarray", 0, len(bs))
 		if err != nil {
 			return tgutil.Errorf("%w", err)
 		}
@@ -988,9 +807,9 @@ func (b *opfsBody) writeChunk(bs []byte, off int64) error {
 	}
 
 	// An upload the origin has no room for throws QuotaExceededError here.
-	// opfsCall hands it back as an error rather than a panic, and it travels
+	// opfs.Call hands it back as an error rather than a panic, and it travels
 	// out through [State.WriteFile] like any other failure of the run.
-	wrote, err := opfsCall(b.handle, "write", view, opfsAt(off))
+	wrote, err := opfs.Call(b.handle, "write", view, opfs.At(off))
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
@@ -1070,7 +889,7 @@ func (b *opfsBody) drop() {
 	b.shut()
 	b.bodies.forget(b)
 
-	p, err := opfsCall(b.bodies.dir, "removeEntry", b.name)
+	p, err := opfs.Call(b.bodies.dir, "removeEntry", b.name)
 	if err != nil {
 		slog.Error("remove a file", "name", b.name, "error", err)
 		return
@@ -1078,7 +897,7 @@ func (b *opfsBody) drop() {
 
 	// Nothing waits for this: remove runs under the store's lock, and on the
 	// JavaScript callback stack when an upload replaces a file.
-	opfsDetach(p, "remove a file")
+	opfs.Detach(p, "remove a file")
 }
 
 // close shuts the handle and leaves the file where it is. It is what destroy
@@ -1097,7 +916,7 @@ func (b *opfsBody) shut() {
 		return
 	}
 
-	if _, err := opfsCall(b.handle, "close"); err != nil {
+	if _, err := opfs.Call(b.handle, "close"); err != nil {
 		slog.Error("close a file handle", "name", b.name, "error", err)
 	}
 
@@ -1183,7 +1002,7 @@ func (r *opfsReader) readAt(p []byte, off int64) (int, error) {
 // readChunk reads at most one chunk into the front of p.
 func (r *opfsReader) readChunk(p []byte, off int64, view js.Value, span int) (int, error) {
 	if len(p) < span {
-		v, err := opfsCall(view, "subarray", 0, len(p))
+		v, err := opfs.Call(view, "subarray", 0, len(p))
 		if err != nil {
 			return 0, tgutil.Errorf("%w", err)
 		}
@@ -1200,7 +1019,7 @@ func (r *opfsReader) readChunk(p []byte, off int64, view js.Value, span int) (in
 
 	// read takes the offset, so the whole file is never pulled in to get at a
 	// piece of it -- which is what archive/zip and the image decoders want.
-	got, err := opfsCall(r.body.handle, "read", view, opfsAt(off))
+	got, err := opfs.Call(r.body.handle, "read", view, opfs.At(off))
 	if err != nil {
 		return 0, tgutil.Errorf("%w", err)
 	}
@@ -1227,7 +1046,7 @@ func (r *opfsReader) view() (js.Value, int) {
 			span = 1
 		}
 
-		r.buf = opfsUint8Array.New(int(span))
+		r.buf = opfs.Uint8Array.New(int(span))
 	}
 
 	return r.buf, r.buf.Length()

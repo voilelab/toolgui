@@ -123,6 +123,30 @@ addEventListener('toolgui:download', (e) => umami.track('download', e.detail))
 Emit fails with `ErrNoEventCallback` until the page has registered for events,
 which the frontend does at boot, before the first page runs.
 
+## A store survives a reload
+
+`tgwasm.OpenStore(name)` is a key-value store on `[]byte`, kept in the origin
+private file system under `toolgui-kv/<name>/`:
+
+```go
+var store = tgwasm.OpenStore("judge")
+
+func Index(p *tgframe.Params) error {
+	draft, err := store.Get("draft/0004")
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	...
+	return store.Set("draft/0004", draft)
+}
+```
+
+It loads on a goroutine of its own, so `OpenStore` can be called from `main`.
+Its methods fail with `ErrBeforeRun` until `Run` installs the bridge; read it in
+a page run. The first tab owns the store; later tabs get a read-only snapshot,
+where writes fail with `ErrReadOnly`. See
+[the design note](../../docs/src/architecture/wasm-store.md).
+
 ## An upload is written by the page and read by Go
 
 No bytes cross the boundary. `newUpload` answers with a directory and a file

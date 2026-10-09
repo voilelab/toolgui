@@ -6,6 +6,8 @@ import (
 	"syscall/js"
 	"testing"
 	"time"
+
+	"github.com/voilelab/toolgui/toolgui/internal/opfs"
 )
 
 // These are the browser half of a download: Go writes the file into the origin
@@ -30,12 +32,12 @@ func pageReadsDownload(t *testing.T, d *Download) {
 		t.Fatalf("BrowserLocation: %v", err)
 	}
 
-	handle, err := opfsAwaitCall(opfsWalk(t, dir), "getFileHandle", name)
+	handle, err := opfs.AwaitCall(opfsWalk(t, dir), "getFileHandle", name)
 	if err != nil {
 		t.Fatalf("open the download: %v", err)
 	}
 
-	blob, err := opfsAwaitCall(handle, "getFile")
+	blob, err := opfs.AwaitCall(handle, "getFile")
 	if err != nil {
 		t.Fatalf("read the download: %v", err)
 	}
@@ -45,19 +47,19 @@ func pageReadsDownload(t *testing.T, d *Download) {
 	}
 
 	for off := int64(0); off < downloadSize; off += opfsChunkSize {
-		part, err := opfsCall(blob, "slice", float64(off),
+		part, err := opfs.Call(blob, "slice", float64(off),
 			float64(off+opfsChunkSize))
 		if err != nil {
 			t.Fatalf("slice at %d: %v", off, err)
 		}
 
-		buf, err := opfsAwaitCall(part, "arrayBuffer")
+		buf, err := opfs.AwaitCall(part, "arrayBuffer")
 		if err != nil {
 			t.Fatalf("read at %d: %v", off, err)
 		}
 
 		bs := make([]byte, opfsChunkSize)
-		js.CopyBytesToGo(bs, opfsUint8Array.New(buf))
+		js.CopyBytesToGo(bs, opfs.Uint8Array.New(buf))
 
 		for i, b := range bs {
 			if want := downloadByteAt(off + int64(i)); b != want {
@@ -120,7 +122,7 @@ func waitGone(t *testing.T, dir []string, name string) {
 	t.Helper()
 
 	for range 400 {
-		if _, err := opfsAwaitCall(opfsWalk(t, dir), "getFileHandle", name); err != nil {
+		if _, err := opfs.AwaitCall(opfsWalk(t, dir), "getFileHandle", name); err != nil {
 			return
 		}
 
