@@ -78,6 +78,25 @@ type Session struct {
 	running sync.Mutex
 
 	closed atomic.Bool
+
+	// rerunLock guards the fields below. It's only held for a few lines, so
+	// [App.RerunAll] never waits on a run.
+	rerunLock sync.Mutex
+
+	// started is set by the first run: a session that never ran has nothing
+	// on screen to refresh.
+	started bool
+
+	// runActive is set while a page func runs.
+	runActive bool
+
+	// pending is a server rerun not yet done. A run starting clears it, since
+	// it reads the new data anyway.
+	pending bool
+
+	// kicking is set while a goroutine is on its way to start a server rerun,
+	// so a burst of calls spawns one.
+	kicking bool
 }
 
 // NewSession return a Session running page `pageName` of app with state.
@@ -98,7 +117,7 @@ func NewSession(app *App, pageName string, query url.Values,
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	return &Session{
+	s := &Session{
 		app:      app,
 		pageName: pageName,
 		query:    cloneQuery(query),
@@ -107,7 +126,10 @@ func NewSession(app *App, pageName string, query url.Values,
 
 		ctx:    ctx,
 		cancel: cancel,
-	}, nil
+	}
+	app.addSession(s)
+
+	return s, nil
 }
 
 // HandleRawEvent parse a raw event and rerun the page with it.
@@ -154,7 +176,17 @@ func (s *Session) HandleEvent(event Event) {
 		return
 	}
 
+	s.startRun(event)
+}
+
+// startRun cuts the run in flight and runs the page with event. It must be
+// called with handling held.
+func (s *Session) startRun(event Event) {
 	s.beginRun()
+
+	s.rerunLock.Lock()
+	s.started, s.runActive, s.pending = true, true, false
+	s.rerunLock.Unlock()
 
 	// tell client we cut the previous runner
 	err := s.sendPack(&ReadyPack{Ready: true})
@@ -185,6 +217,7 @@ func (s *Session) HandleEvent(event Event) {
 	go func() {
 		defer cancelRun()
 		defer s.endRun()
+		defer s.finishRun()
 
 		var replaced url.Values
 		var navigate *Navigation
@@ -225,9 +258,61 @@ func (s *Session) Close() {
 	defer s.handling.Unlock()
 
 	s.closed.Store(true)
+	s.app.removeSession(s)
 	s.cancel()
 	s.beginRun()
 	s.endRun()
+}
+
+// requestRerun reruns the page as the rerun button would, but never cuts a
+// run in flight: that one is followed by a rerun once it ends. It doesn't
+// block.
+func (s *Session) requestRerun() {
+	s.rerunLock.Lock()
+	defer s.rerunLock.Unlock()
+
+	if !s.started {
+		return
+	}
+
+	s.pending = true
+	s.kickLocked()
+}
+
+// kickLocked spawns a goroutine starting the pending rerun, unless a run is
+// active or one is already on its way. It must be called with rerunLock held.
+func (s *Session) kickLocked() {
+	if !s.pending || s.runActive || s.kicking || s.closed.Load() {
+		return
+	}
+
+	s.kicking = true
+	go s.kick()
+}
+
+func (s *Session) kick() {
+	s.handling.Lock()
+	defer s.handling.Unlock()
+
+	s.rerunLock.Lock()
+	s.kicking = false
+	// A user event may have started a run while this waited for handling.
+	ready := s.pending && !s.runActive && !s.closed.Load()
+	s.rerunLock.Unlock()
+
+	if ready {
+		s.startRun(&EventEmpty{})
+	}
+}
+
+// finishRun marks the run ended and starts the rerun it held back, if any.
+// It runs before endRun, so the next run can't start before it.
+func (s *Session) finishRun() {
+	s.rerunLock.Lock()
+	defer s.rerunLock.Unlock()
+
+	s.runActive = false
+	s.kickLocked()
 }
 
 // replaceQuery stores q as the query of later runs and tells the client, if it

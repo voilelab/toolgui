@@ -33,19 +33,17 @@ func (app *App) Page1(p *tgframe.Params) error {
 
 A cache that takes long to fill should not hold up the service. Start the
 service right away, fill the cache in a goroutine, and let the page draw a
-loading screen until it is ready:
+loading screen until it is ready. When the load finishes, `RerunAll` reruns
+the pages already open, so they show the data without the user doing
+anything:
 
 ```go
 type App struct {
+	tgApp *tgframe.App
+
 	mu   sync.RWMutex
 	data *Data // nil until loaded
 	err  error
-}
-
-func NewApp() *App {
-	app := &App{}
-	go app.load()
-	return app
 }
 
 func (app *App) load() {
@@ -54,6 +52,9 @@ func (app *App) load() {
 	app.mu.Lock()
 	app.data, app.err = data, err
 	app.mu.Unlock()
+
+	// Pages opened during the load still show the loading screen.
+	app.tgApp.RerunAll()
 }
 
 // snapshot returns what is loaded so far; data is nil while loading.
@@ -71,7 +72,6 @@ func (app *App) Page1(p *tgframe.Params) error {
 
 	if data == nil {
 		tgcomp.Spinner(p.Main, "Loading data...")
-		tgcomp.Button(p.Main, "Refresh")
 		return nil
 	}
 
@@ -80,10 +80,11 @@ func (app *App) Page1(p *tgframe.Params) error {
 }
 
 func main() {
-	app := NewApp()
-
 	tgApp := tgframe.NewApp()
+	app := &App{tgApp: tgApp}
 	tgApp.AddPage("page1", "Page1", app.Page1)
+
+	go app.load()
 
 	// Serves at once; load() keeps running in the background.
 	tgexec.NewWebExecutor(tgApp).StartService("127.0.0.1:3000")
@@ -92,13 +93,34 @@ func main() {
 
 The page func must not wait for the load: draw the loading screen and return.
 A page blocked on the load keeps its session busy, and the user gets no answer
-until it finishes.
+until it finishes. Store the loaded data with one assignment, as `load()`
+does, so a run sees either nothing or all of it.
 
-The page reruns only on a user event, so a page opened before the load
-finished keeps showing the loading screen until the user does something. The
-`Refresh` button above is that something; the side nav's `Rerun` button does
-the same, but a button on the page is easier to find. Store the loaded data with one
-assignment, as `load()` does, so a run sees either nothing or all of it.
+`RerunAll` returns at once. It never cuts a run in flight, since that would
+drop the button click the run is handling: a page in the middle of a run is
+rerun once that run ends, and calls made meanwhile fold into that one rerun.
+`RerunPage("page1")` reruns only the pages named.
+
+## A reload button
+
+The same call makes a "reload data" button that updates every open page, not
+only the one it was pressed on:
+
+```go
+func (app *App) Page1(p *tgframe.Params) error {
+	if tgcomp.Button(p.Main, "Reload data") {
+		go app.load()
+	}
+
+	// ...draw from app.snapshot() as above
+	return nil
+}
+```
+
+Load in a goroutine rather than in the page func, so the run that handled the
+click ends at once. Pages, the one with the button included, rerun with the new
+data when `load()` calls `RerunAll`. To show the loading screen while it runs,
+clear `app.data` before starting the load.
 
 ## In wasm
 

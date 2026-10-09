@@ -59,6 +59,7 @@ shows: what was typed, else its default.
 | `n.Submit()` | Submit a form |
 | `p.Rerun()` | Run the page again, like the rerun button |
 | `p.Send(event)` | Send any `tgframe.Event` |
+| `p.Wait()` | Wait for a run the page didn't start, e.g. one `app.RerunAll()` triggered |
 
 A DataFrame row is picked by the index it was written at, keyed or not:
 with `RowKeys` set, tgtest sends that row's key, as the browser does.

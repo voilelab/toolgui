@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
@@ -443,5 +444,28 @@ func TestSelectDataFrameRows(t *testing.T) {
 		if !p.HasText(want) {
 			t.Errorf("expect %q", want)
 		}
+	}
+}
+
+func TestWaitForRerunAll(t *testing.T) {
+	var data atomic.Value
+	data.Store("old")
+
+	app := newApp("index", func(p *tgframe.Params) error {
+		tgcomp.Text(p.Main, data.Load().(string))
+		return nil
+	})
+
+	p := tgtest.Open(t, app, "index")
+	if !p.HasText("old") {
+		t.Fatal("expect old drawn")
+	}
+
+	data.Store("new")
+	app.RerunAll()
+	p.Wait()
+
+	if !p.HasText("new") {
+		t.Error("expect new drawn after RerunAll")
 	}
 }
