@@ -39,15 +39,22 @@ store.
   before they return. When the call returns `nil`, the change is on disk. The
   map is updated only after the write succeeds, so a write that fails over
   quota leaves the old value in place.
+* **A failed append is undone.** A short `write` or a failed `flush()` can leave
+  part of the record on disk. A later record appended after it would be lost on
+  the next open, even though its `Set` returned `nil`. So the store truncates
+  the file back to its length before the append and flushes again. If that
+  fails too, the store is broken: every later write returns that error, and
+  nothing more is appended.
 * **Append-only log.** Rewriting the whole file on every `Set` would cost the
   size of the store per write. Appending costs the size of one record. Each
   record has a length and a CRC. On open, a record cut short by a crash or a
   closed tab is dropped, together with anything after it.
 * **Compaction on open.** When the log is much larger than its live data, the
   store writes the live data to the other of two files (`a` and `b`) under a
-  higher generation number, flushes it, then empties the old file. On open, the
-  store reads the newest complete generation. A crash during compaction loses
-  nothing.
+  higher generation number, ends it with a commit record, and flushes. The old
+  file is left as it is, and the next compaction overwrites it. On open, the
+  store reads the newest generation that has its commit record. A crash during
+  compaction loses nothing, because the previous generation is still complete.
 
 ### Layout
 
@@ -57,6 +64,11 @@ toolgui-kv/            separate from toolgui-state, so the upload sweep never to
     .lock              its sync access handle is held for as long as the store is open
     a, b               generations of the log
 ```
+
+Keeping the previous generation also protects a read-only tab that opens
+during a compaction (see [Multiple tabs](#multiple-tabs)). Its two `getFile()`
+calls can straddle the compaction, but the older file is never emptied, so at
+least one of them is complete.
 
 The name must match `[a-z0-9-]+`. One origin can hold several stores, for
 example one per app on a shared host.
@@ -69,10 +81,17 @@ not be there yet, and the boot would fail with *the wasm program installed no
 bridge*.
 
 So `OpenStore` returns at once and loads on a goroutine of its own, the same
-way `opfsStateRoot` does. Each method waits for the load on its first call.
-That wait is safe because page functions run on the bridge's run goroutine
-(`b.runs.do`), not on the callback stack. After the load, no method waits for
-anything.
+way `opfsStateRoot` does. When a method is called depends on `Run`:
+
+* **Before `Run`** installs the bridge, for example from `main` or from an app
+  constructor, a method returns `ErrBeforeRun` at once. Waiting there would
+  block `main` before the bridge exists, and boot would fail.
+* **After `Run`**, a method waits for the load on its first call. That is safe
+  because page functions run on the bridge's run goroutine (`b.runs.do`), not on
+  the callback stack.
+
+After the load, no method waits for anything. A value needed at startup is
+read in the first page run, not in `main`.
 
 ```go
 var store = tgwasm.OpenStore("judge")
@@ -106,6 +125,9 @@ func (s *Store) ReadOnly() (bool, error)
 
 func GetJSON[T any](s *Store, key string) (T, error)
 func SetJSON(s *Store, key string, v any) error
+
+var ErrReadOnly  // a write in a tab that does not own the store
+var ErrBeforeRun // a call before Run installed the bridge
 ```
 
 * **`[]byte` at the core.** Values are `[]byte`. Typed access goes through
@@ -133,9 +155,13 @@ one.
 | IndexedDB, which allows many tabs | Rejected. Async, as explained above. |
 
 The tab that gets the `.lock` handle owns the store. A tab that is refused the
-lock (`NoModificationAllowedError`) reads the newest generation with
-`getFile()`, which another tab's sync access handle does not block, and opens
-read-only:
+lock (`NoModificationAllowedError`) reads the newest committed generation
+with `getFile()`, which another tab's sync access handle does not block, and
+opens read-only. If neither file has a committed generation, or a read fails
+with `NotReadableError` because the owner changed the file mid-read, it reads
+both files again, a few times, before it reports an error.
+
+In a read-only tab:
 
 * `Get` and `Keys` answer from that snapshot. Writes from the owning tab do not
   show up in it.
