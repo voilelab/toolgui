@@ -64,4 +64,8 @@ export interface AppConf {
   // Absent for an app that declares no menu, which is what keeps the menubar
   // row out of the DOM.
   menu?: MenuNode[],
+
+  // The page query keys App.SetStickyQuery carries to the next page. Absent
+  // for an app that sets none.
+  sticky_query?: string[],
 }

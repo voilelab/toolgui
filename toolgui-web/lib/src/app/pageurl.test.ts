@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { encodeQuery, pageFromLocation, pageHref, splitPagePart } from './pageurl'
+import {
+  encodeQuery, pageFromLocation, pageHref, splitPagePart, withStickyQuery, MAX_QUERY_SIZE,
+} from './pageurl'
 
 const loc = (pathname: string, search: string, hash: string) =>
   ({ pathname, search, hash })
@@ -65,5 +67,42 @@ describe('encodeQuery', () => {
   it('normalizes a string', () => {
     expect(encodeQuery('a=1&b=x y')).toBe('a=1&b=x+y')
     expect(encodeQuery(null)).toBe('')
+  })
+})
+
+describe('withStickyQuery', () => {
+  it('copies only the sticky keys', () => {
+    expect(withStickyQuery('', 'group=a&x=1', ['group'])).toBe('group=a')
+  })
+
+  it('keeps every value of a key', () => {
+    expect(withStickyQuery(null, 'g=a&g=b', ['g'])).toBe('g=a&g=b')
+  })
+
+  it('lets the link win', () => {
+    expect(withStickyQuery({ group: ['b'] }, 'group=a&day=1', ['group', 'day']))
+      .toBe('group=b&day=1')
+    expect(withStickyQuery('group=b', 'group=a', ['group'])).toBe('group=b')
+  })
+
+  it('counts a key the link sets empty as its own', () => {
+    expect(withStickyQuery({ group: [] }, 'group=a', ['group'])).toBe('')
+  })
+
+  it('skips a key the current query lacks', () => {
+    expect(withStickyQuery('id=1', 'x=2', ['group'])).toBe('id=1')
+  })
+
+  it('copies a key listed twice once', () => {
+    expect(withStickyQuery('', 'group=a', ['group', 'group'])).toBe('group=a')
+  })
+
+  it('drops the sticky keys past the size cap', () => {
+    const big = 'g=' + 'x'.repeat(MAX_QUERY_SIZE - 2)
+    expect(withStickyQuery('id=1', big, ['g'])).toBe('id=1')
+  })
+
+  it('changes nothing without sticky keys', () => {
+    expect(withStickyQuery({ id: ['1'] }, 'group=a', [])).toBe('id=1')
   })
 })

@@ -80,6 +80,7 @@ export class WailsApp extends Component<{}, WailsAppState> {
         ref={this.appEle}
         appConf={this.state.appConf}
         pageName={this.state.pageName}
+        query={this.state.query}
         onNavigate={(name, query) => { this.jumpToPage(name, query) }}
         onReplaceQuery={(query) => { this.currentQuery = query }}
         update={(event: UpdateEvent) => {

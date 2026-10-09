@@ -59,6 +59,8 @@ interface AppProps {
   // webview) drive the routing. Left out, the page comes from window.location
   // and navigating moves the browser.
   pageName?: string
+  // query is the page query pageName was opened with, encoded.
+  query?: string
   onNavigate?: (name: string, query: string) => void
 
   // onReplaceQuery takes the encoded page query Params.ReplaceQuery set. Left
@@ -77,11 +79,11 @@ export class App extends Component<AppProps> {
   // stored one comes back through themeModeManager.
   private defaultColorScheme: ThemeMode
 
-  // How PageLink and the side nav move to another page.
-  private pageNav: PageNav
-
   private pageFound: boolean
   private pageName: string
+
+  // The page query as last opened or replaced, for the sticky keys links carry.
+  private query: string
 
   // Holds the run. App itself renders only the providers, and re-renders
   // with its parent alone: MantineProvider hands out a new context value on
@@ -91,9 +93,11 @@ export class App extends Component<AppProps> {
   constructor(props: AppProps) {
     super(props);
 
-    const pageName = props.pageName !== undefined ?
-      props.pageName : pageFromLocation(window.location,
-        props.appConf.hash_page_name_mode, props.appConf.page_names).name
+    const loc = props.pageName !== undefined ?
+      { name: props.pageName, query: props.query || '' } :
+      pageFromLocation(window.location,
+        props.appConf.hash_page_name_mode, props.appConf.page_names)
+    const pageName = loc.name
 
     const curconf = this.props.appConf.page_confs[pageName]
     let pageFound = true
@@ -115,8 +119,14 @@ export class App extends Component<AppProps> {
 
     this.pageFound = pageFound
     this.pageName = pageName
+    this.query = loc.query
     this.defaultColorScheme = preferredThemeMode()
-    this.pageNav = newPageNav(props.appConf.hash_page_name_mode, props.onNavigate)
+  }
+
+  // newPageNav is how PageLink and the side nav move to another page.
+  newPageNav(): PageNav {
+    return newPageNav(this.props.appConf.hash_page_name_mode,
+      this.props.onNavigate, this.query, this.props.appConf.sticky_query || [])
   }
 
   startUpdate() {
@@ -135,6 +145,11 @@ export class App extends Component<AppProps> {
   // reload, no new session, no history entry.
   replaceQuery(query: PageQuery) {
     const q = encodeQuery(query)
+    if (q !== this.query) {
+      this.query = q
+      this.frame.current?.setPageNav(this.newPageNav())
+    }
+
     if (this.props.onReplaceQuery) {
       this.props.onReplaceQuery(q)
       return
@@ -152,7 +167,7 @@ export class App extends Component<AppProps> {
       return
     }
 
-    this.pageNav.navigate(name, query)
+    this.newPageNav().navigate(name, query)
   }
 
   clearState() {
@@ -165,22 +180,20 @@ export class App extends Component<AppProps> {
     return (
       <MantineProvider defaultColorScheme={this.defaultColorScheme}
         colorSchemeManager={themeModeManager}>
-        <PageNavContext.Provider value={this.pageNav}>
-          {/* Where every Toast lands. Above the dialogs and their popovers: a
-              toast is transient and says what just happened, so whatever it was
-              fired from must not cover it. */}
-          <Notifications zIndex={getDefaultZIndex('max')} />
+        {/* Where every Toast lands. Above the dialogs and their popovers: a
+            toast is transient and says what just happened, so whatever it was
+            fired from must not cover it. */}
+        <Notifications zIndex={getDefaultZIndex('max')} />
 
-          <AppFrame ref={this.frame}
-            appConf={this.props.appConf}
-            update={this.props.update}
-            upload={this.props.upload}
-            download={this.props.download}
-            embed={this.props.embed}
-            pageFound={this.pageFound}
-            pageName={this.pageName}
-            pageNav={this.pageNav} />
-        </PageNavContext.Provider>
+        <AppFrame ref={this.frame}
+          appConf={this.props.appConf}
+          update={this.props.update}
+          upload={this.props.upload}
+          download={this.props.download}
+          embed={this.props.embed}
+          pageFound={this.pageFound}
+          pageName={this.pageName}
+          pageNav={this.newPageNav()} />
       </MantineProvider>
     )
   }
@@ -194,6 +207,7 @@ interface AppFrameProps {
   embed?: boolean
   pageFound: boolean
   pageName: string
+  // The first PageNav. setPageNav swaps it when the page query changes.
   pageNav: PageNav
 }
 
@@ -201,6 +215,10 @@ interface AppFrameState {
   forest: Forest
   running: boolean
   error: Error | null
+
+  // A new PageNav redraws the links for the sticky keys it carries. Held
+  // here, not in App, so a query change leaves MantineProvider alone.
+  pageNav: PageNav
 }
 
 // AppFrame is the app's chrome and page, and the run they show.
@@ -221,7 +239,12 @@ class AppFrame extends Component<AppFrameProps, AppFrameState> {
       ]),
       running: false,
       error: null,
+      pageNav: props.pageNav,
     }
+  }
+
+  setPageNav(pageNav: PageNav) {
+    this.setState({ pageNav })
   }
 
   startUpdate() {
@@ -315,47 +338,49 @@ class AppFrame extends Component<AppFrameProps, AppFrameState> {
       this.props.appConf.menu : null
 
     return (
-      <ThemeModeSync>
-        {(themeMode) =>
-          // The frame is a column: the menubar row, and the shell's two
-          // columns under it. An app that declares no menu gets no row --
-          // the frame is then the shell in a wrapper, and --tg-menubar-h
-          // stays 0, so every 100vh the shell is built on still holds.
-          <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
-            {menu ?
-              <AppMenuBar menu={menu}
-                update={(e) => { this.props.update(e) }} /> : ''}
+      <PageNavContext.Provider value={this.state.pageNav}>
+        <ThemeModeSync>
+          {(themeMode) =>
+            // The frame is a column: the menubar row, and the shell's two
+            // columns under it. An app that declares no menu gets no row --
+            // the frame is then the shell in a wrapper, and --tg-menubar-h
+            // stays 0, so every 100vh the shell is built on still holds.
+            <div className={`toolgui-frame ${menu ? 'has-menubar' : ''}`}>
+              {menu ?
+                <AppMenuBar menu={menu}
+                  update={(e) => { this.props.update(e) }} /> : ''}
 
-            <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
-              {this.props.embed ? '' :
-                <AppSideNav
-                  appConf={this.props.appConf}
-                  forest={this.state.forest}
-                  running={this.state.running}
-                  pageFound={this.props.pageFound}
-                  pageName={this.props.pageName}
-                  pageNav={this.props.pageNav}
-                  rerun={() => { this.props.update({}) }}
-                  update={this.update}
-                  upload={this.upload}
-                  download={this.download}
-                  themeMode={themeMode} />}
+              <div className={`toolgui-shell ${this.props.embed ? 'is-embed' : ''}`}>
+                {this.props.embed ? '' :
+                  <AppSideNav
+                    appConf={this.props.appConf}
+                    forest={this.state.forest}
+                    running={this.state.running}
+                    pageFound={this.props.pageFound}
+                    pageName={this.props.pageName}
+                    pageNav={this.state.pageNav}
+                    rerun={() => { this.props.update({}) }}
+                    update={this.update}
+                    upload={this.upload}
+                    download={this.download}
+                    themeMode={themeMode} />}
 
-              <main className="toolgui-main">
-                <AppBody
-                  appConf={this.props.appConf}
-                  pageFound={this.props.pageFound}
-                  forest={this.state.forest}
-                  update={this.update}
-                  upload={this.upload}
-                  download={this.download}
-                  themeMode={themeMode} />
+                <main className="toolgui-main">
+                  <AppBody
+                    appConf={this.props.appConf}
+                    pageFound={this.props.pageFound}
+                    forest={this.state.forest}
+                    update={this.update}
+                    upload={this.upload}
+                    download={this.download}
+                    themeMode={themeMode} />
 
-                <AppError error={this.state.error} />
-              </main>
-            </div>
-          </div>}
-      </ThemeModeSync>
+                  <AppError error={this.state.error} />
+                </main>
+              </div>
+            </div>}
+        </ThemeModeSync>
+      </PageNavContext.Provider>
     )
   }
 }

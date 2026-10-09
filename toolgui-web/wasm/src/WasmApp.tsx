@@ -130,6 +130,7 @@ export class WasmApp extends Component<{}, WasmAppState> {
         ref={this.appEle}
         appConf={this.state.appConf}
         pageName={this.state.pageName}
+        query={this.state.query}
         embed={this.embed}
         onNavigate={(name, query) => { this.jumpToPage(name, query) }}
         onReplaceQuery={(query) => { this.replaceQuery(query) }}
