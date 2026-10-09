@@ -67,6 +67,10 @@ interface WorkerCtx {
   // The page's query string, for a program that reads its own parameters
   // (`?lang=en`). Set before the wasm program runs, for the same reason.
   toolguiQuery?: string
+
+  // The directory of the app's index.html, for tgwasm.AssetURL. Set before
+  // the wasm program runs, for the same reason.
+  toolguiBase?: string
 }
 
 const ctx = self as unknown as WorkerCtx
@@ -80,6 +84,7 @@ ctx.onmessage = (event: MessageEvent) => {
     case 'init':
       ctx.toolguiEmbed = !!msg.embed
       ctx.toolguiQuery = typeof msg.query === 'string' ? msg.query : ''
+      ctx.toolguiBase = typeof msg.base === 'string' ? msg.base : ''
       boot(msg.wasmExecURL, msg.wasmURL).catch((e) => {
         ctx.postMessage({ kind: 'failed', error: String(e) })
       })
