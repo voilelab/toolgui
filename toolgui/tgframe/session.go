@@ -373,7 +373,12 @@ func (s *Session) sendNotify(pack NotifyPack) error {
 		return err
 	}
 
-	return s.send(out)
+	err = s.send(out)
+	if c, ok := pack.(*notifyPackCreate); ok && err != nil {
+		// The client may never have got it: don't keep it next run.
+		s.sent.remove(c.Key)
+	}
+	return err
 }
 
 // sendSuccess ends a run on the client and in the cache alike. Only a success

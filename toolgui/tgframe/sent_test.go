@@ -268,3 +268,31 @@ func TestSentCacheMovedIDDropsOldPlace(t *testing.T) {
 		t.Errorf("byID = %v", c.byID)
 	}
 }
+
+// A create the transport failed to send is not kept next run.
+func TestSessionFailedSendIsNotKept(t *testing.T) {
+	app := NewApp()
+	app.AddPage(testPageName, "Test", func(p *Params) error {
+		p.Main.AddComponent(newSentTestComp("", "x"))
+		return nil
+	})
+
+	fail := true
+	r := newPackRecorder()
+	s, err := NewSession(app, testPageName, nil, NewState(), func(pack any) error {
+		if _, ok := pack.(*notifyPackCreateRaw); ok && fail {
+			fail = false
+			r.send(&ResultPack{Error: "send"})
+			return errors.New("send")
+		}
+		return r.send(pack)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(s.Close)
+
+	runPacks(t, s, r)
+	waitResult(t, r)
+	expectPacks(t, runPacks(t, s, r), [2]any{sentMain + "/0", NotifyTypeCreate})
+}
