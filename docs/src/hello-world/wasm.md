@@ -188,6 +188,23 @@ go tool toolgui-wasm build -offline -manifest manifest.json -o dist ./cmd/myapp
   starts from an empty one.
 * Service workers need a [secure context] too.
 
+### Large runtimes
+
+A runtime like Pyodide or clang is too big to download on install, when the
+app may never use it. Ship it with `-lazy-assets` instead of `-assets`:
+
+```shell
+go tool toolgui-wasm build -offline -assets assets -lazy-assets runtimes ./cmd/myapp
+```
+
+* It is copied to `assets/` like `-assets`. A path both directories have is an
+  error.
+* The worker does not fetch it on install. The first time the page fetches a
+  file of it, the worker caches that file, which opens offline from then on.
+  One never fetched fails offline, as it would with no worker.
+* A new build drops the cached copy along with the rest.
+* Without `-offline`, it is a plain copy.
+
 ## Where it runs
 
 The Go program runs in a dedicated Web Worker, not on the page's thread, and it

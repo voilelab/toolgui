@@ -6,17 +6,20 @@
 // is only for when the network fails, and is refreshed by every load that
 // reaches it.
 //
-// toolgui-wasm fills in VERSION, a hash of the files, and FILES, their paths
-// relative to this script.
+// toolgui-wasm fills in VERSION, a hash of the files, FILES, their paths
+// relative to this script, and LAZY, the -lazy-assets paths: those are not
+// fetched on install, only cached once the page fetches them.
 
 const VERSION = '__VERSION__'
 const FILES = __FILES__
+const LAZY = __LAZY__
 
 // The scope keeps two apps on one origin out of each other's caches.
 const PREFIX = `toolgui-sw:${self.registration.scope}:`
 const CACHE = PREFIX + VERSION
 
 const URLS = new Set(FILES.map((name) => new URL(name, self.location).href))
+const LAZY_URLS = new Set(LAZY.map((name) => new URL(name, self.location).href))
 const INDEX = new URL('index.html', self.location).href
 
 self.addEventListener('install', (event) => {
@@ -54,13 +57,13 @@ self.addEventListener('fetch', (event) => {
   url.search = ''
   url.hash = ''
 
-  // The app root is index.html. Anything else not in FILES is left alone: the
-  // site may share its directory with other pages.
+  // The app root is index.html. Anything else not in FILES or LAZY is left
+  // alone: the site may share its directory with other pages.
   let key = url.href
   if (req.mode === 'navigate' && key === self.registration.scope) {
     key = INDEX
   }
-  if (!URLS.has(key)) {
+  if (!URLS.has(key) && !LAZY_URLS.has(key)) {
     return
   }
 

@@ -19,12 +19,14 @@ const usage = `toolgui-wasm builds a ToolGUI app into a static site.
 
 Usage:
 
-	toolgui-wasm build [-o dir] [-ldflags flags] [-manifest file] [-assets dir] [-icon url] [-head file] [-offline] [package]
-	toolgui-wasm serve [-o dir] [-ldflags flags] [-manifest file] [-assets dir] [-icon url] [-head file] [-offline] [-addr address] [package]
+	toolgui-wasm build [-o dir] [-ldflags flags] [-manifest file] [-assets dir] [-lazy-assets dir] [-icon url] [-head file] [-offline] [package]
+	toolgui-wasm serve [-o dir] [-ldflags flags] [-manifest file] [-assets dir] [-lazy-assets dir] [-icon url] [-head file] [-offline] [-addr address] [package]
 
 The package defaults to the current directory, and the output to ./dist.
 -ldflags is passed to go build as is. -manifest is written as manifest.json,
 and -assets is copied to assets/, where the manifest's icons can point.
+-lazy-assets is copied to assets/ too; with -offline its files are cached
+once the page fetches them, not on install, e.g. a large runtime.
 -icon replaces the favicon url in index.html, e.g. assets/favicon.svg.
 -head is an html file inserted into the head of index.html, e.g. meta tags.
 -offline writes a service worker, so the site opens with no network.

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -403,7 +404,7 @@ func TestWriteServiceWorker(t *testing.T) {
 	sw := func() string {
 		t.Helper()
 
-		err := writeServiceWorker(out, assets)
+		err := writeServiceWorker(out, assets, "")
 		if err != nil {
 			t.Fatalf("writeServiceWorker: %v", err)
 		}
@@ -479,5 +480,143 @@ func TestWriteIconNoLink(t *testing.T) {
 
 	if err := writeIcon(name, "assets/favicon.svg"); err == nil {
 		t.Error("expected an error for an index.html with no icon link")
+	}
+}
+
+func TestWriteServiceWorkerLazy(t *testing.T) {
+	out := t.TempDir()
+
+	err := writeFrontend(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeFile(t, filepath.Join(out, "index.html"), "<html><head></head></html>")
+	writeFile(t, filepath.Join(out, "app.wasm"), "wasm")
+	writeFile(t, filepath.Join(out, "wasm_exec.js"), "shim")
+	writeFile(t, filepath.Join(out, "manifest.json"), "{}")
+
+	lazy := t.TempDir()
+	writeFile(t, filepath.Join(lazy, "pyodide", "pyodide.wasm"), "py")
+
+	err = writeAssets(lazy, out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sw := func() string {
+		t.Helper()
+
+		err := writeServiceWorker(out, "", lazy)
+		if err != nil {
+			t.Fatalf("writeServiceWorker: %v", err)
+		}
+
+		bs, err := os.ReadFile(filepath.Join(out, "sw.js"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return string(bs)
+	}
+
+	first := sw()
+
+	// In LAZY, not in the precached FILES.
+	lazyLine := regexp.MustCompile(`(?m)^const LAZY = (.*)$`).FindStringSubmatch(first)
+	filesLine := regexp.MustCompile(`(?m)^const FILES = (.*)$`).FindStringSubmatch(first)
+	if lazyLine == nil || filesLine == nil {
+		t.Fatalf("no FILES or LAZY in sw.js: %s", first)
+	}
+	if lazyLine[1] != `["assets/pyodide/pyodide.wasm"]` {
+		t.Errorf("LAZY = %s", lazyLine[1])
+	}
+	if strings.Contains(filesLine[1], "pyodide") {
+		t.Errorf("FILES precaches a lazy file: %s", filesLine[1])
+	}
+
+	if strings.Contains(first, "__LAZY__") {
+		t.Error("sw.js still has a placeholder")
+	}
+
+	// A new runtime is a new version, so the old cached copy is dropped.
+	writeFile(t, filepath.Join(out, "assets", "pyodide", "pyodide.wasm"), "py 2")
+	if sw() == first {
+		t.Error("a changed lazy file kept the same sw.js")
+	}
+}
+
+// Without -lazy-assets, LAZY is an empty list, not a placeholder.
+func TestWriteServiceWorkerNoLazy(t *testing.T) {
+	out := t.TempDir()
+
+	err := writeFrontend(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	writeFile(t, filepath.Join(out, "index.html"), "<html><head></head></html>")
+	writeFile(t, filepath.Join(out, "app.wasm"), "wasm")
+	writeFile(t, filepath.Join(out, "wasm_exec.js"), "shim")
+	writeFile(t, filepath.Join(out, "manifest.json"), "{}")
+
+	err = writeServiceWorker(out, "", "")
+	if err != nil {
+		t.Fatalf("writeServiceWorker: %v", err)
+	}
+
+	bs, err := os.ReadFile(filepath.Join(out, "sw.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(bs), "const LAZY = []\n") {
+		t.Errorf("LAZY is not empty: %s", bs)
+	}
+}
+
+func TestCheckAssetConflicts(t *testing.T) {
+	assets := t.TempDir()
+	writeFile(t, filepath.Join(assets, "icon.png"), "png")
+
+	lazy := t.TempDir()
+	writeFile(t, filepath.Join(lazy, "pyodide", "pyodide.wasm"), "py")
+
+	err := checkAssetConflicts(assets, lazy)
+	if err != nil {
+		t.Errorf("checkAssetConflicts: %v", err)
+	}
+
+	writeFile(t, filepath.Join(lazy, "icon.png"), "png")
+
+	err = checkAssetConflicts(assets, lazy)
+	if err == nil || !strings.Contains(err.Error(), "assets/icon.png") {
+		t.Errorf("err = %v, want the conflict on assets/icon.png", err)
+	}
+}
+
+// Without -offline, -lazy-assets is a plain copy.
+func TestBuildLazyAssetsWithoutOffline(t *testing.T) {
+	if testing.Short() {
+		t.Skip("compiles a wasm binary")
+	}
+
+	lazy := t.TempDir()
+	writeFile(t, filepath.Join(lazy, "pyodide", "pyodide.wasm"), "py")
+
+	out := t.TempDir()
+	err := build(buildOpts{out: out, lazy: lazy, pkg: "github.com/voilelab/toolgui/toolgui/tgwasm/example/hello"})
+	if err != nil {
+		t.Fatalf("build: %v", err)
+	}
+
+	_, err = os.Stat(filepath.Join(out, "assets", "pyodide", "pyodide.wasm"))
+	if err != nil {
+		t.Errorf("lazy asset not copied: %v", err)
+	}
+
+	_, err = os.Stat(filepath.Join(out, "sw.js"))
+	if err == nil {
+		t.Error("sw.js written without -offline")
 	}
 }
