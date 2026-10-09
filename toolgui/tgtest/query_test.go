@@ -139,3 +139,32 @@ func TestReplaceQuery(t *testing.T) {
 		t.Errorf("Query = %q, want group=c", got)
 	}
 }
+
+func TestNavigateFromDataFrame(t *testing.T) {
+	ids := []string{"0003", "0004"}
+	app := newApp("problems", func(p *tgframe.Params) error {
+		sel := tgcomp.DataFrame(p.Main, []string{"id"},
+			[][]string{{ids[0]}, {ids[1]}},
+			&tgcomp.DataFrameConf{Selection: tgcomp.SelectionModeSingle})
+		if len(sel) == 1 {
+			p.Navigate("detail", url.Values{"id": {ids[sel[0]]}})
+		}
+		return nil
+	})
+	app.AddPage("detail", "Detail", func(*tgframe.Params) error { return nil })
+
+	p := tgtest.Open(t, app, "problems")
+	if _, _, ok := p.Navigated(); ok {
+		t.Error("navigated before a row was picked")
+	}
+
+	p.FindByName("dataframe_component")[0].Select(1)
+	if err := p.Err(); err != nil {
+		t.Fatal(err)
+	}
+
+	page, q, ok := p.Navigated()
+	if !ok || page != "detail" || q.Encode() != "id=0004" {
+		t.Errorf("Navigated = %q %q %v", page, q.Encode(), ok)
+	}
+}

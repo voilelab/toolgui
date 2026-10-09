@@ -133,10 +133,31 @@ p.ReplaceQuery(q)
 * Over 8 KiB encoded, it fails the run (`run.err`) and the address bar stays.
 * On the desktop there is no address bar; the query is only kept in memory.
 
+### Opening another page
+
+`Navigate` opens another page from code, as a click on a
+[Page Link](../components/content/page_link.md) would. Use it when there is
+nothing to click, such as a DataFrame row picked:
+
+```go
+sel := tgcomp.DataFrame(p.Main, head, rows,
+	&tgcomp.DataFrameConf{Selection: tgcomp.SelectionModeSingle})
+if len(sel) == 1 {
+	p.Navigate("detail", url.Values{"id": {ids[sel[0]]}})
+}
+```
+
+* The new page gets a new session and a new state, and a history entry: Back
+  returns here.
+* It takes a page name of this app, never a URL. An unknown page or a query
+  over 8 KiB fails the run, and the page stays.
+* It takes effect when the run ends. A run cut by a newer event goes nowhere,
+  the last call of a run wins, and it wins over `ReplaceQuery`.
+
 ### Testing
 
-In a test, open the page with `tgtest.WithQuery`, and read what
-`ReplaceQuery` left with `Page.Query`:
+In a test, open the page with `tgtest.WithQuery`, read what `ReplaceQuery`
+left with `Page.Query`, and where `Navigate` went with `Page.Navigated`:
 
 ```go
 p := tgtest.Open(t, app, "detail", tgtest.WithQuery(url.Values{
@@ -144,6 +165,8 @@ p := tgtest.Open(t, app, "detail", tgtest.WithQuery(url.Values{
 }))
 p.GetByLabel("Group").Select(2)
 p.Query().Get("group") // "c"
+
+page, q, ok := p.Navigated() // "detail", id=0004, true
 ```
 
 See [Page Parameters](../architecture/page-params.md) for the design.

@@ -193,6 +193,17 @@ export class App extends Component<AppProps, AppState> {
       pageHref(this.state.pageName, q, this.props.appConf.hash_page_name_mode))
   }
 
+  // navigate opens the page Params.Navigate named, as a PageLink click would:
+  // a new session and a history entry. Only a page of this app is taken.
+  navigate(name: string, query: PageQuery) {
+    if (!this.props.appConf.page_confs[name]) {
+      console.error('Navigate to unknown page', name)
+      return
+    }
+
+    this.pageNav.navigate(name, query)
+  }
+
   finishUpdate(pack: any) {
     this.setState((prevState) => {
       const newForest = prevState.forest.swallowCopy()

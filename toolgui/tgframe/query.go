@@ -37,6 +37,21 @@ type QueryPack struct {
 	ReplaceQuery url.Values `json:"replace_query"`
 }
 
+// Navigation is a page of this app and the query to open it with.
+type Navigation struct {
+	Page string `json:"page"`
+
+	// Query is never nil, so the client always reads an object.
+	Query url.Values `json:"query"`
+}
+
+// NavigatePack tells the client to open another page, as a click on a
+// tgcomp.PageLink would: a new session and a history entry. See
+// [Params.Navigate].
+type NavigatePack struct {
+	Navigate *Navigation `json:"navigate"`
+}
+
 // checkQuery reports whether query fits in [MaxQuerySize].
 func checkQuery(query url.Values) error {
 	if len(query.Encode()) > MaxQuerySize {

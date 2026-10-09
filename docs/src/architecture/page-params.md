@@ -1,8 +1,8 @@
 # Page Parameters
 
 > Design note (TG-88). It records the decisions that the implementation tickets
-> build on. `Params.Query` and `PageLink` (TG-96) and `ReplaceQuery` (TG-97)
-> are implemented. `SetStickyQuery` (TG-98) is not yet.
+> build on. `Params.Query` and `PageLink` (TG-96), `ReplaceQuery` (TG-97) and
+> `Navigate` (TG-103) are implemented. `SetStickyQuery` (TG-98) is not yet.
 
 An analysis tool needs three things that pages cannot do today:
 
@@ -173,6 +173,58 @@ Open `/detail?group=b` and `b` is selected. Pick `c` and the address bar reads
 copied URL opens `c`. Unchanged runs send nothing, because the session only
 sends a query that differs from the one it holds.
 
+## Navigating from code
+
+`p.Navigate(page, query)` opens another page of the app from a run, the way a
+click on a `PageLink` would. It is for a jump with no link to click: a
+DataFrame row picked, a button pressed.
+
+* It sends a pack when the run ends, just before the result, and only for a
+  run no newer event cut. The last call of a run wins, and it wins over
+  `ReplaceQuery`.
+* The frontend opens the page the same way as a `PageLink`: path mode moves the
+  browser (`/detail?id=0004`), hash mode changes the hash and reloads, wasm
+  changes the hash. Each is a history entry, so Back returns to the list. The
+  new page gets a new session and a new state.
+* It takes a page name, not a URL, the same as `PageLink`. An unknown page or
+  a query over 8 KiB fails the run (`run.err`), and the client stays. The
+  frontend also drops a pack naming a page it does not know.
+* On Wails it opens the page with the query in memory, the same as a
+  `PageLink`.
+
+### Example: list to detail
+
+The list page jumps to the detail page when a row is picked. The detail page
+reads the id from the URL, so a shared link opens it directly:
+
+```go
+func Problems(p *tgframe.Params) error {
+	sel := tgcomp.DataFrame(p.Main, []string{"ID", "Title"}, rows,
+		&tgcomp.DataFrameConf{Selection: tgcomp.SelectionModeSingle})
+	if len(sel) == 1 {
+		p.Navigate("detail", url.Values{"id": {ids[sel[0]]}})
+	}
+	return nil
+}
+
+func Detail(p *tgframe.Params) error {
+	// Untrusted: only a known id opens a problem.
+	prob, ok := problems[p.Query.Get("id")]
+	if !ok {
+		tgcomp.Text(p.Main, "No such problem.")
+		return nil
+	}
+
+	tgcomp.PageLink(p.Main, "Back to list", "problems", nil)
+	tgcomp.Title(p.Main, prob.Title)
+	return nil
+}
+```
+
+Pick row `0004` and the browser opens `/detail?id=0004`. Back returns to the
+list, which opens in a new session, so nothing is selected and no `Slot` or
+manual clearing is needed.
+
 ## Shared selection: sticky URL keys, not shared state
 
 A cross-page state key was rejected:
@@ -221,16 +273,13 @@ A URL is input that anyone can construct and send to a user.
   The doc for `Params.Query` says so.
 * **Size cap.** The query is capped at 8 KiB encoded. Above the cap the
   session is refused with a fatal result, the same as an unknown page.
-* **No open redirect.** `PageLink` and `ReplaceQuery` take a page name and
-  values, never a URL. The frontend encodes the values with `URLSearchParams`,
+* **No open redirect.** `PageLink`, `ReplaceQuery` and `Navigate` take a page
+  name and values, never a URL. The frontend encodes the values with `URLSearchParams`,
   so neither can change the origin or the scheme.
 * Query values are not logged. A row name can be data.
 
 ## Out of scope
 
-* **Navigating from code**, such as jumping to a detail page when a DataFrame
-  row is selected. Render a `PageLink` for the selected row for now. Add a
-  `p.Navigate(page, query)` pack when an app needs one.
 * **Typed parameters** (`QueryInt`, struct binding). `url.Values` and the
   standard library are enough until repeated parsing code shows up.
 * **Web embed mode.** `?embed` is wasm-only today, and nothing here changes it.

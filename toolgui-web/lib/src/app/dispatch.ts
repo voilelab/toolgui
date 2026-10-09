@@ -21,6 +21,11 @@ export function dispatchPack(app: App, pack: any) {
     return
   }
 
+  if (pack.navigate !== undefined) {
+    app.navigate(pack.navigate.page, pack.navigate.query)
+    return
+  }
+
   if (pack.replace_query !== undefined) {
     app.replaceQuery(pack.replace_query)
     return

@@ -49,6 +49,12 @@ export class WSApp extends Component<{}, WSState> {
 
     conn.init()
 
+    // A hash change alone opens no new session, so Back and Forward between
+    // pages reload. ReplaceQuery uses replaceState, which fires none.
+    if (appConf.hash_page_name_mode) {
+      window.addEventListener('hashchange', () => { window.location.reload() })
+    }
+
     this.setState({ appConf, pageName, conn })
   }
 
