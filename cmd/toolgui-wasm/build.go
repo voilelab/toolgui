@@ -129,22 +129,23 @@ func build(opts buildOpts) error {
 		}
 	}
 
-	if opts.head != "" {
-		err = writeHead(filepath.Join(out, "index.html"), opts.head)
-		if err != nil {
-			return tgutil.Errorf("head: %w", err)
-		}
-	}
-
 	err = writeManifest(out, opts.manifest)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
+	// Before -head, so the theme-color meta found is the shipped one.
 	if opts.manifest != "" {
 		err = writeAppleTags(filepath.Join(out, "index.html"), opts.manifest, opts.head)
 		if err != nil {
 			return tgutil.Errorf("%w", err)
+		}
+	}
+
+	if opts.head != "" {
+		err = writeHead(filepath.Join(out, "index.html"), opts.head)
+		if err != nil {
+			return tgutil.Errorf("head: %w", err)
 		}
 	}
 
@@ -622,7 +623,12 @@ func writeAppleTags(index, manifest, head string) error {
 		}
 	}
 
-	if m.ThemeColor == "" || hasAttr(headHTML, "name", "theme-color") {
+	// -head's theme-color replaces the shipped one, not joins it.
+	if hasAttr(headHTML, "name", "theme-color") {
+		return writeThemeColor(index, "")
+	}
+
+	if m.ThemeColor == "" {
 		return nil
 	}
 
@@ -647,9 +653,10 @@ func touchIcon(m appleManifest) string {
 		// No usable size ranks last, but still beats no icon.
 		dist, size := 1<<30, 0
 		for _, s := range strings.Fields(icon.Sizes) {
-			w, _, ok := strings.Cut(strings.ToLower(s), "x")
+			w, h, ok := strings.Cut(strings.ToLower(s), "x")
 			n, err := strconv.Atoi(w)
-			if !ok || err != nil {
+			_, herr := strconv.Atoi(h)
+			if !ok || err != nil || herr != nil || n <= 0 {
 				continue
 			}
 
@@ -679,20 +686,28 @@ func isPNG(typ, src string) bool {
 }
 
 // writeThemeColor set the theme-color meta in index.html to color, adding
-// one if there is none.
+// one if there is none. An empty color removes it.
 func writeThemeColor(index, color string) error {
 	bs, err := os.ReadFile(index)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
 
-	tag := `<meta name="theme-color" content="` + html.EscapeString(color) + `" />`
+	tag := ""
+	if color != "" {
+		tag = `<meta name="theme-color" content="` + html.EscapeString(color) + `" />`
+	}
+
 	page := string(bs)
 	for _, loc := range metaTag.FindAllStringIndex(page, -1) {
 		if hasAttr(page[loc[0]:loc[1]], "name", "theme-color") {
 			page = page[:loc[0]] + tag + page[loc[1]:]
 			return os.WriteFile(index, []byte(page), 0o644)
 		}
+	}
+
+	if tag == "" {
+		return nil
 	}
 
 	return insertHead(index, tag)

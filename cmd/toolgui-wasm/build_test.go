@@ -584,18 +584,22 @@ func appleIndex(t *testing.T, manifest, head string) string {
 	if head != "" {
 		headFile = filepath.Join(dir, "head.html")
 		writeFile(t, headFile, head)
-		err = writeHead(index, headFile)
-		if err != nil {
-			t.Fatal(err)
-		}
 	}
 
 	manifestFile := filepath.Join(dir, "app.json")
 	writeFile(t, manifestFile, manifest)
 
+	// In build's order: -head goes in after.
 	err = writeAppleTags(index, manifestFile, headFile)
 	if err != nil {
 		t.Fatalf("writeAppleTags: %v", err)
+	}
+
+	if headFile != "" {
+		err = writeHead(index, headFile)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	bs, err := os.ReadFile(index)
@@ -648,13 +652,13 @@ func TestWriteAppleTagsKeepsHead(t *testing.T) {
 		"icons": [{"src": "assets/icon.png", "type": "image/png", "sizes": "180x180"}]
 	}`, head)
 
-	for _, tag := range []string{`rel="apple-touch-icon"`, `name="apple-mobile-web-app-title"`} {
+	for _, tag := range []string{`rel="apple-touch-icon"`, `name="apple-mobile-web-app-title"`, `name="theme-color"`} {
 		if n := strings.Count(page, tag); n != 1 {
 			t.Errorf("%d of %s, want only the -head one", n, tag)
 		}
 	}
 
-	if strings.Contains(page, "assets/icon.png") || strings.Contains(page, "#123456") {
+	if strings.Contains(page, "assets/icon.png") || strings.Contains(page, "#123456") || strings.Contains(page, "#000000") {
 		t.Errorf("manifest tags added over -head: %s", page)
 	}
 }
@@ -702,6 +706,7 @@ func TestTouchIcon(t *testing.T) {
 		{"tie takes the larger", []icon{{Src: "a.png", Sizes: "170x170"}, {Src: "b.png", Sizes: "190x190"}}, "b.png"},
 		{"any of several sizes", []icon{{Src: "a.png", Sizes: "16x16 180x180"}, {Src: "b.png", Sizes: "192x192"}}, "a.png"},
 		{"extension with a query", []icon{{Src: "a.PNG?v=2"}}, "a.PNG?v=2"},
+		{"bad size is no size", []icon{{Src: "a.png", Sizes: "180xbad"}, {Src: "b.png", Sizes: "192x192"}}, "b.png"},
 		{"type wins over extension", []icon{{Src: "a.png", Type: "image/webp"}}, ""},
 	}
 
