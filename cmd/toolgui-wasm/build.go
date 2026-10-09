@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"html"
+	"io"
 	"io/fs"
 	"log"
 	"net/url"
@@ -267,7 +268,8 @@ func writeAssets(src, out string) error {
 }
 
 // checkAssetConflicts refuse a path both -assets and -lazy-assets have: both
-// land in assets/, and one would silently overwrite the other.
+// land in assets/, and one would silently overwrite the other. Case is
+// ignored, as a case-insensitive filesystem would.
 func checkAssetConflicts(assets, lazy string) error {
 	names, err := fileNames(os.DirFS(assets), "")
 	if err != nil {
@@ -281,11 +283,11 @@ func checkAssetConflicts(assets, lazy string) error {
 
 	seen := map[string]bool{}
 	for _, name := range names {
-		seen[name] = true
+		seen[strings.ToLower(name)] = true
 	}
 
 	for _, name := range lazyNames {
-		if seen[name] {
+		if seen[strings.ToLower(name)] {
 			return tgutil.Errorf("assets/%s is in both -assets and -lazy-assets", name)
 		}
 	}
@@ -440,14 +442,13 @@ func writeServiceWorker(out, assets, lazy string) error {
 	// Lazy files count too, so a new runtime drops the cached old one.
 	sum := sha256.New()
 	for _, name := range append(slices.Clone(files), lazyFiles...) {
-		bs, err := os.ReadFile(filepath.Join(out, filepath.FromSlash(name)))
+		sum.Write([]byte(name))
+		sum.Write([]byte{0})
+
+		err := hashFile(sum, filepath.Join(out, filepath.FromSlash(name)))
 		if err != nil {
 			return tgutil.Errorf("%w", err)
 		}
-
-		sum.Write([]byte(name))
-		sum.Write([]byte{0})
-		sum.Write(bs)
 	}
 
 	list, err := tgjson.Marshal(escapeURLs(files))
@@ -465,6 +466,22 @@ func writeServiceWorker(out, assets, lazy string) error {
 	js = strings.Replace(js, "__LAZY__", string(lazyList), 1)
 
 	return os.WriteFile(filepath.Join(out, "sw.js"), []byte(js), 0o644)
+}
+
+// hashFile stream name into h, so a large runtime is not read into memory.
+func hashFile(h io.Writer, name string) error {
+	f, err := os.Open(name)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+	defer f.Close()
+
+	_, err = io.Copy(h, f)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	return nil
 }
 
 // escapeURLs turn file names into relative urls. Escaped, so a # or ? in a

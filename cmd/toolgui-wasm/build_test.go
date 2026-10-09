@@ -587,11 +587,12 @@ func TestCheckAssetConflicts(t *testing.T) {
 		t.Errorf("checkAssetConflicts: %v", err)
 	}
 
-	writeFile(t, filepath.Join(lazy, "icon.png"), "png")
+	// Case differs, but a case-insensitive filesystem has one file.
+	writeFile(t, filepath.Join(lazy, "Icon.png"), "png")
 
 	err = checkAssetConflicts(assets, lazy)
-	if err == nil || !strings.Contains(err.Error(), "assets/icon.png") {
-		t.Errorf("err = %v, want the conflict on assets/icon.png", err)
+	if err == nil || !strings.Contains(err.Error(), "assets/Icon.png") {
+		t.Errorf("err = %v, want the conflict on assets/Icon.png", err)
 	}
 }
 
