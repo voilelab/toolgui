@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	wasmweb "github.com/voilelab/toolgui/toolgui-web/wasm"
@@ -138,6 +139,13 @@ func build(opts buildOpts) error {
 	err = writeManifest(out, opts.manifest)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
+	}
+
+	if opts.manifest != "" {
+		err = writeAppleTags(filepath.Join(out, "index.html"), opts.manifest, opts.head)
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
 	}
 
 	if opts.assets != "" && opts.lazy != "" {
@@ -553,4 +561,139 @@ func insertHead(name, snippet string) error {
 	}
 
 	return os.WriteFile(name, []byte(html), 0o644)
+}
+
+// appleManifest is what writeAppleTags reads from -manifest.
+type appleManifest struct {
+	ShortName  string `json:"short_name"`
+	ThemeColor string `json:"theme_color"`
+	Icons      []struct {
+		Src   string `json:"src"`
+		Type  string `json:"type"`
+		Sizes string `json:"sizes"`
+	} `json:"icons"`
+}
+
+// metaTag matches a <meta> tag the way linkTag does a <link>.
+var metaTag = regexp.MustCompile(`<meta(?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'>]+))?)*\s*/?>`)
+
+// writeAppleTags add the head tags iOS reads in place of the manifest:
+// apple-touch-icon, apple-mobile-web-app-title and theme-color. A tag the
+// -head file already has is left to it.
+func writeAppleTags(index, manifest, head string) error {
+	bs, err := os.ReadFile(manifest)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	m := appleManifest{}
+	err = tgjson.Unmarshal(bs, &m)
+	if err != nil {
+		return tgutil.Errorf("manifest %s: %w", manifest, err)
+	}
+
+	headHTML := ""
+	if head != "" {
+		bs, err := os.ReadFile(head)
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+		headHTML = string(bs)
+	}
+
+	tags := []string{}
+	if !hasAttr(headHTML, "rel", "apple-touch-icon") {
+		icon := touchIcon(m)
+		if icon == "" {
+			log.Printf("warning: no png icon in %s, so no apple-touch-icon; iOS takes no svg", manifest)
+		} else {
+			tags = append(tags, `<link rel="apple-touch-icon" href="`+html.EscapeString(icon)+`" />`)
+		}
+	}
+
+	if m.ShortName != "" && !hasAttr(headHTML, "name", "apple-mobile-web-app-title") {
+		tags = append(tags, `<meta name="apple-mobile-web-app-title" content="`+html.EscapeString(m.ShortName)+`" />`)
+	}
+
+	if len(tags) > 0 {
+		err = insertHead(index, strings.Join(tags, "\n"))
+		if err != nil {
+			return tgutil.Errorf("%w", err)
+		}
+	}
+
+	if m.ThemeColor == "" || hasAttr(headHTML, "name", "theme-color") {
+		return nil
+	}
+
+	return writeThemeColor(index, m.ThemeColor)
+}
+
+// hasAttr report whether page has a tag with attr set to value.
+func hasAttr(page, attr, value string) bool {
+	re := regexp.MustCompile(`(?i)\s` + attr + `\s*=\s*["']?` + regexp.QuoteMeta(value) + `(?:["'\s/>]|$)`)
+	return re.MatchString(page)
+}
+
+// touchIcon pick the png icon closest to the 180px iOS wants; on a tie, the
+// larger, since scaling down looks better. "" if there is no png.
+func touchIcon(m appleManifest) string {
+	best, bestDist, bestSize := "", -1, 0
+	for _, icon := range m.Icons {
+		if !isPNG(icon.Type, icon.Src) {
+			continue
+		}
+
+		// No usable size ranks last, but still beats no icon.
+		dist, size := 1<<30, 0
+		for _, s := range strings.Fields(icon.Sizes) {
+			w, _, ok := strings.Cut(strings.ToLower(s), "x")
+			n, err := strconv.Atoi(w)
+			if !ok || err != nil {
+				continue
+			}
+
+			d := max(n-180, 180-n)
+			if d < dist || d == dist && n > size {
+				dist, size = d, n
+			}
+		}
+
+		if bestDist < 0 || dist < bestDist || dist == bestDist && size > bestSize {
+			best, bestDist, bestSize = icon.Src, dist, size
+		}
+	}
+
+	return best
+}
+
+// isPNG go by the type, or by the extension when there is none.
+func isPNG(typ, src string) bool {
+	if typ != "" {
+		return strings.EqualFold(typ, "image/png")
+	}
+
+	src, _, _ = strings.Cut(src, "#")
+	src, _, _ = strings.Cut(src, "?")
+	return strings.EqualFold(path.Ext(src), ".png")
+}
+
+// writeThemeColor set the theme-color meta in index.html to color, adding
+// one if there is none.
+func writeThemeColor(index, color string) error {
+	bs, err := os.ReadFile(index)
+	if err != nil {
+		return tgutil.Errorf("%w", err)
+	}
+
+	tag := `<meta name="theme-color" content="` + html.EscapeString(color) + `" />`
+	page := string(bs)
+	for _, loc := range metaTag.FindAllStringIndex(page, -1) {
+		if hasAttr(page[loc[0]:loc[1]], "name", "theme-color") {
+			page = page[:loc[0]] + tag + page[loc[1]:]
+			return os.WriteFile(index, []byte(page), 0o644)
+		}
+	}
+
+	return insertHead(index, tag)
 }

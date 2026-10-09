@@ -2,6 +2,7 @@ package main
 
 import (
 	"io/fs"
+	"log"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -562,5 +563,153 @@ func TestWriteIconNoLink(t *testing.T) {
 
 	if err := writeIcon(name, "assets/favicon.svg"); err == nil {
 		t.Error("expected an error for an index.html with no icon link")
+	}
+}
+
+// appleIndex write the shipped index.html, -manifest and -head into a temp dir
+// and run writeAppleTags on them.
+func appleIndex(t *testing.T, manifest, head string) string {
+	t.Helper()
+
+	src, err := os.ReadFile(filepath.Join("..", "..", "toolgui-web", "wasm", "index.html"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := t.TempDir()
+	index := filepath.Join(dir, "index.html")
+	writeFile(t, index, string(src))
+
+	headFile := ""
+	if head != "" {
+		headFile = filepath.Join(dir, "head.html")
+		writeFile(t, headFile, head)
+		err = writeHead(index, headFile)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	manifestFile := filepath.Join(dir, "app.json")
+	writeFile(t, manifestFile, manifest)
+
+	err = writeAppleTags(index, manifestFile, headFile)
+	if err != nil {
+		t.Fatalf("writeAppleTags: %v", err)
+	}
+
+	bs, err := os.ReadFile(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return string(bs)
+}
+
+func TestWriteAppleTags(t *testing.T) {
+	page := appleIndex(t, `{
+		"short_name": "My & Tool",
+		"theme_color": "#123456",
+		"icons": [
+			{"src": "assets/icon.svg", "type": "image/svg+xml", "sizes": "any"},
+			{"src": "assets/icon-512.png", "type": "image/png", "sizes": "512x512"},
+			{"src": "assets/icon-192.png", "sizes": "192x192"},
+			{"src": "assets/icon-48.png", "type": "image/png", "sizes": "48x48"}
+		]
+	}`, "")
+
+	for _, want := range []string{
+		`<link rel="apple-touch-icon" href="assets/icon-192.png" />`,
+		`<meta name="apple-mobile-web-app-title" content="My &amp; Tool" />`,
+		`<meta name="theme-color" content="#123456" />`,
+	} {
+		if n := strings.Count(page, want); n != 1 {
+			t.Errorf("%d of %s, want 1 in %s", n, want, page)
+		}
+	}
+
+	if n := strings.Count(page, `name="theme-color"`); n != 1 {
+		t.Errorf("%d theme-color metas, want the shipped one rewritten", n)
+	}
+
+	if strings.Index(page, "apple-touch-icon") > strings.Index(page, "</head>") {
+		t.Errorf("tags outside the head: %s", page)
+	}
+}
+
+// What -head sets wins: nothing of the same name is added next to it.
+func TestWriteAppleTagsKeepsHead(t *testing.T) {
+	head := `<link rel="apple-touch-icon" href="mine.png" />
+<meta name="apple-mobile-web-app-title" content="Mine" />
+<meta name="theme-color" content="#abcdef" />`
+	page := appleIndex(t, `{
+		"short_name": "Tool",
+		"theme_color": "#123456",
+		"icons": [{"src": "assets/icon.png", "type": "image/png", "sizes": "180x180"}]
+	}`, head)
+
+	for _, tag := range []string{`rel="apple-touch-icon"`, `name="apple-mobile-web-app-title"`} {
+		if n := strings.Count(page, tag); n != 1 {
+			t.Errorf("%d of %s, want only the -head one", n, tag)
+		}
+	}
+
+	if strings.Contains(page, "assets/icon.png") || strings.Contains(page, "#123456") {
+		t.Errorf("manifest tags added over -head: %s", page)
+	}
+}
+
+// iOS takes no svg, so an svg only manifest gets no apple-touch-icon.
+func TestWriteAppleTagsSVGOnly(t *testing.T) {
+	var logs strings.Builder
+	log.SetOutput(&logs)
+	t.Cleanup(func() { log.SetOutput(os.Stderr) })
+
+	page := appleIndex(t, `{"icons": [{"src": "assets/icon.svg", "sizes": "any"}]}`, "")
+
+	if strings.Contains(page, "apple-touch-icon") {
+		t.Errorf("apple-touch-icon from an svg: %s", page)
+	}
+
+	if !strings.Contains(logs.String(), "warning") {
+		t.Errorf("no warning logged, got %q", logs.String())
+	}
+
+	// No short_name or theme_color: the page keeps what it shipped with.
+	if strings.Contains(page, "apple-mobile-web-app-title") {
+		t.Errorf("title meta without a short_name: %s", page)
+	}
+	if !strings.Contains(page, `<meta name="theme-color" content="#000000" />`) {
+		t.Errorf("shipped theme-color changed: %s", page)
+	}
+}
+
+func TestTouchIcon(t *testing.T) {
+	type icon = struct {
+		Src   string `json:"src"`
+		Type  string `json:"type"`
+		Sizes string `json:"sizes"`
+	}
+
+	tests := []struct {
+		name  string
+		icons []icon
+		want  string
+	}{
+		{"none", nil, ""},
+		{"unsized png still counts", []icon{{Src: "a.png"}}, "a.png"},
+		{"sized beats unsized", []icon{{Src: "a.png"}, {Src: "b.png", Sizes: "512x512"}}, "b.png"},
+		{"tie takes the larger", []icon{{Src: "a.png", Sizes: "170x170"}, {Src: "b.png", Sizes: "190x190"}}, "b.png"},
+		{"any of several sizes", []icon{{Src: "a.png", Sizes: "16x16 180x180"}, {Src: "b.png", Sizes: "192x192"}}, "a.png"},
+		{"extension with a query", []icon{{Src: "a.PNG?v=2"}}, "a.PNG?v=2"},
+		{"type wins over extension", []icon{{Src: "a.png", Type: "image/webp"}}, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := touchIcon(appleManifest{Icons: tt.icons}); got != tt.want {
+				t.Errorf("touchIcon = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

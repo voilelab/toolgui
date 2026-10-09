@@ -134,6 +134,16 @@ go tool toolgui-wasm build -manifest manifest.json -assets assets ./cmd/myapp
 
 Keep the urls relative, so the site still works under a project path.
 
+iOS reads no manifest icons, so `-manifest` also writes the head tags it
+reads instead:
+
+* `apple-touch-icon`: the png in `"icons"` closest to 180px. iOS takes no
+  svg, so a manifest with no png gets none, and the build warns.
+* `apple-mobile-web-app-title`: `"short_name"`.
+* `theme-color`: `"theme_color"`, in place of the default.
+
+A tag a [`-head`](#head-html) file already has is left to it.
+
 ## Icon
 
 `-icon` points the favicon in `index.html` at a url, so the tab, bookmarks
