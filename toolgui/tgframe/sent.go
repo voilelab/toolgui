@@ -102,8 +102,14 @@ func (c *sentCache) filter(pack NotifyPack) (any, error) {
 		}, nil
 
 	case *notifyPackUpdate:
+		// The client takes the new props whole, id included.
 		if n := c.nodes[p.Key]; n != nil {
 			n.ok = false
+			if id := p.Component.GetID(); id != n.id {
+				c.unindex(p.Key, n.id)
+				n.id = id
+				c.index(p.Key, id)
+			}
 		}
 
 	case *notifyPackDelete:

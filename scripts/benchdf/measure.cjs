@@ -18,12 +18,23 @@ function probe() {
   const log = window.__bench = { msgs: [], parse: 0 }
 
   // A pack's kind, read without parsing it so the probe costs next to nothing.
-  const kindOfText = s =>
-    s.includes('"name":"dataframe_component"') ? 'df'
-      : (s.length < 4096 && s.includes('"success"')) ? 'result' : 'other'
-  const kindOfPack = p =>
-    p?.component?.name === 'dataframe_component' ? 'df'
-      : (p && 'success' in p) ? 'result' : 'other'
+  // The table's keep pack carries no name, only the key its create carried.
+  const kindOfText = s => {
+    if (s.includes('"name":"dataframe_component"')) {
+      log.dfKey = /"key":"([^"]*)"/.exec(s)?.[1]
+      return 'df'
+    }
+    if (s.length < 4096 && log.dfKey && s.includes(`"key":"${log.dfKey}"`)) return 'df'
+    return (s.length < 4096 && s.includes('"success"')) ? 'result' : 'other'
+  }
+  const kindOfPack = p => {
+    if (p?.component?.name === 'dataframe_component') {
+      log.dfKey = p.key
+      return 'df'
+    }
+    if (log.dfKey && p?.key === log.dfKey) return 'df'
+    return (p && 'success' in p) ? 'result' : 'other'
+  }
 
   const NativeWS = window.WebSocket
   window.WebSocket = class extends NativeWS {

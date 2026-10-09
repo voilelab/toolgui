@@ -298,3 +298,20 @@ func TestSessionFailedSendIsNotKept(t *testing.T) {
 	waitResult(t, r)
 	expectPacks(t, runPacks(t, s, r), [2]any{sentMain + "/0", NotifyTypeCreate})
 }
+
+// An update moves the key to the id in its props, as the client's node does.
+func TestSentCacheUpdateReindexesID(t *testing.T) {
+	c := newSentCache()
+	c.beginRun()
+	c.create("m/0", "a", []byte(`{"id":"a"}`))
+
+	comp := newSentTestComp("b", "x")
+	comp.setKey("m/0")
+	if _, err := c.filter(NewNotifyPackUpdate(comp)); err != nil {
+		t.Fatal(err)
+	}
+
+	if c.byID["a"] != nil || !c.byID["b"]["m/0"] {
+		t.Errorf("byID = %v, want only b at m/0", c.byID)
+	}
+}

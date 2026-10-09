@@ -29,6 +29,9 @@ type sessionRunner struct {
 	session *tgframe.Session
 	st      runStats
 	done    chan struct{}
+
+	// dfKey is where the table sits, so its keep pack counts as the table's.
+	dfKey string
 }
 
 func newSessionRunner(tb testing.TB, app *tgframe.App, name string) *sessionRunner {
@@ -54,7 +57,7 @@ func newSessionRunner(tb testing.TB, app *tgframe.App, name string) *sessionRunn
 
 		r.st.marshal += d
 		r.st.bytes += len(bs)
-		if isDataFrame(bs) {
+		if r.isDataFrame(bs) {
 			r.st.dfBytes += len(bs)
 			r.st.dfMarshal += d
 		}
@@ -79,9 +82,20 @@ func (r *sessionRunner) run() runStats {
 }
 
 // isDataFrame tells the table's pack apart by its wire name, since the pack
-// types are unexported.
-func isDataFrame(bs []byte) bool {
-	return bytes.Contains(bs, []byte(`"name":"dataframe_component"`))
+// types are unexported, and its keep pack by the key the create carried.
+func (r *sessionRunner) isDataFrame(bs []byte) bool {
+	var head struct {
+		Key string `json:"key"`
+	}
+	if err := tgjson.Unmarshal(bs, &head); err != nil {
+		return false
+	}
+
+	if bytes.Contains(bs, []byte(`"name":"dataframe_component"`)) {
+		r.dfKey = head.Key
+		return true
+	}
+	return r.dfKey != "" && head.Key == r.dfKey
 }
 
 // TestReport prints the numbers TG-94 asks for. A rerun after the first is
