@@ -1,8 +1,8 @@
 # Persistent Store (wasm)
 
 > Design note (TG-102). It records the decisions that the implementation tickets
-> build on. Nothing here is implemented yet: the store is TG-107, compaction
-> is TG-108, and the JSON helpers and docs are TG-109.
+> build on. The store is implemented (TG-107, `toolgui/tgwasm/store.go`).
+> Compaction (TG-108) and the JSON helpers and docs (TG-109) are not yet.
 
 A wasm app keeps drafts and records that should survive a reload or a closed
 tab. Today it has no API for that. offline-judge wraps IndexedDB by hand: about

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/voilelab/toolgui/toolgui/internal/opfs"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -68,7 +69,7 @@ func opfsEntry(t *testing.T, dir js.Value, name string, isDir bool) bool {
 		method = "getDirectoryHandle"
 	}
 
-	_, err := opfsAwaitCall(dir, method, name)
+	_, err := opfs.AwaitCall(dir, method, name)
 	return err == nil
 }
 
@@ -432,7 +433,7 @@ func TestStateDirectoryGoesAfterAPartialSetup(t *testing.T) {
 
 	name := opfsStateName()
 
-	dir, err := opfsAwaitCall(root, "getDirectoryHandle", name, opfsCreate)
+	dir, err := opfs.AwaitCall(root, "getDirectoryHandle", name, opfs.Create)
 	if err != nil {
 		t.Fatalf("make %q: %v", name, err)
 	}
@@ -515,13 +516,13 @@ func TestOPFSSweep(t *testing.T) {
 func opfsFixture(t *testing.T, root js.Value, name string, locked bool) string {
 	t.Helper()
 
-	dir, err := opfsAwaitCall(root, "getDirectoryHandle", name, opfsCreate)
+	dir, err := opfs.AwaitCall(root, "getDirectoryHandle", name, opfs.Create)
 	if err != nil {
 		t.Fatalf("make %q: %v", name, err)
 	}
 
 	if locked {
-		if _, err := opfsAwaitCall(dir, "getFileHandle", opfsLockName, opfsCreate); err != nil {
+		if _, err := opfs.AwaitCall(dir, "getFileHandle", opfsLockName, opfs.Create); err != nil {
 			t.Fatalf("make the lock in %q: %v", name, err)
 		}
 	}
@@ -529,8 +530,37 @@ func opfsFixture(t *testing.T, root js.Value, name string, locked bool) string {
 	// Half of these are here to be swept, so a removal that finds nothing is
 	// the expected outcome rather than something to report.
 	t.Cleanup(func() {
-		_, _ = opfsAwaitCall(root, "removeEntry", name, opfsRecursive)
+		_, _ = opfs.AwaitCall(root, "removeEntry", name, opfs.Recursive)
 	})
 
 	return name
+}
+
+// TestOPFSSweepLeavesStores checks the sweep stays out of toolgui-kv, where
+// tgwasm.Store keeps its logs: an abandoned-looking directory there is a
+// store, not a state.
+func TestOPFSSweepLeavesStores(t *testing.T) {
+	root, err := opfsStateRoot.get()
+	if err != nil {
+		t.Fatalf("open the state root: %v", err)
+	}
+
+	origin, err := opfs.Origin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	kv, err := opfs.AwaitCall(origin, "getDirectoryHandle", "toolgui-kv", opfs.Create)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Looks crashed, and would be swept if it were under toolgui-state.
+	name := opfsFixture(t, kv, opfsStatePrefix+"1000-store", true)
+
+	opfsSweep(root)
+
+	if !opfsEntry(t, kv, name, true) {
+		t.Errorf("expect %q in toolgui-kv to survive the sweep", name)
+	}
 }

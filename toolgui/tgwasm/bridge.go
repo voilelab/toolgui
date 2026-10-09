@@ -94,6 +94,7 @@ func (b *bridge) install() {
 	})
 
 	emitter = b
+	bridgeRunning.Store(true)
 }
 
 // jsAppConf return the app config as JSON. It's the browser counterpart of

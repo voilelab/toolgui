@@ -8,6 +8,8 @@ import (
 	"syscall/js"
 	"testing"
 	"time"
+
+	"github.com/voilelab/toolgui/toolgui/internal/opfs"
 )
 
 // These need a browser, like the rest of the origin private file system's
@@ -32,13 +34,13 @@ const browserChunkSize = opfsChunkSize
 func opfsWalk(t *testing.T, path []string) js.Value {
 	t.Helper()
 
-	dir, err := opfsAwaitCall(js.Global().Get("navigator").Get("storage"), "getDirectory")
+	dir, err := opfs.AwaitCall(js.Global().Get("navigator").Get("storage"), "getDirectory")
 	if err != nil {
 		t.Fatalf("open the origin private file system: %v", err)
 	}
 
 	for _, name := range path {
-		dir, err = opfsAwaitCall(dir, "getDirectoryHandle", name)
+		dir, err = opfs.AwaitCall(dir, "getDirectoryHandle", name)
 		if err != nil {
 			t.Fatalf("open %q: %v", name, err)
 		}
@@ -52,8 +54,8 @@ func opfsWalk(t *testing.T, path []string) js.Value {
 func browserFile(t *testing.T, upload *BrowserUpload) js.Value {
 	t.Helper()
 
-	file, err := opfsAwaitCall(opfsWalk(t, upload.Dir()), "getFileHandle",
-		upload.Name(), opfsCreate)
+	file, err := opfs.AwaitCall(opfsWalk(t, upload.Dir()), "getFileHandle",
+		upload.Name(), opfs.Create)
 	if err != nil {
 		t.Fatalf("open the reserved file: %v", err)
 	}
@@ -70,22 +72,22 @@ func browserWrite(t *testing.T, upload *BrowserUpload, blob js.Value) js.Value {
 
 	file := browserFile(t, upload)
 
-	writable, err := opfsAwaitCall(file, "createWritable",
+	writable, err := opfs.AwaitCall(file, "createWritable",
 		map[string]any{"keepExistingData": false})
 	if err != nil {
 		t.Fatalf("open a writable stream: %v", err)
 	}
 
-	stream, err := opfsCall(blob, "stream")
+	stream, err := opfs.Call(blob, "stream")
 	if err != nil {
 		t.Fatalf("stream the blob: %v", err)
 	}
 
-	if _, err := opfsAwaitCall(stream, "pipeTo", writable); err != nil {
+	if _, err := opfs.AwaitCall(stream, "pipeTo", writable); err != nil {
 		t.Fatalf("pipe the blob into the file: %v", err)
 	}
 
-	handle, err := opfsAwaitCall(file, "createSyncAccessHandle")
+	handle, err := opfs.AwaitCall(file, "createSyncAccessHandle")
 	if err != nil {
 		t.Fatalf("open a sync access handle: %v", err)
 	}
@@ -160,35 +162,35 @@ func TestBrowserUploadHoldsAreExclusive(t *testing.T) {
 
 	file := browserFile(t, upload)
 
-	writable, err := opfsAwaitCall(file, "createWritable",
+	writable, err := opfs.AwaitCall(file, "createWritable",
 		map[string]any{"keepExistingData": false})
 	if err != nil {
 		t.Fatalf("open a writable stream: %v", err)
 	}
 
 	// Go asking for the read side while the page is still writing.
-	if _, err := opfsAwaitCall(file, "createSyncAccessHandle"); err == nil {
+	if _, err := opfs.AwaitCall(file, "createSyncAccessHandle"); err == nil {
 		t.Error("expect a sync access handle to be refused while the page is writing")
 	} else if !strings.Contains(err.Error(), "NoModificationAllowedError") {
 		t.Errorf("a sync access handle during a write failed with %v,"+
 			" want NoModificationAllowedError", err)
 	}
 
-	if _, err := opfsAwaitCall(writable, "write", js.ValueOf("hello file")); err != nil {
+	if _, err := opfs.AwaitCall(writable, "write", js.ValueOf("hello file")); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
-	if _, err := opfsAwaitCall(writable, "close"); err != nil {
+	if _, err := opfs.AwaitCall(writable, "close"); err != nil {
 		t.Fatalf("close the writable stream: %v", err)
 	}
 
-	handle, err := opfsAwaitCall(file, "createSyncAccessHandle")
+	handle, err := opfs.AwaitCall(file, "createSyncAccessHandle")
 	if err != nil {
 		t.Fatalf("open a sync access handle after the write was closed: %v", err)
 	}
 
 	// And the page asking for the write side back while Go is reading.
-	if _, err := opfsAwaitCall(file, "createWritable",
+	if _, err := opfs.AwaitCall(file, "createWritable",
 		map[string]any{"keepExistingData": false}); err == nil {
 		t.Error("expect a writable stream to be refused while Go holds the file")
 	} else if !strings.Contains(err.Error(), "NoModificationAllowedError") {
@@ -226,19 +228,19 @@ func TestBrowserUploadDiscardLeavesNothing(t *testing.T) {
 
 	file := browserFile(t, upload)
 
-	writable, err := opfsAwaitCall(file, "createWritable",
+	writable, err := opfs.AwaitCall(file, "createWritable",
 		map[string]any{"keepExistingData": false})
 	if err != nil {
 		t.Fatalf("open a writable stream: %v", err)
 	}
 
-	if _, err := opfsAwaitCall(writable, "write", js.ValueOf("half a f")); err != nil {
+	if _, err := opfs.AwaitCall(writable, "write", js.ValueOf("half a f")); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
 	// What pipeTo does to the stream when anything on the way in fails: the
 	// half that was written goes with the swap file rather than into place.
-	if _, err := opfsAwaitCall(writable, "abort"); err != nil {
+	if _, err := opfs.AwaitCall(writable, "abort"); err != nil {
 		t.Fatalf("abort the writable stream: %v", err)
 	}
 
@@ -249,13 +251,13 @@ func TestBrowserUploadDiscardLeavesNothing(t *testing.T) {
 	}
 
 	// Taking it now is the worker coming back after the page gave up.
-	handle, err := opfsAwaitCall(file, "createSyncAccessHandle")
+	handle, err := opfs.AwaitCall(file, "createSyncAccessHandle")
 	if err == nil {
 		if _, err := upload.Take("a.txt", handle); err == nil {
 			t.Error("expect a discarded upload not to be taken")
 		}
 
-		if _, err := opfsCall(handle, "close"); err != nil {
+		if _, err := opfs.Call(handle, "close"); err != nil {
 			t.Errorf("close the handle: %v", err)
 		}
 	}
@@ -440,7 +442,7 @@ func browserBigBlob(t *testing.T) js.Value {
 		bs[i] = browserByteAt(int64(i))
 	}
 
-	chunk := opfsUint8Array.New(browserChunkSize)
+	chunk := opfs.Uint8Array.New(browserChunkSize)
 	js.CopyBytesToJS(chunk, bs)
 
 	parts := make([]any, browserUploadSize/browserChunkSize)
@@ -479,13 +481,13 @@ func TestBrowserUploadOutlivingItsStateIsCleanedUp(t *testing.T) {
 
 	file := browserFile(t, upload)
 
-	writable, err := opfsAwaitCall(file, "createWritable",
+	writable, err := opfs.AwaitCall(file, "createWritable",
 		map[string]any{"keepExistingData": false})
 	if err != nil {
 		t.Fatalf("open a writable stream: %v", err)
 	}
 
-	if _, err := opfsAwaitCall(writable, "write", js.ValueOf("half a f")); err != nil {
+	if _, err := opfs.AwaitCall(writable, "write", js.ValueOf("half a f")); err != nil {
 		t.Fatalf("write: %v", err)
 	}
 
@@ -500,7 +502,7 @@ func TestBrowserUploadOutlivingItsStateIsCleanedUp(t *testing.T) {
 		t.Fatal("expect the directory to survive while the page is writing in it")
 	}
 
-	if _, err := opfsAwaitCall(writable, "abort"); err != nil {
+	if _, err := opfs.AwaitCall(writable, "abort"); err != nil {
 		t.Fatalf("abort the writable stream: %v", err)
 	}
 
