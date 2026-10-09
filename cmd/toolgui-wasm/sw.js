@@ -34,8 +34,10 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
+    let first = true
     for (const name of await caches.keys()) {
       if (name.startsWith(PREFIX) && name !== CACHE) {
+        first = false
         await caches.delete(name)
       }
     }
@@ -43,8 +45,33 @@ self.addEventListener('activate', (event) => {
     // So the first visit, which loaded before this worker, works offline
     // from here on too.
     await self.clients.claim()
+
+    if (first) {
+      await keepEarlyLazy()
+    }
   })())
 })
+
+// keepEarlyLazy keep the lazy files the first visit fetched before this
+// worker controlled it, from the http cache: nothing is downloaded. Only on
+// the first install, as an update could find an older build's copy there.
+async function keepEarlyLazy() {
+  const cache = await caches.open(CACHE)
+  await Promise.all([...LAZY_URLS].map(async (url) => {
+    if (await cache.match(url)) {
+      return
+    }
+
+    try {
+      const resp = await fetch(url, { cache: 'only-if-cached', mode: 'same-origin' })
+      if (resp.ok) {
+        await cache.put(url, resp)
+      }
+    } catch {
+      // Not fetched yet: kept on its first fetch through this worker.
+    }
+  }))
+}
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
