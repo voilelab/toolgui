@@ -46,6 +46,7 @@ function documentTitle(appConf: AppConf, pageTitle: string): string {
 const NOTIFY_TYPE_CREATE = 1
 const NOTIFY_TYPE_UPDATE = 2
 const NOTIFY_TYPE_DELETE = 3
+const NOTIFY_TYPE_KEEP = 4
 
 
 interface AppProps {
@@ -146,6 +147,17 @@ export class App extends Component<AppProps, AppState> {
         this.setState((prevState) => {
           const newForest = prevState.forest.swallowCopy()
           newForest.createNode(pack.key, pack.parent_key, pack.index, pack.component)
+
+          return {
+            forest: newForest,
+          }
+        })
+        break
+      }
+      case NOTIFY_TYPE_KEEP: {
+        this.setState((prevState) => {
+          const newForest = prevState.forest.swallowCopy()
+          newForest.keepNode(pack.key, pack.parent_key, pack.index)
 
           return {
             forest: newForest,

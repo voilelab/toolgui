@@ -13,6 +13,14 @@ import (
 type runner struct {
 	session *tgframe.Session
 	packs   chan any
+
+	// props is the last component created at each key, for keep packs.
+	props map[string]packComponent
+}
+
+type packComponent struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
 }
 
 func newRunner(t *testing.T) *runner {
@@ -21,7 +29,7 @@ func newRunner(t *testing.T) *runner {
 	app := tgframe.NewApp()
 	app.AddPage("main", "Main", Main)
 
-	r := &runner{packs: make(chan any, 256)}
+	r := &runner{packs: make(chan any, 256), props: map[string]packComponent{}}
 	session, err := tgframe.NewSession(app, "main", nil, tgframe.NewState(), func(pack any) error {
 		r.packs <- pack
 		return nil
@@ -65,7 +73,7 @@ func (r *runner) run(t *testing.T, event any) []string {
 				return labels
 			}
 
-			if label, ok := checkboxLabel(t, pack); ok {
+			if label, ok := r.checkboxLabel(t, pack); ok {
 				labels = append(labels, label)
 			}
 		case <-time.After(5 * time.Second):
@@ -74,8 +82,9 @@ func (r *runner) run(t *testing.T, event any) []string {
 	}
 }
 
-// checkboxLabel returns the label of the checkbox a pack creates, if any.
-func checkboxLabel(t *testing.T, pack any) (string, bool) {
+// checkboxLabel returns the label of the checkbox a pack creates or keeps, if
+// any.
+func (r *runner) checkboxLabel(t *testing.T, pack any) (string, bool) {
 	t.Helper()
 
 	bs, err := tgjson.Marshal(pack)
@@ -84,16 +93,23 @@ func checkboxLabel(t *testing.T, pack any) (string, bool) {
 	}
 
 	var parsed struct {
-		Component struct {
-			Name  string `json:"name"`
-			Label string `json:"label"`
-		} `json:"component"`
+		Type      int           `json:"type"`
+		Key       string        `json:"key"`
+		Component packComponent `json:"component"`
 	}
 	if err := tgjson.Unmarshal(bs, &parsed); err != nil {
 		t.Fatalf("unmarshal pack: %v", err)
 	}
 
-	return parsed.Component.Label, parsed.Component.Name == "checkbox_component"
+	comp := parsed.Component
+	switch parsed.Type {
+	case tgframe.NotifyTypeCreate:
+		r.props[parsed.Key] = comp
+	case tgframe.NotifyTypeKeep:
+		comp = r.props[parsed.Key]
+	}
+
+	return comp.Label, comp.Name == "checkbox_component"
 }
 
 func input(id string, value any) any {

@@ -73,6 +73,10 @@ func (f *forest) apply(pack *notifyPack) {
 	switch pack.Type {
 	case tgframe.NotifyTypeCreate:
 		f.create(pack.Key, pack.ParentKey, pack.Index, pack.Component)
+	case tgframe.NotifyTypeKeep:
+		if n := f.nodes[pack.Key]; n != nil {
+			f.create(pack.Key, pack.ParentKey, pack.Index, n.props)
+		}
 	case tgframe.NotifyTypeUpdate:
 		if n := f.nodes[pack.Key]; n != nil {
 			n.props = pack.Component

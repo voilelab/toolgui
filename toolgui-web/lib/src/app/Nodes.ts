@@ -103,6 +103,18 @@ export class Forest {
     parentNode.children[index] = node
   }
 
+  // keepNode places the node already at key as a create of its own props
+  // would: same props reference, so nothing below it recomputes.
+  keepNode(key: string, parentKey: string, index: number) {
+    const node = this.nodes[key]
+    if (!node) {
+      console.error('Try to keep a node that doesn\'t exist:', key)
+      return
+    }
+
+    this.createNode(key, parentKey, index, node.props)
+  }
+
   updateNode(key: string, props: any) {
     if (!(key in this.nodes)) {
       console.error('Try to update a node that doesn\'t exist:', key)
