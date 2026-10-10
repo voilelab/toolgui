@@ -3,7 +3,7 @@ module github.com/voilelab/toolgui/toolgui-wails
 go 1.27.2
 
 require (
-	github.com/voilelab/toolgui v0.0.0 // stamped at release; see the replace below
+	github.com/voilelab/toolgui v0.15.0 // stamped at release; see the replace below
 	github.com/wailsapp/wails/v2 v2.15.0
 )
 
