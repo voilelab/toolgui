@@ -20,22 +20,18 @@ const BridgeName = "toolgui"
 // ErrNoSession is returned when the page acts before calling start.
 var ErrNoSession = tgutil.NewError("no session, call start first")
 
-// ErrNoUpload is returned for a file the bridge never reserved, or reserved
-// for a session that is over.
+// ErrNoUpload is returned for an upload never reserved, or reserved by an
+// ended session.
 var ErrNoUpload = tgutil.NewError("no such upload")
 
-// errDetached is what a session left behind by a start gets for its sends.
+// errDetached is returned to sends of a session replaced by a later start.
 var errDetached = tgutil.NewError("session replaced by a later start")
 
-// ErrNoDownload is returned for a download token this state's runs never
-// handed out, or one a later run replaced.
+// ErrNoDownload is returned for an unknown or replaced download token.
 var ErrNoDownload = tgutil.NewError("no such download")
 
-// bridge is what the page talks to. It holds one session, because a tab is
-// one user: there is nothing to key a session map by.
-//
-// Payloads cross as JSON strings, the same ones the web executor sends over
-// its websocket, so both transports carry an identical wire format.
+// bridge is what the page talks to. It holds one session, since a tab is one
+// user. Payloads are the same JSON strings the web executor's websocket uses.
 type bridge struct {
 	app *tgframe.App
 
@@ -45,25 +41,21 @@ type bridge struct {
 	// onEvent is the callback the page registered for [Emit].
 	onEvent js.Value
 
-	// lock guards the session and its state: a page func runs on its own
-	// goroutine while calls arrive from the browser's.
+	// lock guards session and state, shared by page funcs and JS calls.
 	lock    sync.Mutex
 	session *tgframe.Session
 	state   *tgframe.State
 
-	// detached cuts the session's sends off the page once a start replaces
-	// it, as its close may wait behind queued runs.
+	// detached cuts off the session's sends once a start replaces it, since
+	// its close may wait behind queued runs.
 	detached *atomic.Bool
 
-	// uploads are the files reserved for the page and not yet handed back,
-	// keyed by the name the store gave them. An upload is two calls -- one to
-	// reserve, one to hand over -- because the writing in between is the
-	// page's and cannot be awaited from here.
+	// uploads are reserved files not yet handed back, by name. Reserve and
+	// hand-over are separate calls since the page does the writing between.
 	uploads map[string]*tgframe.BrowserUpload
 
-	// runs does the part of start and update that waits for a page func, in
-	// the order they were called. They are called from JavaScript, and a
-	// page func waiting on a promise needs the call to return first.
+	// runs does the page-func part of start and update in call order, off
+	// the JS call so a page func awaiting a promise doesn't deadlock.
 	runs *serial
 }
 
@@ -77,9 +69,8 @@ func newBridge(app *tgframe.App) *bridge {
 	}
 }
 
-// install publish the bridge on the global object. Everything on it returns
-// at once: a call that blocks would hand control back to JavaScript before
-// its work is done, so results come back as packs instead.
+// install publish the bridge on the global object. Every call returns at
+// once; results come back as packs.
 func (b *bridge) install() {
 	js.Global().Set(BridgeName, map[string]any{
 		"appConf":      js.FuncOf(b.jsAppConf),
@@ -110,8 +101,8 @@ func (b *bridge) jsAppConf(this js.Value, args []js.Value) any {
 	return string(bs)
 }
 
-// jsOnPack register the callback every pack is handed to, as one JSON string.
-// It has to be called before start, or the first run's packs are lost.
+// jsOnPack register the callback that receives each pack as JSON. Call it
+// before start, or the first run's packs are lost.
 func (b *bridge) jsOnPack(this js.Value, args []js.Value) any {
 	if len(args) == 0 {
 		return nil
@@ -122,8 +113,7 @@ func (b *bridge) jsOnPack(this js.Value, args []js.Value) any {
 }
 
 // jsStart open a session on the given page and draw it once. Calling it again
-// switches page: the previous session is closed and the new one starts from an
-// empty state, the same as loading another page in the browser.
+// switches page, closing the old session and starting from an empty state.
 //
 // The second argument is the page query, `group=a` of `#/detail?group=a`.
 func (b *bridge) jsStart(this js.Value, args []js.Value) any {
@@ -162,18 +152,15 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	b.lock.Unlock()
 
 	if err != nil {
-		// The state never became the bridge's, so nothing else will let go of
-		// what it holds.
+		// The state never reached the bridge, so free it here.
 		state.Destroy()
 	}
 
-	// The fatal result goes in order too: a queued run of the old session
-	// would otherwise clear it with its ready pack.
+	// Queue the fatal result too, or a queued old run's ready pack clears it.
 	b.runs.do(func() {
 		closeOld()
 		if err != nil {
-			// Only the page name or the query can fail here, and a retry
-			// would fail the same way.
+			// Bad page name or query: a retry would fail too.
 			b.sendResult(&tgframe.ResultPack{
 				Error: err.Error(),
 				Fatal: true,
@@ -186,8 +173,8 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 	return nil
 }
 
-// jsUpdate apply an event to the session and rerun the page. It's the browser
-// counterpart of a message on the update websocket.
+// jsUpdate apply an event to the session and rerun the page, like a message
+// on the update websocket.
 func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
 	session := b.currentSession()
 	if session == nil || len(args) == 0 {
@@ -207,25 +194,19 @@ func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
 	return nil
 }
 
-// downloadSlot is where a download's bytes are, as jsDownloadFile answers it:
-// the directory from the origin private file system's root down and the file
-// inside it, or why there is nothing to read.
+// downloadSlot is jsDownloadFile's answer: the OPFS directory path and file
+// name, or an error.
 type downloadSlot struct {
 	Dir   []string `json:"dir,omitempty"`
 	Name  string   `json:"name,omitempty"`
 	Error string   `json:"error,omitempty"`
 }
 
-// jsDownloadFile answer where the file behind a download token is, as JSON. It
-// is the browser counterpart of GET /api/files.
+// jsDownloadFile answer where the file behind a download token is, as JSON,
+// like GET /api/files.
 //
-// No bytes cross. The page opens the file it names and reads it with getFile,
-// which hands the tab a blob backed by what is on disk rather than a copy of
-// it -- so a download costs the same whether it is a kilobyte or a gigabyte.
-//
-// The token is looked up in this state's downloads and nowhere else, the same
-// as on the server, so one that a later run replaced or that belongs to a page
-// that has since been left reads as no such download.
+// No bytes cross: the page reads the file with getFile, a disk-backed blob.
+// Only this state's tokens are found.
 func (b *bridge) jsDownloadFile(this js.Value, args []js.Value) any {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -251,10 +232,8 @@ func (b *bridge) jsDownloadFile(this js.Value, args []js.Value) any {
 	return marshalDownloadSlot(&downloadSlot{Dir: dir, Name: name})
 }
 
-// uploadSlot is where the page writes one upload, as jsNewUpload answers it.
-// Dir names the directory from the origin private file system's root down, and
-// Name is the file inside it, which is also what identifies the upload in the
-// two calls that follow.
+// uploadSlot is jsNewUpload's answer: the OPFS directory path and file name
+// to write to. Name also identifies the upload in later calls.
 type uploadSlot struct {
 	Dir   []string `json:"dir,omitempty"`
 	Name  string   `json:"name,omitempty"`
@@ -262,13 +241,10 @@ type uploadSlot struct {
 }
 
 // jsNewUpload reserve a file for the page to stream an upload into, and answer
-// with where it is as JSON. It is the first half of the browser counterpart of
-// POST /api/files.
+// where it is as JSON. First half of POST /api/files.
 //
-// The page writes the file itself, with a writable stream, because that is the
-// only way a picked file is copied without the whole of it passing through the
-// tab's heap. Nothing here waits for that: the call returns a place to write
-// and the page comes back with jsUploadFile when it is done.
+// The page writes it with a writable stream, keeping the file out of the
+// heap, then calls jsUploadFile.
 func (b *bridge) jsNewUpload(this js.Value, args []js.Value) any {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -287,23 +263,15 @@ func (b *bridge) jsNewUpload(this js.Value, args []js.Value) any {
 	return marshalSlot(&uploadSlot{Dir: upload.Dir(), Name: upload.Name()})
 }
 
-// jsUploadFile take over a file the page has finished writing and store it
-// under the component that asked for it. It is the second half of the browser
-// counterpart of POST /api/files, and it answers with an error message, or an
-// empty string on success, because the page waits for it.
+// jsUploadFile take over a file the page finished writing and store it under
+// the component. Second half of POST /api/files; answers an error message, or
+// "" on success.
 //
-// It takes the sync access handle rather than opening one: opening is a
-// promise, and this arrives on the JavaScript callback stack where a promise
-// cannot settle. The page opens it after closing its writable stream -- the
-// two are exclusive holds on the same file, and the other order gets
-// NoModificationAllowedError -- so by the time this runs there is nothing left
-// to wait for.
-//
-// No bytes cross. What crosses is a component ID, the name the user's file had
-// and the file already sitting in the origin private file system.
+// The page passes an open sync access handle (opened after closing its
+// writable stream), since opening is a promise that can't settle on the JS
+// callback stack. No bytes cross.
 func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
-	// The lock is held across the handover: a start on another goroutine must
-	// not replace the state this is storing into.
+	// Held across the handover so a start can't swap the state.
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
@@ -321,8 +289,7 @@ func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 
 	upload := b.uploads[slot]
 	if upload == nil {
-		// A page switch while the page was writing takes the reservations of
-		// the session before it, so this is where one arrives late.
+		// A page switch while writing dropped the reservation.
 		closeHandle(handle)
 		return ErrNoUpload.Error()
 	}
@@ -342,9 +309,8 @@ func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 	return ""
 }
 
-// jsCancelUpload drop a reservation the page could not fill. An upload that
-// failed halfway -- out of quota, cancelled, or a stream that broke -- leaves
-// nothing in the origin private file system and never reaches the component.
+// jsCancelUpload drop a reservation the page could not fill (quota,
+// cancelled, broken stream), leaving nothing behind.
 func (b *bridge) jsCancelUpload(this js.Value, args []js.Value) any {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -366,13 +332,8 @@ func (b *bridge) jsCancelUpload(this js.Value, args []js.Value) any {
 	return nil
 }
 
-// closeHandle lets go of a sync access handle the page opened and the bridge
-// would not take. The page hands one over already open, so a refusal has to
-// close it: the browser will not remove a file anything still holds one for,
-// and the state's directory would outlive the session it belongs to.
-//
-// Closing twice is a no-op, which is what makes this safe after a handover
-// that got far enough for the file to have closed it already.
+// closeHandle closes a sync access handle the bridge refused, or the state's
+// directory can't be removed. Closing twice is a no-op.
 func closeHandle(handle js.Value) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -392,8 +353,7 @@ func uploadFailed(err error) string {
 	return marshalSlot(&uploadSlot{Error: err.Error()})
 }
 
-// marshalDownloadSlot renders a download slot as JSON, the way marshalSlot
-// does an upload's.
+// marshalDownloadSlot renders a download slot as JSON.
 func marshalDownloadSlot(slot *downloadSlot) string {
 	bs, err := tgjson.Marshal(slot)
 	if err != nil {
@@ -404,9 +364,7 @@ func marshalDownloadSlot(slot *downloadSlot) string {
 	return string(bs)
 }
 
-// marshalSlot renders a slot as JSON. The slot is plain data, so the only way
-// this fails is a bug, and the page is told as much rather than left with an
-// empty string it would have to guess about.
+// marshalSlot renders a slot as JSON. Failure is a bug, reported as an error.
 func marshalSlot(slot *uploadSlot) string {
 	bs, err := tgjson.Marshal(slot)
 	if err != nil {
@@ -432,8 +390,7 @@ func (b *bridge) send(pack any) error {
 	return nil
 }
 
-// sendResult report an error the page has no other way to learn about. A
-// failed send is only logged: there is nowhere left to report it to.
+// sendResult report an error to the page. A failed send is only logged.
 func (b *bridge) sendResult(pack *tgframe.ResultPack) {
 	err := b.send(pack)
 	if err != nil {
@@ -448,17 +405,12 @@ func (b *bridge) currentSession() *tgframe.Session {
 	return b.session
 }
 
-// detachSession takes the session off the bridge and returns what closes it,
-// which waits for its page func and so must not run on a JavaScript call.
-// It must be called with lock held.
+// detachSession takes the session off the bridge and returns its closer,
+// which waits for the page func and so must not run on a JS call. It must be
+// called with lock held.
 //
-// The state is destroyed, not merely dropped: what it holds is not all the
-// garbage collector's to reclaim. In the browser its uploads are files in the
-// origin private file system, with handles open on them, and a page switch
-// that only let go of the pointer would leave every one of them behind for as
-// long as the tab lived. [tgframe.Session.Close] does not do it -- the web
-// executor destroys the state out of its own session map -- so it is done
-// here, the way the desktop executor does.
+// The state is destroyed, not just dropped: its uploads are OPFS files with
+// open handles that GC won't reclaim.
 func (b *bridge) detachSession() (closeSession func()) {
 	session, state := b.session, b.state
 	b.session = nil
@@ -469,10 +421,8 @@ func (b *bridge) detachSession() (closeSession func()) {
 		b.detached = nil
 	}
 
-	// The reservations go with the state that made them, so a handover that
-	// arrives after this finds no slot and closes what it was given. The
-	// directory removal the destroy started chases what the page is still
-	// writing until it lets go, which is what takes the file with it.
+	// Reservations go with their state; a late handover finds no slot and
+	// closes its handle.
 	clear(b.uploads)
 
 	return func() {

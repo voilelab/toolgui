@@ -19,43 +19,37 @@ type State struct {
 	values    map[string]any
 	funcCache map[string]any
 
-	// memos is what [State.Memo] keeps: one entry per slot, so it does not
-	// grow with every input the page sees.
+	// memos is what [State.Memo] keeps, one entry per slot.
 	memos map[string]memoEntry
 
-	// memoSeq counts the computations started per slot, so a slower older
-	// one cannot replace what a newer one stored.
+	// memoSeq counts computations per slot so an older one can't overwrite a
+	// newer result.
 	memoSeq map[string]uint64
 
-	// resetKeys is the last reset key each component id was drawn with. It
-	// is apart from values so it cannot collide with a component's own key.
+	// resetKeys is the last reset key per component id, kept apart from
+	// values to avoid key collisions.
 	resetKeys map[string]string
 
-	// files is shared with the states cloned from this one, so no two of them
-	// can hand out the same path. On a server its directory waits for the
-	// first upload, so a state that never sees one leaves nothing behind; in
-	// the browser it is opened with the state, because what an upload needs
-	// there has to be ready before one can arrive.
+	// files is shared with clones so no two hand out the same path. On a
+	// server its directory is made on first upload; in the browser it is
+	// opened up front.
 	files *fileStore
 
-	// downloads is shared with the states cloned from this one, like files:
-	// the token a run hands the client is fetched back through the state the
-	// transport holds, which is not the clone the run drew on.
+	// downloads is shared with clones: tokens are fetched through the
+	// transport's state, not the run's clone.
 	downloads *downloadStore
 
 	clickID string
 
-	// runIDs is the set of component ids the last run of the page drew. An
-	// upload names the component it belongs to, and this is what says the
-	// name is one of the page's own rather than one the caller made up.
+	// runIDs are the component ids the last run drew; uploads are checked
+	// against them.
 	runIDs map[string]bool
 
 	// indexedFileIDs is the subset of runIDs that accept [FileKey] uploads.
 	indexedFileIDs map[string]bool
 
-	// menuIDs is the set of click ids the app's menu declares. It is the
-	// app's, not a run's: a menu item belongs to no run, so [State.runIDs]
-	// never holds one, and the two sets stay apart.
+	// menuIDs are the click ids the app's menu declares, kept apart from
+	// runIDs since menu items belong to no run.
 	menuIDs map[string]bool
 
 	rwLock sync.RWMutex
@@ -109,9 +103,8 @@ func (s *State) setRunIDs(ids, indexedFileIDs map[string]bool) {
 	s.indexedFileIDs = maps.Clone(indexedFileIDs)
 }
 
-// setMenuIDs records the click ids the app's menu declares. The map is the
-// app's and is never written after startup, so it is shared rather than
-// cloned.
+// setMenuIDs records the menu's click ids. The map is read-only after
+// startup, so it is shared, not cloned.
 func (s *State) setMenuIDs(ids map[string]bool) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
@@ -119,9 +112,8 @@ func (s *State) setMenuIDs(ids map[string]bool) {
 	s.menuIDs = ids
 }
 
-// HasMenuID reports whether the app's menu declares the click id. It is what
-// [MenuClicked] checks a click against, the way [State.HasComponentID] guards
-// a component's.
+// HasMenuID reports whether the app's menu declares the click id. Used by
+// [MenuClicked].
 func (s *State) HasMenuID(id string) bool {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -129,10 +121,8 @@ func (s *State) HasMenuID(id string) bool {
 	return s.menuIDs[id]
 }
 
-// HasComponentID reports whether the last run of the page drew a component
-// under id. A transport that stores something the client names -- an upload
-// under its component id -- checks the name here first, or a caller could
-// write to any key it likes.
+// HasComponentID reports whether the last run drew a component under id.
+// Transports check client-named keys (e.g. upload targets) here first.
 func (s *State) HasComponentID(id string) bool {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -140,12 +130,11 @@ func (s *State) HasComponentID(id string) bool {
 	return s.runIDs[id]
 }
 
-// MaxFileKeyIndex caps the index in a [FileKey], so a caller cannot fill the
-// disk by uploading under a new index every time.
+// MaxFileKeyIndex caps the index in a [FileKey], so a caller can't fill the
+// disk with new indexes.
 const MaxFileKeyIndex = 1000
 
-// FileKey is the key the i-th file of a multi-file upload under id is stored
-// at.
+// FileKey is the key of the i-th file of a multi-file upload under id.
 func FileKey(id string, i int) string {
 	return id + "/" + strconv.Itoa(i)
 }
@@ -165,8 +154,8 @@ func splitFileKey(key string) (string, int, bool) {
 	return key[:i], n, true
 }
 
-// HasFileKey reports whether key is one an upload may be stored under: a
-// drawn component's id, or a [FileKey] of a drawn [IndexedFileComponent].
+// HasFileKey reports whether an upload may be stored under key: a drawn
+// component id, or a [FileKey] of a drawn [IndexedFileComponent].
 func (s *State) HasFileKey(key string) bool {
 	if s.HasComponentID(key) {
 		return true
@@ -224,9 +213,8 @@ func (s *State) SwapResetKey(id, resetKey string) (string, bool) {
 	return last, ok
 }
 
-// Delete drops what key holds -- value, reset key, uploaded file and offered
-// download alike. It is how a widget's state is released when the widget leaves the
-// page for good.
+// Delete drops everything under key: value, reset key, file and download.
+// Used when a widget leaves the page for good.
 func (s *State) Delete(key string) {
 	s.rwLock.Lock()
 	delete(s.values, key)
@@ -238,14 +226,11 @@ func (s *State) Delete(key string) {
 	s.downloads.remove(key)
 }
 
-// GetObject reads what key holds through a JSON round trip, into out.
+// GetObject decodes what key holds into out via a JSON round trip.
 //
-// It is kept alongside [State.Get] because the two answer different
-// questions. Get is a type assertion: it reads a value back as the type it
-// was stored as, and nothing else. GetObject re-decodes it, so a value that
-// arrived from the frontend as a map or a []float64 reads back into the Go
-// struct or []int it stands for. Reach for Get for a value the page itself
-// wrote, and for GetObject for one the client sent.
+// Unlike [State.Get] (a type assertion), it converts values the frontend sent
+// (maps, []float64) into the Go type they stand for. Use Get for values the
+// page wrote, GetObject for values the client sent.
 //
 // A missing key is not an error: out is left as it was.
 func (s *State) GetObject(key string, out any) error {
@@ -270,10 +255,8 @@ func (s *State) GetObject(key string, out any) error {
 	return nil
 }
 
-// numberOf reads what a key holds as a number, whatever numeric type it was
-// stored as. It goes by kind rather than by concrete type, so a page's own
-// domain type -- a `type Count int` -- is a number here, the way [Numeric]
-// says one is. A string is not one, and neither is a uintptr.
+// numberOf returns val as a number if its kind is numeric, so named types
+// like `type Count int` count. Strings and uintptr don't.
 func numberOf(val any) (reflect.Value, bool) {
 	if val == nil {
 		return reflect.Value{}, false
@@ -290,9 +273,8 @@ func numberOf(val any) (reflect.Value, bool) {
 	return reflect.Value{}, false
 }
 
-// narrowInt64 converts i to an integral T, false when T cannot hold it. T may
-// be narrower than an int64 -- int on a 32-bit platform -- and a conversion
-// between integer types is a defined truncation, so the round trip settles it.
+// narrowInt64 converts i to an integral T, false when T can't hold it (e.g.
+// int on 32-bit).
 func narrowInt64[T Numeric](i int64) (T, bool) {
 	t := T(i)
 	if int64(t) != i {
@@ -302,8 +284,8 @@ func narrowInt64[T Numeric](i int64) (T, bool) {
 	return t, true
 }
 
-// Get returns the value under key as a T, false when it is missing or another
-// type. Reading a key the user filled in by hand never panics.
+// Get returns the value under key as a T, false when missing or of another
+// type. It never panics.
 func (s *State) Get[T any](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -312,9 +294,8 @@ func (s *State) Get[T any](key string) (T, bool) {
 	return v, ok
 }
 
-// Default returns a pointer to the T under key, storing v there first when the
-// key holds nothing of that type. The state keeps the pointer, so writes
-// through it survive the rerun; a key holding another type is overwritten.
+// Default returns a pointer to the T under key, storing v first if the key
+// holds no *T (another type is overwritten). Writes through it survive reruns.
 func (s *State) Default[T any](key string, v T) *T {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
@@ -327,27 +308,20 @@ func (s *State) Default[T any](key string, v T) *T {
 	return &v
 }
 
-// Numeric is the value type [State.GetNumber] reads a number back as. The
-// tildes let a user's own named type be one, so a page can keep its domain
-// type all the way in.
+// Numeric is the type [State.GetNumber] reads into; named types are allowed.
 type Numeric interface {
 	~int | ~int64 | ~float64
 }
 
 // GetNumber returns the number under key as a T, false when the key holds
-// nothing numeric, or a number T cannot hold.
+// nothing numeric or a number T can't hold.
 //
-// Numbers are the one place [State.Get] is too literal to be useful. The
-// frontend sends every number as JSON, so an event lands a float64 whatever
-// the component's own type is, while a default written from Go carries
-// whichever integer type was at hand; this reads either, so Set(key, 30),
-// Set(key, int64(30)) and Set(key, 30.0) are the same value. A string is
-// still not a number.
+// Unlike [State.Get], it accepts any numeric type: the frontend sends JSON
+// float64s while Go code may store ints, so Set(key, 30), Set(key, int64(30))
+// and Set(key, 30.0) read the same. Strings are not numbers.
 //
-// An integer is read exactly: a stored id past 2^53 comes back as it went
-// in, rather than rounded through a float64 on the way out. A float read as
-// an integral T truncates, as the number components do, and a number T cannot
-// hold is absent rather than whatever the conversion happened to produce.
+// Integers are read exactly (no float64 rounding past 2^53). A float read as
+// an integral T truncates; out-of-range values return false.
 func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 	s.rwLock.RLock()
 	defer s.rwLock.RUnlock()
@@ -357,24 +331,19 @@ func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 		return 0, false
 	}
 
-	// Written as arithmetic rather than a type switch because a named type's
-	// dynamic type is itself, not the type it is defined from.
+	// Arithmetic, not a type switch, so named types work.
 	integral := T(1)/T(2) == T(0)
 
 	switch v.Kind() {
 	case reflect.Float32, reflect.Float64:
 		f := v.Float()
 		if !integral {
-			// A floating point T holds every number a float64 can, NaN and
-			// the infinities included.
+			// A float T holds any float64, NaN and Inf included.
 			return T(f), true
 		}
 
-		// Go leaves a float-to-integer conversion unspecified outside the
-		// target's range, and the platforms disagree on what they do there:
-		// amd64 wraps to MinInt64, wasm saturates at MaxInt64. So the range
-		// is checked in float64 first, against bounds that are exact -- 2^63
-		// has a float64, math.MaxInt64 does not.
+		// Out-of-range float-to-int is platform dependent, so check the range
+		// first, against exact float64 bounds (2^63, not MaxInt64).
 		if math.IsNaN(f) || f < float64(math.MinInt64) || f >= -float64(math.MinInt64) {
 			return 0, false
 		}
@@ -404,9 +373,7 @@ func (s *State) GetNumber[T Numeric](key string) (T, bool) {
 	}
 }
 
-// WriteFile stores what r yields as the file under key, replacing whatever
-// was there. It is streamed to wherever the build keeps files, so what r
-// yields is never held in memory all at once.
+// WriteFile streams r into the file under key, replacing what was there.
 func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
 	file, err := s.NewFile(name)
 	if err != nil {
@@ -422,11 +389,9 @@ func (s *State) WriteFile(key, name string, r io.Reader) (*File, error) {
 	return file, nil
 }
 
-// NewFile makes an empty file of the state's own, under no key. A transport
-// that receives an upload in pieces fills one of these with [File.Append] and
-// hands it to [State.PutFile] when the last piece lands, so a page never
-// reads a file that is still arriving, and two uploads racing for the same
-// key can't be spliced together.
+// NewFile makes an empty file under no key. Chunked transports fill it with
+// [File.Append] and hand it to [State.PutFile] when done, so pages never see
+// a partial file.
 func (s *State) NewFile(name string) (*File, error) {
 	file, err := s.files.newFile(name)
 	if err != nil {
@@ -438,8 +403,8 @@ func (s *State) NewFile(name string) (*File, error) {
 
 // PutFile stores file under key, dropping whatever the key held.
 //
-// A multi-file pick is uploaded in order from index 0, so a file at index 0
-// starts a new pick and drops the rest of the previous one.
+// Index 0 of a [FileKey] starts a new multi-file pick and drops the previous
+// one.
 func (s *State) PutFile(key string, file *File) {
 	if id, i, ok := splitFileKey(key); ok && i == 0 {
 		s.removeIndexedFiles(id)
@@ -458,14 +423,12 @@ func (s *State) GetFile(key string) *File {
 	return s.files.get(key)
 }
 
-// SetDownload offers bs to the app user as a file to fetch. owner is the id of
-// the component offering it, name the filename to offer it under and mime what
-// to serve it as. The bytes go where the build keeps files, and what the
-// component puts in its pack is [Download.Token].
+// SetDownload offers bs as a file to fetch. owner is the offering component's
+// id, name the filename and mime the content type. The component sends
+// [Download.Token] in its pack.
 //
-// A rerun that offers the same file again gets the same download back, so the
-// token the client holds keeps working and nothing is written twice. Different
-// bytes replace it, and the token before them stops being fetchable.
+// Offering the same file again returns the same download and token.
+// Different bytes replace it and invalidate the old token.
 func (s *State) SetDownload(owner, name, mime string, bs []byte) (*Download, error) {
 	download, err := s.downloads.set(s.files, owner, name, mime, bs)
 	if err != nil {
@@ -475,20 +438,17 @@ func (s *State) SetDownload(owner, name, mime string, bs []byte) (*Download, err
 	return download, nil
 }
 
-// GetDownload returns the download token names, nil when this state offers
-// none under it. Only this state's own: a token made for another state is not
-// found here, which is what keeps one page's output out of another's reach.
+// GetDownload returns the download for token, nil when this state offers
+// none. Tokens from other states are never found.
 func (s *State) GetDownload(token string) *Download {
 	return s.downloads.get(token)
 }
 
-// SetFuncCache stores value in the function cache under key, a place for what
-// a run computed and the next run would rather not compute again.
+// SetFuncCache stores value in the function cache under key, to reuse
+// results across runs.
 //
-// The key is the whole of the namespace: two calls naming the same key read
-// and write the same entry, wherever in the page they are written. So a key
-// has to say what the value was computed from -- the inputs, or a hash of
-// them -- or a later run reads back a result for inputs it no longer has.
+// Keys are global to the state, so a key must encode the inputs (or a hash
+// of them), or a later run reads a stale result.
 func (s *State) SetFuncCache[T any](key string, value T) {
 	s.rwLock.Lock()
 	defer s.rwLock.Unlock()
@@ -519,12 +479,11 @@ type memoEntry struct {
 	value any
 }
 
-// Memo returns what fn computed for key, calling fn only when slot does not
-// already hold a result for key. A slot keeps only its latest key, so the
-// cache stays one entry per slot however often the input changes.
+// Memo returns fn's result for key, calling fn only when slot holds no
+// result for key. A slot keeps only its latest key.
 //
-// key should say what fn computes from, as with [State.SetFuncCache]. An
-// error is returned as is and not kept.
+// key should encode fn's inputs, as with [State.SetFuncCache]. Errors are
+// returned and not cached.
 func (s *State) Memo[T any](slot, key string, fn func() (T, error)) (T, error) {
 	s.rwLock.RLock()
 	e, ok := s.memos[slot]
