@@ -1,4 +1,6 @@
-import { AppConf, DownloadResult, UpdateEvent, UploadResult } from "@toolgui-web/lib"
+import {
+  AppConf, DownloadResult, SessionBackend, UpdateEvent, UploadResult,
+} from "@toolgui-web/lib"
 
 // Backend is the Go struct Wails binds. Every bound method returns a promise.
 // Payloads cross as JSON strings, the same ones the websocket transport
@@ -38,6 +40,23 @@ export function onEvent(eventName: string, callback: (data: string) => void) {
 // where it is, which is the point: see src/external_link.ts.
 export function openURL(url: string) {
   window.runtime.BrowserOpenURL(url)
+}
+
+// PACK_EVENT_NAME is the Wails event carrying every pack. One event name keeps
+// create/update/delete/result in the order the page produced them.
+const PACK_EVENT_NAME = "toolgui:pack"
+
+// connect listens for packs and returns the window's backend.
+export function connect(onPack: (pack: any) => void): SessionBackend {
+  onEvent(PACK_EVENT_NAME, (packJSON: string) => { onPack(JSON.parse(packJSON)) })
+
+  return {
+    appConf: getAppConf,
+    start: (pageName, query) => backend().Start(pageName, query),
+    update: sendEvent,
+    uploadFile,
+    downloadFile,
+  }
 }
 
 // getAppConf is the desktop counterpart of GET /api/app.
