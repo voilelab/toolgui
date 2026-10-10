@@ -1,0 +1,15 @@
+/* A heading opens a section, so it keeps its distance from what came before.
+   The element in the selector outranks Mantine's own margin reset. */
+h1.toolgui-title {
+  margin-top: var(--mantine-spacing-lg);
+}
+
+h2.toolgui-subtitle {
+  margin-top: var(--mantine-spacing-xl);
+}
+
+/* Nothing above the first one to keep away from. */
+h1.toolgui-title:first-child,
+h2.toolgui-subtitle:first-child {
+  margin-top: 0;
+}
