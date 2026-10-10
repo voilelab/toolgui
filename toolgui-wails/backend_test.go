@@ -200,7 +200,7 @@ func TestToolGUIStartOversizedQuery(t *testing.T) {
 		t.Fatalf("Start = %v, want ErrQueryTooLarge", err)
 	}
 
-	if backend.currentSession() != nil {
+	if backend.host.Session() != nil {
 		t.Error("the previous session is still open")
 	}
 }
@@ -484,7 +484,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 		t.Fatalf("UploadFileChunk: %v", err)
 	}
 
-	if backend.state.GetFile(componentID) != nil {
+	if getFile(t, backend, componentID) != nil {
 		t.Error("expect no file under the component while it is still arriving")
 	}
 
@@ -492,7 +492,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 		t.Fatalf("UploadFileFinish: %v", err)
 	}
 
-	if backend.state.GetFile(componentID) == nil {
+	if getFile(t, backend, componentID) == nil {
 		t.Error("expect the file under the component once it finished")
 	}
 }
@@ -546,7 +546,7 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 		t.Fatalf("UploadFileFinish: %v", err)
 	}
 
-	file := backend.state.GetFile(componentID)
+	file := getFile(t, backend, componentID)
 	if file == nil {
 		t.Fatal("expect a file under the component")
 	}
@@ -686,4 +686,20 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 	if got := <-values; got != "" {
 		t.Fatalf("expect a fresh state on the new page, got %q", got)
 	}
+}
+
+// getFile returns the file the session's state holds under key.
+func getFile(t *testing.T, backend *ToolGUI, key string) *tgframe.File {
+	t.Helper()
+
+	var file *tgframe.File
+	err := backend.host.Do(func(state *tgframe.State, _ map[string]*tgframe.File) error {
+		file = state.GetFile(key)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("no state: %v", err)
+	}
+
+	return file
 }

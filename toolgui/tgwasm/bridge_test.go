@@ -33,7 +33,7 @@ func TestStartDestroysTheStateItReplaces(t *testing.T) {
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
 
-	state := b.state
+	state := hostState(b)
 	if state == nil {
 		t.Fatal("expect start to open a session")
 	}
@@ -45,7 +45,7 @@ func TestStartDestroysTheStateItReplaces(t *testing.T) {
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("other")})
 	settle(b)
 
-	if b.state == state {
+	if hostState(b) == state {
 		t.Fatal("expect start to open a state of its own")
 	}
 
@@ -61,7 +61,7 @@ func TestStartOnAnUnknownPageDestroysTheStateItMade(t *testing.T) {
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("nowhere")})
 
-	if b.state != nil || b.session != nil {
+	if hostState(b) != nil || b.host.Session() != nil {
 		t.Error("expect no session after a start on a page that is not there")
 	}
 }
@@ -196,9 +196,7 @@ func jsError(v js.Value) error {
 // in it go rather than piling up for the rest of the test binary's life.
 func stopped(b *bridge) func() {
 	return func() {
-		b.lock.Lock()
-		closeSession := b.detachSession()
-		b.lock.Unlock()
+		closeSession := b.host.Close()
 
 		settle(b)
 		closeSession()
@@ -230,7 +228,7 @@ func TestUploadFileStoresWhatThePageWrote(t *testing.T) {
 		t.Fatalf("uploadFile: %v", got)
 	}
 
-	file := b.state.GetFile("comp")
+	file := hostState(b).GetFile("comp")
 	if file == nil {
 		t.Fatal("expect the upload to be stored under the component")
 	}
@@ -268,7 +266,7 @@ func TestCancelUploadLeavesTheComponentEmpty(t *testing.T) {
 
 	b.jsCancelUpload(js.Undefined(), []js.Value{js.ValueOf(s.Name)})
 
-	if b.state.GetFile("comp") != nil {
+	if hostState(b).GetFile("comp") != nil {
 		t.Error("expect a cancelled upload to reach no component")
 	}
 
@@ -312,8 +310,8 @@ func TestStartDropsUnfinishedUploads(t *testing.T) {
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("other")})
 
-	if len(b.uploads) != 0 {
-		t.Errorf("%d uploads survived the page switch, want none", len(b.uploads))
+	if uploadCount(b) != 0 {
+		t.Errorf("%d uploads survived the page switch, want none", uploadCount(b))
 	}
 
 	got := b.jsUploadFile(js.Undefined(), []js.Value{
@@ -374,4 +372,24 @@ func TestAppConfCarriesMenu(t *testing.T) {
 		children[1].Type != tgframe.MenuNodeSeparator {
 		t.Fatalf("unexpected File submenu: %v", children)
 	}
+}
+
+// hostState returns the bridge's current state, nil without a session.
+func hostState(b *bridge) *tgframe.State {
+	var state *tgframe.State
+	_ = b.host.Do(func(s *tgframe.State, _ map[string]*tgframe.BrowserUpload) error {
+		state = s
+		return nil
+	})
+	return state
+}
+
+// uploadCount returns how many reservations the bridge holds.
+func uploadCount(b *bridge) int {
+	n := 0
+	_ = b.host.Do(func(_ *tgframe.State, uploads map[string]*tgframe.BrowserUpload) error {
+		n = len(uploads)
+		return nil
+	})
+	return n
 }

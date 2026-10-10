@@ -4,8 +4,6 @@ package tgwasm
 
 import (
 	"log/slog"
-	"sync"
-	"sync/atomic"
 	"syscall/js"
 
 	"github.com/voilelab/toolgui/toolgui/tgframe"
@@ -18,14 +16,11 @@ import (
 const BridgeName = "toolgui"
 
 // ErrNoSession is returned when the page acts before calling start.
-var ErrNoSession = tgutil.NewError("no session, call start first")
+var ErrNoSession = tgframe.ErrNoSession
 
 // ErrNoUpload is returned for an upload never reserved, or reserved by an
 // ended session.
 var ErrNoUpload = tgutil.NewError("no such upload")
-
-// errDetached is returned to sends of a session replaced by a later start.
-var errDetached = tgutil.NewError("session replaced by a later start")
 
 // ErrNoDownload is returned for an unknown or replaced download token.
 var ErrNoDownload = tgutil.NewError("no such download")
@@ -41,18 +36,9 @@ type bridge struct {
 	// onEvent is the callback the page registered for [Emit].
 	onEvent js.Value
 
-	// lock guards session and state, shared by page funcs and JS calls.
-	lock    sync.Mutex
-	session *tgframe.Session
-	state   *tgframe.State
-
-	// detached cuts off the session's sends once a start replaces it, since
-	// its close may wait behind queued runs.
-	detached *atomic.Bool
-
-	// uploads are reserved files not yet handed back, by name. Reserve and
-	// hand-over are separate calls since the page does the writing between.
-	uploads map[string]*tgframe.BrowserUpload
+	// host holds the session. Its uploads are reserved files not yet handed
+	// back, by name: the page does the writing between the two calls.
+	host *tgframe.SessionHost[*tgframe.BrowserUpload]
 
 	// runs does the page-func part of start and update in call order, off
 	// the JS call so a page func awaiting a promise doesn't deadlock.
@@ -60,13 +46,14 @@ type bridge struct {
 }
 
 func newBridge(app *tgframe.App) *bridge {
-	return &bridge{
+	b := &bridge{
 		app:     app,
 		onPack:  js.Undefined(),
 		onEvent: js.Undefined(),
-		uploads: map[string]*tgframe.BrowserUpload{},
 		runs:    newSerial(),
 	}
+	b.host = tgframe.NewSessionHost[*tgframe.BrowserUpload](app, b.send)
+	return b
 }
 
 // install publish the bridge on the global object. Every call returns at
@@ -127,34 +114,7 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 		rawQuery = args[1].String()
 	}
 
-	detached := new(atomic.Bool)
-	send := func(pack any) error {
-		if detached.Load() {
-			return errDetached
-		}
-		return b.send(pack)
-	}
-
-	state := tgframe.NewState()
-	query, err := tgframe.ParseQuery(rawQuery)
-	var session *tgframe.Session
-	if err == nil {
-		session, err = tgframe.NewSession(b.app, pageName, query, state, send)
-	}
-
-	b.lock.Lock()
-	closeOld := b.detachSession()
-	if err == nil {
-		b.state = state
-		b.session = session
-		b.detached = detached
-	}
-	b.lock.Unlock()
-
-	if err != nil {
-		// The state never reached the bridge, so free it here.
-		state.Destroy()
-	}
+	session, closeOld, err := b.host.Start(pageName, rawQuery)
 
 	// Queue the fatal result too, or a queued old run's ready pack clears it.
 	b.runs.do(func() {
@@ -176,7 +136,7 @@ func (b *bridge) jsStart(this js.Value, args []js.Value) any {
 // jsUpdate apply an event to the session and rerun the page, like a message
 // on the update websocket.
 func (b *bridge) jsUpdate(this js.Value, args []js.Value) any {
-	session := b.currentSession()
+	session := b.host.Session()
 	if session == nil || len(args) == 0 {
 		b.sendResult(&tgframe.ResultPack{Error: ErrNoSession.Error()})
 		return nil
@@ -208,28 +168,31 @@ type downloadSlot struct {
 // No bytes cross: the page reads the file with getFile, a disk-backed blob.
 // Only this state's tokens are found.
 func (b *bridge) jsDownloadFile(this js.Value, args []js.Value) any {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	var slot downloadSlot
 
-	if b.state == nil {
-		return marshalDownloadSlot(&downloadSlot{Error: ErrNoSession.Error()})
-	}
+	err := b.host.Do(func(state *tgframe.State, _ map[string]*tgframe.BrowserUpload) error {
+		if len(args) == 0 {
+			return ErrNoDownload
+		}
 
-	if len(args) == 0 {
-		return marshalDownloadSlot(&downloadSlot{Error: ErrNoDownload.Error()})
-	}
+		download := state.GetDownload(args[0].String())
+		if download == nil {
+			return ErrNoDownload
+		}
 
-	download := b.state.GetDownload(args[0].String())
-	if download == nil {
-		return marshalDownloadSlot(&downloadSlot{Error: ErrNoDownload.Error()})
-	}
+		dir, name, err := download.BrowserLocation()
+		if err != nil {
+			return err
+		}
 
-	dir, name, err := download.BrowserLocation()
+		slot = downloadSlot{Dir: dir, Name: name}
+		return nil
+	})
 	if err != nil {
-		return marshalDownloadSlot(&downloadSlot{Error: err.Error()})
+		slot = downloadSlot{Error: err.Error()}
 	}
 
-	return marshalDownloadSlot(&downloadSlot{Dir: dir, Name: name})
+	return marshalDownloadSlot(&slot)
 }
 
 // uploadSlot is jsNewUpload's answer: the OPFS directory path and file name
@@ -246,21 +209,23 @@ type uploadSlot struct {
 // The page writes it with a writable stream, keeping the file out of the
 // heap, then calls jsUploadFile.
 func (b *bridge) jsNewUpload(this js.Value, args []js.Value) any {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	var slot uploadSlot
 
-	if b.state == nil {
-		return uploadFailed(ErrNoSession)
-	}
+	err := b.host.Do(func(state *tgframe.State, uploads map[string]*tgframe.BrowserUpload) error {
+		upload, err := state.NewBrowserUpload()
+		if err != nil {
+			return err
+		}
 
-	upload, err := b.state.NewBrowserUpload()
+		uploads[upload.Name()] = upload
+		slot = uploadSlot{Dir: upload.Dir(), Name: upload.Name()}
+		return nil
+	})
 	if err != nil {
 		return uploadFailed(err)
 	}
 
-	b.uploads[upload.Name()] = upload
-
-	return marshalSlot(&uploadSlot{Dir: upload.Dir(), Name: upload.Name()})
+	return marshalSlot(&slot)
 }
 
 // jsUploadFile take over a file the page finished writing and store it under
@@ -271,10 +236,6 @@ func (b *bridge) jsNewUpload(this js.Value, args []js.Value) any {
 // writable stream), since opening is a promise that can't settle on the JS
 // callback stack. No bytes cross.
 func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
-	// Held across the handover so a start can't swap the state.
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
 	if len(args) < 4 {
 		return ErrNoUpload.Error()
 	}
@@ -282,29 +243,30 @@ func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 	componentID, name, slot, handle := args[0].String(), args[1].String(),
 		args[2].String(), args[3]
 
-	if b.state == nil {
-		closeHandle(handle)
-		return ErrNoSession.Error()
-	}
+	// Do holds the lock across the handover so a start can't swap the state.
+	err := b.host.Do(func(state *tgframe.State, uploads map[string]*tgframe.BrowserUpload) error {
+		upload := uploads[slot]
+		if upload == nil {
+			// A page switch while writing dropped the reservation.
+			return ErrNoUpload
+		}
 
-	upload := b.uploads[slot]
-	if upload == nil {
-		// A page switch while writing dropped the reservation.
-		closeHandle(handle)
-		return ErrNoUpload.Error()
-	}
+		delete(uploads, slot)
 
-	delete(b.uploads, slot)
+		file, err := upload.Take(name, handle)
+		if err != nil {
+			// Nothing half written becomes a file a page can read.
+			upload.Discard()
+			return err
+		}
 
-	file, err := upload.Take(name, handle)
+		state.PutFile(componentID, file)
+		return nil
+	})
 	if err != nil {
-		// Nothing half written becomes a file a page can read.
-		upload.Discard()
 		closeHandle(handle)
 		return err.Error()
 	}
-
-	b.state.PutFile(componentID, file)
 
 	return ""
 }
@@ -312,22 +274,20 @@ func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 // jsCancelUpload drop a reservation the page could not fill (quota,
 // cancelled, broken stream), leaving nothing behind.
 func (b *bridge) jsCancelUpload(this js.Value, args []js.Value) any {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
 	if len(args) == 0 {
 		return nil
 	}
 
 	slot := args[0].String()
 
-	upload := b.uploads[slot]
-	if upload == nil {
+	// No session means the reservation is gone already.
+	_ = b.host.Do(func(_ *tgframe.State, uploads map[string]*tgframe.BrowserUpload) error {
+		if upload := uploads[slot]; upload != nil {
+			delete(uploads, slot)
+			upload.Discard()
+		}
 		return nil
-	}
-
-	delete(b.uploads, slot)
-	upload.Discard()
+	})
 
 	return nil
 }
@@ -395,42 +355,5 @@ func (b *bridge) sendResult(pack *tgframe.ResultPack) {
 	err := b.send(pack)
 	if err != nil {
 		slog.Error("send result pack", "error", err)
-	}
-}
-
-func (b *bridge) currentSession() *tgframe.Session {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
-	return b.session
-}
-
-// detachSession takes the session off the bridge and returns its closer,
-// which waits for the page func and so must not run on a JS call. It must be
-// called with lock held.
-//
-// The state is destroyed, not just dropped: its uploads are OPFS files with
-// open handles that GC won't reclaim.
-func (b *bridge) detachSession() (closeSession func()) {
-	session, state := b.session, b.state
-	b.session = nil
-	b.state = nil
-
-	if b.detached != nil {
-		b.detached.Store(true)
-		b.detached = nil
-	}
-
-	// Reservations go with their state; a late handover finds no slot and
-	// closes its handle.
-	clear(b.uploads)
-
-	return func() {
-		if session != nil {
-			session.Close()
-		}
-		if state != nil {
-			state.Destroy()
-		}
 	}
 }

@@ -72,7 +72,7 @@ func TestDownloadFileNamesAFileThePageCanRead(t *testing.T) {
 
 	content := strings.Repeat("payload", 1000)
 
-	download, err := b.state.SetDownload("comp", "a.txt", "text/plain",
+	download, err := hostState(b).SetDownload("comp", "a.txt", "text/plain",
 		[]byte(content))
 	if err != nil {
 		t.Fatalf("SetDownload: %v", err)
@@ -113,7 +113,7 @@ func TestDownloadFileAfterAPageSwitch(t *testing.T) {
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
 	defer stopped(b)()
 
-	download, err := b.state.SetDownload("comp", "a.txt", "text/plain",
+	download, err := hostState(b).SetDownload("comp", "a.txt", "text/plain",
 		[]byte("gone"))
 	if err != nil {
 		t.Fatalf("SetDownload: %v", err)

@@ -46,7 +46,7 @@ func TestStartOversizedQueryOpensNoSession(t *testing.T) {
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index"), js.ValueOf(query)})
 	settle(b)
 
-	if b.state != nil || b.session != nil {
+	if hostState(b) != nil || b.host.Session() != nil {
 		t.Error("expect no session for an oversized query")
 	}
 }
