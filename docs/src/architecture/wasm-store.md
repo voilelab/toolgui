@@ -1,8 +1,8 @@
 # Persistent Store (wasm)
 
 > Design note (TG-102). It records the decisions that the implementation tickets
-> build on. The store and its compaction are implemented (TG-107, TG-108,
-> `toolgui/tgwasm/store.go`). The JSON helpers and docs (TG-109) are not yet.
+> build on. The store is implemented (TG-107, `toolgui/tgwasm/store.go`).
+> Compaction (TG-108) and the JSON helpers and docs (TG-109) are not yet.
 
 A wasm app keeps drafts and records that should survive a reload or a closed
 tab. Today it has no API for that. offline-judge wraps IndexedDB by hand: about
@@ -55,9 +55,6 @@ store.
   file is left as it is, and the next compaction overwrites it. On open, the
   store reads the newest generation that has its commit record. A crash during
   compaction loses nothing, because the previous generation is still complete.
-  "Much larger" means more than twice the size of the compacted log plus
-  64 KiB. A compaction that fails, for example over quota, empties the other
-  file and keeps appending to the old one. Read-only tabs never compact.
 
 ### Layout
 
