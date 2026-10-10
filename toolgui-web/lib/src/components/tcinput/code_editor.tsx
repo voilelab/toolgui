@@ -49,8 +49,18 @@ const editorTheme = EditorView.theme({
     backgroundColor: "var(--mantine-color-default)",
     borderRight: "1px solid var(--mantine-color-default-border)",
   },
-  ".cm-activeLine, .cm-activeLineGutter": {
+  ".cm-activeLineGutter": {
     backgroundColor: "var(--mantine-color-default-hover)",
+  },
+  // Selection is drawn under the lines, so the active line must be
+  // translucent or it hides the selection.
+  ".cm-activeLine": {
+    backgroundColor:
+      "color-mix(in srgb, var(--mantine-color-default-hover) 50%, transparent)",
+  },
+  ".cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-content ::selection": {
+    backgroundColor:
+      "color-mix(in srgb, var(--mantine-primary-color-filled) 30%, transparent)",
   },
 
   // The search panel, in Mantine's input and default button look.
