@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash/crc32"
-	"io"
 	"io/fs"
 	"maps"
 	"regexp"
@@ -75,7 +74,7 @@ type Store struct {
 	data map[string][]byte
 
 	// Owner only.
-	lock js.Value
+	lock *opfs.SyncFile
 	file logFile
 	end  int64
 
@@ -244,13 +243,13 @@ func (s *Store) append(rec []byte) error {
 
 	at := s.end
 
-	n, err := s.file.write(rec, at)
+	n, err := s.file.WriteAt(rec, at)
 	if err == nil && n != len(rec) {
 		err = tgutil.Errorf("wrote %d of %d bytes", n, len(rec))
 	}
 
 	if err == nil {
-		err = s.file.flush()
+		err = s.file.Flush()
 	}
 
 	if err == nil {
@@ -258,9 +257,9 @@ func (s *Store) append(rec []byte) error {
 		return nil
 	}
 
-	if undo := s.file.truncate(at); undo != nil {
+	if undo := s.file.Truncate(at); undo != nil {
 		s.broken = tgutil.Errorf("store %q is broken: %w", s.name, undo)
-	} else if undo := s.file.flush(); undo != nil {
+	} else if undo := s.file.Flush(); undo != nil {
 		s.broken = tgutil.Errorf("store %q is broken: %w", s.name, undo)
 	}
 
@@ -276,13 +275,13 @@ func (s *Store) close() {
 	defer s.mu.Unlock()
 
 	if s.file != nil {
-		s.file.close()
+		_ = s.file.Close()
 		s.file = nil
 	}
 
-	if s.lock.Truthy() {
-		_, _ = opfs.Call(s.lock, "close")
-		s.lock = js.Undefined()
+	if s.lock != nil {
+		_ = s.lock.Close()
+		s.lock = nil
 	}
 }
 
@@ -308,12 +307,7 @@ func (s *Store) open() error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	lockFile, err := opfs.AwaitCall(dir, "getFileHandle", storeLockName, opfs.Create)
-	if err != nil {
-		return tgutil.Errorf("%w", err)
-	}
-
-	lock, err := opfs.AwaitCall(lockFile, "createSyncAccessHandle")
+	lock, err := opfs.OpenSyncFile(dir, storeLockName)
 	if err != nil {
 		if strings.Contains(err.Error(), "NoModificationAllowedError") {
 			s.readOnly = true
@@ -326,8 +320,8 @@ func (s *Store) open() error {
 	s.lock = lock
 
 	if err := s.openOwner(dir); err != nil {
-		_, _ = opfs.Call(lock, "close")
-		s.lock = js.Undefined()
+		_ = lock.Close()
+		s.lock = nil
 		return err
 	}
 
@@ -337,26 +331,26 @@ func (s *Store) open() error {
 // openOwner read the newest committed generation and keep its file open for
 // appends.
 func (s *Store) openOwner(dir js.Value) error {
-	var files [2]*syncFile
+	var files [2]*opfs.SyncFile
 	var logs [2]parsedLog
 
 	defer func() {
 		for _, f := range files {
 			if f != nil && logFile(f) != s.file {
-				f.close()
+				_ = f.Close()
 			}
 		}
 	}()
 
 	for i, name := range storeFiles {
-		f, err := openSyncFile(dir, name)
+		f, err := opfs.OpenSyncFile(dir, name)
 		if err != nil {
 			return tgutil.Errorf("%w", err)
 		}
 
 		files[i] = f
 
-		bs, err := f.readAll()
+		bs, err := f.ReadAll()
 		if err != nil {
 			return tgutil.Errorf("%w", err)
 		}
@@ -396,18 +390,18 @@ func (s *Store) openOwner(dir js.Value) error {
 		} else {
 			// Over quota, most likely. Keep the old log and free the space;
 			// an uncommitted generation is ignored anyway.
-			_ = files[j].truncate(0)
-			_ = files[j].flush()
+			_ = files[j].Truncate(0)
+			_ = files[j].Flush()
 		}
 	}
 
 	// Drop a torn tail, so the next append is not lost behind it.
 	if l.good < l.size {
-		if err := f.truncate(l.good); err != nil {
+		if err := f.Truncate(l.good); err != nil {
 			return tgutil.Errorf("%w", err)
 		}
 
-		if err := f.flush(); err != nil {
+		if err := f.Flush(); err != nil {
 			return tgutil.Errorf("%w", err)
 		}
 	}
@@ -519,15 +513,15 @@ func pickLog(logs [2]parsedLog) (int, error) {
 // empties f first, so a crash mid-write leaves a torn tail, not new records
 // in front of old bytes.
 func writeGen(f logFile, rec []byte) error {
-	if err := f.truncate(0); err != nil {
+	if err := f.Truncate(0); err != nil {
 		return err
 	}
 
-	if err := f.flush(); err != nil {
+	if err := f.Flush(); err != nil {
 		return err
 	}
 
-	n, err := f.write(rec, 0)
+	n, err := f.WriteAt(rec, 0)
 	if err != nil {
 		return err
 	}
@@ -536,95 +530,16 @@ func writeGen(f logFile, rec []byte) error {
 		return tgutil.Errorf("wrote %d of %d bytes", n, len(rec))
 	}
 
-	return f.flush()
+	return f.Flush()
 }
 
 // logFile is what the owner appends through. An interface so tests can fail
 // a write.
 type logFile interface {
-	write(bs []byte, at int64) (int, error)
-	flush() error
-	truncate(size int64) error
-	close()
-}
-
-// syncFile is a file behind a sync access handle.
-type syncFile struct {
-	handle js.Value
-}
-
-func openSyncFile(dir js.Value, name string) (*syncFile, error) {
-	fh, err := opfs.AwaitCall(dir, "getFileHandle", name, opfs.Create)
-	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
-	}
-
-	h, err := opfs.AwaitCall(fh, "createSyncAccessHandle")
-	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
-	}
-
-	return &syncFile{handle: h}, nil
-}
-
-func (f *syncFile) readAll() ([]byte, error) {
-	size, err := opfs.Call(f.handle, "getSize")
-	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
-	}
-
-	n := size.Int()
-	if n == 0 {
-		return nil, nil
-	}
-
-	arr := opfs.Uint8Array.New(n)
-
-	// read may return fewer bytes than asked, so loop until the whole file
-	// is in. A short file would read as a torn tail and get cut.
-	for off := 0; off < n; {
-		got, err := opfs.Call(f.handle, "read", arr.Call("subarray", off), opfs.At(int64(off)))
-		if err != nil {
-			return nil, tgutil.Errorf("%w", err)
-		}
-
-		if got.Int() == 0 {
-			return nil, tgutil.Errorf("read %d of %d bytes: %w", off, n, io.ErrUnexpectedEOF)
-		}
-
-		off += got.Int()
-	}
-
-	bs := make([]byte, n)
-	js.CopyBytesToGo(bs, arr)
-
-	return bs, nil
-}
-
-func (f *syncFile) write(bs []byte, at int64) (int, error) {
-	arr := opfs.Uint8Array.New(len(bs))
-	js.CopyBytesToJS(arr, bs)
-
-	n, err := opfs.Call(f.handle, "write", arr, opfs.At(at))
-	if err != nil {
-		return 0, tgutil.Errorf("%w", err)
-	}
-
-	return n.Int(), nil
-}
-
-func (f *syncFile) flush() error {
-	_, err := opfs.Call(f.handle, "flush")
-	return err
-}
-
-func (f *syncFile) truncate(size int64) error {
-	_, err := opfs.Call(f.handle, "truncate", float64(size))
-	return err
-}
-
-func (f *syncFile) close() {
-	_, _ = opfs.Call(f.handle, "close")
+	WriteAt(bs []byte, at int64) (int, error)
+	Flush() error
+	Truncate(size int64) error
+	Close() error
 }
 
 // A log is records of [length uint32][crc32 uint32][payload]. It starts with

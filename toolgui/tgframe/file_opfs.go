@@ -41,9 +41,8 @@ const (
 	// opfsPoolSize is how many files are kept open ahead of demand.
 	opfsPoolSize = 8
 
-	// opfsChunkSize is the bytes moved per read or write call, through a
-	// reused typed array.
-	opfsChunkSize = 64 << 10
+	// opfsChunkSize is the bytes moved per read or write call.
+	opfsChunkSize = opfs.ChunkSize
 
 	// opfsSweepGrace is how long a new state directory is left alone by the
 	// sweep.
@@ -227,7 +226,7 @@ type opfsBodies struct {
 	ready chan struct{}
 	name  string
 	dir   js.Value
-	lock  js.Value
+	lock  *opfs.SyncFile
 	err   error
 
 	// pool holds files already open, waiting to be handed out.
@@ -326,12 +325,7 @@ func (b *opfsBodies) setup() error {
 	// Set before later failures so destroy can remove it.
 	b.dir = dir
 
-	lockFile, err := opfs.AwaitCall(dir, "getFileHandle", opfsLockName, opfs.Create)
-	if err != nil {
-		return tgutil.Errorf("%w", err)
-	}
-
-	lock, err := opfs.AwaitCall(lockFile, "createSyncAccessHandle")
+	lock, err := opfs.OpenSyncFile(dir, opfsLockName)
 	if err != nil {
 		return tgutil.Errorf("%w", err)
 	}
@@ -350,17 +344,12 @@ func (b *opfsBodies) create() (*opfsBody, error) {
 	name := strconv.Itoa(b.seq)
 	b.mu.Unlock()
 
-	file, err := opfs.AwaitCall(b.dir, "getFileHandle", name, opfs.Create)
+	file, err := opfs.OpenSyncFile(b.dir, name)
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
 
-	handle, err := opfs.AwaitCall(file, "createSyncAccessHandle")
-	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
-	}
-
-	return &opfsBody{bodies: b, name: name, handle: handle}, nil
+	return &opfsBody{bodies: b, name: name, file: file}, nil
 }
 
 func (b *opfsBodies) newBody() (fileBody, error) {
@@ -537,8 +526,8 @@ func (b *opfsBodies) removeDir() {
 
 	// Release the lock (if any) first, so the next sweep can judge a
 	// directory this fails to remove.
-	if b.lock.Truthy() {
-		if _, err := opfs.Call(b.lock, "close"); err != nil {
+	if b.lock != nil {
+		if err := b.lock.Close(); err != nil {
 			slog.Error("release a state directory lock",
 				"dir", b.name, "error", err)
 		}
@@ -581,9 +570,8 @@ type opfsBody struct {
 	bodies *opfsBodies
 	name   string
 
-	lock   sync.Mutex
-	handle js.Value
-	buf    js.Value
+	lock sync.Mutex
+	file *opfs.SyncFile
 
 	// readers counts open readers; removed says the store dropped the file.
 	// Like an unlinked file, it lives until the last reader closes.
@@ -608,7 +596,7 @@ func (b *opfsBody) adopt(handle js.Value) (int64, error) {
 		return 0, tgutil.NewError("the file is gone")
 	}
 
-	if b.handle.Truthy() {
+	if b.file != nil {
 		return 0, tgutil.NewError("the file is open already")
 	}
 
@@ -616,25 +604,25 @@ func (b *opfsBody) adopt(handle js.Value) (int64, error) {
 		return 0, tgutil.NewError("no file handle")
 	}
 
-	b.handle = handle
+	b.file = opfs.NewSyncFile(handle)
 
-	size, err := opfs.Call(handle, "getSize")
+	size, err := b.file.Size()
 	if err != nil {
 		return 0, tgutil.Errorf("%w", err)
 	}
 
-	return int64(size.Float()), nil
+	return size, nil
 }
 
 func (b *opfsBody) open() (FileReader, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	if !b.handle.Truthy() {
+	if b.file == nil {
 		return nil, tgutil.Errorf("%w", b.noHandle())
 	}
 
-	size, err := opfs.Call(b.handle, "getSize")
+	size, err := b.file.Size()
 	if err != nil {
 		return nil, tgutil.Errorf("%w", err)
 	}
@@ -642,14 +630,14 @@ func (b *opfsBody) open() (FileReader, error) {
 	b.readers++
 
 	// Cap the reader at the current size so appends don't affect it.
-	return &opfsReader{body: b, size: int64(size.Float())}, nil
+	return &opfsReader{body: b, size: size}, nil
 }
 
 func (b *opfsBody) write(r io.Reader, atEnd bool) (int64, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 
-	if !b.handle.Truthy() {
+	if b.file == nil {
 		return 0, tgutil.Errorf("%w", b.noHandle())
 	}
 
@@ -665,7 +653,7 @@ func (b *opfsBody) write(r io.Reader, atEnd bool) (int64, error) {
 	for {
 		n, readErr := r.Read(buf)
 		if n > 0 {
-			if err := b.writeChunk(buf[:n], at+total); err != nil {
+			if _, err := b.file.WriteAt(buf[:n], at+total); err != nil {
 				return total, tgutil.Errorf("%w", err)
 			}
 
@@ -685,50 +673,14 @@ func (b *opfsBody) write(r io.Reader, atEnd bool) (int64, error) {
 // writeStart returns the write offset, truncating first unless appending.
 func (b *opfsBody) writeStart(atEnd bool) (int64, error) {
 	if !atEnd {
-		if _, err := opfs.Call(b.handle, "truncate", 0); err != nil {
+		if err := b.file.Truncate(0); err != nil {
 			return 0, tgutil.Errorf("%w", err)
 		}
 
 		return 0, nil
 	}
 
-	size, err := opfs.Call(b.handle, "getSize")
-	if err != nil {
-		return 0, tgutil.Errorf("%w", err)
-	}
-
-	return int64(size.Float()), nil
-}
-
-// writeChunk copies bs through the body's typed array and writes it at off.
-func (b *opfsBody) writeChunk(bs []byte, off int64) error {
-	if !b.buf.Truthy() {
-		b.buf = opfs.Uint8Array.New(opfsChunkSize)
-	}
-
-	js.CopyBytesToJS(b.buf, bs)
-
-	view := b.buf
-	if len(bs) < opfsChunkSize {
-		v, err := opfs.Call(b.buf, "subarray", 0, len(bs))
-		if err != nil {
-			return tgutil.Errorf("%w", err)
-		}
-
-		view = v
-	}
-
-	// QuotaExceededError comes back as an error via [State.WriteFile].
-	wrote, err := opfs.Call(b.handle, "write", view, opfs.At(off))
-	if err != nil {
-		return tgutil.Errorf("%w", err)
-	}
-
-	if n := int(wrote.Float()); n != len(bs) {
-		return tgutil.Errorf("wrote %d of %d bytes", n, len(bs))
-	}
-
-	return nil
+	return b.file.Size()
 }
 
 // noHandle says why there is no handle: closed, or not handed over yet. It
@@ -806,16 +758,15 @@ func (b *opfsBody) close() {
 
 // shut closes the handle. It must be called with the lock held.
 func (b *opfsBody) shut() {
-	if !b.handle.Truthy() {
+	if b.file == nil {
 		return
 	}
 
-	if _, err := opfs.Call(b.handle, "close"); err != nil {
+	if err := b.file.Close(); err != nil {
 		slog.Error("close a file handle", "name", b.name, "error", err)
 	}
 
-	b.handle = js.Undefined()
-	b.buf = js.Undefined()
+	b.file = nil
 }
 
 // opfsReader reads one body through its shared handle, keeping its own
@@ -825,7 +776,6 @@ type opfsReader struct {
 	size int64
 
 	off    int64
-	buf    js.Value
 	closed bool
 }
 
@@ -868,20 +818,17 @@ func (r *opfsReader) readAt(p []byte, off int64) (int, error) {
 		p = p[:rest]
 	}
 
-	view, span := r.view()
+	r.body.lock.Lock()
+	defer r.body.lock.Unlock()
 
-	read := 0
-	for read < len(p) {
-		n, err := r.readChunk(p[read:], off+int64(read), view, span)
-		if err != nil {
-			return read, tgutil.Errorf("%w", err)
-		}
+	if r.body.file == nil {
+		return 0, tgutil.NewError("the file is closed")
+	}
 
-		if n == 0 {
-			break
-		}
-
-		read += n
+	// Positional read: random access without loading the whole file.
+	read, err := r.body.file.ReadAt(p, off)
+	if err != nil && err != io.EOF {
+		return read, tgutil.Errorf("%w", err)
 	}
 
 	if read < want {
@@ -889,57 +836,6 @@ func (r *opfsReader) readAt(p []byte, off int64) (int, error) {
 	}
 
 	return read, nil
-}
-
-// readChunk reads at most one chunk into the front of p.
-func (r *opfsReader) readChunk(p []byte, off int64, view js.Value, span int) (int, error) {
-	if len(p) < span {
-		v, err := opfs.Call(view, "subarray", 0, len(p))
-		if err != nil {
-			return 0, tgutil.Errorf("%w", err)
-		}
-
-		view = v
-	}
-
-	r.body.lock.Lock()
-	defer r.body.lock.Unlock()
-
-	if !r.body.handle.Truthy() {
-		return 0, tgutil.NewError("the file is closed")
-	}
-
-	// Positional read: random access without loading the whole file.
-	got, err := opfs.Call(r.body.handle, "read", view, opfs.At(off))
-	if err != nil {
-		return 0, tgutil.Errorf("%w", err)
-	}
-
-	n := got.Int()
-	if n > 0 {
-		js.CopyBytesToGo(p[:n], view)
-	}
-
-	return n, nil
-}
-
-// view returns the reader's chunk buffer and its length, made once on first
-// use.
-func (r *opfsReader) view() (js.Value, int) {
-	if !r.buf.Truthy() {
-		span := r.size
-		if span > opfsChunkSize {
-			span = opfsChunkSize
-		}
-
-		if span < 1 {
-			span = 1
-		}
-
-		r.buf = opfs.Uint8Array.New(int(span))
-	}
-
-	return r.buf, r.buf.Length()
 }
 
 func (r *opfsReader) Seek(offset int64, whence int) (int64, error) {
@@ -976,7 +872,6 @@ func (r *opfsReader) Close() error {
 	}
 
 	r.closed = true
-	r.buf = js.Undefined()
 
 	r.body.release()
 
