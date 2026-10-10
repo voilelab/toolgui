@@ -87,28 +87,28 @@ func removeStoreDir(t *testing.T, name string) {
 func editFile(t *testing.T, name, file string, fn func([]byte) []byte) {
 	t.Helper()
 
-	f, err := openSyncFile(storeDir(t, name), file)
+	f, err := opfs.OpenSyncFile(storeDir(t, name), file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.close()
+	defer f.Close()
 
-	bs, err := f.readAll()
+	bs, err := f.ReadAll()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bs = fn(bs)
 
-	if err := f.truncate(0); err != nil {
+	if err := f.Truncate(0); err != nil {
 		t.Fatal(err)
 	}
 
-	if _, err := f.write(bs, 0); err != nil {
+	if _, err := f.WriteAt(bs, 0); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := f.flush(); err != nil {
+	if err := f.Flush(); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -327,13 +327,13 @@ type failingLog struct {
 	short bool
 }
 
-func (f *failingLog) write(bs []byte, at int64) (int, error) {
+func (f *failingLog) WriteAt(bs []byte, at int64) (int, error) {
 	if !f.fail {
-		return f.logFile.write(bs, at)
+		return f.logFile.WriteAt(bs, at)
 	}
 
 	if f.short {
-		return f.logFile.write(bs[:len(bs)/2], at)
+		return f.logFile.WriteAt(bs[:len(bs)/2], at)
 	}
 
 	return 0, errors.New("QuotaExceededError: over quota")
@@ -644,11 +644,11 @@ func TestStoreReadOnlyDuringCompaction(t *testing.T) {
 	s, name := halfCompacted(t, func(snap []byte) []byte { return snap[:len(snap)/2] })
 
 	// Another tab owns the store and is writing b.
-	lock, err := openSyncFile(storeDir(t, name), storeLockName)
+	lock, err := opfs.OpenSyncFile(storeDir(t, name), storeLockName)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer lock.close()
+	defer lock.Close()
 
 	s = reopen(t, s, name)
 
