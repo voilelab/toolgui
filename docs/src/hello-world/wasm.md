@@ -280,7 +280,7 @@ func Index(p *tgframe.Params) error {
   `navigator.storage.persist()` from the page, for example in a
   [`-head`](#head-html) script, if the app needs it kept.
 
-The example app's Echo page keeps its text this way. The design is in
+The example app's Echo page keeps its text this way. How it works is in
 [Persistent Store](../architecture/wasm-store.md).
 
 ## What the browser takes away
