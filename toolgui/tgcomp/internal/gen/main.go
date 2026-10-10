@@ -285,9 +285,8 @@ func (g *pkgGen) typeDecl(f *ast.File, d *ast.GenDecl) error {
 func (g *pkgGen) constDecl(d *ast.GenDecl) error {
 	g.doc(d.Doc)
 
-	if !d.Lparen.IsValid() {
-		name := d.Specs[0].(*ast.ValueSpec).Names[0].Name
-		fmt.Fprintf(&g.body, "const %s = %s.%s\n", name, g.pkg, name)
+	if names := d.Specs[0].(*ast.ValueSpec).Names; !d.Lparen.IsValid() && len(names) == 1 {
+		fmt.Fprintf(&g.body, "const %s = %s.%s\n", names[0].Name, g.pkg, names[0].Name)
 		return nil
 	}
 
