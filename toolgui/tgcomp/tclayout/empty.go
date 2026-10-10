@@ -22,19 +22,17 @@ func newEmptyComponent() *emptyComponent {
 // EmptyConf is the configuration for the Empty component. The container an
 // empty hands out derives its id from the empty's; give none and it carries
 // none, and the components inside are still placed by position.
+//
+//tgcomp:export
 type EmptyConf struct {
 	tgframe.Base
 }
 
 // EmptySlot is what [Empty] hands out: a place in the page that can be
 // written and written over.
-type EmptySlot = tgframe.Slot
-
-// EmptyContainer is the old name of [EmptySlot].
 //
-// Deprecated: use [EmptySlot]. A slot is written whole through
-// [tgframe.Slot.With], not added to the way a container is.
-type EmptyContainer = tgframe.Slot
+//tgcomp:export
+type EmptySlot = tgframe.Slot
 
 // Empty reserves a place in the page and hands back a slot to write it with.
 // Writing the slot again takes the previous contents off the screen instead of
@@ -53,6 +51,8 @@ type EmptyContainer = tgframe.Slot
 //	})
 //
 // The slot starts empty on every run, whatever the last run left in it.
+//
+//tgcomp:export
 func Empty(c *tgframe.Container, conf ...*EmptyConf) *EmptySlot {
 	cf := tgframe.OneConf("Empty", conf)
 

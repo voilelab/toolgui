@@ -32,11 +32,15 @@ func newExpandComponent(title string, expanded bool) *expandComponent {
 }
 
 // ExpandConf is the configuration for the Expand component.
+//
+//tgcomp:export
 type ExpandConf struct {
 	tgframe.Base
 }
 
 // Expand create a expandable component.
+//
+//tgcomp:export
 func Expand(c *tgframe.Container, title string, expanded bool, conf ...*ExpandConf) *tgframe.Container {
 	cf := tgframe.OneConf("Expand", conf)
 

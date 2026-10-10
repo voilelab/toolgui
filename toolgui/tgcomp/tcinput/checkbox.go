@@ -26,6 +26,8 @@ func newCheckboxComponent(label string) *checkboxComponent {
 }
 
 // CheckboxConf is the configuration for a checkbox.
+//
+//tgcomp:export
 type CheckboxConf struct {
 	tgframe.Base
 
@@ -37,6 +39,8 @@ type CheckboxConf struct {
 }
 
 // Checkbox create a checkbox and return true if it's checked.
+//
+//tgcomp:export
 func Checkbox(c *tgframe.Container, label string, conf ...*CheckboxConf) bool {
 	cf := tgframe.OneConf("Checkbox", conf)
 

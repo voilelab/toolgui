@@ -26,6 +26,8 @@ func newToggleComponent(label string) *toggleComponent {
 }
 
 // ToggleConf is the configuration for a toggle.
+//
+//tgcomp:export
 type ToggleConf struct {
 	tgframe.Base
 
@@ -38,6 +40,8 @@ type ToggleConf struct {
 
 // Toggle create a switch and return true if it's on. It is [Checkbox] drawn as
 // a switch: same signature, same value, different affordance.
+//
+//tgcomp:export
 func Toggle(c *tgframe.Container, label string, conf ...*ToggleConf) bool {
 	cf := tgframe.OneConf("Toggle", conf)
 

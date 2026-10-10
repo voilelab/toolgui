@@ -15,8 +15,11 @@ var chartComponentName = "chart_component"
 const defaultChartHeight = "300px"
 
 // ChartKind is the shape a chart is drawn in.
+//
+//tgcomp:export
 type ChartKind int
 
+//tgcomp:export
 const (
 	// ChartKindLine draws one line per series.
 	ChartKindLine ChartKind = iota
@@ -48,12 +51,16 @@ func (k ChartKind) String() string {
 }
 
 // ChartPoint is one point of a scatter chart, on the two value axes.
+//
+//tgcomp:export
 type ChartPoint struct {
 	X float64 `json:"x"`
 	Y float64 `json:"y"`
 }
 
 // ChartSeries is one named series of a chart.
+//
+//tgcomp:export
 type ChartSeries struct {
 	// Name labels the series in the legend and the tooltip.
 	Name string `json:"name"`
@@ -74,6 +81,8 @@ type ChartSeries struct {
 // ChartConf is the configuration for the chart components. The data is not in
 // here: labels and series are what a chart is for, so every entry point takes
 // them positionally and this carries only the presentation.
+//
+//tgcomp:export
 type ChartConf struct {
 	tgframe.Base
 
@@ -141,23 +150,31 @@ func newChartComponent(labels []string, series []ChartSeries, conf *ChartConf) *
 
 // Chart create a chart of the kind [ChartConf.Kind] names, default a line
 // chart. Every series needs one value per label.
+//
+//tgcomp:export
 func Chart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
 	chart(c, labels, series, tgframe.OneConf("Chart", conf), nil)
 }
 
 // LineChart create a line chart, one line per series.
+//
+//tgcomp:export
 func LineChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
 	kind := ChartKindLine
 	chart(c, labels, series, tgframe.OneConf("LineChart", conf), &kind)
 }
 
 // BarChart create a bar chart, one bar per value grouped by label.
+//
+//tgcomp:export
 func BarChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
 	kind := ChartKindBar
 	chart(c, labels, series, tgframe.OneConf("BarChart", conf), &kind)
 }
 
 // AreaChart create an area chart, one filled line per series.
+//
+//tgcomp:export
 func AreaChart(c *tgframe.Container, labels []string, series []ChartSeries, conf ...*ChartConf) {
 	kind := ChartKindArea
 	chart(c, labels, series, tgframe.OneConf("AreaChart", conf), &kind)
@@ -166,6 +183,8 @@ func AreaChart(c *tgframe.Container, labels []string, series []ChartSeries, conf
 // ScatterChart create a scatter chart, one marker per point. It takes no
 // labels: both of a scatter chart's axes are value axes, so a point carries
 // its own x, in [ChartSeries.Points] rather than Values.
+//
+//tgcomp:export
 func ScatterChart(c *tgframe.Container, series []ChartSeries, conf ...*ChartConf) {
 	kind := ChartKindScatter
 	chart(c, nil, series, tgframe.OneConf("ScatterChart", conf), &kind)

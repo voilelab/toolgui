@@ -31,6 +31,9 @@ func newDownloadButtonComponent(text string) *downloadButtonComponent {
 	}
 }
 
+// DownloadButtonConf is the configuration for the DownloadButton component.
+//
+//tgcomp:export
 type DownloadButtonConf struct {
 	tgframe.Base
 
@@ -49,6 +52,8 @@ type DownloadButtonConf struct {
 }
 
 // DownloadButton create a download button component.
+//
+//tgcomp:export
 func DownloadButton(c *tgframe.Container, text string, body []byte, conf ...*DownloadButtonConf) bool {
 	cf := tgframe.OneConf("DownloadButton", conf)
 
@@ -81,6 +86,8 @@ func DownloadButton(c *tgframe.Container, text string, body []byte, conf ...*Dow
 // It takes no body: the button's id comes from text (or the conf id), not from
 // what it hands over, so a page can ask about the click before it has the
 // bytes to offer.
+//
+//tgcomp:export
 func DownloadButtonClicked(c *tgframe.Container, text string,
 	conf ...*DownloadButtonConf) bool {
 

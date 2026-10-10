@@ -39,6 +39,8 @@ func newIframeComponent(html string, script bool) *iframeComponent {
 }
 
 // IframeConf is the configuration for the Iframe component.
+//
+//tgcomp:export
 type IframeConf struct {
 	tgframe.Base
 
@@ -59,6 +61,8 @@ type IframeConf struct {
 // Iframe shows HTML in a sandboxed iframe.
 //
 // Read what its guest sends back with [IframeValue].
+//
+//tgcomp:export
 func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 	c.AddComponent(iframeComponentFor(c, html, tgframe.OneConf("Iframe", conf)))
 }
@@ -78,6 +82,8 @@ func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 //
 // The frontend keys the value by the iframe's own component id, so a guest can
 // only write to its own state.
+//
+//tgcomp:export
 func IframeValue[T any](c *tgframe.Container, html string, conf ...*IframeConf) *T {
 	comp := iframeComponentFor(c, html, tgframe.OneConf("IframeValue", conf))
 

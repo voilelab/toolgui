@@ -32,6 +32,8 @@ func newMultiSelectComponent(label string, items []string) *multiselectComponent
 }
 
 // MultiSelectConf is the configuration for the MultiSelect component.
+//
+//tgcomp:export
 type MultiSelectConf struct {
 	tgframe.Base
 
@@ -57,6 +59,8 @@ type MultiSelectConf struct {
 // The result is ordered by items rather than by the order they were picked in,
 // and is nil when nothing is selected — the same "nothing" [Select] hands back,
 // so one test reads both.
+//
+//tgcomp:export
 func MultiSelect(c *tgframe.Container, label string, items []string,
 	conf ...*MultiSelectConf) []int {
 

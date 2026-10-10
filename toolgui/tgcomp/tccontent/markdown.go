@@ -22,11 +22,15 @@ func newMarkdownComponent(text string) *markdownComponent {
 }
 
 // MarkdownConf is the configuration for the Markdown component.
+//
+//tgcomp:export
 type MarkdownConf struct {
 	tgframe.Base
 }
 
 // Markdown render markdown to html.
+//
+//tgcomp:export
 func Markdown(c *tgframe.Container, markdown string, conf ...*MarkdownConf) {
 	cf := tgframe.OneConf("Markdown", conf)
 

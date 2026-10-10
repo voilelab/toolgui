@@ -73,6 +73,8 @@ func (p picker) normalize(t *time.Time) *time.Time {
 }
 
 // DatePickerConf is the configuration for the DatePicker component.
+//
+//tgcomp:export
 type DatePickerConf struct {
 	tgframe.Base
 
@@ -97,12 +99,16 @@ func (c *DatePickerConf) SetDefault(v time.Time) *DatePickerConf {
 // Only the day is kept: a clock the caller's Default carried is dropped, the
 // way [TimePicker] drops the date, so the three pickers hand back times that
 // compare.
+//
+//tgcomp:export
 func DatePicker(c *tgframe.Container, label string, conf ...*DatePickerConf) *time.Time {
 	cf := tgframe.OneConf("DatePicker", conf)
 	return datePicker.pick(c, label, cf.Default, cf.Disabled, cf)
 }
 
 // TimePickerConf is the configuration for the TimePicker component.
+//
+//tgcomp:export
 type TimePickerConf struct {
 	tgframe.Base
 
@@ -127,12 +133,16 @@ func (c *TimePickerConf) SetDefault(v time.Time) *TimePickerConf {
 //
 // Only the clock is kept: a date the caller's Default carried is dropped, the
 // way [DatePicker] drops the clock.
+//
+//tgcomp:export
 func TimePicker(c *tgframe.Container, label string, conf ...*TimePickerConf) *time.Time {
 	cf := tgframe.OneConf("TimePicker", conf)
 	return timePicker.pick(c, label, cf.Default, cf.Disabled, cf)
 }
 
 // DateTimePickerConf is the configuration for the DateTimePicker component.
+//
+//tgcomp:export
 type DateTimePickerConf struct {
 	tgframe.Base
 
@@ -153,6 +163,8 @@ func (c *DateTimePickerConf) SetDefault(v time.Time) *DateTimePickerConf {
 
 // DateTimePicker create a datetimepicker and return its selected datetime,
 // read to the minute and in UTC. Return nil if no datetime is selected.
+//
+//tgcomp:export
 func DateTimePicker(c *tgframe.Container, label string,
 	conf ...*DateTimePickerConf) *time.Time {
 

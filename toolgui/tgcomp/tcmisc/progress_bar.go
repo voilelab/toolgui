@@ -28,6 +28,8 @@ func newProgressBarComponent(value int, label string) *progressBarComponent {
 // the work may take it as a parameter or keep it in a struct field:
 //
 //	type importer struct{ bar *tgcomp.ProgressBarHandle }
+//
+//tgcomp:export
 type ProgressBarHandle struct {
 	comp      *progressBarComponent
 	container *tgframe.Container
@@ -53,6 +55,8 @@ func (p *ProgressBarHandle) Remove() {
 }
 
 // ProgressBarConf is the configuration for the ProgressBar component.
+//
+//tgcomp:export
 type ProgressBarConf struct {
 	tgframe.Base
 }
@@ -69,6 +73,8 @@ type ProgressBarConf struct {
 //
 // bar.SetLabel("Completed")
 // ```
+//
+//tgcomp:export
 func ProgressBar(c *tgframe.Container, value int, label string, conf ...*ProgressBarConf) *ProgressBarHandle {
 	cf := tgframe.OneConf("ProgressBar", conf)
 

@@ -22,11 +22,15 @@ func newTitleComponent(text string) *titleComponent {
 }
 
 // TitleConf is the configuration for the Title component.
+//
+//tgcomp:export
 type TitleConf struct {
 	tgframe.Base
 }
 
 // Title show a title.
+//
+//tgcomp:export
 func Title(c *tgframe.Container, text string, conf ...*TitleConf) {
 	cf := tgframe.OneConf("Title", conf)
 

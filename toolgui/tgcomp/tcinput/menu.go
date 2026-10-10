@@ -50,6 +50,8 @@ func menuItemID(menuID string, index int) string {
 }
 
 // MenuConf is the configuration for the Menu component.
+//
+//tgcomp:export
 type MenuConf struct {
 	tgframe.Base
 
@@ -71,6 +73,8 @@ type MenuConf struct {
 //
 // Whether the dropdown is open is the client's, like a popover's: the items
 // are written every run, open or not.
+//
+//tgcomp:export
 func Menu(c *tgframe.Container, label string, items []string,
 	conf ...*MenuConf) *int {
 

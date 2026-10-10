@@ -16,6 +16,8 @@ var numberComponentName = "number_component"
 // Numeric is the value type a [Number] can hold. It is the state's own
 // [tgframe.Numeric]: what a number input holds is what the state reads back,
 // so there is one set of types, not two that have to be kept in step.
+//
+//tgcomp:export
 type Numeric = tgframe.Numeric
 
 // isIntegral reports whether T counts in whole numbers. It is written as
@@ -72,6 +74,8 @@ func newNumberComponent[T Numeric](label string) *numberComponent[T] {
 
 // NumberConf is the configuration for a number component. A generic conf
 // embeds Base like any other.
+//
+//tgcomp:export
 type NumberConf[T Numeric] struct {
 	tgframe.Base
 
@@ -152,6 +156,8 @@ func (c *NumberConf[T]) SetStep(v T) *NumberConf[T] {
 // There is no "nothing entered" state to report: an input nobody has typed in
 // reads as Conf.Default, and one the app user has emptied reads as zero. Both
 // are answers, so both are true.
+//
+//tgcomp:export
 func Number[T Numeric](
 	c *tgframe.Container, label string, conf ...*NumberConf[T]) (T, bool) {
 

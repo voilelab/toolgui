@@ -33,14 +33,19 @@ func newImageComponent(src string) *imageComponent {
 }
 
 // ImageFormat is the format of the image
+//
+//tgcomp:export
 type ImageFormat int
 
+//tgcomp:export
 const (
 	ImageFormatPNG ImageFormat = iota
 	ImageFormatJPEG
 )
 
 // ImageConf is the configuration for the Image component
+//
+//tgcomp:export
 type ImageConf struct {
 	tgframe.Base
 
@@ -53,6 +58,8 @@ type ImageConf struct {
 }
 
 // Image show an image.
+//
+//tgcomp:export
 func Image(c *tgframe.Container, img any, conf ...*ImageConf) {
 	cf := tgframe.OneConf("Image", conf)
 

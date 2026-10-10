@@ -28,6 +28,8 @@ func newTextareaComponent(label string) *textareaComponent {
 }
 
 // TextareaConf is the configuration for a textarea.
+//
+//tgcomp:export
 type TextareaConf struct {
 	tgframe.Base
 
@@ -46,6 +48,8 @@ type TextareaConf struct {
 }
 
 // Textarea create a textarea and return its value.
+//
+//tgcomp:export
 func Textarea(c *tgframe.Container, label string, conf ...*TextareaConf) string {
 	cf := tgframe.OneConf("Textarea", conf)
 

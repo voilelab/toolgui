@@ -23,6 +23,8 @@ func newCodeComponent(code string) *codeComponent {
 }
 
 // CodeConf provide extra config for Code Component.
+//
+//tgcomp:export
 type CodeConf struct {
 	tgframe.Base
 
@@ -31,6 +33,8 @@ type CodeConf struct {
 }
 
 // Code create a code block with syntax highlight.
+//
+//tgcomp:export
 func Code(c *tgframe.Container, code string, conf ...*CodeConf) {
 	cf := tgframe.OneConf("Code", conf)
 

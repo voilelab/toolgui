@@ -28,11 +28,15 @@ func newTabComponent(tabs []string) *tabComponent {
 }
 
 // TabConf is the configuration for the Tab components.
+//
+//tgcomp:export
 type TabConf struct {
 	tgframe.Base
 }
 
 // Tab creates a new tab component
+//
+//tgcomp:export
 func Tab(c *tgframe.Container, tabs []string, conf ...*TabConf) []*tgframe.Container {
 	cf := tgframe.OneConf("Tab", conf)
 
@@ -50,6 +54,8 @@ func Tab(c *tgframe.Container, tabs []string, conf ...*TabConf) []*tgframe.Conta
 }
 
 // Tab2 create 2 tabs.
+//
+//tgcomp:export
 func Tab2(c *tgframe.Container, tab1, tab2 string, conf ...*TabConf) (
 	*tgframe.Container, *tgframe.Container) {
 
@@ -58,6 +64,8 @@ func Tab2(c *tgframe.Container, tab1, tab2 string, conf ...*TabConf) (
 }
 
 // Tab3 create 3 tabs.
+//
+//tgcomp:export
 func Tab3(c *tgframe.Container, tab1, tab2, tab3 string, conf ...*TabConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
 
@@ -66,6 +74,8 @@ func Tab3(c *tgframe.Container, tab1, tab2, tab3 string, conf ...*TabConf) (
 }
 
 // Tab4 create 4 tabs.
+//
+//tgcomp:export
 func Tab4(c *tgframe.Container, tab1, tab2, tab3, tab4 string, conf ...*TabConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container) {
 
@@ -74,6 +84,8 @@ func Tab4(c *tgframe.Container, tab1, tab2, tab3, tab4 string, conf ...*TabConf)
 }
 
 // Tab5 create 5 tabs.
+//
+//tgcomp:export
 func Tab5(c *tgframe.Container, tab1, tab2, tab3, tab4, tab5 string, conf ...*TabConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container,
 	*tgframe.Container) {

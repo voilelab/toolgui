@@ -26,6 +26,8 @@ func newLinkButtonComponent(text, url string) *linkButtonComponent {
 }
 
 // LinkButtonConf is the configuration for the LinkButton component.
+//
+//tgcomp:export
 type LinkButtonConf struct {
 	tgframe.Base
 
@@ -37,6 +39,8 @@ type LinkButtonConf struct {
 // LinkButton create a link that is drawn as a button. It navigates rather
 // than reporting a click, so unlike Button it returns nothing and keeps no
 // state.
+//
+//tgcomp:export
 func LinkButton(c *tgframe.Container, text, url string, conf ...*LinkButtonConf) {
 	cf := tgframe.OneConf("LinkButton", conf)
 

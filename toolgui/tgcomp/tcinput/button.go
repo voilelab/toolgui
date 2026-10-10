@@ -26,6 +26,8 @@ func newButtonComponent(label string) *buttonComponent {
 }
 
 // ButtonConf is the configuration for the Button component
+//
+//tgcomp:export
 type ButtonConf struct {
 	tgframe.Base
 
@@ -37,6 +39,8 @@ type ButtonConf struct {
 }
 
 // Button create a button and return true if it's clicked.
+//
+//tgcomp:export
 func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 	comp := buttonComponentFor(c, label, tgframe.OneConf("Button", conf))
 
@@ -63,6 +67,8 @@ func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 // to check it against, so the button the last run put on the screen is what
 // it's checked against — the same guard an upload naming a component id goes
 // through. A click on a button that was not there is not a click.
+//
+//tgcomp:export
 func ButtonClicked(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 	comp := buttonComponentFor(c, label, tgframe.OneConf("ButtonClicked", conf))
 

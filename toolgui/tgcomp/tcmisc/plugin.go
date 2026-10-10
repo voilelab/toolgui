@@ -41,6 +41,8 @@ func newPluginComponent(src string) *pluginComponent {
 }
 
 // PluginConf is the configuration for the Plugin component.
+//
+//tgcomp:export
 type PluginConf struct {
 	tgframe.Base
 
@@ -70,6 +72,8 @@ type PluginConf struct {
 // bridge [Iframe] gives its html.
 //
 // Read what it sends back with [PluginValue].
+//
+//tgcomp:export
 func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
 	c.AddComponent(pluginComponentFor(c, src, tgframe.OneConf("Plugin", conf)))
 }
@@ -95,6 +99,8 @@ func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
 //
 // The frontend keys the value by the plugin's own component id, so a plugin
 // can only write to its own state.
+//
+//tgcomp:export
 func PluginValue[T any](c *tgframe.Container, src string, conf ...*PluginConf) *T {
 	comp := pluginComponentFor(c, src, tgframe.OneConf("PluginValue", conf))
 

@@ -25,11 +25,15 @@ func newTableComponent(head []string, table [][]string) *tableComponent {
 }
 
 // TableConf is the configuration for the Table component.
+//
+//tgcomp:export
 type TableConf struct {
 	tgframe.Base
 }
 
 // Table create a table by heading(head) and values(table).
+//
+//tgcomp:export
 func Table(c *tgframe.Container, head []string, table [][]string, conf ...*TableConf) {
 	cf := tgframe.OneConf("Table", conf)
 

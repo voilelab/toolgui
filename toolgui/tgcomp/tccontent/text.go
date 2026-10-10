@@ -22,11 +22,15 @@ func newTextComponent(text string) *textComponent {
 }
 
 // TextConf is the configuration for the Text component.
+//
+//tgcomp:export
 type TextConf struct {
 	tgframe.Base
 }
 
 // Text show a text.
+//
+//tgcomp:export
 func Text(c *tgframe.Container, text string, conf ...*TextConf) {
 	cf := tgframe.OneConf("Text", conf)
 

@@ -31,6 +31,8 @@ func newSelectComponent(label string, items []string) *selectComponent {
 }
 
 // SelectConf is the configuration for the Select component.
+//
+//tgcomp:export
 type SelectConf struct {
 	tgframe.Base
 
@@ -57,6 +59,8 @@ func (c *SelectConf) SetDefault(v int) *SelectConf {
 // selected" because the frontend's first option is a placeholder. That offset
 // is entirely internal: both Conf.Default and the return are 0-based, so
 // Default: 0 is items[0].
+//
+//tgcomp:export
 func Select(c *tgframe.Container, label string, items []string, conf ...*SelectConf) *int {
 	cf := tgframe.OneConf("Select", conf)
 

@@ -33,6 +33,8 @@ func newMetricComponent(label, value string) *metricComponent {
 }
 
 // MetricConf is the configuration for the Metric component.
+//
+//tgcomp:export
 type MetricConf struct {
 	tgframe.Base
 
@@ -47,6 +49,8 @@ type MetricConf struct {
 }
 
 // Metric show a labelled value, with an optional delta under it.
+//
+//tgcomp:export
 func Metric(c *tgframe.Container, label, value string, conf ...*MetricConf) {
 	cf := tgframe.OneConf("Metric", conf)
 
