@@ -17,65 +17,49 @@ import (
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
-// The browser's origin private file system is where a wasm build keeps its
-// uploads. It is what the tab has instead of a filesystem, and using it is
-// what keeps an upload out of the heap: a file the user picked is written
-// straight through and read back a chunk at a time, so it never has to fit
-// beside the program that reads it.
+// A wasm build keeps uploads in the browser's origin private file system
+// (OPFS), streamed in chunks so they stay out of the heap.
 //
-// Only reads and writes on an open handle are synchronous. Getting to a
-// directory or a file handle is a promise, and a promise cannot be awaited
-// where the [fileBodies] and [fileBody] methods run: they are called under
-// the store's lock, and an upload arrives on the JavaScript callback stack,
-// which holds the event loop the promise needs to settle. Everything async
-// therefore happens on goroutines of this package's own, ahead of demand.
+// Only reads and writes on an open handle are synchronous. Opening handles is
+// a promise, which can't be awaited under the store's lock or on the JS
+// callback stack, so all async work runs ahead of demand on our own
+// goroutines.
 const (
-	// opfsRootName is the one directory this package owns. The origin's root
-	// is shared with whatever else the page stores there, so nothing outside
-	// this is ever listed or removed.
+	// opfsRootName is the one directory this package owns in the shared
+	// origin root.
 	opfsRootName = "toolgui-state"
 
-	// opfsLockName marks a state's directory as in use. Its handle is held
-	// open for as long as the state lives, and the browser gives a file's
-	// sync access handle to one holder at a time, which is how the sweep at
-	// startup tells a directory a crashed tab left behind from one another
-	// tab still has open.
+	// opfsLockName marks a state's directory as in use. Its sync access
+	// handle is held for the state's life; since handles are exclusive, the
+	// startup sweep can tell orphaned directories from live ones.
 	opfsLockName = ".lock"
 
-	// opfsStatePrefix and the millisecond stamp after it name a state's
-	// directory. The stamp is what lets the sweep leave a directory alone that
-	// was made moments ago and may still be setting itself up.
+	// opfsStatePrefix plus a millisecond stamp names a state's directory;
+	// the stamp lets the sweep skip ones still being set up.
 	opfsStatePrefix = "state-"
 
-	// opfsPoolSize is how many files are kept created and open ahead of
-	// demand, so an upload has one to go into without waiting.
+	// opfsPoolSize is how many files are kept open ahead of demand.
 	opfsPoolSize = 8
 
-	// opfsChunkSize is how much a read or a write moves per call. Bytes cross
-	// through a typed array either way, so the buffer is this size and made
-	// once rather than per call.
+	// opfsChunkSize is the bytes moved per read or write call, through a
+	// reused typed array.
 	opfsChunkSize = 64 << 10
 
-	// opfsSweepGrace is how long a state directory is taken to be one still
-	// being set up, and left alone whatever is or is not in it.
+	// opfsSweepGrace is how long a new state directory is left alone by the
+	// sweep.
 	opfsSweepGrace = time.Minute
 
-	// opfsRemoveTries is how many times a state's directory is asked for
-	// after the first refusal. The browser will not remove a directory
-	// holding a file something still has open, and after a page switch that
-	// can be the page itself, writing an upload the session that asked for it
-	// no longer has. It stops of its own accord, so the removal is worth
-	// asking for again.
+	// opfsRemoveTries is how many times directory removal is retried. It
+	// fails while the page still writes an upload after a page switch, which
+	// ends on its own.
 	opfsRemoveTries = 24
 )
 
-// opfsRemoveGap is how long to leave between those tries. It is a variable so
-// a test does not have to sit through them.
+// opfsRemoveGap is the delay between removal tries; a var for tests.
 var opfsRemoveGap = 5 * time.Second
 
-// opfsRoot is the directory the states' directories live in, opened once. The
-// chain of promises that gets there runs on a goroutine, and everything that
-// needs the handle waits for it.
+// opfsRoot is the parent of the states' directories, opened once on a
+// goroutine.
 type opfsRoot struct {
 	once   sync.Once
 	ready  chan struct{}
@@ -85,8 +69,8 @@ type opfsRoot struct {
 
 var opfsStateRoot = &opfsRoot{ready: make(chan struct{})}
 
-// get returns the handle, opening it on first use. It blocks, so it is for
-// this package's own goroutines and not for a [js.Func] callback.
+// get returns the handle, opening it on first use. It blocks, so never call
+// it from a [js.Func] callback.
 func (r *opfsRoot) get() (js.Value, error) {
 	r.once.Do(func() { go r.open() })
 
@@ -120,17 +104,15 @@ func opfsOpenRoot() (js.Value, error) {
 	return root, nil
 }
 
-// opfsStateName names a state's directory: the prefix, when it was made, and
-// enough randomness that two tabs starting in the same millisecond do not
-// collide.
+// opfsStateName names a new state directory: prefix, timestamp, random
+// suffix.
 func opfsStateName() string {
 	return opfsStatePrefix + strconv.FormatInt(time.Now().UnixMilli(), 10) +
 		"-" + rand.Text()
 }
 
-// opfsStateAge reports how long ago a state directory of ours was made. The
-// second result is false for a name this package did not write, which is left
-// alone: the root is only ours by convention.
+// opfsStateAge reports the age of a state directory, false for names we
+// didn't write.
 func opfsStateAge(name string) (time.Duration, bool) {
 	rest, ok := strings.CutPrefix(name, opfsStatePrefix)
 	if !ok {
@@ -150,10 +132,8 @@ func opfsStateAge(name string) (time.Duration, bool) {
 	return time.Since(time.UnixMilli(ms)), true
 }
 
-// opfsSweep removes the state directories left behind by tabs that went away
-// without destroying their state. Storage is per origin, so another tab of the
-// same app may be using some of what is there -- the point of the lock file is
-// that this can tell which, and remove the abandoned ones rather than the lot.
+// opfsSweep removes state directories left by dead tabs, using lock files
+// to skip ones other live tabs hold.
 func opfsSweep(root js.Value) {
 	names, err := opfsNames(root)
 	if err != nil {
@@ -176,22 +156,16 @@ func opfsSweep(root js.Value) {
 	}
 }
 
-// opfsOrphaned reports whether a state directory belongs to nobody. It answers
-// false for anything it cannot be sure of: a false negative leaves a directory
-// to the next startup, a false positive takes a live tab's uploads away.
+// opfsOrphaned reports whether a state directory belongs to nobody. When
+// unsure it says false, leaving it to the next startup.
 func opfsOrphaned(root js.Value, name string) bool {
 	age, ours := opfsStateAge(name)
 	if !ours {
 		return false
 	}
 
-	// Age decides whether a directory can be judged at all, before anything in
-	// it is looked at. Setting one up is a chain of promises, and for the turns
-	// of the event loop between its lock file being made and that file's handle
-	// being taken it is indistinguishable from one nobody owns -- so a young
-	// directory is left alone whatever state it is in. A sweep runs while this
-	// program's own first state is still setting itself up, and while another
-	// tab's may be.
+	// A young directory may be mid-setup (lock file made, handle not yet
+	// taken), so skip it.
 	if age <= opfsSweepGrace {
 		return false
 	}
@@ -210,7 +184,7 @@ func opfsOrphaned(root js.Value, name string) bool {
 
 	lock, err := opfs.AwaitCall(lockFile, "createSyncAccessHandle")
 	if err != nil {
-		// Refused, so somebody holds it: a live state, here or in another tab.
+		// Held by a live state.
 		return false
 	}
 
@@ -221,8 +195,7 @@ func opfsOrphaned(root js.Value, name string) bool {
 	return true
 }
 
-// opfsNames lists what a directory holds. The iterator is async, so this is
-// one promise per entry.
+// opfsNames lists a directory, one promise per entry.
 func opfsNames(dir js.Value) ([]string, error) {
 	it, err := opfs.Call(dir, "keys")
 	if err != nil {
@@ -245,37 +218,29 @@ func opfsNames(dir js.Value) ([]string, error) {
 	}
 }
 
-// opfsBodies keeps one state's uploads in a directory of its own. The
-// directory, its lock and the files in it are all made on run's goroutine,
-// because none of that can be awaited where newBody is called from.
+// opfsBodies keeps one state's uploads in its own directory. The directory,
+// lock and files are made on run's goroutine.
 type opfsBodies struct {
-	// ready is closed once the directory and its lock are in place, or the
-	// attempt to make them has failed. dir, lock and err are written before it
-	// closes and only read after; dir is set as soon as the directory exists,
-	// so that a setup which fails after that still has it to remove, and lock
-	// stays undefined when setup stopped before taking one.
+	// ready is closed once setup is done or failed; dir, lock and err are
+	// read only after. dir is set early so a failed setup can still remove
+	// it.
 	ready chan struct{}
 	name  string
 	dir   js.Value
 	lock  js.Value
 	err   error
 
-	// pool holds files already created and open, waiting to be handed out.
+	// pool holds files already open, waiting to be handed out.
 	pool chan *opfsBody
 
-	// done is closed by destroy to stop run, and stopped by run on its way
-	// out, so the directory is only removed once nothing is still opening
-	// handles inside it.
+	// done is closed by destroy to stop run; stopped is closed by run on
+	// exit, before the directory is removed.
 	done    chan struct{}
 	stopped chan struct{}
 
-	// filled says the pool has been full at least once, which is to say run
-	// has caught up with demand and the state is no longer starting up. Until
-	// then an empty pool is one still being filled, and a caller may wait: it
-	// is a page function on its own goroutine, or a test. After it, an empty
-	// pool is one demand drained, and the caller may be an upload on the
-	// JavaScript callback stack -- where waiting for the refill would stop the
-	// event loop the refill needs to make progress.
+	// filled says the pool has been full once. Before that, take may wait
+	// for startup; after, an empty pool is an error, since waiting on the JS
+	// callback stack would deadlock the refill.
 	filled atomic.Bool
 
 	mu        sync.Mutex
@@ -298,9 +263,8 @@ func newFileBodies() fileBodies {
 	return b
 }
 
-// run opens the state's directory and then keeps the pool filled. It is the
-// only goroutine that awaits anything on this state's behalf, which is what
-// leaves the rest of the type synchronous.
+// run opens the state's directory and keeps the pool filled. It is the only
+// goroutine that awaits, keeping the rest synchronous.
 func (b *opfsBodies) run() {
 	defer close(b.stopped)
 
@@ -317,8 +281,7 @@ func (b *opfsBodies) run() {
 		body, err := b.create()
 		if err != nil {
 			if !b.stopping() {
-				// Out of quota, or the directory went away. What is already
-				// pooled still works, and newBody reports an empty pool.
+				// Out of quota or directory gone; pooled files still work.
 				slog.Error("prepare a file", "dir", b.name, "error", err)
 			}
 
@@ -333,16 +296,13 @@ func (b *opfsBodies) run() {
 		select {
 		case b.pool <- body:
 		default:
-			// Nowhere to put it, so the pool is full and the state has all the
-			// files ahead of demand it is going to get. An empty pool from
-			// here on is one that was drained rather than one still filling.
+			// Pool is full: startup is over.
 			b.filled.Store(true)
 
 			select {
 			case b.pool <- body:
 			case <-b.done:
-				// destroy closed every handle it was tracking, this one
-				// included.
+				// destroy closed this handle too.
 				return
 			}
 		}
@@ -363,8 +323,7 @@ func (b *opfsBodies) setup() error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	// Kept before the rest of setup can fail, so that destroy has something to
-	// remove either way. Nothing reads it while err is set.
+	// Set before later failures so destroy can remove it.
 	b.dir = dir
 
 	lockFile, err := opfs.AwaitCall(dir, "getFileHandle", opfsLockName, opfs.Create)
@@ -382,14 +341,12 @@ func (b *opfsBodies) setup() error {
 	return nil
 }
 
-// create makes one more file in the state's directory and opens it. The handle
-// stays open for the file's lifetime: holding it is what lets a body read and
-// write without awaiting anything.
+// create makes and opens one more file. The handle stays open for the
+// file's life, so reads and writes never await.
 func (b *opfsBodies) create() (*opfsBody, error) {
 	b.mu.Lock()
 	b.seq++
-	// Named after the counter: naming it after the upload would mean trusting
-	// a name the browser chose.
+	// Counter name, never the untrusted upload name.
 	name := strconv.Itoa(b.seq)
 	b.mu.Unlock()
 
@@ -413,7 +370,7 @@ func (b *opfsBodies) newBody() (fileBody, error) {
 	}
 
 	if !b.track(body) {
-		// destroy got there first, and has closed this one already.
+		// destroy already closed it.
 		body.close()
 		return nil, tgutil.NewError("the state's files are gone")
 	}
@@ -421,20 +378,13 @@ func (b *opfsBodies) newBody() (fileBody, error) {
 	return body, nil
 }
 
-// reserve names an empty file for the page to write into, and takes it into
-// the set destroy closes and removes. Nothing is opened here: the browser gives
-// a file to a sync access handle or to a writable stream and never to both, so
-// a handle taken now would be the very thing stopping the write. One arrives
-// the other way round, through [opfsBody.adopt], once the page is finished.
-//
-// The pool is not touched. A pooled file comes with a handle already open,
-// which is what an upload the Go side writes needs and what one the page writes
-// must not have.
+// reserve names an empty file for the page to write and tracks it for
+// destroy. No handle is opened, since it would block the page's writable
+// stream; [opfsBody.adopt] takes one when the page is done. The pool (open
+// handles) is not used.
 func (b *opfsBodies) reserve() (*opfsBody, error) {
-	// No wait, for the reason take does not wait either: an upload arrives on
-	// the JavaScript callback stack, where the event loop the setup needs is
-	// stopped. The directory is open within a few turns of it after the state
-	// is made, long before a user can have picked a file.
+	// Never wait on the JS callback stack. Setup finishes long before a user
+	// can pick a file.
 	select {
 	case <-b.ready:
 	default:
@@ -461,29 +411,17 @@ func (b *opfsBodies) reserve() (*opfsBody, error) {
 	return body, nil
 }
 
-// dirPath is where the state's directory is, from the origin private file
-// system's root. A reserved file is the page's to create and write, and the
-// path is the only way it can walk to it: everything else about this layout is
-// private to the package.
+// dirPath is the state's directory path from the OPFS root, for the page to
+// reach reserved files.
 func (b *opfsBodies) dirPath() []string {
 	return []string{opfsRootName, b.name}
 }
 
-// take hands out a file run has already created and opened. It answers at once
-// whenever one is pooled, which is what stands in for the promise it cannot
-// await.
+// take hands out a pooled open file without waiting.
 //
-// A pool that has already handed a file out and is empty again is one demand
-// drained, and refilling it needs turns of the event loop. Waiting for that is
-// what a caller on the JavaScript callback stack must never do, and this has
-// no way to tell where it was called from, so nobody waits: taking more files
-// in one go than the pool holds is an error rather than a tab that stops dead.
-//
-// The wait below is only reachable before the first file is through, in the
-// turns of the event loop right after a state is made. An upload cannot land
-// there -- getting there means beating the render of the component that
-// accepts one -- and a page function runs on a goroutine of its own, where
-// waiting costs nothing.
+// Once the pool has filled, an empty pool is an error rather than a wait,
+// since the caller may be on the JS callback stack. Waiting only happens
+// during startup, before any upload component can render.
 func (b *opfsBodies) take() (*opfsBody, error) {
 	select {
 	case body := <-b.pool:
@@ -503,7 +441,7 @@ func (b *opfsBodies) take() (*opfsBody, error) {
 	case <-b.done:
 		return nil, tgutil.NewError("the state's files are gone")
 	case <-b.stopped:
-		// Nothing is making files any more, so the pool is all there is.
+		// run has stopped; only the pool is left.
 		select {
 		case body := <-b.pool:
 			return body, nil
@@ -518,9 +456,8 @@ func (b *opfsBodies) take() (*opfsBody, error) {
 	}
 }
 
-// track takes a body into the set whose handles destroy has to close. It
-// answers false once the state is destroyed, and the caller closes the body
-// itself: nothing is left holding a handle inside a directory on its way out.
+// track adds body to the set destroy closes. It returns false once
+// destroyed; the caller then closes body itself.
 func (b *opfsBodies) track(body *opfsBody) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -549,9 +486,8 @@ func (b *opfsBodies) stopping() bool {
 	}
 }
 
-// destroy closes every handle the state opened and removes its directory.
-// Closing comes first, and waiting for run to stop comes after: the browser
-// refuses to remove a file anything still holds a sync access handle to.
+// destroy closes every handle and removes the directory. Handles close
+// first, since open files block removal.
 func (b *opfsBodies) destroy() {
 	b.mu.Lock()
 	if b.destroyed {
@@ -586,18 +522,11 @@ func (b *opfsBodies) drainPool() {
 	}
 }
 
-// removeDir drops the state's directory once run is out of it. A setup that
-// made the directory and then failed leaves one too, and it goes the same way:
-// the sweep runs once at startup and not again, so a tab that hit this on every
-// page switch would pile them up for the rest of its life.
+// removeDir drops the state's directory once run has stopped, including one
+// a failed setup left.
 //
-// It asks more than once. Everything of this program's own inside is closed by
-// now, but an upload the page is still writing is not: a page switch mid-upload
-// leaves a writable stream open on a file in here, and the browser will not
-// remove a directory holding one. That ends by itself -- the write finishes or
-// fails, and the handover that follows finds no session and closes what it was
-// given -- so asking again gets it, where giving up would leave the file and
-// the directory against the origin's quota for the life of the tab.
+// It retries: a page switch mid-upload leaves the page's writable stream open
+// in it, which blocks removal until the write ends.
 func (b *opfsBodies) removeDir() {
 	<-b.stopped
 
@@ -606,9 +535,8 @@ func (b *opfsBodies) removeDir() {
 		return
 	}
 
-	// There may be no lock, if that is where setup stopped. It is released
-	// before the first try rather than after the last: a directory this fails
-	// to remove is one the next startup's sweep has to be able to judge.
+	// Release the lock (if any) first, so the next sweep can judge a
+	// directory this fails to remove.
 	if b.lock.Truthy() {
 		if _, err := opfs.Call(b.lock, "close"); err != nil {
 			slog.Error("release a state directory lock",
@@ -634,27 +562,21 @@ func (b *opfsBodies) removeDir() {
 		}
 
 		if strings.Contains(last.Error(), "NotFoundError") {
-			// Gone already, which is the outcome this wanted.
+			// Already gone.
 			return
 		}
 	}
 
-	// Still held after all that. The lock is released, so the sweep at the
-	// next startup takes it.
+	// Left for the next startup's sweep.
 	slog.Error("remove a state's file directory", "dir", b.name, "error", last)
 }
 
-// opfsBody is one file and the handle it is read and written through. The
-// handle is opened once and kept, because reads and writes on it are the only
-// part of this filesystem that does not go through a promise.
+// opfsBody is one file and its sync access handle, opened once and kept.
 //
-// Every reader shares that one handle: the browser hands a file's sync access
-// handle out exclusively, so a second one is refused. The offset therefore
-// lives in the reader and the lock is taken for the length of a single read.
+// Handles are exclusive, so all readers share it: each reader keeps its own
+// offset and locks per read.
 //
-// A reserved body has a name and no handle: the file behind it is the page's
-// to write, and a sync access handle here would be the very thing stopping it.
-// It gets one from [opfsBody.adopt] when the page hands the finished file over.
+// A reserved body has no handle until [opfsBody.adopt].
 type opfsBody struct {
 	bodies *opfsBodies
 	name   string
@@ -663,29 +585,21 @@ type opfsBody struct {
 	handle js.Value
 	buf    js.Value
 
-	// readers is how many readers are open on the file, and removed says the
-	// store has dropped it. The file outlives the drop while a reader is on
-	// it, the way an unlinked file does for a descriptor already held: the
-	// disk build gets that from the kernel, and this build has to count.
+	// readers counts open readers; removed says the store dropped the file.
+	// Like an unlinked file, it lives until the last reader closes.
 	readers int
 	removed bool
 
-	// done says the body is finished with -- dropped from the store, or closed
-	// because the state took the whole directory with it. It is what says so:
-	// an empty handle no longer does, now that a body can have a file behind it
-	// before it has a handle on it.
+	// done says the body is dropped or closed. (No handle doesn't imply
+	// done: reserved bodies have none yet.)
 	done bool
 }
 
-// adopt takes over the sync access handle the page opened on a reserved file,
-// and answers with what the file holds. Everything here is synchronous, which
-// is the whole point: the page opens the handle on the other side of the
-// boundary, where a promise can be awaited, and hands it over already open --
-// so taking it costs an upload on the JavaScript callback stack nothing.
+// adopt takes over the sync access handle the page opened on a reserved
+// file and returns its size. Synchronous, since the page opens the handle.
 //
-// The page has to have closed its writable stream first. The two are exclusive
-// holds on the same file, and asking for this one while the write is open gets
-// NoModificationAllowedError.
+// The page must close its writable stream first, or opening the handle fails
+// with NoModificationAllowedError.
 func (b *opfsBody) adopt(handle js.Value) (int64, error) {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -727,8 +641,7 @@ func (b *opfsBody) open() (FileReader, error) {
 
 	b.readers++
 
-	// The reader is capped at what is there now. An append can only add past
-	// that, so what it reads doesn't change under it.
+	// Cap the reader at the current size so appends don't affect it.
 	return &opfsReader{body: b, size: int64(size.Float())}, nil
 }
 
@@ -769,8 +682,7 @@ func (b *opfsBody) write(r io.Reader, atEnd bool) (int64, error) {
 	}
 }
 
-// writeStart returns the offset a write begins at, emptying the file first
-// when it is replacing what is there rather than appending to it.
+// writeStart returns the write offset, truncating first unless appending.
 func (b *opfsBody) writeStart(atEnd bool) (int64, error) {
 	if !atEnd {
 		if _, err := opfs.Call(b.handle, "truncate", 0); err != nil {
@@ -806,9 +718,7 @@ func (b *opfsBody) writeChunk(bs []byte, off int64) error {
 		view = v
 	}
 
-	// An upload the origin has no room for throws QuotaExceededError here.
-	// opfs.Call hands it back as an error rather than a panic, and it travels
-	// out through [State.WriteFile] like any other failure of the run.
+	// QuotaExceededError comes back as an error via [State.WriteFile].
 	wrote, err := opfs.Call(b.handle, "write", view, opfs.At(off))
 	if err != nil {
 		return tgutil.Errorf("%w", err)
@@ -821,10 +731,8 @@ func (b *opfsBody) writeChunk(bs []byte, off int64) error {
 	return nil
 }
 
-// noHandle says why there is nothing to read or write through. It must be
-// called with the lock held. A reservation the page has not handed back is
-// not the same as a file that is over, and a page that reads one wants to be
-// told which it hit.
+// noHandle says why there is no handle: closed, or not handed over yet. It
+// must be called with the lock held.
 func (b *opfsBody) noHandle() error {
 	if b.done {
 		return tgutil.NewError("the file is closed")
@@ -833,15 +741,10 @@ func (b *opfsBody) noHandle() error {
 	return tgutil.NewError("the file has not been handed over yet")
 }
 
-// remove drops the file. A reader already open goes on reading it: the handle
-// is shared, so closing it here would break one mid-read, and a page that held
-// a reader across the upload that replaced its file would get an error where
-// the other builds hand it the bytes it opened. The file goes when the last
-// reader closes instead.
+// remove drops the file once the last open reader closes, matching the
+// other builds.
 //
-// [fileBodies.destroy] does not wait like this. A state that is gone takes its
-// readers with it, and the directory cannot be removed while a handle inside
-// it is open.
+// [fileBodies.destroy] doesn't wait for readers.
 func (b *opfsBody) remove() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -855,8 +758,7 @@ func (b *opfsBody) remove() {
 	b.drop()
 }
 
-// release gives back a reader, and drops the file if it was the last one on a
-// file the store has already removed.
+// release gives back a reader, dropping a removed file after the last one.
 func (b *opfsBody) release() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -870,18 +772,12 @@ func (b *opfsBody) release() {
 	b.drop()
 }
 
-// drop closes the handle and removes the file. It must be called with the lock
-// held. The handle goes first: the browser refuses to remove a file something
-// still holds one for.
-//
-// A reservation the page never filled goes the same way. The file may not be
-// there -- the page creates it, and may have failed before it did -- and the
-// browser answers NotFoundError for one that is not, which is logged and is
-// the end of it.
+// drop closes the handle, then removes the file. It must be called with the
+// lock held. An unfilled reservation may have no file; NotFoundError is just
+// logged.
 func (b *opfsBody) drop() {
 	if b.done {
-		// Dropped already, or closed because the state took the whole
-		// directory with it.
+		// Already dropped or closed.
 		return
 	}
 
@@ -895,13 +791,11 @@ func (b *opfsBody) drop() {
 		return
 	}
 
-	// Nothing waits for this: remove runs under the store's lock, and on the
-	// JavaScript callback stack when an upload replaces a file.
+	// Don't wait: we may be under the store's lock or on the JS stack.
 	opfs.Detach(p, "remove a file")
 }
 
-// close shuts the handle and leaves the file where it is. It is what destroy
-// uses: every handle has to be closed before the directory can go.
+// close shuts the handle and keeps the file. Used by destroy.
 func (b *opfsBody) close() {
 	b.lock.Lock()
 	defer b.lock.Unlock()
@@ -924,8 +818,8 @@ func (b *opfsBody) shut() {
 	b.buf = js.Undefined()
 }
 
-// opfsReader reads one body. The handle underneath is shared, so the position
-// is here and each read takes the body's lock for as long as it needs it.
+// opfsReader reads one body through its shared handle, keeping its own
+// offset.
 type opfsReader struct {
 	body *opfsBody
 	size int64
@@ -951,9 +845,7 @@ func (r *opfsReader) ReadAt(p []byte, off int64) (int, error) {
 	return r.readAt(p, off)
 }
 
-// readAt fills p from off, a chunk at a time, through the reader's own typed
-// array. Nothing is read that the file did not already hold when the reader
-// opened, so an append cannot move the end under it.
+// readAt fills p from off in chunks, up to the size at open.
 func (r *opfsReader) readAt(p []byte, off int64) (int, error) {
 	if r.closed {
 		return 0, tgutil.NewError("the reader is closed")
@@ -1017,8 +909,7 @@ func (r *opfsReader) readChunk(p []byte, off int64, view js.Value, span int) (in
 		return 0, tgutil.NewError("the file is closed")
 	}
 
-	// read takes the offset, so the whole file is never pulled in to get at a
-	// piece of it -- which is what archive/zip and the image decoders want.
+	// Positional read: random access without loading the whole file.
 	got, err := opfs.Call(r.body.handle, "read", view, opfs.At(off))
 	if err != nil {
 		return 0, tgutil.Errorf("%w", err)
@@ -1032,9 +923,8 @@ func (r *opfsReader) readChunk(p []byte, off int64, view js.Value, span int) (in
 	return n, nil
 }
 
-// view returns the reader's chunk buffer and its length, making it on first
-// use. It is made once: a typed array per read would cost more than the copy
-// through it.
+// view returns the reader's chunk buffer and its length, made once on first
+// use.
 func (r *opfsReader) view() (js.Value, int) {
 	if !r.buf.Truthy() {
 		span := r.size
@@ -1078,9 +968,8 @@ func (r *opfsReader) Seek(offset int64, whence int) (int64, error) {
 	return at, nil
 }
 
-// Close releases the reader. The handle stays open unless this was the last
-// reader on a file the store has already dropped: it is the body's, and the
-// other readers are still on it.
+// Close releases the reader. The shared handle stays open unless this was
+// the last reader of a dropped file.
 func (r *opfsReader) Close() error {
 	if r.closed {
 		return nil

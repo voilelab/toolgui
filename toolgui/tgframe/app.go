@@ -35,39 +35,34 @@ func realSidebarContainerID() string {
 }
 
 type Params struct {
-	// Context is cancelled when the run is cut short: a new event arrived, or
-	// the session closed. Hand it to whatever the page does slowly — a request,
-	// a query — and that work stops as soon as the user moves on, instead of
-	// running until the page next draws something.
-	//
-	// It is never nil.
+	// Context is cancelled when the run is cut short (a new event, or the
+	// session closed). Pass it to slow work so it stops when the user moves
+	// on. Never nil.
 	Context context.Context
 
 	State   *State
 	Main    *Container
 	Sidebar *Container
 
-	// Query is the page query the page was opened with: `group=a` in
-	// `/detail?group=a` or `#/detail?group=a`. It is never nil, and each run
-	// gets its own copy.
+	// Query is the page query, `group=a` in `/detail?group=a` or
+	// `#/detail?group=a`. Never nil; each run gets its own copy.
 	//
-	// It is untrusted input: anyone can build a link and send it to a user.
-	// Validate what you read -- look a value up in a known set -- and never
-	// use it as a path, a command or SQL unchecked. The framework never
-	// writes it into the State; to seed an input, set its Conf.Default.
+	// It is untrusted input: validate against a known set, and never use it
+	// as a path, command or SQL unchecked. It is never written into the
+	// State; to seed an input, set its Conf.Default.
 	Query url.Values
 
 	run *runState
 }
 
-// ReplaceQuery replaces the page query in the address bar with q, so a copied
-// URL opens the page as it is now. There is no reload, no new session and no
-// history entry. It replaces the whole query: pass every key to keep.
+// ReplaceQuery replaces the page query in the address bar with q, with no
+// reload, new session or history entry. It replaces the whole query: pass
+// every key to keep.
 //
-// It takes effect when the run ends, and only if no newer event cut it. Later
-// runs read q as [Params.Query], and so does a reconnect. The last call of a
-// run wins. A q over [MaxQuerySize] encoded fails the run and changes nothing.
-// On the desktop there is no address bar; the query is only kept in memory.
+// It takes effect when the run ends, unless a newer event cut it; the last
+// call wins. Later runs and reconnects read q as [Params.Query]. A q over
+// [MaxQuerySize] fails the run. On the desktop the query is only kept in
+// memory.
 //
 //	q := url.Values{}
 //	q.Set("group", group)
@@ -77,7 +72,7 @@ func (p *Params) ReplaceQuery(q url.Values) {
 		return
 	}
 
-	// A failed call is still the last one: drop what an earlier call set.
+	// A failed call still counts as the last one.
 	if err := checkQuery(q); err != nil {
 		p.run.query, p.run.queryReplaced = nil, false
 		p.run.fail(tgutil.Errorf("ReplaceQuery: %w", err))
@@ -88,14 +83,13 @@ func (p *Params) ReplaceQuery(q url.Values) {
 	p.run.queryReplaced = true
 }
 
-// Navigate opens page with q as its [Params.Query], as a click on a
-// tgcomp.PageLink would: a new session with a new state, and a history
-// entry, so Back returns here. page is a page name of this app, never a URL.
+// Navigate opens page with q as its [Params.Query], like a click on a
+// tgcomp.PageLink: a new session and state, plus a history entry. page is a
+// page name of this app, never a URL.
 //
-// It takes effect when the run ends, and only if no newer event cut it. The
-// last call of a run wins, and it wins over [Params.ReplaceQuery]. An unknown
-// page or a q over [MaxQuerySize] encoded fails the run, goes nowhere and
-// drops an earlier ReplaceQuery of the run.
+// It takes effect when the run ends, unless a newer event cut it; the last
+// call wins, also over [Params.ReplaceQuery]. An unknown page or a q over
+// [MaxQuerySize] fails the run and drops an earlier ReplaceQuery.
 //
 //	sel := tgcomp.DataFrame(p.Main, head, rows, &tgcomp.DataFrameConf{
 //		Selection: tgcomp.SelectionModeSingle,
@@ -108,8 +102,7 @@ func (p *Params) Navigate(page string, q url.Values) {
 		return
 	}
 
-	// A failed call is still the last one: drop what an earlier call set,
-	// ReplaceQuery's too, since Navigate would have won over it.
+	// A failed call still counts as the last one, over ReplaceQuery too.
 	p.run.navigate = nil
 
 	if p.run.app != nil && !p.run.app.HasPage(page) {
@@ -141,11 +134,8 @@ type PageConfig struct {
 	// Emoji will show as icon of a page
 	Emoji string `json:"emoji"`
 
-	// Hidden keeps the page out of the side nav. It is served like any
-	// other: a link to its url still lands on it, and the nav shows it while
-	// it is the page being read. For a page something else links to -- a
-	// detail page, a page an iframe embeds -- rather than one a visitor picks
-	// off the list.
+	// Hidden keeps the page out of the side nav, e.g. a detail page or an
+	// embed target. Its url still works, and the nav shows it while open.
 	Hidden bool `json:"hidden,omitzero"`
 }
 
@@ -159,9 +149,8 @@ type App struct {
 	icon  string
 	about string
 
-	// pluginAssets are the file sets served under [PluginAssetPrefix], by name.
-	// A set is looked up per request, so the lock is what lets one be
-	// registered while the app is already serving.
+	// pluginAssets are the file sets served under [PluginAssetPrefix], by
+	// name. Locked so a set can be registered while serving.
 	pluginAssets map[string]fs.FS
 	pluginLock   sync.RWMutex
 
@@ -171,9 +160,8 @@ type App struct {
 	// stickyQuery are the page query keys [App.SetStickyQuery] carries over.
 	stickyQuery []string
 
-	// menu is the tree [App.SetMenu] took, and menuIDs the click ids in it.
-	// Both are nil until an app declares a menu, which is what keeps the
-	// menubar out of the frontend's DOM entirely.
+	// menu is the tree [App.SetMenu] took, and menuIDs its click ids. Nil
+	// with no menu, which keeps the menubar out of the frontend.
 	menu    *Menu
 	menuIDs map[string]bool
 
@@ -190,28 +178,26 @@ type AppConf struct {
 	// Title names the app itself, after the page title in the browser tab.
 	Title string `json:"title"`
 
-	// Icon is the favicon url, absent for an app that sets none.
+	// Icon is the favicon url, if any.
 	Icon string `json:"icon,omitzero"`
 
 	HashPageNameMode bool `json:"hash_page_name_mode"`
 
-	// Version is the toolgui version, and ShowVersion whether the side nav
-	// should show it.
+	// Version is the toolgui version; ShowVersion says whether the side nav
+	// shows it.
 	Version     string `json:"version"`
 	ShowVersion bool   `json:"show_version"`
 
-	// About is the markdown the About dialog shows, absent for an app that
-	// sets none.
+	// About is the markdown the About dialog shows, if any.
 	About string `json:"about,omitzero"`
 
 	MainContainerID    string `json:"main_container_id"`
 	SidebarContainerID string `json:"sidebar_container_id"`
 
-	// Menu is the app's menu tree, absent for an app that declares none.
+	// Menu is the app's menu tree, if any.
 	Menu []*MenuNode `json:"menu,omitzero"`
 
-	// StickyQuery are the page query keys the frontend carries to the next
-	// page, absent for an app that sets none.
+	// StickyQuery are the page query keys carried to the next page, if any.
 	StickyQuery []string `json:"sticky_query,omitzero"`
 }
 
@@ -234,25 +220,23 @@ func (app *App) SetHashPageNameMode(v bool) {
 	app.hashPageNameMode = v
 }
 
-// SetTitle sets the app title. The browser tab shows it after the page title,
-// and it names the app in the web manifest and in the desktop window.
+// SetTitle sets the app title, shown after the page title in the browser tab
+// and used in the web manifest and the desktop window.
 //
 //	app.SetTitle("My Tool")
 func (app *App) SetTitle(v string) {
 	app.title = v
 }
 
-// SetIcon sets the favicon url. It replaces the page emoji in the browser tab
-// for every page; without it, the tab shows the page emoji.
+// SetIcon sets the favicon url, replacing the page emoji in the browser tab.
 //
 //	app.SetIcon("assets/favicon.svg")
 func (app *App) SetIcon(url string) {
 	app.icon = url
 }
 
-// SetMenu declares the app's menu. On the web the frontend draws it as a
-// menubar above the app; on the desktop it is the window's own menubar. A
-// click on one of its items is read with [MenuClicked] either way.
+// SetMenu declares the app's menu: a menubar above the app on the web, the
+// window menubar on the desktop. Read clicks with [MenuClicked].
 //
 //	app.SetMenu(tgframe.NewMenu().
 //		Submenu("File", func(m *tgframe.Menu) {
@@ -263,26 +247,19 @@ func (app *App) SetIcon(url string) {
 //			m.Text("Quit", "file_quit")
 //		}))
 //
-// The tree belongs to the app rather than to a page func: it is declared once
-// and stands for every run, which is the only shape a native menu -- with no
-// diff to apply -- can take.
+// The menu belongs to the app, not a page func, since a native menu can't be
+// diffed per run. Items may declare accelerators; see [MenuTextConf].
 //
-// An item may declare an accelerator, which the desktop hands to the OS and
-// the browser's shell listens for itself. See [MenuTextConf].
-//
-// It panics on a menu the app cannot serve, so a mistake is reported at
-// startup rather than by a menubar that quietly misses an item. See
-// [ErrMenuItem] for what counts as one. Passing nil drops the menu.
+// It panics on an invalid menu (see [ErrMenuItem]) so mistakes surface at
+// startup. Passing nil drops the menu.
 func (app *App) SetMenu(menu *Menu) {
 	if menu == nil {
 		app.menu, app.menuIDs = nil, nil
 		return
 	}
 
-	// A snapshot rather than the Menu itself, so the tree and the ids stay
-	// the same declaration however the caller goes on to use its Menu. The
-	// check walks the snapshot because it also normalizes the accelerators it
-	// finds, and the caller's tree is not ours to write to.
+	// Snapshot so later changes to the caller's Menu don't leak in; the check
+	// also normalizes accelerators in place.
 	nodes := cloneNodes(menu.nodes)
 
 	ids := map[string]bool{}
@@ -299,8 +276,8 @@ func (app *App) SetShowVersion(v bool) {
 	app.showVersion = v
 }
 
-// SetAbout sets the app's own introduction, in markdown. The side nav's
-// version line opens an About dialog that shows it above the toolgui info.
+// SetAbout sets the app's introduction in markdown, shown in the About dialog
+// opened from the side nav's version line.
 //
 //	app.SetAbout("# My Tool\nConverts CSV to JSON.")
 //
@@ -310,11 +287,9 @@ func (app *App) SetAbout(markdown string) {
 	app.about = markdown
 }
 
-// SetStickyQuery declares page query keys shared across pages, such as a
-// group picked in the sidebar. The side nav copies them from the current page
-// query into the page it opens, and a PageLink adds them unless it sets them
-// itself. The server is not involved: a page keeps the value in its URL with
-// [Params.ReplaceQuery].
+// SetStickyQuery declares page query keys shared across pages, e.g. a group
+// picked in the sidebar. The side nav and PageLink carry them to the next
+// page; a page keeps them in its URL with [Params.ReplaceQuery].
 //
 //	app.SetStickyQuery("group")
 //
@@ -407,8 +382,8 @@ func (app *App) menuNodes() []*MenuNode {
 	return app.menu.nodes
 }
 
-// RunWithHandlingPanic run a page which named `name` with state, with a
-// context that is never cancelled. See [App.RunContextWithHandlingPanic].
+// RunWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
+// background context.
 func (app *App) RunWithHandlingPanic(
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
 
@@ -416,9 +391,9 @@ func (app *App) RunWithHandlingPanic(
 		context.Background(), name, state, notifyFunc)
 }
 
-// RunContextWithHandlingPanic run a page which named `name` with state and ctx.
-// Return a error wrap with ErrPanic if encounter panic. A panicked error keeps
-// its chain, so errors.Is still finds [ErrUpdateInterrupt] under [ErrPanic].
+// RunContextWithHandlingPanic runs page `name` and turns a panic into an
+// error wrapping [ErrPanic]. The panic's error chain is kept, so errors.Is
+// still finds [ErrUpdateInterrupt].
 func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
 
@@ -426,13 +401,13 @@ func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 		ctx, name, nil, state, notifyFunc, nil)
 }
 
-// runEndFunc takes what a run that was not cut asked of its session: the
-// query of [Params.ReplaceQuery] or the page of [Params.Navigate], nil for
-// none. At most one is set; navigate wins.
+// runEndFunc receives what an uncut run asked of its session: the
+// [Params.ReplaceQuery] query or the [Params.Navigate] target. At most one is
+// set; navigate wins.
 type runEndFunc func(replaced url.Values, navigate *Navigation)
 
 // runContextWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
-// page query, and onEnd to take what the run asked of its session.
+// page query and onEnd.
 func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	name string, query url.Values, state *State,
 	notifyFunc SendNotifyPackFunc, onEnd runEndFunc) (err error) {
@@ -452,7 +427,7 @@ func (app *App) runContextWithHandlingPanic(ctx context.Context,
 
 		err = tgutil.Errorf("%w: %w", ErrPanic, rErr)
 
-		// An interrupt is how a cut run unwinds, not a failure worth a line.
+		// An interrupt is how a cut run unwinds, not worth logging.
 		if !errors.Is(rErr, ErrUpdateInterrupt) {
 			log.Println("Panic", r)
 		}
@@ -462,21 +437,20 @@ func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	return
 }
 
-// Run run a page which named `name` with state, with a context that is never
-// cancelled. See [App.RunContext].
+// Run is [App.RunContext] with a background context.
 func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) error {
 	return app.RunContext(context.Background(), name, state, notifyFunc)
 }
 
-// RunContext run a page which named `name` with state, and hands ctx to the
-// page func as [Params.Context]. [Params.Query] is empty.
+// RunContext runs page `name`, passing ctx as [Params.Context].
+// [Params.Query] is empty.
 func (app *App) RunContext(ctx context.Context,
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
 	return app.runContext(ctx, name, nil, state, notifyFunc, nil)
 }
 
-// runContext runs a page. onEnd, if not nil, gets what the last valid
-// [Params.ReplaceQuery] or [Params.Navigate] of a run that was not cut set.
+// runContext runs a page. onEnd, if not nil, gets the last valid
+// [Params.ReplaceQuery] or [Params.Navigate] of an uncut run.
 func (app *App) runContext(ctx context.Context, name string,
 	query url.Values, state *State, notifyFunc SendNotifyPackFunc,
 	onEnd runEndFunc) error {
@@ -485,9 +459,7 @@ func (app *App) runContext(ctx context.Context, name string,
 		return tgutil.Errorf("%w: `%s`", ErrPageNotFound, name)
 	}
 
-	// The menu is the app's, not the run's, so the ids it declares are told
-	// to the state here rather than claimed like a component's. [MenuClicked]
-	// reads them back to turn away a click on an item the app never declared.
+	// Menu ids are the app's, so they are set here for [MenuClicked] to check.
 	if state != nil {
 		state.setMenuIDs(app.menuIDs)
 	}
@@ -500,9 +472,7 @@ func (app *App) runContext(ctx context.Context, name string,
 	newSidebar := NewContainer(SidebarContainerID, state, notifyFunc)
 	newSidebar.run = run
 
-	// The roots are never sent, so nothing else claims their ids. Claim them
-	// here, or a container the page adds under one of their names would take
-	// the root's id without colliding with anything.
+	// Claim the root ids so a page container can't reuse them.
 	run.registerID(newMain)
 	run.registerID(newSidebar)
 
@@ -515,11 +485,7 @@ func (app *App) runContext(ctx context.Context, name string,
 		run:     run,
 	})
 
-	// A cut run stopped partway, so the run before it is still what the
-	// client is looking at. Leave that run's ids and released ids alone, or a
-	// click or an upload naming one of its components would be turned away as
-	// a name the page never drew. A run cut short at a notify pack panics out
-	// before this, and one watching the context returns here.
+	// A cut run leaves the previous run on screen, so keep its ids.
 	if ctx.Err() != nil {
 		return NewPageError(err)
 	}
@@ -533,39 +499,31 @@ func (app *App) runContext(ctx context.Context, name string,
 		}
 	}
 
-	// The page function returned, so what it claimed is what is on the screen.
-	// Record it: an upload names a component id, and the state is where that
-	// name is checked.
+	// Record what is on screen; uploads are checked against these ids.
 	if state != nil {
 		state.setRunIDs(run.ids, run.indexedFileIDs)
 	}
 
 	if err != nil {
-		// What the page function returned is what the page wants its user to
-		// read, so it keeps its message instead of being masked -- and keeps
-		// it whole, without a function path in front of it.
+		// The page's own error is shown to the user as is.
 		return NewPageError(err)
 	}
 
-	// The page ran to the end, so an id it cleared and never wrote again names
-	// nothing on the screen. Drop the state under it, or the next run would
-	// hand that value to whatever lands on the id.
+	// Drop state under ids the finished run released and never rewrote.
 	if state != nil {
 		for id := range run.released {
 			state.Delete(id)
 		}
 	}
 
-	// A component the page gave up on is the page's own report too.
 	return NewPageError(run.err)
 }
 
-// RerunAll reruns every open page, as if its user pressed the rerun button.
-// Call it when data the pages read has changed, e.g. a background load
-// finished, so pages already open show it.
+// RerunAll reruns every open page, as if its user pressed rerun. Call it when
+// data the pages read has changed.
 //
-// It returns at once and never cuts a run: a page in the middle of a run is
-// rerun once that run ends. Calls while a page is running fold into one rerun.
+// It returns at once and never cuts a run: a running page reruns after it
+// ends, and calls during a run fold into one rerun.
 func (app *App) RerunAll() {
 	app.rerunSessions(func(*Session) bool { return true })
 }

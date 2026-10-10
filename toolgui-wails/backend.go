@@ -14,43 +14,37 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
-// PackEventName is the Wails event every pack is emitted on. A single event
-// name keeps create/update/delete/result in the order the page produced them.
+// PackEventName is the Wails event every pack is emitted on; one name keeps
+// packs in order.
 const PackEventName = "toolgui:pack"
 
 // ErrNoSession is returned when the frontend acts before calling Start.
 var ErrNoSession = tgutil.NewError("no session, call Start first")
 
-// ErrNoUpload is returned for an upload id the session doesn't know, which is
-// what a chunk sent after the session was replaced looks like.
+// ErrNoUpload is returned for an unknown upload id, e.g. a chunk sent after
+// the session was replaced.
 var ErrNoUpload = tgutil.NewError("no such upload")
 
 // ToolGUI is the struct Wails binds. Its exported methods reach the frontend
-// as window.go.tgwails.ToolGUI.<Method>, each returning a promise.
-//
-// Payloads cross as JSON strings, the same ones the web executor sends over
-// its websocket, so both transports carry an identical wire format.
+// as window.go.tgwails.ToolGUI.<Method>, each returning a promise. Payloads
+// are the same JSON strings the web executor's websocket uses.
 type ToolGUI struct {
 	app *tgframe.App
 
-	// emit hands one pack to the frontend. It's wired up when the window
-	// starts, which is also what lets the tests run without one.
+	// emit hands one pack to the frontend. Set on window start (nil in
+	// tests).
 	emit func(packJSON string)
 
-	// lock guards the session and the state it runs on: bound methods are
-	// called from the frontend's goroutine, shutdown from another.
+	// lock guards session, state and uploads.
 	lock    sync.Mutex
 	session *tgframe.Session
 	state   *tgframe.State
 
-	// uploads are the files still arriving, by upload id. The lock guards
-	// them too: a chunk that lands while the session is being replaced must
-	// not write to the state that is going away.
+	// uploads are the files still arriving, by upload id.
 	uploads map[string]*tgframe.File
 
-	// menuLock guards the queue of menu picks and the flag saying one
-	// goroutine is working through it. It is its own lock rather than the one
-	// above: taking a pick's place in line must not wait on a run.
+	// menuLock guards the menu pick queue. Separate from lock so queueing
+	// never waits on a run.
 	menuLock  sync.Mutex
 	menuQueue []string
 	menuBusy  bool
@@ -61,9 +55,8 @@ func NewToolGUI(app *tgframe.App) *ToolGUI {
 	return &ToolGUI{app: app, uploads: make(map[string]*tgframe.File)}
 }
 
-// start is wired to [options.App.OnStartup] rather than being a bound method,
-// so the frontend never sees it. The context it gets is what the Wails
-// runtime needs to reach this window.
+// start is wired to [options.App.OnStartup], unexported so the frontend
+// can't call it.
 func (t *ToolGUI) start(ctx context.Context) {
 	t.emit = func(packJSON string) {
 		runtime.EventsEmit(ctx, PackEventName, packJSON)
@@ -78,12 +71,9 @@ func (t *ToolGUI) shutdown(ctx context.Context) {
 	t.closeSession()
 }
 
-// AppConf return the app config as JSON. It's the desktop counterpart of
-// GET /api/app.
+// AppConf return the app config as JSON, like GET /api/app.
 //
-// The menu is the one field it drops. The tree goes to the window's own
-// menubar instead (see [Executor.Run]), and leaving it in the conf would have
-// the frontend draw a second menubar inside the window under the real one.
+// The menu is dropped: it goes to the native menubar (see [Executor.Run]).
 func (t *ToolGUI) AppConf() (string, error) {
 	conf := *t.app.AppConf()
 	conf.Menu = nil
@@ -96,19 +86,9 @@ func (t *ToolGUI) AppConf() (string, error) {
 	return string(bs), nil
 }
 
-// clickMenu applies a click on the menu item declared under id, which is the
-// native menubar's way in. It is the same event the web menubar sends over
-// the wire, so the run handling it reads the click with
-// [tgframe.MenuClicked] either way.
-//
-// It is unexported because the menubar is the only caller: the frontend has
-// no business firing menu clicks, and every exported method here becomes a
-// binding it can reach.
-//
-// A click before Start has opened a session has nothing to run, which is what
-// the window between the menubar appearing and the first page looks like. It
-// is ignored rather than reported: a menu is not the frontend asking for
-// something, and there is no caller to tell.
+// clickMenu applies a native menubar click on id, the same event the web
+// menubar sends. Unexported so the frontend can't fire it. A click before
+// Start is ignored.
 func (t *ToolGUI) clickMenu(id string) {
 	session := t.currentSession()
 	if session == nil {
@@ -118,21 +98,11 @@ func (t *ToolGUI) clickMenu(id string) {
 	session.HandleEvent(&tgframe.EventClick{ID: id})
 }
 
-// queueMenuClick puts a pick at the back of the line and makes sure something
-// is working through it. It is what the native menubar's callback calls.
+// queueMenuClick queues a native menubar pick and ensures one goroutine
+// drains the queue in order.
 //
-// Applying the pick where the callback lands is not an option on Windows,
-// where that is the message loop and the window is frozen for as long as the
-// page takes to run. Handing each callback its own goroutine is not either: a
-// run cuts the one before it, so two picks that overtake each other leave the
-// page showing the older one. So the pick is queued -- a mutex the callback
-// holds for the length of an append -- and one goroutine applies the queue in
-// order.
-//
-// It can only order what reaches it in order, which on Windows is every pick:
-// they arrive on the one message loop. macOS and Linux hand each callback its
-// own goroutine before this sees it, and what they have already shuffled
-// cannot be put back.
+// Running inline would freeze the Windows message loop; a goroutine per pick
+// could reorder picks. (macOS/Linux may already reorder before this.)
 func (t *ToolGUI) queueMenuClick(id string) {
 	t.menuLock.Lock()
 	t.menuQueue = append(t.menuQueue, id)
@@ -148,11 +118,8 @@ func (t *ToolGUI) queueMenuClick(id string) {
 	go t.drainMenuClicks()
 }
 
-// drainMenuClicks applies the queued picks, oldest first, until it runs out.
-// Exactly one of these runs at a time: it only starts on the pick that found
-// menuBusy false, and it clears the flag under the same lock that a pick is
-// appended under, so a pick either joins the queue this goroutine is still
-// reading or starts the next one.
+// drainMenuClicks applies queued picks oldest first until empty. menuBusy,
+// guarded by menuLock, ensures only one runs at a time.
 func (t *ToolGUI) drainMenuClicks() {
 	for {
 		t.menuLock.Lock()
@@ -173,14 +140,12 @@ func (t *ToolGUI) drainMenuClicks() {
 }
 
 // Start open a session on pageName and run the page once. Calling it again
-// switches page: the previous session is closed and the new one starts from
-// an empty state, the same as loading another page in the browser. query is
-// the page query, `group=a`, read as [tgframe.Params.Query].
+// switches page, starting from an empty state. query (`group=a`) is read as
+// [tgframe.Params.Query].
 func (t *ToolGUI) Start(pageName, query string) error {
 	t.lock.Lock()
 
-	// Closed whatever comes of the start: the frontend has already switched
-	// page, so the old session must not draw into it.
+	// Always close: the frontend has already switched page.
 	t.closeSession()
 
 	values, err := tgframe.ParseQuery(query)
@@ -207,8 +172,8 @@ func (t *ToolGUI) Start(pageName, query string) error {
 	return nil
 }
 
-// Update apply a frontend event to the session and rerun the page. It's the
-// desktop counterpart of the update websocket.
+// Update apply a frontend event to the session and rerun the page, like the
+// update websocket.
 func (t *ToolGUI) Update(eventJSON string) error {
 	session := t.currentSession()
 	if session == nil {
@@ -223,10 +188,8 @@ func (t *ToolGUI) Update(eventJSON string) error {
 	return nil
 }
 
-// UploadFileStart opens a file for an upload and returns the id the chunks
-// after it carry. It's the desktop half of POST /api/files, which the bridge
-// can't do in one call: it takes strings, so a whole file would sit in memory
-// as a blob, as base64 and as bytes at once.
+// UploadFileStart opens a file for an upload and returns the id its chunks
+// carry. Chunked, unlike POST /api/files, since the bridge only takes strings.
 func (t *ToolGUI) UploadFileStart(name string) (string, error) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -268,9 +231,8 @@ func (t *ToolGUI) UploadFileChunk(uploadID, dataBase64 string) error {
 	return nil
 }
 
-// UploadFileFinish hands the finished upload to the component that asked for
-// it. Until then the page doesn't see it, so a second pick on the same
-// component replaces the first rather than being spliced into it.
+// UploadFileFinish hands the finished upload to the component. The page only
+// sees it from here, so a second pick replaces the first.
 func (t *ToolGUI) UploadFileFinish(componentID, uploadID string) error {
 	t.lock.Lock()
 	defer t.lock.Unlock()
@@ -290,8 +252,8 @@ func (t *ToolGUI) UploadFileFinish(componentID, uploadID string) error {
 	return nil
 }
 
-// send push a pack to the frontend. [tgframe.Session] serializes the calls,
-// and the Wails event queue preserves their order.
+// send push a pack to the frontend. Calls are serialized and Wails keeps
+// their order.
 func (t *ToolGUI) send(pack any) error {
 	if t.emit == nil {
 		return tgutil.NewError("wails runtime is not ready")
@@ -322,8 +284,7 @@ func (t *ToolGUI) closeSession() {
 	t.session.Close()
 	t.session = nil
 
-	// The state owns the files uploaded to it, the ones still arriving
-	// included, and nothing else can reach them once the session is gone.
+	// The state owns its uploads, including ones still arriving.
 	t.state.Destroy()
 	t.state = nil
 	t.uploads = make(map[string]*tgframe.File)

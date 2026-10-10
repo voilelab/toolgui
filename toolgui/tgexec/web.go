@@ -27,25 +27,20 @@ import (
 // MaxUploadSize limit the size of a file upload request.
 const MaxUploadSize int64 = 1024 * 1024 * 1024
 
-// MaxMessageSize is the size cap of one message on an update connection. The
-// whole message is held in memory and parsed, and nothing authenticates a
-// connection, so without a cap one message buys far more work than it took to
-// send.
+// MaxMessageSize caps one update message, which is held in memory and
+// parsed from an unauthenticated connection.
 const MaxMessageSize = 1024 * 1024
 
-// DefaultMaxStateCount is how many states an executor keeps by default. Every
-// update connection takes one, and nothing authenticates a connection, so
-// without a cap anyone who reaches the service can ask for states until the
-// process runs out of memory and disk.
+// DefaultMaxStateCount is how many states an executor keeps by default. Each
+// unauthenticated connection takes one, so it must be capped.
 const DefaultMaxStateCount = 1024
 
-// stateIDTimeout is how long a connection has, once the handshake is done, to
-// say which state it wants.
+// stateIDTimeout is how long a connection has after the handshake to send
+// its state id.
 const stateIDTimeout = 30 * time.Second
 
-// readHeaderTimeout is how long a connection has to send its request line and
-// headers, and idleTimeout how long a kept-alive connection may sit between
-// requests.
+// readHeaderTimeout bounds reading request headers; idleTimeout bounds an
+// idle kept-alive connection.
 const (
 	readHeaderTimeout = 30 * time.Second
 	idleTimeout       = 120 * time.Second
@@ -73,9 +68,7 @@ type WebExecutor struct {
 
 	app *tgframe.App
 
-	// confMu guards manifest, assets, headHTML, maxUploadSize and
-	// maxMessageSize, which the app may set at any time, including while
-	// handlers are already serving requests.
+	// confMu guards the settings below, which may change while serving.
 	confMu sync.RWMutex
 
 	// manifest is nil until the app sets one, and nil serves the default.
@@ -87,8 +80,7 @@ type WebExecutor struct {
 	// headHTML is inserted at the start of the index page head.
 	headHTML string
 
-	// allowedOrigins is nil until the app sets some, and holds normalized
-	// origins the update socket takes on top of the app's own.
+	// allowedOrigins are extra normalized origins the update socket accepts.
 	allowedOrigins []string
 }
 
@@ -116,16 +108,14 @@ func NewWebExecutor(app *tgframe.App) *WebExecutor {
 	}
 }
 
-// SetMaxStateCount limits how many states the executor keeps at once, which is
-// how many pages it serves at once: a connection that asks for one when the
-// limit is reached is turned away. A count of 0 or less is no limit.
+// SetMaxStateCount limits how many states (open pages) the executor keeps;
+// connections past it are turned away. 0 or less is no limit.
 func (e *WebExecutor) SetMaxStateCount(n int) {
 	e.stateMap.SetMaxSize(n)
 }
 
-// SetMaxUploadSize limits the size of one upload request, [MaxUploadSize] by
-// default. It covers the whole request, not just the file part, and an upload
-// over it is answered with 413.
+// SetMaxUploadSize limits one whole upload request, [MaxUploadSize] by
+// default. Larger uploads get 413.
 func (e *WebExecutor) SetMaxUploadSize(n int64) {
 	e.confMu.Lock()
 	defer e.confMu.Unlock()
@@ -133,10 +123,8 @@ func (e *WebExecutor) SetMaxUploadSize(n int64) {
 	e.maxUploadSize = n
 }
 
-// SetMaxMessageSize limits the size of one message on an update connection,
-// [MaxMessageSize] by default. A message over it is refused without being
-// read into memory, and the connection carries on. Raise it for an app whose
-// components send values of their own that are larger than that.
+// SetMaxMessageSize limits one update message, [MaxMessageSize] by default.
+// Larger messages are refused without being read; the connection stays open.
 func (e *WebExecutor) SetMaxMessageSize(n int) {
 	e.confMu.Lock()
 	defer e.confMu.Unlock()
@@ -144,8 +132,8 @@ func (e *WebExecutor) SetMaxMessageSize(n int) {
 	e.maxMessageSize = n
 }
 
-// defaultManifest returns the manifest served when the app sets none. The app
-// title names it, so an app that sets a title doesn't repeat it here.
+// defaultManifest returns the manifest served when the app sets none, named
+// after the app title.
 func (e *WebExecutor) defaultManifest() *Manifest {
 	manifest := DefaultManifest()
 
@@ -172,9 +160,8 @@ func (e *WebExecutor) SetManifest(manifest *Manifest) {
 	e.manifest = manifest
 }
 
-// SetAssets serves the files at the root of fsys under /assets/, so an app can
-// hand the browser files of its own: a manifest icon, an image a page links
-// to. A nil fsys serves none.
+// SetAssets serves fsys under /assets/, e.g. a manifest icon or images. A
+// nil fsys serves none.
 //
 //	//go:embed assets
 //	var assets embed.FS
@@ -189,9 +176,8 @@ func (e *WebExecutor) SetAssets(fsys fs.FS) {
 	e.assets = fsys
 }
 
-// SetHeadHTML inserts html into the head of the index page, for what has to
-// be in the static page: crawlers run no script, so meta tags such as Open
-// Graph or CSP, fonts or analytics tags go here rather than through the app.
+// SetHeadHTML inserts html into the index page head, for tags that must be
+// static: Open Graph, CSP, fonts, analytics.
 //
 //	e.SetHeadHTML(`<meta property="og:title" content="My Tool" />`)
 func (e *WebExecutor) SetHeadHTML(html string) {
@@ -215,15 +201,13 @@ func (e *WebExecutor) indexBody() []byte {
 	return []byte(html)
 }
 
-// SetAllowedOrigins lets pages from these origins open the update websocket,
-// on top of the app's own origin. Each entry is a full origin, scheme and
-// all, the way a browser sends it:
+// SetAllowedOrigins lets pages from these origins (with scheme) open the
+// update websocket, besides the app's own:
 //
 //	e.SetAllowedOrigins([]string{"https://tools.example.com"})
 //
-// Unset, the socket takes only an Origin whose host matches the one the
-// request asked for, so no other site can drive the app. Name the public
-// origin here when a reverse proxy in front of the app rewrites Host.
+// By default only an Origin matching the request Host is accepted. Set the
+// public origin here when a reverse proxy rewrites Host.
 func (e *WebExecutor) SetAllowedOrigins(origins []string) {
 	normalized := make([]string, 0, len(origins))
 	for _, origin := range origins {
@@ -236,19 +220,14 @@ func (e *WebExecutor) SetAllowedOrigins(origins []string) {
 	e.allowedOrigins = normalized
 }
 
-// normalizeOrigin puts an origin in the one form the comparison uses: no
-// trailing slash, and lowercase, since scheme and host are case-insensitive.
+// normalizeOrigin lowercases origin and trims trailing slashes.
 func normalizeOrigin(origin string) string {
 	return strings.ToLower(strings.TrimRight(origin, "/"))
 }
 
-// checkUpdateOrigin turns away an update handshake from a page the app
-// doesn't belong to. The same-origin policy leaves websockets alone, so
-// without this any site the browser visits could open the socket, press the
-// app's buttons and read back everything it renders.
-//
-// x/net/websocket answers a handshake error with 403, so no session, and no
-// state, comes of a refused connection.
+// checkUpdateOrigin rejects update handshakes from foreign origins, since
+// the same-origin policy doesn't cover websockets. A rejection gets 403
+// before any state is made.
 func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Request) error {
 	origin, err := websocket.Origin(config, req)
 	if err != nil {
@@ -257,15 +236,13 @@ func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Requ
 	}
 
 	if origin == nil {
-		// The default handshake refuses a missing Origin as well, so
-		// non-browser clients stay as they were.
+		// Same as the default handshake.
 		return errors.New("websocket: no origin")
 	}
 
 	config.Origin = origin
 
-	// The host the browser asked for is the app's own origin, whatever name
-	// or port it is reached under.
+	// The requested host is the app's own origin.
 	if strings.EqualFold(origin.Host, req.Host) {
 		return nil
 	}
@@ -287,8 +264,7 @@ func (e *WebExecutor) checkUpdateOrigin(config *websocket.Config, req *http.Requ
 	return errors.New("websocket: origin not allowed")
 }
 
-// stateTag return a stable, non-reversible name for a state id, for a log
-// line that has to tell one connection's state from another's.
+// stateTag return a stable, non-reversible tag of a state id for logs.
 func stateTag(id string) string {
 	sum := sha256.Sum256([]byte(id))
 	return hex.EncodeToString(sum[:4])
@@ -300,8 +276,7 @@ func (e *WebExecutor) Destroy() {
 }
 
 func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
-	// A frame over the cap is turned away by its header, so an oversized
-	// message never reaches memory or the parser.
+	// Oversized frames are refused by header, before reaching memory.
 	e.confMu.RLock()
 	ws.MaxPayloadBytes = e.maxMessageSize
 	e.confMu.RUnlock()
@@ -317,8 +292,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		return
 	}
 
-	// The page query rides on the socket url. Turned away before a state is
-	// taken, like an unknown page. Its values stay out of the log.
+	// The page query is on the socket url. Its values stay out of the log.
 	query, err := tgframe.ParseQuery(ws.Request().URL.RawQuery)
 	if err != nil {
 		jsonCodec.Send(ws, &tgframe.ResultPack{
@@ -330,10 +304,8 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		return
 	}
 
-	// A connection that finishes the handshake and then says nothing holds a
-	// goroutine and an fd for as long as it likes, so the first message has a
-	// deadline. It is lifted once the message lands: after that the socket is
-	// meant to sit idle between the user's events.
+	// Deadline the first message so a silent connection can't hold
+	// resources; lifted after, since the socket idles between events.
 	if err := ws.SetReadDeadline(time.Now().Add(stateIDTimeout)); err != nil {
 		slog.Error("set state id deadline", "error", err)
 	}
@@ -352,31 +324,25 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 
 	stateID := pack.StateID
 
-	// Taking the state over and marking it taken is one step: two connections
-	// racing for the same idle id would otherwise both pass the check and
-	// then share one *State.
+	// Acquire is atomic, so two connections can't share one idle state.
 	state, err := e.stateMap.Acquire(stateID)
 	switch {
 	case err == nil:
-		// The state was idle and is this connection's now.
+		// Took over an idle state.
 
 	case errors.Is(err, tgutil.ErrUUIDAlive):
 		jsonCodec.Send(ws, &tgframe.ResultPack{
 			Error:   "state id already alive",
 			Success: false,
 		})
-		// Not the id itself: it is the whole of what a connection needs to
-		// take the state over, so a log line carrying it hands whoever reads
-		// the log someone else's session.
+		// Log a tag, not the id: the id alone takes over the session.
 		slog.Error("state id already alive", "state", stateTag(stateID))
 		return
 
 	default:
 		newStateID, nerr := e.stateMap.New()
 		if nerr != nil {
-			// The service is holding as many states as it may. Another
-			// connection dropping frees one, so the client is left to retry
-			// rather than told to give up.
+			// At the state cap; retryable once another connection drops.
 			jsonCodec.Send(ws, &tgframe.ResultPack{
 				Error:   "too many sessions, try again later",
 				Success: false,
@@ -395,8 +361,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	session, err := tgframe.NewSession(e.app, pageName, query, state,
 		func(pack any) error { return jsonCodec.Send(ws, pack) })
 	if err != nil {
-		// Both checked above, so a retry would fail the same way. The state
-		// is nobody's again either way.
+		// Checked above, so this is fatal. Release the state.
 		e.stateMap.SetAlive(stateID, false)
 
 		msg := "page not found"
@@ -413,9 +378,8 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		return
 	}
 
-	// Whichever way the loop ends, the connection is done with the state: the
-	// session stops running the page, and the state goes back to not alive, so
-	// a reconnect can take it and the cleanup can reclaim it.
+	// On exit, stop the session and release the state for reconnect or
+	// cleanup.
 	defer func() {
 		session.Close()
 		e.stateMap.SetAlive(stateID, false)
@@ -426,8 +390,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 		err := websocket.Message.Receive(ws, &bs)
 		if err != nil {
 			if !recoverableReceiveErr(err) {
-				// The connection is closed or broken. Reading it again would
-				// only return the same error, and answering it would fail too.
+				// Connection closed or broken.
 				if !errors.Is(err, io.EOF) {
 					slog.Error("receive", "error", err)
 				}
@@ -435,9 +398,7 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 				break
 			}
 
-			// The only recoverable read error is a frame the codec refused,
-			// so the client is told that much and nothing of the library
-			// error underneath.
+			// Only an oversized frame is recoverable.
 			jsonCodec.Send(ws, &tgframe.ResultPack{
 				Error:   "message too large",
 				Success: false,
@@ -453,14 +414,9 @@ func (e *WebExecutor) handleUpdate(ws *websocket.Conn) {
 	}
 }
 
-// recoverableReceiveErr reports whether the read loop can carry on after err.
-// Only a frame the codec refused is -- one over
-// [WebExecutor.SetMaxMessageSize] -- and the connection is still in step: the
-// next Receive drains what is left of the frame, which costs a read and no
-// memory, so the client is told why its message was dropped rather than losing
-// the socket over one. Anything else -- a closed or reset connection -- comes
-// back the same way every call, so reading on would spin and never hand the
-// state back.
+// recoverableReceiveErr reports whether the read loop can continue after
+// err. Only a frame over [WebExecutor.SetMaxMessageSize] is: the next Receive
+// drains it. Other errors repeat forever.
 func recoverableReceiveErr(err error) bool {
 	return errors.Is(err, websocket.ErrFrameTooLarge)
 }
@@ -473,9 +429,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// The file is stored under the component that asked for it, so two
-	// fileuploads offered a file of the same name keep their own. The id is
-	// percent-encoded: a header value can't carry a non-ASCII label.
+	// Stored per component. The id is percent-encoded for non-ASCII labels.
 	componentID, err := url.PathUnescape(req.Header.Get("COMPONENT_ID"))
 	if err != nil {
 		http.Error(w, "Component ID is not percent-encoded", http.StatusBadRequest)
@@ -487,10 +441,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// A file is kept under the component it belongs to, so an id the page
-	// never drew names a file nothing reads or releases. Taking one would let
-	// a caller fill the disk under a new name every time. A multi-file upload
-	// names its component plus an index.
+	// Reject ids the page never drew, or a caller could fill the disk.
 	if !state.HasFileKey(componentID) {
 		http.Error(w, "Component ID is not on the page", http.StatusForbidden)
 		return
@@ -502,8 +453,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 
 	req.Body = http.MaxBytesReader(w, req.Body, maxUploadSize)
 
-	// MultipartReader hands over the parts as they arrive. ParseMultipartForm
-	// would buffer the whole upload first.
+	// Stream parts; ParseMultipartForm would buffer the whole upload.
 	reader, err := req.MultipartReader()
 	if err != nil {
 		http.Error(w, "Not a multipart upload", http.StatusBadRequest)
@@ -525,8 +475,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 		}
 
 		if part.FormName() != "file" || stored {
-			// Read past what isn't the file: stopping at the file would leave
-			// the size cap covering only the part of the body read so far.
+			// Drain other parts so the size cap covers the whole body.
 			_, err = io.Copy(io.Discard, part)
 			part.Close()
 
@@ -538,8 +487,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 			continue
 		}
 
-		// The part is copied straight to disk, so what the server holds is a
-		// copy buffer rather than the upload.
+		// Streamed straight to storage.
 		_, err = state.WriteFile(componentID, part.FileName(), part)
 		part.Close()
 
@@ -556,8 +504,7 @@ func (e *WebExecutor) handleUpload(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// writeUploadError answers a failed upload, telling a request that was too
-// big apart from one the server couldn't store.
+// writeUploadError answers a failed upload with 413 or 500.
 func writeUploadError(w http.ResponseWriter, err error) {
 	var maxBytesErr *http.MaxBytesError
 	if errors.As(err, &maxBytesErr) {
@@ -570,16 +517,11 @@ func writeUploadError(w http.ResponseWriter, err error) {
 	slog.Error("Store upload", "error", err)
 }
 
-// handleDownload serves a file a run offered through
+// handleDownload serves a file offered through
 // [github.com/voilelab/toolgui/toolgui/tgcomp/tcinput.DownloadFile].
 //
-// Two things name what is served, and neither alone is enough. The state id is
-// the connection's, the same one an upload carries, and the token is one this
-// state's own run handed out: a token is looked up in that state's downloads
-// and nowhere else, so it is not a bearer of anything on its own and it cannot
-// reach another page's output. Both travel as headers rather than in the URL,
-// where a link, a log line or a Referer would carry them further than the
-// fetch that needs them.
+// It needs both the state id and a token from that state's own downloads.
+// Both are headers, not URL parts, to keep them out of logs and Referer.
 func (e *WebExecutor) handleDownload(w http.ResponseWriter, req *http.Request) {
 	stateID := req.Header.Get("STATE_ID")
 	state, alive := e.stateMap.Get(stateID)
@@ -596,8 +538,7 @@ func (e *WebExecutor) handleDownload(w http.ResponseWriter, req *http.Request) {
 
 	download := state.GetDownload(token)
 	if download == nil {
-		// A token of another state, or one a later run replaced. Neither is
-		// told apart from a token that never existed.
+		// Foreign, replaced and unknown tokens look the same.
 		http.Error(w, "No such download", http.StatusNotFound)
 		return
 	}
@@ -613,16 +554,13 @@ func (e *WebExecutor) handleDownload(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", download.MIME())
 	w.Header().Set("Content-Length", strconv.FormatInt(download.Size(), 10))
 
-	// The client saves the file through a blob URL of its own and takes the
-	// name from the pack, so these are for whatever fetches the endpoint
-	// directly: a name to save under, the type as given and no sniffing
-	// around it, and nothing kept in a cache a token is stale in.
+	// For direct fetches (the client uses the pack's name): attachment name,
+	// no sniffing, no caching.
 	disposition := mime.FormatMediaType("attachment", map[string]string{
 		"filename": download.Name(),
 	})
 	if disposition == "" {
-		// A name no header can carry. Saving it under one the browser chooses
-		// beats serving the file inline.
+		// Unencodable name; still never serve inline.
 		disposition = "attachment"
 	}
 
@@ -630,11 +568,9 @@ func (e *WebExecutor) handleDownload(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "no-store")
 
-	// Straight from the file to the connection, through the copy buffer and
-	// nothing larger: what the endpoint is for is a file too big to hold.
+	// Stream; the file may be too big to hold.
 	if _, err := io.Copy(w, fp); err != nil {
-		// Whatever is sent is sent -- the status went out with the headers --
-		// so all that is left is to say why it stopped.
+		// Headers are already sent; just log.
 		slog.Error("Send download", "error", err)
 	}
 }
@@ -666,8 +602,8 @@ func (e *WebExecutor) handleAssets(resp http.ResponseWriter, req *http.Request) 
 	resp.Write(body)
 }
 
-// handleAsset serves a file the app gave [WebExecutor.SetAssets]. Reading the
-// fs per request, rather than at mux time, frees the app to set it whenever.
+// handleAsset serves [WebExecutor.SetAssets] files, read per request so
+// they can be set any time.
 func (e *WebExecutor) handleAsset(resp http.ResponseWriter, req *http.Request) {
 	e.confMu.RLock()
 	assets := e.assets
@@ -726,7 +662,7 @@ func (e *WebExecutor) handleAppConf(resp http.ResponseWriter, req *http.Request)
 func (e *WebExecutor) Mux() (*http.ServeMux, error) {
 	mux := http.NewServeMux()
 
-	// More specific than the page patterns below, so it wins over them.
+	// More specific than the page patterns below, so it wins.
 	mux.HandleFunc("GET /manifest.json", e.handleManifest)
 
 	if e.app.AppConf().HashPageNameMode {
@@ -766,15 +702,9 @@ func (e *WebExecutor) StartService(addr string) error {
 		return tgutil.Errorf("%w", err)
 	}
 
-	// A connection that opens and then dribbles out its headers, or is kept
-	// alive and left idle, holds a goroutine and an fd for free, so both get a
-	// deadline.
-	//
-	// ReadTimeout and WriteTimeout stay unset on purpose: they cover a whole
-	// request, and the update websocket is one request that lives as long as
-	// the page is open, so either would cut a working session off. What bounds
-	// the socket instead is the deadline handleUpdate puts on the first
-	// message, and a read loop that ends the moment the connection breaks.
+	// Deadline slow headers and idle keep-alives. ReadTimeout/WriteTimeout
+	// stay unset: they would cut the long-lived update websocket, which
+	// handleUpdate bounds itself.
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           mux,
