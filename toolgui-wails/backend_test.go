@@ -200,7 +200,7 @@ func TestToolGUIStartOversizedQuery(t *testing.T) {
 		t.Fatalf("Start = %v, want ErrQueryTooLarge", err)
 	}
 
-	if backend.currentSession() != nil {
+	if backend.host.Session() != nil {
 		t.Error("the previous session is still open")
 	}
 }
@@ -464,6 +464,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 	const componentID = "fileupload_component_file"
 
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		addTestComponent(p, componentID)
 		return nil
 	}))
 	defer backend.shutdown(t.Context())
@@ -484,7 +485,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 		t.Fatalf("UploadFileChunk: %v", err)
 	}
 
-	if backend.state.GetFile(componentID) != nil {
+	if getFile(t, backend, componentID) != nil {
 		t.Error("expect no file under the component while it is still arriving")
 	}
 
@@ -492,7 +493,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 		t.Fatalf("UploadFileFinish: %v", err)
 	}
 
-	if backend.state.GetFile(componentID) == nil {
+	if getFile(t, backend, componentID) == nil {
 		t.Error("expect the file under the component once it finished")
 	}
 }
@@ -504,6 +505,7 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 	const componentID = "fileupload_component_file"
 
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		addTestComponent(p, componentID)
 		return nil
 	}))
 	defer backend.shutdown(t.Context())
@@ -546,7 +548,7 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 		t.Fatalf("UploadFileFinish: %v", err)
 	}
 
-	file := backend.state.GetFile(componentID)
+	file := getFile(t, backend, componentID)
 	if file == nil {
 		t.Fatal("expect a file under the component")
 	}
@@ -562,6 +564,33 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 
 	if file.Name() != "second.txt" {
 		t.Errorf("Name = %q, want second.txt", file.Name())
+	}
+}
+
+// TestToolGUIUploadFileNotOnPage checks an upload to a component the page
+// isn't showing is refused, as POST /api/files does.
+func TestToolGUIUploadFileNotOnPage(t *testing.T) {
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName, ""); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	uploadID, err := backend.UploadFileStart("a.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	if err := backend.UploadFileFinish("nowhere", uploadID); err != tgframe.ErrNotOnPage {
+		t.Errorf("UploadFileFinish error = %v, want ErrNotOnPage", err)
+	}
+
+	if getFile(t, backend, "nowhere") != nil {
+		t.Error("expect nothing stored under a component the page isn't showing")
 	}
 }
 
@@ -686,4 +715,20 @@ func TestToolGUIStartSwitchesPage(t *testing.T) {
 	if got := <-values; got != "" {
 		t.Fatalf("expect a fresh state on the new page, got %q", got)
 	}
+}
+
+// getFile returns the file the session's state holds under key.
+func getFile(t *testing.T, backend *ToolGUI, key string) *tgframe.File {
+	t.Helper()
+
+	var file *tgframe.File
+	err := backend.host.Do(func(state *tgframe.State, _ map[string]*tgframe.File) error {
+		file = state.GetFile(key)
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("no state: %v", err)
+	}
+
+	return file
 }

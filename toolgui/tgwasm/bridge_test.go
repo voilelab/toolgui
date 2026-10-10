@@ -16,8 +16,13 @@ import (
 func testApp() *tgframe.App {
 	app := tgframe.NewApp()
 
+	// index shows a component uploads may target.
+	index := func(p *tgframe.Params) error {
+		p.Main.AddComponent(&tgframe.BaseComponent{Name: "test_component", ID: "comp"})
+		return nil
+	}
 	blank := func(p *tgframe.Params) error { return nil }
-	app.AddPage("index", "Index", blank)
+	app.AddPage("index", "Index", index)
 	app.AddPage("other", "Other", blank)
 
 	return app
@@ -33,7 +38,7 @@ func TestStartDestroysTheStateItReplaces(t *testing.T) {
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
 
-	state := b.state
+	state := hostState(b)
 	if state == nil {
 		t.Fatal("expect start to open a session")
 	}
@@ -45,7 +50,7 @@ func TestStartDestroysTheStateItReplaces(t *testing.T) {
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("other")})
 	settle(b)
 
-	if b.state == state {
+	if hostState(b) == state {
 		t.Fatal("expect start to open a state of its own")
 	}
 
@@ -61,7 +66,7 @@ func TestStartOnAnUnknownPageDestroysTheStateItMade(t *testing.T) {
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("nowhere")})
 
-	if b.state != nil || b.session != nil {
+	if hostState(b) != nil || b.host.Session() != nil {
 		t.Error("expect no session after a start on a page that is not there")
 	}
 }
@@ -196,9 +201,7 @@ func jsError(v js.Value) error {
 // in it go rather than piling up for the rest of the test binary's life.
 func stopped(b *bridge) func() {
 	return func() {
-		b.lock.Lock()
-		closeSession := b.detachSession()
-		b.lock.Unlock()
+		closeSession := b.host.Close()
 
 		settle(b)
 		closeSession()
@@ -217,8 +220,10 @@ func settle(b *bridge) {
 // written. No bytes cross the boundary at any point.
 func TestUploadFileStoresWhatThePageWrote(t *testing.T) {
 	b := newBridge(testApp())
+	discardPacks(b)
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
 	defer stopped(b)()
+	waitDrawn(t, b, "comp")
 
 	s := newUpload(t, b)
 	handle := writeUpload(t, s, "hello file")
@@ -230,7 +235,7 @@ func TestUploadFileStoresWhatThePageWrote(t *testing.T) {
 		t.Fatalf("uploadFile: %v", got)
 	}
 
-	file := b.state.GetFile("comp")
+	file := hostState(b).GetFile("comp")
 	if file == nil {
 		t.Fatal("expect the upload to be stored under the component")
 	}
@@ -253,6 +258,34 @@ func TestUploadFileStoresWhatThePageWrote(t *testing.T) {
 	}
 }
 
+// TestUploadFileNotOnPage checks a handover to a component the page isn't
+// showing is refused and its handle closed, as POST /api/files refuses it.
+func TestUploadFileNotOnPage(t *testing.T) {
+	b := newBridge(testApp())
+	discardPacks(b)
+	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
+	defer stopped(b)()
+	waitDrawn(t, b, "comp")
+
+	s := newUpload(t, b)
+	handle := writeUpload(t, s, "hello file")
+
+	got := b.jsUploadFile(js.Undefined(), []js.Value{
+		js.ValueOf("nowhere"), js.ValueOf("a.txt"), js.ValueOf(s.Name), handle,
+	})
+	if got != tgframe.ErrNotOnPage.Error() {
+		t.Errorf("uploadFile = %v, want %v", got, tgframe.ErrNotOnPage)
+	}
+
+	if hostState(b).GetFile("nowhere") != nil {
+		t.Error("expect nothing stored under a component the page isn't showing")
+	}
+
+	if handleOpen(handle) {
+		t.Error("expect a handle the bridge would not take to be closed")
+	}
+}
+
 // TestCancelUploadLeavesTheComponentEmpty checks an upload the page gave up on
 // reaches nothing. A file the page could not finish writing is not a file a
 // page function should be handed half of.
@@ -268,7 +301,7 @@ func TestCancelUploadLeavesTheComponentEmpty(t *testing.T) {
 
 	b.jsCancelUpload(js.Undefined(), []js.Value{js.ValueOf(s.Name)})
 
-	if b.state.GetFile("comp") != nil {
+	if hostState(b).GetFile("comp") != nil {
 		t.Error("expect a cancelled upload to reach no component")
 	}
 
@@ -312,8 +345,8 @@ func TestStartDropsUnfinishedUploads(t *testing.T) {
 
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("other")})
 
-	if len(b.uploads) != 0 {
-		t.Errorf("%d uploads survived the page switch, want none", len(b.uploads))
+	if uploadCount(b) != 0 {
+		t.Errorf("%d uploads survived the page switch, want none", uploadCount(b))
 	}
 
 	got := b.jsUploadFile(js.Undefined(), []js.Value{
@@ -374,4 +407,45 @@ func TestAppConfCarriesMenu(t *testing.T) {
 		children[1].Type != tgframe.MenuNodeSeparator {
 		t.Fatalf("unexpected File submenu: %v", children)
 	}
+}
+
+// hostState returns the bridge's current state, nil without a session.
+func hostState(b *bridge) *tgframe.State {
+	var state *tgframe.State
+	_ = b.host.Do(func(s *tgframe.State, _ map[string]*tgframe.BrowserUpload) error {
+		state = s
+		return nil
+	})
+	return state
+}
+
+// uploadCount returns how many reservations the bridge holds.
+func uploadCount(b *bridge) int {
+	n := 0
+	_ = b.host.Do(func(_ *tgframe.State, uploads map[string]*tgframe.BrowserUpload) error {
+		n = len(uploads)
+		return nil
+	})
+	return n
+}
+
+// discardPacks gives the bridge a pack callback that drops every pack, so a
+// page that draws can run to the end.
+func discardPacks(b *bridge) {
+	b.onPack = js.FuncOf(func(js.Value, []js.Value) any { return nil }).Value
+}
+
+// waitDrawn waits until the page's first run has drawn id.
+func waitDrawn(t *testing.T, b *bridge, id string) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if state := hostState(b); state != nil && state.HasComponentID(id) {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	t.Fatalf("page never drew %q", id)
 }

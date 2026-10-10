@@ -525,6 +525,46 @@ func TestHasFileKey(t *testing.T) {
 	}
 }
 
+// TestPutUpload checks an upload to a key the page isn't showing is refused
+// and its file removed, while a shown key stores it.
+func TestPutUpload(t *testing.T) {
+	s := NewState()
+	defer s.Destroy()
+
+	s.setRunIDs(map[string]bool{"up": true}, nil)
+
+	refused, err := s.NewFile("a.txt")
+	if err != nil {
+		t.Fatalf("NewFile: %v", err)
+	}
+
+	if err := s.PutUpload("nowhere", refused); err != ErrNotOnPage {
+		t.Errorf("PutUpload = %v, want ErrNotOnPage", err)
+	}
+
+	if s.GetFile("nowhere") != nil {
+		t.Error("expect nothing stored under a key the page isn't showing")
+	}
+
+	if r, err := refused.Open(); err == nil {
+		r.Close()
+		t.Error("expect the refused file to be removed")
+	}
+
+	kept, err := s.NewFile("b.txt")
+	if err != nil {
+		t.Fatalf("NewFile: %v", err)
+	}
+
+	if err := s.PutUpload("up", kept); err != nil {
+		t.Fatalf("PutUpload: %v", err)
+	}
+
+	if s.GetFile("up") != kept {
+		t.Error("expect the file stored under a shown key")
+	}
+}
+
 // TestIndexedFilesCleanup checks index 0 starts a new pick, and Delete drops
 // a component's indexed files.
 func TestIndexedFilesCleanup(t *testing.T) {
