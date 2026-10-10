@@ -34,7 +34,7 @@ func Iframe(c *tgframe.Container, html string, conf ...*IframeConf) {
 // one that sent null both read as nil: null is how a guest says it has nothing,
 // not a value of its own.
 //
-//	if v := tcmisc.IframeValue[picked](c, html, conf); v != nil {
+//	if v := tgcomp.IframeValue[picked](c, html, conf); v != nil {
 //		use(*v)
 //	}
 //
@@ -93,14 +93,14 @@ func Plugin(c *tgframe.Container, src string, conf ...*PluginConf) {
 // plugin: give it the same src and conf the [Plugin] call gets, and read
 // before drawing when the props depend on the value.
 //
-//	conf := &tcmisc.PluginConf{ID: "color_picker"}
+//	conf := &tgcomp.PluginConf{ID: "color_picker"}
 //	selected := ""
-//	if v := tcmisc.PluginValue[color](c, src, conf); v != nil {
+//	if v := tgcomp.PluginValue[color](c, src, conf); v != nil {
 //		selected = v.Color
 //	}
 //
 //	conf.Props = map[string]any{"selected": selected}
-//	tcmisc.Plugin(c, src, conf)
+//	tgcomp.Plugin(c, src, conf)
 //
 // It returns nil when the plugin has no value for the page, so a page tells
 // that apart from a value that is the zero T. A plugin that has not sent yet
@@ -143,7 +143,7 @@ func ProgressBar(c *tgframe.Container, value int, label string, conf ...*Progres
 type SpinnerConf = tcmisc.SpinnerConf
 
 // Spinner shows that the page function is busy, and returns the function that
-// takes it down again. It sits in an [tclayout.Empty] slot, so taking it down
+// takes it down again. It sits in an [Empty] slot, so taking it down
 // leaves the page as if it had never been there.
 //
 // Call it with defer and the spinner is taken down however the work ends,
@@ -164,7 +164,7 @@ type StatusConf = tcmisc.StatusConf
 // carries the state of the work, and whose contents are the lines written to
 // it so far.
 //
-// It holds an [tclayout.Empty] slot and rewrites it on every change, so the
+// It holds an [Empty] slot and rewrites it on every change, so the
 // label and the lines are always what the last call left.
 type StatusHandle = tcmisc.StatusHandle
 

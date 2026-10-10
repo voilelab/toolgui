@@ -31,6 +31,8 @@ func newDownloadButtonComponent(text string) *downloadButtonComponent {
 	}
 }
 
+// DownloadButtonConf is the configuration for the DownloadButton component.
+//
 //tgcomp:export
 type DownloadButtonConf struct {
 	tgframe.Base

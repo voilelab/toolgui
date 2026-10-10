@@ -25,11 +25,11 @@ func Button(c *tgframe.Container, label string, conf ...*ButtonConf) bool {
 // content it changes, which would otherwise have to send the old content out
 // first and rewrite it.
 //
-//	if tcinput.ButtonClicked(c, "Load details") {
+//	if tgcomp.ButtonClicked(c, "Load details") {
 //		details = load()
 //	}
 //	...
-//	tcinput.Button(c, "Load details")
+//	tgcomp.Button(c, "Load details")
 //
 // The click id comes from the client, and the page has not drawn anything yet
 // to check it against, so the button the last run put on the screen is what
@@ -103,6 +103,7 @@ func DateTimePicker(c *tgframe.Container, label string, conf ...*DateTimePickerC
 	return tcinput.DateTimePicker(c, label, conf...)
 }
 
+// DownloadButtonConf is the configuration for the DownloadButton component.
 type DownloadButtonConf = tcinput.DownloadButtonConf
 
 // DownloadButton create a download button component.
