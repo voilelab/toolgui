@@ -159,7 +159,7 @@ func Index(p *tgframe.Params) error {
   browsers prompt for it. An app that needs it asks itself.
 
 The Echo page of `example/hello` keeps its text this way. See
-[the design note](../../docs/src/architecture/wasm-store.md).
+[how it works](../../docs/src/architecture/wasm-store.md).
 
 ## An upload is written by the page and read by Go
 
