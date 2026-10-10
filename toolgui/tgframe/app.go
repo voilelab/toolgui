@@ -382,23 +382,14 @@ func (app *App) menuNodes() []*MenuNode {
 	return app.menu.nodes
 }
 
-// RunWithHandlingPanic runs page `name` and turns a panic into an error
-// wrapping [ErrPanic]. The panic's error chain is kept, so errors.Is still
-// finds [ErrUpdateInterrupt].
-func (app *App) RunWithHandlingPanic(
-	name string, state *State, notifyFunc SendNotifyPackFunc) error {
-
-	return app.runContextWithHandlingPanic(
-		context.Background(), name, nil, state, notifyFunc, nil)
-}
-
 // runEndFunc receives what an uncut run asked of its session: the
 // [Params.ReplaceQuery] query or the [Params.Navigate] target. At most one is
 // set; navigate wins.
 type runEndFunc func(replaced url.Values, navigate *Navigation)
 
-// runContextWithHandlingPanic is [App.RunWithHandlingPanic] with a context,
-// page query and onEnd.
+// runContextWithHandlingPanic is runContext that turns a panic into an error
+// wrapping [ErrPanic]. The panic's error chain is kept, so errors.Is still
+// finds [ErrUpdateInterrupt].
 func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	name string, query url.Values, state *State,
 	notifyFunc SendNotifyPackFunc, onEnd runEndFunc) (err error) {
@@ -428,16 +419,11 @@ func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	return
 }
 
-// Run is [App.RunContext] with a background context.
+// Run runs page `name` once, outside any session, with a background context
+// and an empty [Params.Query]. A panic in the page is not recovered. Meant for
+// tests; pages are served through a [Session].
 func (app *App) Run(name string, state *State, notifyFunc SendNotifyPackFunc) error {
-	return app.RunContext(context.Background(), name, state, notifyFunc)
-}
-
-// RunContext runs page `name`, passing ctx as [Params.Context].
-// [Params.Query] is empty.
-func (app *App) RunContext(ctx context.Context,
-	name string, state *State, notifyFunc SendNotifyPackFunc) error {
-	return app.runContext(ctx, name, nil, state, notifyFunc, nil)
+	return app.runContext(context.Background(), name, nil, state, notifyFunc, nil)
 }
 
 // runContext runs a page. onEnd, if not nil, gets the last valid

@@ -131,14 +131,15 @@ They wrap with `%w`, so `errors.Is` still works on the original error.
 The `Session` turns the error into a result pack:
 
 ```go
-err := s.app.RunWithHandlingPanic(s.pageName, s.state, sendNotifyPack)
+err := s.app.runContextWithHandlingPanic(runCtx, s.pageName, s.query, s.state,
+    sendNotifyPack, onEnd)
+// ...
 if err != nil {
-    s.sendResult(&ResultPack{Error: err.Error()})
-    slog.Error("run err", "error", err)
+    s.sendResult(ReportError("run err", err))
     return
 }
 
-s.sendResult(&ResultPack{Success: true})
+s.sendSuccess()
 ```
 
 The client renders `ResultPack.Error` in `AppError`, a `is-danger` message
@@ -148,18 +149,23 @@ run clears it.
 
 ## What happens to a panic
 
-`RunWithHandlingPanic` recovers it and turns it into an error wrapping
-`ErrPanic`:
+The session runs the page through `runContextWithHandlingPanic`, which
+recovers it and turns it into an error wrapping `ErrPanic` (keeping the chain
+when the recovered value is an error):
 
 ```go
 defer func() {
     r := recover()
-    if r != nil {
-        log.Println("Panic", r)
-        err = tgutil.Errorf("%w: %v", ErrPanic, r)
+    if r == nil {
+        return
     }
+    // ...
+    err = tgutil.Errorf("%w: %v", ErrPanic, r)
 }()
 ```
+
+`App.Run`, which runs a page once outside a session for tests, does not
+recover: a panic reaches the test.
 
 From there it follows the path above, so the user sees the same red box, its
 message being `panic: ` followed by the recovered value. A panic in one run does not affect the

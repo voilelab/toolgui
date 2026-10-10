@@ -42,7 +42,7 @@ func packsOf(t *testing.T, state *tgframe.State, page tgframe.RunFunc) ([]pack, 
 	app.AddPage("index", "Index", page)
 
 	var packs []pack
-	err := app.RunWithHandlingPanic("index", state, func(p tgframe.NotifyPack) {
+	err := tgframe.RunWithHandlingPanic(app, "index", state, func(p tgframe.NotifyPack) {
 		bs, mErr := tgjson.Marshal(p)
 		if mErr != nil {
 			t.Fatalf("marshal pack: %v", mErr)
@@ -275,7 +275,7 @@ func downloadTokenOf(t *testing.T, state *tgframe.State,
 	app.AddPage("index", "Index", page)
 
 	token := ""
-	err := app.RunWithHandlingPanic("index", state,
+	err := tgframe.RunWithHandlingPanic(app, "index", state,
 		func(notify tgframe.NotifyPack) {
 			bs, err := tgjson.Marshal(notify)
 			if err != nil {
