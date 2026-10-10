@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/voilelab/toolgui/toolgui/internal/opfs"
+	"github.com/voilelab/toolgui/toolgui/tgjson"
 	"github.com/voilelab/toolgui/toolgui/tgutil"
 )
 
@@ -204,6 +205,32 @@ func (s *Store) ReadOnly() (bool, error) {
 	}
 
 	return s.readOnly, nil
+}
+
+// GetJSON decode the value under key into a T, or return [fs.ErrNotExist].
+func GetJSON[T any](s *Store, key string) (T, error) {
+	var v T
+
+	bs, err := s.Get(key)
+	if err != nil {
+		return v, err
+	}
+
+	if err := tgjson.Unmarshal(bs, &v); err != nil {
+		return v, tgutil.Errorf("store %q, key %q: %w", s.name, key, err)
+	}
+
+	return v, nil
+}
+
+// SetJSON encode v as JSON and store it under key.
+func SetJSON(s *Store, key string, v any) error {
+	bs, err := tgjson.Marshal(v)
+	if err != nil {
+		return tgutil.Errorf("store %q, key %q: %w", s.name, key, err)
+	}
+
+	return s.Set(key, bs)
 }
 
 // append write one record at the end and flush it. A failed append is

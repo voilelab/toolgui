@@ -65,8 +65,9 @@ command deletes anything it did not write, so `-o` can point at a web root.
 ## The example app
 
 [`toolgui/tgwasm/example/hello`](https://github.com/voilelab/toolgui/tree/dev/toolgui/tgwasm/example/hello)
-is a runnable version, with three pages, a sidebar textbox, a button and a file
-the page function reads without it leaving the tab:
+is a runnable version, with three pages, a sidebar textbox, a button, a draft
+kept across reloads and a file the page function reads without it leaving the
+tab:
 
 ```shell
 task build_wasm_hello   # static site, in toolgui/tgwasm/example/hello/build
@@ -246,10 +247,47 @@ addEventListener('toolgui:download', (e) => umami.track('download', e.detail))
 `Emit` returns `tgwasm.ErrNoEventCallback` until the frontend has registered
 for events, which it does at boot, before the first page runs.
 
+## Keeping data across reloads
+
+A reload starts from an empty state. Data that must outlive it goes in a
+store, kept in the origin private file system:
+
+```go
+var store = tgwasm.OpenStore("judge")
+
+type Draft struct{ Lang, Code string }
+
+func Index(p *tgframe.Params) error {
+	draft, err := tgwasm.GetJSON[Draft](store, "draft/0004")
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	...
+	return tgwasm.SetJSON(store, "draft/0004", draft)
+}
+```
+
+* Only the wasm build has it. A server build stores data under its own login,
+  in its own database.
+* A Go global is still fine for what only needs to last until a reload: in a
+  tab it belongs to that tab alone. The store is for the rest.
+* `OpenStore` can be called from `main`, but read the store in a page run. Its
+  methods return `ErrBeforeRun` until `Run` installs the bridge.
+* The first tab owns the store. A second tab opens a read-only snapshot, where
+  `SetJSON` returns `ErrReadOnly`. Check `store.ReadOnly()` to tell the user
+  the app is already open in another tab.
+* The browser may clear the data under storage pressure. Call
+  `navigator.storage.persist()` from the page, for example in a
+  [`-head`](#head-html) script, if the app needs it kept.
+
+The example app's Echo page keeps its text this way. The design is in
+[Persistent Store](../architecture/wasm-store.md).
+
 ## What the browser takes away
 
 * One session per tab, created on load. A reload starts from an empty state:
-  there is no server to keep it.
+  there is no server to keep it. See
+  [Keeping data across reloads](#keeping-data-across-reloads).
 * No filesystem to open by path, and no listening socket. `net/http` requests
   become `fetch`, so CORS applies to whatever your page function calls.
 * `GOMAXPROCS` is 1. Goroutines interleave, nothing runs in parallel.

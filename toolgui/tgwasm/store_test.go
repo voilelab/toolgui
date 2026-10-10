@@ -174,6 +174,42 @@ func TestStoreSurvivesReopen(t *testing.T) {
 	}
 }
 
+func TestStoreJSON(t *testing.T) {
+	type draft struct {
+		Lang string
+		Code string
+		Tags []string
+	}
+
+	s, name := testStore(t)
+
+	want := draft{Lang: "go", Code: "package main", Tags: []string{"a", "b"}}
+	if err := SetJSON(s, "draft/1", want); err != nil {
+		t.Fatal(err)
+	}
+
+	s = reopen(t, s, name)
+
+	got, err := GetJSON[draft](s, "draft/1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if got.Lang != want.Lang || got.Code != want.Code ||
+		!slices.Equal(got.Tags, want.Tags) {
+		t.Fatalf("GetJSON = %+v, want %+v", got, want)
+	}
+
+	if _, err := GetJSON[draft](s, "missing"); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("GetJSON of a missing key: %v, want fs.ErrNotExist", err)
+	}
+
+	mustSet(t, s, "bad", "{")
+	if _, err := GetJSON[draft](s, "bad"); err == nil {
+		t.Fatal("GetJSON of invalid JSON: nil error")
+	}
+}
+
 func TestStoreCopiesValues(t *testing.T) {
 	s, _ := testStore(t)
 
