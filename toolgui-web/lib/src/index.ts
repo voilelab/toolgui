@@ -1,4 +1,6 @@
 export { App } from "./app/App"
+export { SessionApp } from "./app/SessionApp"
+export type { SessionBackend } from "./app/SessionApp"
 export { dispatchPack } from "./app/dispatch"
 export {
   splitPagePart, pageFromLocation, encodeQuery, pageHref,
