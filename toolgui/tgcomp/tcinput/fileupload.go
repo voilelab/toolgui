@@ -37,6 +37,8 @@ func newFileUploadComponent(label, accept string) *fileuploadComponent {
 //
 // The content stays on disk. Read it with [FileObject.Open] to work through a
 // stream, or [FileObject.Bytes] to take it whole.
+//
+//tgcomp:export
 type FileObject struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
@@ -71,6 +73,8 @@ func (f *FileObject) Bytes() ([]byte, error) {
 // to have its value set from script, so a default would read back in Go while
 // the box on screen stayed empty. A page that wants to start from a file it
 // already has should read that file itself rather than ask for one.
+//
+//tgcomp:export
 type FileUploadConf struct {
 	tgframe.Base
 
@@ -80,6 +84,8 @@ type FileUploadConf struct {
 
 // FileUpload create a fileupload and return its selected file.
 // Return nil if no file is selected.
+//
+//tgcomp:export
 func FileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadConf) *FileObject {
 	cf := tgframe.OneConf("FileUpload", conf)
 
@@ -119,6 +125,8 @@ func FileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadC
 // Return nil if no file is selected.
 //
 // The i-th file is stored under [tgframe.FileKey] of the component id and i.
+//
+//tgcomp:export
 func MultiFileUpload(c *tgframe.Container, label, accept string, conf ...*FileUploadConf) []*FileObject {
 	cf := tgframe.OneConf("MultiFileUpload", conf)
 

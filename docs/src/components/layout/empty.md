@@ -34,10 +34,6 @@ func (s *EmptySlot) With(f func(c *tgframe.Container))
 func (s *EmptySlot) Clear()
 ```
 
-`EmptySlot` was called `EmptyContainer`; the old name is kept as a deprecated
-alias. See [what a component hands
-back](../../architecture/components.md#what-a-component-hands-back).
-
 The container `With` hands over lives until the next `With` or `Clear`.
 Writing into it after that puts components under a node the client no longer
 has, so take it in the callback rather than keeping it.

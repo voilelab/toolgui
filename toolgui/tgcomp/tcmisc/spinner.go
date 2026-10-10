@@ -25,6 +25,8 @@ func newSpinnerComponent(label string) *spinnerComponent {
 }
 
 // SpinnerConf is the configuration for the Spinner component.
+//
+//tgcomp:export
 type SpinnerConf struct {
 	tgframe.Base
 }
@@ -40,6 +42,8 @@ type SpinnerConf struct {
 //
 // The returned function may be called more than once; only the first call
 // does anything.
+//
+//tgcomp:export
 func Spinner(c *tgframe.Container, label string, conf ...*SpinnerConf) func() {
 	cf := tgframe.OneConf("Spinner", conf)
 

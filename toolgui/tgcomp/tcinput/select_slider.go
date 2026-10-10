@@ -31,6 +31,8 @@ func newSelectSliderComponent(label string, items []string) *selectSliderCompone
 }
 
 // SelectSliderConf is the configuration for the SelectSlider component.
+//
+//tgcomp:export
 type SelectSliderConf struct {
 	tgframe.Base
 
@@ -47,6 +49,8 @@ type SelectSliderConf struct {
 // The handle is always on an item, so it always has an index to hand back: the
 // one the app user left it at, else Default. An empty items, or a Default
 // outside it, is a mistake in the caller and panics.
+//
+//tgcomp:export
 func SelectSlider(c *tgframe.Container, label string, items []string,
 	conf ...*SelectSliderConf) int {
 

@@ -22,11 +22,15 @@ func newSubtitleComponent(text string) *subtitleComponent {
 }
 
 // SubtitleConf is the configuration for the Subtitle component.
+//
+//tgcomp:export
 type SubtitleConf struct {
 	tgframe.Base
 }
 
 // Subtitle create a subtitle.
+//
+//tgcomp:export
 func Subtitle(c *tgframe.Container, text string, conf ...*SubtitleConf) {
 	cf := tgframe.OneConf("Subtitle", conf)
 

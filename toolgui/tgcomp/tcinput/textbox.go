@@ -31,6 +31,8 @@ func newTextboxComponent(label string) *textboxComponent {
 }
 
 // TextboxConf is the configuration for the Textbox component
+//
+//tgcomp:export
 type TextboxConf struct {
 	tgframe.Base
 
@@ -59,6 +61,8 @@ type TextboxConf struct {
 }
 
 // Textbox create a textbox and return its value.
+//
+//tgcomp:export
 func Textbox(c *tgframe.Container, label string, conf ...*TextboxConf) string {
 	cf := tgframe.OneConf("Textbox", conf)
 

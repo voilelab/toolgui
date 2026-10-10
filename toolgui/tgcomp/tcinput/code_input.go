@@ -29,6 +29,8 @@ func newCodeInputComponent(label string) *codeInputComponent {
 }
 
 // CodeInputConf is the configuration for a code input.
+//
+//tgcomp:export
 type CodeInputConf struct {
 	tgframe.Base
 
@@ -56,6 +58,8 @@ type CodeInputConf struct {
 
 // CodeInput create a code editor with syntax highlight and return its value.
 // The value is sent when the editor loses focus or on Ctrl/Cmd+Enter.
+//
+//tgcomp:export
 func CodeInput(c *tgframe.Container, label string, conf ...*CodeInputConf) string {
 	cf := tgframe.OneConf("CodeInput", conf)
 

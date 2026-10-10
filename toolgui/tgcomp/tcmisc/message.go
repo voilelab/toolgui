@@ -25,6 +25,8 @@ func newMessageComponent(body string) *messageComponent {
 }
 
 // MessageConf provide extra config for Message Component.
+//
+//tgcomp:export
 type MessageConf struct {
 	tgframe.Base
 
@@ -37,29 +39,39 @@ type MessageConf struct {
 }
 
 // Message is a component that displays a message.
+//
+//tgcomp:export
 func Message(c *tgframe.Container, text string, conf ...*MessageConf) {
 	message(c, text, tgframe.OneConf("Message", conf), nil)
 }
 
 // MessageInfo is a component that displays a message with info color.
+//
+//tgcomp:export
 func MessageInfo(c *tgframe.Container, text string, conf ...*MessageConf) {
 	color := tcutil.ColorInfo
 	message(c, text, tgframe.OneConf("MessageInfo", conf), &color)
 }
 
 // MessageSuccess is a component that displays a message with success color.
+//
+//tgcomp:export
 func MessageSuccess(c *tgframe.Container, text string, conf ...*MessageConf) {
 	color := tcutil.ColorSuccess
 	message(c, text, tgframe.OneConf("MessageSuccess", conf), &color)
 }
 
 // MessageWarning is a component that displays a message with warning color.
+//
+//tgcomp:export
 func MessageWarning(c *tgframe.Container, text string, conf ...*MessageConf) {
 	color := tcutil.ColorWarning
 	message(c, text, tgframe.OneConf("MessageWarning", conf), &color)
 }
 
 // MessageDanger is a component that displays a message with danger color.
+//
+//tgcomp:export
 func MessageDanger(c *tgframe.Container, text string, conf ...*MessageConf) {
 	color := tcutil.ColorDanger
 	message(c, text, tgframe.OneConf("MessageDanger", conf), &color)

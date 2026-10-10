@@ -11,6 +11,8 @@ import (
 const defaultWriteStreamInterval = 50 * time.Millisecond
 
 // WriteStreamConf is the configuration for the WriteStream component.
+//
+//tgcomp:export
 type WriteStreamConf struct {
 	tgframe.Base
 
@@ -28,6 +30,8 @@ type WriteStreamConf struct {
 // seq runs on a goroutine of its own and must not draw components. WriteStream
 // waits for it to return, so build it on [tgframe.Params.Context]: a cut run
 // then ends it at once.
+//
+//tgcomp:export
 func WriteStream(c *tgframe.Container, seq iter.Seq2[string, error],
 	conf ...*WriteStreamConf) (string, error) {
 	cf := tgframe.OneConf("WriteStream", conf)

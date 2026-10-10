@@ -17,6 +17,8 @@ const (
 )
 
 // StatusConf is the configuration for the Status component.
+//
+//tgcomp:export
 type StatusConf struct {
 	tgframe.Base
 
@@ -31,6 +33,8 @@ type StatusConf struct {
 //
 // It holds an [tclayout.Empty] slot and rewrites it on every change, so the
 // label and the lines are always what the last call left.
+//
+//tgcomp:export
 type StatusHandle struct {
 	slot     *tclayout.EmptySlot
 	id       string
@@ -39,12 +43,6 @@ type StatusHandle struct {
 	state    statusState
 	lines    []string
 }
-
-// StatusContainer is the old name of [StatusHandle].
-//
-// Deprecated: use [StatusHandle]. A status is a handle on work being
-// reported, not a container components can be added to.
-type StatusContainer = StatusHandle
 
 // Status reports a piece of work while the page function does it. Write the
 // lines as they come, and close it with [StatusHandle.Complete] or
@@ -59,6 +57,8 @@ type StatusContainer = StatusHandle
 //
 // A status that is never closed stays in its running state, which is what the
 // page should show when the work did not get that far.
+//
+//tgcomp:export
 func Status(c *tgframe.Container, label string, conf ...*StatusConf) *StatusHandle {
 	cf := tgframe.OneConf("Status", conf)
 

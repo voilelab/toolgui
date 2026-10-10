@@ -28,6 +28,8 @@ func newJSONComponent(s string) *jsonComponent {
 }
 
 // JSONConf is the configuration for the JSON component.
+//
+//tgcomp:export
 type JSONConf struct {
 	tgframe.Base
 }
@@ -35,6 +37,8 @@ type JSONConf struct {
 // JSON create a JSON viewer for v.
 // If v is a string, it will be treated as a JSON string.
 // If v is not a string, it will be serialized to a JSON string.
+//
+//tgcomp:export
 func JSON(c *tgframe.Container, v any, conf ...*JSONConf) {
 	cf := tgframe.OneConf("JSON", conf)
 

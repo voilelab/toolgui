@@ -20,8 +20,11 @@ const defaultDataFramePageSize = 25
 
 // ColumnType is how a DataFrame column's cells are read, which is what tells
 // sorting whether "10" comes before or after "9".
+//
+//tgcomp:export
 type ColumnType int
 
+//tgcomp:export
 const (
 	// ColumnTypeText sorts the cells as strings.
 	ColumnTypeText ColumnType = iota
@@ -51,8 +54,11 @@ func (t ColumnType) String() string {
 }
 
 // ColumnAlign is which edge a DataFrame column's cells sit against.
+//
+//tgcomp:export
 type ColumnAlign int
 
+//tgcomp:export
 const (
 	// ColumnAlignAuto aligns a ColumnTypeNumber column right, and every
 	// other column left.
@@ -93,8 +99,11 @@ func (a ColumnAlign) resolve(t ColumnType) string {
 // Picking a row is the one DataFrame interaction that reruns the page
 // function: sorting, searching and paging stay in the browser, but a
 // selection is an answer the page has to be given.
+//
+//tgcomp:export
 type SelectionMode int
 
+//tgcomp:export
 const (
 	// SelectionModeNone leaves the rows unpickable, the default. A DataFrame
 	// like this holds no state and always returns an empty selection.
@@ -134,6 +143,8 @@ func (m SelectionMode) maxSelected() int {
 // DataFrameColumnConf is the configuration of one DataFrame column. It is
 // named after the component rather than called ColumnConf because the layout
 // Column already has that name.
+//
+//tgcomp:export
 type DataFrameColumnConf struct {
 	// Type is how the cells are read and sorted, default ColumnTypeText.
 	Type ColumnType
@@ -159,6 +170,8 @@ type DataFrameColumnConf struct {
 // DataFrameConf is the configuration for the DataFrame component. Sorting and
 // searching are on unless the conf turns them off, so a DataFrame written
 // without a conf is the interactive table the component is for.
+//
+//tgcomp:export
 type DataFrameConf struct {
 	tgframe.Base
 
@@ -386,6 +399,8 @@ func selectionFromKeys(keys, rowKeys []string, mode SelectionMode) []int {
 //
 // [DataFrameCells] is the same table with typed cells, for values whose
 // display is not their sort order (a percentage, a missing value).
+//
+//tgcomp:export
 func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 	conf ...*DataFrameConf) []int {
 
@@ -397,6 +412,8 @@ func DataFrame(c *tgframe.Container, head []string, rows [][]string,
 // and a missing value always sorts last. A [NumberCell] belongs in a
 // ColumnTypeNumber column and a [TimeCell] in a ColumnTypeDatetime one; a
 // cell in any other column fails the run.
+//
+//tgcomp:export
 func DataFrameCells(c *tgframe.Container, head []string, rows [][]Cell,
 	conf ...*DataFrameConf) []int {
 

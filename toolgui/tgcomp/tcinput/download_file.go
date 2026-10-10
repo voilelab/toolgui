@@ -46,6 +46,8 @@ func newDownloadFileComponent(text string) *downloadFileComponent {
 }
 
 // DownloadFileConf is the configuration for the DownloadFile component.
+//
+//tgcomp:export
 type DownloadFileConf struct {
 	tgframe.Base
 
@@ -83,6 +85,8 @@ type DownloadFileConf struct {
 //
 // It reports whether this run is handling a click on it, the same as
 // [DownloadButton].
+//
+//tgcomp:export
 func DownloadFile(c *tgframe.Container, text string, body []byte,
 	conf ...*DownloadFileConf) bool {
 	cf := tgframe.OneConf("DownloadFile", conf)
@@ -121,6 +125,8 @@ func DownloadFile(c *tgframe.Container, text string, body []byte,
 //
 // An error from gen is shown under the button, which stays so the app user can
 // try again. It reports whether this run is handling a click on it.
+//
+//tgcomp:export
 func DownloadFileFunc(c *tgframe.Container, text string,
 	gen func() ([]byte, error), conf ...*DownloadFileConf) bool {
 	cf := tgframe.OneConf("DownloadFileFunc", conf)
@@ -171,6 +177,8 @@ func DownloadFileFunc(c *tgframe.Container, text string,
 //
 // It takes no body, for the same reason [DownloadButtonClicked] does not: the
 // button's id comes from text (or the conf id), not from the file.
+//
+//tgcomp:export
 func DownloadFileClicked(c *tgframe.Container, text string,
 	conf ...*DownloadFileConf) bool {
 

@@ -36,6 +36,8 @@ func newPageLinkComponent(
 }
 
 // PageLinkConf is the configuration for the PageLink component.
+//
+//tgcomp:export
 type PageLinkConf struct {
 	tgframe.Base
 }
@@ -44,6 +46,8 @@ type PageLinkConf struct {
 // [tgframe.Params.Query]. It is a real link, so middle-click and copying it
 // work. It takes a page name, not a URL, so it cannot point off the app.
 // An unknown page fails the component.
+//
+//tgcomp:export
 func PageLink(c *tgframe.Container, text, page string,
 	query url.Values, conf ...*PageLinkConf) {
 

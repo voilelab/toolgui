@@ -104,9 +104,8 @@ interface.
 `Container` is not one of these words. `Box`, `Column`, `Form` and `Expand`
 hand out a `*tgframe.Container`, which is a place components are *added* to, as
 many as the page function likes. A slot is written whole and rewritten whole,
-and a handle is neither — which is why `EmptyContainer` is now `EmptySlot` and
-`StatusContainer` is now `StatusHandle`. The old names stay as deprecated type
-aliases, so code that uses them still compiles; new code should not use them.
+and a handle is neither — which is why the slot is `EmptySlot` and the handle is
+`StatusHandle`.
 
 `Status.Error` is likewise now `Status.Fail`, with `Error` kept and deprecated:
 the old name reads like the `error` interface, which a status does not
@@ -313,3 +312,20 @@ over is only good until the next `With` or `Clear`, so take it in the callback
 rather than keeping it. And a slot starts empty on every run, whatever the
 last run left in it, so the first write of a run is not stacked on the last
 write of the one before.
+
+## Where `tgcomp` comes from
+
+Each built-in component lives in a `tgcomp/tc*` package. `tgcomp` itself is
+generated: a declaration marked with a `//tgcomp:export` directive at the end
+of its doc comment is forwarded, a func by a wrapper, a type by an alias and a
+const group by a group of the same names, with the doc comment copied.
+
+```go
+// Box create a box container.
+//
+//tgcomp:export
+func Box(c *tgframe.Container, conf ...*BoxConf) *tgframe.Container {
+```
+
+After adding or changing a marked declaration, run `go generate` in
+`toolgui/tgcomp`. A test fails while the generated files are stale.

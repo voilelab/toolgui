@@ -24,6 +24,8 @@ func newBadgeComponent(text string) *badgeComponent {
 }
 
 // BadgeConf is the configuration for the Badge component.
+//
+//tgcomp:export
 type BadgeConf struct {
 	tgframe.Base
 
@@ -33,6 +35,8 @@ type BadgeConf struct {
 }
 
 // Badge show a short label, for a status or a tag next to other content.
+//
+//tgcomp:export
 func Badge(c *tgframe.Container, text string, conf ...*BadgeConf) {
 	cf := tgframe.OneConf("Badge", conf)
 

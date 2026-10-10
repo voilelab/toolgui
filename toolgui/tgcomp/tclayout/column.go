@@ -26,6 +26,8 @@ func newColumnComponent(equal bool) *columnComponent {
 // ColumnConf is the configuration for the column components. The containers a
 // column hands out derive their ids from its ID; give none and they carry
 // none, and the components inside are still placed by position.
+//
+//tgcomp:export
 type ColumnConf struct {
 	tgframe.Base
 }
@@ -48,6 +50,8 @@ func column(c *tgframe.Container, n uint, equal bool, cf *ColumnConf) []*tgframe
 }
 
 // Column create N columns, each as wide as its content needs.
+//
+//tgcomp:export
 func Column(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
 	if n == 0 {
 		panic("number of columns should > 0")
@@ -57,18 +61,24 @@ func Column(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Contai
 }
 
 // Column1 create 1 column.
+//
+//tgcomp:export
 func Column1(c *tgframe.Container, conf ...*ColumnConf) *tgframe.Container {
 	cols := Column(c, 1, conf...)
 	return cols[0]
 }
 
 // Column2 create 2 columns.
+//
+//tgcomp:export
 func Column2(c *tgframe.Container, conf ...*ColumnConf) (*tgframe.Container, *tgframe.Container) {
 	cols := Column(c, 2, conf...)
 	return cols[0], cols[1]
 }
 
 // Column3 create 3 columns.
+//
+//tgcomp:export
 func Column3(c *tgframe.Container, conf ...*ColumnConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
 
@@ -77,6 +87,8 @@ func Column3(c *tgframe.Container, conf ...*ColumnConf) (
 }
 
 // EqColumn create N columns with equal width.
+//
+//tgcomp:export
 func EqColumn(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Container {
 	if n == 0 || n > 5 {
 		panic("number of columns should be 1, 2, 3, 4, 5")
@@ -86,18 +98,24 @@ func EqColumn(c *tgframe.Container, n uint, conf ...*ColumnConf) []*tgframe.Cont
 }
 
 // EqColumn1 create 1 column.
+//
+//tgcomp:export
 func EqColumn1(c *tgframe.Container, conf ...*ColumnConf) *tgframe.Container {
 	cols := EqColumn(c, 1, conf...)
 	return cols[0]
 }
 
 // EqColumn2 create 2 columns.
+//
+//tgcomp:export
 func EqColumn2(c *tgframe.Container, conf ...*ColumnConf) (*tgframe.Container, *tgframe.Container) {
 	cols := EqColumn(c, 2, conf...)
 	return cols[0], cols[1]
 }
 
 // EqColumn3 create 3 columns.
+//
+//tgcomp:export
 func EqColumn3(c *tgframe.Container, conf ...*ColumnConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container) {
 
@@ -106,6 +124,8 @@ func EqColumn3(c *tgframe.Container, conf ...*ColumnConf) (
 }
 
 // EqColumn4 create 4 columns.
+//
+//tgcomp:export
 func EqColumn4(c *tgframe.Container, conf ...*ColumnConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container) {
 
@@ -114,6 +134,8 @@ func EqColumn4(c *tgframe.Container, conf ...*ColumnConf) (
 }
 
 // EqColumn5 create 5 columns.
+//
+//tgcomp:export
 func EqColumn5(c *tgframe.Container, conf ...*ColumnConf) (
 	*tgframe.Container, *tgframe.Container, *tgframe.Container, *tgframe.Container,
 	*tgframe.Container) {

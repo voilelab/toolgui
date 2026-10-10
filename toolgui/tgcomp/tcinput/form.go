@@ -24,6 +24,8 @@ func newFormComponent() *formComponent {
 // FormConf is the configuration for the Form component. The container a form
 // hands out derives its id from the form's; give none and it carries none, and
 // the components inside are still placed by position.
+//
+//tgcomp:export
 type FormConf struct {
 	tgframe.Base
 
@@ -46,6 +48,8 @@ type FormConf struct {
 // A form is submitted by its built-in submit button, or by a [Button] written
 // inside it — a click inside a form carries the held values with it, so the
 // page sees the new values on the run the button reports its click.
+//
+//tgcomp:export
 func Form(c *tgframe.Container, conf ...*FormConf) *tgframe.Container {
 	cf := tgframe.OneConf("Form", conf)
 

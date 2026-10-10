@@ -36,6 +36,8 @@ func newChatInputComponent(placeholder string) *chatInputComponent {
 }
 
 // ChatInputConf is the configuration for the ChatInput component.
+//
+//tgcomp:export
 type ChatInputConf struct {
 	tgframe.Base
 
@@ -53,6 +55,8 @@ type ChatInputConf struct {
 // Written in the page's main container, it is pinned to the bottom of the
 // page wherever it is written, so it may come before the messages it adds.
 // In any other container it stays where it is written.
+//
+//tgcomp:export
 func ChatInput(c *tgframe.Container, placeholder string,
 	conf ...*ChatInputConf) (string, bool) {
 	cf := tgframe.OneConf("ChatInput", conf)

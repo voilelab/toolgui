@@ -11,6 +11,8 @@ var _ tgframe.Component = &toolbarComponent{}
 const toolbarComponentName = "toolbar_component"
 
 // The ways a toolbar may line its items up, as the client receives them.
+//
+//tgcomp:export
 const (
 	ToolbarJustifyStart   = "start"
 	ToolbarJustifyEnd     = "end"
@@ -48,6 +50,8 @@ func toolbarJustify(justify string) string {
 // ToolbarConf is the configuration for the Toolbar component. The container a
 // toolbar hands out derives its id from the toolbar's; give none and it
 // carries none, and the components inside are still placed by position.
+//
+//tgcomp:export
 type ToolbarConf struct {
 	tgframe.Base
 
@@ -71,6 +75,8 @@ type ToolbarConf struct {
 //	tgcomp.Select(bar, "Mode", modes)
 //
 // A row too wide for the viewport wraps instead of pushing the page sideways.
+//
+//tgcomp:export
 func Toolbar(c *tgframe.Container, conf ...*ToolbarConf) *tgframe.Container {
 	cf := tgframe.OneConf("Toolbar", conf)
 

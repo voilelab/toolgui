@@ -22,11 +22,15 @@ func newLatexComponent(text string) *latexComponent {
 }
 
 // LatexConf is the configuration for the Latex component.
+//
+//tgcomp:export
 type LatexConf struct {
 	tgframe.Base
 }
 
 // Latex renders text as LaTeX.
+//
+//tgcomp:export
 func Latex(c *tgframe.Container, text string, conf ...*LatexConf) {
 	cf := tgframe.OneConf("Latex", conf)
 

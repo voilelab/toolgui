@@ -30,6 +30,8 @@ func newPopoverComponent(label string) *popoverComponent {
 }
 
 // PopoverConf is the configuration for the Popover component.
+//
+//tgcomp:export
 type PopoverConf struct {
 	tgframe.Base
 
@@ -39,6 +41,8 @@ type PopoverConf struct {
 
 // Popover create a button with a floating panel behind it, and return the
 // container the panel holds.
+//
+//tgcomp:export
 func Popover(c *tgframe.Container, label string, conf ...*PopoverConf) *tgframe.Container {
 	cf := tgframe.OneConf("Popover", conf)
 

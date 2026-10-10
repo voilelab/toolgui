@@ -24,11 +24,15 @@ func newLinkComponent(text, url string) *linkComponent {
 }
 
 // LinkConf is the configuration for the Link component.
+//
+//tgcomp:export
 type LinkConf struct {
 	tgframe.Base
 }
 
 // Link create a link component.
+//
+//tgcomp:export
 func Link(c *tgframe.Container, text, url string, conf ...*LinkConf) {
 	cf := tgframe.OneConf("Link", conf)
 

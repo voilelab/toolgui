@@ -12,9 +12,13 @@ const gridComponentName = "grid_component"
 
 // GridDefaultMinColWidth is the column width, in px, a grid uses when its conf
 // gives none.
+//
+//tgcomp:export
 const GridDefaultMinColWidth = 200
 
 // The gaps a grid may leave between its cells, as the client receives them.
+//
+//tgcomp:export
 const (
 	GridGapNone = "none"
 	GridGapXS   = "xs"
@@ -54,6 +58,8 @@ func gridGap(gap string) string {
 
 // GridConf is the configuration for the Grid component. The container a grid
 // hands out derives its id from the grid's; give none and it carries none.
+//
+//tgcomp:export
 type GridConf struct {
 	tgframe.Base
 
@@ -75,6 +81,8 @@ type GridConf struct {
 //	}
 //
 // A short last row keeps the width of the rows above.
+//
+//tgcomp:export
 func Grid(c *tgframe.Container, conf ...*GridConf) *tgframe.Container {
 	cf := tgframe.OneConf("Grid", conf)
 

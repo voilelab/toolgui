@@ -51,9 +51,8 @@ way passing two confs to a component does.
 A status that is never closed stays in its running state, which is what the
 page should show when the work did not get that far.
 
-`StatusHandle` was called `StatusContainer`, and `Fail` was called `Error` —
-a name that reads like the `error` interface. Both old names are kept as
-deprecated aliases. See [what a component hands
+`Fail` was called `Error` — a name that reads like the `error` interface.
+`Error` is kept as a deprecated alias. See [what a component hands
 back](../../architecture/components.md#what-a-component-hands-back).
 
 ## Example

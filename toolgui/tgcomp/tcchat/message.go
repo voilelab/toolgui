@@ -86,6 +86,8 @@ func initial(role string) string {
 }
 
 // ChatMessageConf is the configuration for the ChatMessage component.
+//
+//tgcomp:export
 type ChatMessageConf struct {
 	tgframe.Base
 
@@ -98,6 +100,8 @@ type ChatMessageConf struct {
 // ChatMessage draws a message of a chat, sent by role, and returns the
 // container its content goes in. "user" and "human" are drawn as the user,
 // "assistant" and "ai" as the assistant; any other role is drawn by name.
+//
+//tgcomp:export
 func ChatMessage(c *tgframe.Container, role string,
 	conf ...*ChatMessageConf) *tgframe.Container {
 	cf := tgframe.OneConf("ChatMessage", conf)

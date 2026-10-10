@@ -33,6 +33,8 @@ func newColorPickerComponent(label string) *colorPickerComponent {
 }
 
 // ColorPickerConf is the configuration for a color picker.
+//
+//tgcomp:export
 type ColorPickerConf struct {
 	tgframe.Base
 
@@ -49,6 +51,8 @@ type ColorPickerConf struct {
 //
 // A Default that is not an "#rrggbb" color is a mistake in the caller rather
 // than a value to correct, and panics.
+//
+//tgcomp:export
 func ColorPicker(c *tgframe.Container, label string, conf ...*ColorPickerConf) string {
 	cf := tgframe.OneConf("ColorPicker", conf)
 

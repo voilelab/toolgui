@@ -20,6 +20,8 @@ const (
 // Cell is one DataFrame cell: a value the column sorts by, and the string
 // the table shows and searches. Build one with [TextCell], [NumberCell],
 // [TimeCell] or [MissingCell].
+//
+//tgcomp:export
 type Cell struct {
 	kind       cellKind
 	text       string
@@ -30,6 +32,8 @@ type Cell struct {
 
 // TextCell is a cell holding s, read the way [DataFrame] reads its strings:
 // a number or datetime column still parses it.
+//
+//tgcomp:export
 func TextCell(s string) Cell {
 	return Cell{kind: cellText, text: s}
 }
@@ -37,6 +41,8 @@ func TextCell(s string) Cell {
 // NumberCell is a cell sorted by v. It is shown through the column's
 // [NumberFormat] unless WithDisplay says otherwise. NaN is a missing cell.
 // It belongs in a ColumnTypeNumber column.
+//
+//tgcomp:export
 func NumberCell(v float64) Cell {
 	if math.IsNaN(v) {
 		return MissingCell()
@@ -46,6 +52,8 @@ func NumberCell(v float64) Cell {
 
 // TimeCell is a cell sorted by the instant t, shown as RFC 3339 unless
 // WithDisplay says otherwise. It belongs in a ColumnTypeDatetime column.
+//
+//tgcomp:export
 func TimeCell(t time.Time) Cell {
 	return Cell{kind: cellTime, num: float64(t.UnixMilli()),
 		text: t.Format(time.RFC3339)}
@@ -53,6 +61,8 @@ func TimeCell(t time.Time) Cell {
 
 // MissingCell is a cell with no value. It sorts last whichever direction the
 // column is sorted in, and shows empty unless WithDisplay says otherwise.
+//
+//tgcomp:export
 func MissingCell() Cell {
 	return Cell{kind: cellMissing}
 }
@@ -66,6 +76,8 @@ func (c Cell) WithDisplay(s string) Cell {
 
 // NumberFormat is how a ColumnTypeNumber column shows a [NumberCell] that
 // has no display of its own.
+//
+//tgcomp:export
 type NumberFormat struct {
 	// Decimals is how many digits follow the point. Negative fails the run.
 	Decimals int

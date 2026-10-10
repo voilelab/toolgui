@@ -20,11 +20,15 @@ func newDividerComponent() *dividerComponent {
 }
 
 // DividerConf is the configuration for the Divider component.
+//
+//tgcomp:export
 type DividerConf struct {
 	tgframe.Base
 }
 
 // Divider create a horizontal line.
+//
+//tgcomp:export
 func Divider(c *tgframe.Container, conf ...*DividerConf) {
 	cf := tgframe.OneConf("Divider", conf)
 

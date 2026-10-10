@@ -22,11 +22,15 @@ func newHTMLComponent(html string) *htmlComponent {
 }
 
 // HTMLConf is the configuration for the HTML component.
+//
+//tgcomp:export
 type HTMLConf struct {
 	tgframe.Base
 }
 
 // HTML adds an HTML component to the container.
+//
+//tgcomp:export
 func HTML(c *tgframe.Container, html string, conf ...*HTMLConf) {
 	cf := tgframe.OneConf("HTML", conf)
 

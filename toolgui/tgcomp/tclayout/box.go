@@ -22,11 +22,15 @@ func newBoxComponent() *boxComponent {
 // BoxConf is the configuration for the Box component. The container a box
 // hands out derives its id from the box's; give none and it carries none, and
 // the components inside are still placed by position.
+//
+//tgcomp:export
 type BoxConf struct {
 	tgframe.Base
 }
 
 // Box create a box container.
+//
+//tgcomp:export
 func Box(c *tgframe.Container, conf ...*BoxConf) *tgframe.Container {
 	cf := tgframe.OneConf("Box", conf)
 

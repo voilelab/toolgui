@@ -31,6 +31,8 @@ func newRadioComponent(label string, items []string) *radioComponent {
 }
 
 // RadioConf is the configuration for the Radio component.
+//
+//tgcomp:export
 type RadioConf struct {
 	tgframe.Base
 
@@ -55,6 +57,8 @@ func (c *RadioConf) SetDefault(v int) *RadioConf {
 //
 // A radio has no placeholder to reserve an index for, so the state under its
 // id is 0-based, unlike [Select]'s. Neither shows through here.
+//
+//tgcomp:export
 func Radio(c *tgframe.Container, label string, items []string, conf ...*RadioConf) *int {
 	cf := tgframe.OneConf("Radio", conf)
 

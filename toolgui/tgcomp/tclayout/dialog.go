@@ -12,6 +12,8 @@ var _ tgframe.Component = &dialogComponent{}
 const dialogComponentName = "dialog_component"
 
 // The widths a dialog may be given, as the client receives them.
+//
+//tgcomp:export
 const (
 	DialogWidthSmall  = "small"
 	DialogWidthMedium = "medium"
@@ -55,6 +57,8 @@ func dialogWidth(width string) string {
 }
 
 // DialogConf is the configuration for the Dialog component.
+//
+//tgcomp:export
 type DialogConf struct {
 	tgframe.Base
 
@@ -82,6 +86,8 @@ func (c *DialogConf) SetDismissible(v bool) *DialogConf {
 
 // DialogContainer is what [Dialog] hands out: the dialog it drew, to be
 // opened, closed and filled while the page function runs.
+//
+//tgcomp:export
 type DialogContainer struct {
 	comp *dialogComponent
 
@@ -167,6 +173,8 @@ func (d *DialogContainer) With(f func(c *tgframe.Container)) {
 // component hidden behind an `if` does. Wrap the body in a
 // [github.com/voilelab/toolgui/toolgui/tgcomp.Empty] slot and clear it to
 // throw that state away.
+//
+//tgcomp:export
 func Dialog(c *tgframe.Container, title string, conf ...*DialogConf) *DialogContainer {
 	cf := tgframe.OneConf("Dialog", conf)
 

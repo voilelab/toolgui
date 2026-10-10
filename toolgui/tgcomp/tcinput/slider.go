@@ -40,6 +40,8 @@ func newSliderComponent[T Numeric](label string) *sliderComponent[T] {
 }
 
 // SliderConf is the configuration for a slider component.
+//
+//tgcomp:export
 type SliderConf[T Numeric] struct {
 	tgframe.Base
 
@@ -99,6 +101,8 @@ func orDefault[T Numeric](v *T, def T) T {
 //
 // A range whose Min is above its Max, or a negative Step, is a mistake in the
 // caller rather than a value to correct, and panics.
+//
+//tgcomp:export
 func Slider[T Numeric](
 	c *tgframe.Container, label string, conf ...*SliderConf[T]) T {
 

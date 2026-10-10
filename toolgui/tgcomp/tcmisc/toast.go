@@ -58,6 +58,8 @@ func toastDuration(d time.Duration) int64 {
 }
 
 // ToastConf is the configuration for the Toast component.
+//
+//tgcomp:export
 type ToastConf struct {
 	tgframe.Base
 
@@ -91,6 +93,8 @@ type ToastConf struct {
 // Whether the run that fired it finishes does not matter: a toast the client
 // has already been told about lives out its duration there, and an
 // interrupted run cannot take it back.
+//
+//tgcomp:export
 func Toast(c *tgframe.Container, text string, conf ...*ToastConf) {
 	cf := tgframe.OneConf("Toast", conf)
 
