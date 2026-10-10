@@ -62,7 +62,8 @@ func Echo(p *tgframe.Params) error {
 		tgcomp.Text(p.Main, "Already open in another tab: changes here are not saved.")
 	}
 
-	text := tgcomp.Textarea(p.Main, "Say something",
+	// The textarea sends its value on blur, so that is when it is saved.
+	text := tgcomp.Textarea(p.Main, "Say something (saved when you leave the box)",
 		&tgcomp.TextareaConf{Default: saved.Text})
 	tgcomp.Text(p.Main, strings.ToUpper(text))
 
