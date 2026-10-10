@@ -123,28 +123,42 @@ addEventListener('toolgui:download', (e) => umami.track('download', e.detail))
 Emit fails with `ErrNoEventCallback` until the page has registered for events,
 which the frontend does at boot, before the first page runs.
 
-## A store survives a reload
+## Keeping data across reloads
 
-`tgwasm.OpenStore(name)` is a key-value store on `[]byte`, kept in the origin
-private file system under `toolgui-kv/<name>/`:
+`tgwasm.OpenStore(name)` is a key-value store kept in the origin private file
+system under `toolgui-kv/<name>/`. `GetJSON` and `SetJSON` read and write a
+value through `tgjson`; `Get` and `Set` take `[]byte`. A missing key is
+`fs.ErrNotExist`.
 
 ```go
 var store = tgwasm.OpenStore("judge")
 
+type Draft struct{ Lang, Code string }
+
 func Index(p *tgframe.Params) error {
-	draft, err := store.Get("draft/0004")
+	draft, err := tgwasm.GetJSON[Draft](store, "draft/0004")
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
 	...
-	return store.Set("draft/0004", draft)
+	return tgwasm.SetJSON(store, "draft/0004", draft)
 }
 ```
 
-It loads on a goroutine of its own, so `OpenStore` can be called from `main`.
-Its methods fail with `ErrBeforeRun` until `Run` installs the bridge; read it in
-a page run. The first tab owns the store; later tabs get a read-only snapshot,
-where writes fail with `ErrReadOnly`. See
+* **wasm only.** The web executor has none on purpose, and a Wails app writes
+  files directly.
+* **Go global or store.** A Go global lasts until a reload, and in a tab it is
+  that tab's alone. Put in the store only what must outlive the reload.
+* **Open from `main`, read in a page.** `OpenStore` loads on a goroutine of its
+  own. Its methods fail with `ErrBeforeRun` until `Run` installs the bridge.
+* **One writer.** The first tab owns the store. Later tabs get a read-only
+  snapshot, where writes fail with `ErrReadOnly`. `ReadOnly()` lets a page say
+  so.
+* **The browser may evict it.** OPFS data can be cleared under storage
+  pressure. The store does not call `navigator.storage.persist()`, since some
+  browsers prompt for it. An app that needs it asks itself.
+
+The Echo page of `example/hello` keeps its text this way. See
 [the design note](../../docs/src/architecture/wasm-store.md).
 
 ## An upload is written by the page and read by Go

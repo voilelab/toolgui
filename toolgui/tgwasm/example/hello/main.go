@@ -6,8 +6,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"strings"
 
 	"github.com/voilelab/toolgui/toolgui/tgcomp"
@@ -33,11 +35,41 @@ func Index(p *tgframe.Params) error {
 	return nil
 }
 
+// store keeps the Echo draft across reloads.
+var store = tgwasm.OpenStore("hello")
+
+const draftKey = "echo/draft"
+
+type draft struct {
+	Text string
+}
+
+// Echo keeps its text in the store, so a reload does not lose it.
 func Echo(p *tgframe.Params) error {
 	tgcomp.Title(p.Main, "Echo")
 
-	text := tgcomp.Textarea(p.Main, "Say something")
+	saved, err := tgwasm.GetJSON[draft](store, draftKey)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+
+	readOnly, err := store.ReadOnly()
+	if err != nil {
+		return err
+	}
+
+	if readOnly {
+		tgcomp.Text(p.Main, "Already open in another tab: changes here are not saved.")
+	}
+
+	// The textarea sends its value on blur, so that is when it is saved.
+	text := tgcomp.Textarea(p.Main, "Say something (saved when you leave the box)",
+		&tgcomp.TextareaConf{Default: saved.Text})
 	tgcomp.Text(p.Main, strings.ToUpper(text))
+
+	if !readOnly && text != saved.Text {
+		return tgwasm.SetJSON(store, draftKey, draft{Text: text})
+	}
 
 	return nil
 }
