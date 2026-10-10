@@ -449,7 +449,7 @@ func TestRunWithHandlingPanicKeepsErrorChain(t *testing.T) {
 		return nil
 	})
 
-	err := app.RunWithHandlingPanic(testPageName, NewState(),
+	err := RunWithHandlingPanic(app, testPageName, NewState(),
 		func(pack NotifyPack) { panic(ErrUpdateInterrupt) })
 
 	if !errors.Is(err, ErrPanic) {

@@ -150,7 +150,7 @@ func TestCallerMistakeStillPanics(t *testing.T) {
 		return nil
 	})
 
-	err := app.RunWithHandlingPanic("index", tgframe.NewState(),
+	err := tgframe.RunWithHandlingPanic(app, "index", tgframe.NewState(),
 		func(p tgframe.NotifyPack) {})
 	if !errors.Is(err, tgframe.ErrPanic) {
 		t.Errorf("err = %v, want ErrPanic", err)
