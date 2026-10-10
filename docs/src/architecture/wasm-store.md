@@ -6,9 +6,9 @@
 > [Keeping data across reloads](../hello-world/wasm.md#keeping-data-across-reloads).
 
 A wasm app keeps drafts and records that should survive a reload or a closed
-tab. Today it has no API for that. offline-judge wraps IndexedDB by hand: about
-370 lines of `syscall/js` with `await`, `jsTry` and cursor scans, plus a Go
-global as an in-memory copy.
+tab. Before the store it had no API for that. offline-judge wraps IndexedDB by
+hand: about 370 lines of `syscall/js` with `await`, `jsTry` and cursor scans,
+plus a Go global as an in-memory copy.
 
 The hard part is not storage. A Go function on the JavaScript callback stack
 cannot block, and every browser storage API except a sync access handle
