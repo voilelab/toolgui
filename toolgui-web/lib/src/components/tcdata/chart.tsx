@@ -154,6 +154,9 @@ function buildConfig(props: any, theme: string, surface: string): any {
   // way.
   const labels: string[] = props.labels
   const showPoints = labels.length <= maxPointLabels
+  // Counts get whole-number ticks, not 0.1 steps.
+  const integral = !scatter && props.series.every((series: any) =>
+    series.values.every((v: any) => v === null || Number.isInteger(v)))
 
   const datasets = props.series.map((series: any, index: number) => {
     const color = seriesColor(series, index, theme)
@@ -226,7 +229,10 @@ function buildConfig(props: any, theme: string, surface: string): any {
           display: props.series.length > 1,
           position: 'top',
           align: 'start',
-          labels: { usePointStyle: true, boxWidth: 8, color: chrome.tick },
+          labels: {
+            usePointStyle: true, boxWidth: 8, boxHeight: 8, padding: 16,
+            color: chrome.tick,
+          },
         },
       },
       scales: {
@@ -240,7 +246,8 @@ function buildConfig(props: any, theme: string, surface: string): any {
           // to follow a point back to a tick.
           grid: scatter ? { color: chrome.grid } : { display: false },
           border: { color: chrome.grid },
-          ticks: { color: chrome.tick },
+          // Skip labels rather than tilt them.
+          ticks: { color: chrome.tick, maxRotation: 0, autoSkipPadding: 12 },
           title: {
             display: !!props.x_label,
             text: props.x_label,
@@ -259,7 +266,7 @@ function buildConfig(props: any, theme: string, surface: string): any {
           beginAtZero: bar || area,
           grid: { color: chrome.grid },
           border: { display: false },
-          ticks: { color: chrome.tick },
+          ticks: { color: chrome.tick, precision: integral ? 0 : undefined },
           title: {
             display: !!props.y_label,
             text: props.y_label,
@@ -281,6 +288,13 @@ export function TChart({ node, theme }: Props) {
     const canvas = canvasRef.current
     if (!canvas) {
       return
+    }
+
+    // Draw text in the page's font, not chart.js's Helvetica. A canvas cannot
+    // inherit it, so it is read off the element.
+    const family = window.getComputedStyle(canvas).fontFamily
+    if (family) {
+      Chart.defaults.font.family = family
     }
 
     const resolved = resolveTheme(theme)

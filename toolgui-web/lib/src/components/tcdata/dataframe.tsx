@@ -104,20 +104,26 @@ export function compare(a: Cell, b: Cell, type: Column["type"], dir: number): nu
 
 // SortButton is a column head that toggles through ascending, descending and
 // back to the order the rows arrived in.
-function SortButton({ label, sort, onSort }: {
+// The label sits on the column's side, so a head lines up with its cells; the
+// icon goes on the inner side.
+function SortButton({ label, align, sort, onSort }: {
   label: string
+  align: Column["align"]
   sort: "asc" | "desc" | null
   onSort: () => void
 }) {
   const Icon = sort === "asc" ? IconChevronUp
     : sort === "desc" ? IconChevronDown : IconSelector
+  const icon = <Icon size={14} stroke={1.5} />
 
   return (
     <UnstyledButton onClick={onSort} style={{ width: "100%" }}
       aria-label={`sort by ${label}`}>
-      <Group justify="space-between" wrap="nowrap" gap="xs">
+      <Group wrap="nowrap" gap="xs"
+        justify={align === "left" ? "flex-start" : align === "right" ? "flex-end" : "center"}>
+        {align === "right" && icon}
         <Text fw={700} fz="sm">{label}</Text>
-        <Icon size={14} stroke={1.5} />
+        {align !== "right" && icon}
       </Group>
     </UnstyledButton>
   )
@@ -307,7 +313,7 @@ export function TDataFrame({ node, update }: Props) {
   }
 
   return (
-    <Box id={node.props.id || undefined}>
+    <Box id={node.props.id || undefined} mb="md">
       {searchable &&
         <TextInput mb="xs" value={query}
           placeholder="Search"
@@ -333,7 +339,7 @@ export function TDataFrame({ node, update }: Props) {
                 <Table.Th key={i} w={columns[i].width || undefined}
                   ta={columns[i].align}>
                   {sortable
-                    ? <SortButton label={head[i]}
+                    ? <SortButton label={head[i]} align={columns[i].align}
                       sort={sort?.column === i ? (sort.desc ? "desc" : "asc") : null}
                       onSort={() => toggleSort(i)} />
                     : head[i]}

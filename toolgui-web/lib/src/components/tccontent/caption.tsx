@@ -6,7 +6,7 @@ import { emojize } from "../../util/emoji"
 
 export function TCaption({ node }: Props) {
   return (
-    <Text id={node.props.id || undefined} size="sm" c="dimmed">
+    <Text id={node.props.id || undefined} size="sm" c="dimmed" mb="xs">
       {emojize(node.props.text)}
     </Text>
   )
