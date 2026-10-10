@@ -219,14 +219,8 @@ func (t *ToolGUI) UploadFileFinish(componentID, uploadID string) error {
 
 		delete(uploads, uploadID)
 
-		// Same check as POST /api/files: a key no component reads is never
-		// released. The dropped file goes with the state.
-		if !state.HasFileKey(componentID) {
-			return tgframe.ErrNotOnPage
-		}
-
-		state.PutFile(componentID, file)
-		return nil
+		// Same check as POST /api/files.
+		return state.PutUpload(componentID, file)
 	})
 }
 

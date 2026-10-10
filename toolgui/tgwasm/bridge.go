@@ -253,12 +253,6 @@ func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 
 		delete(uploads, slot)
 
-		// Same check as POST /api/files.
-		if !state.HasFileKey(componentID) {
-			upload.Discard()
-			return tgframe.ErrNotOnPage
-		}
-
 		file, err := upload.Take(name, handle)
 		if err != nil {
 			// Nothing half written becomes a file a page can read.
@@ -266,8 +260,8 @@ func (b *bridge) jsUploadFile(this js.Value, args []js.Value) any {
 			return err
 		}
 
-		state.PutFile(componentID, file)
-		return nil
+		// Same check as POST /api/files.
+		return state.PutUpload(componentID, file)
 	})
 	if err != nil {
 		closeHandle(handle)

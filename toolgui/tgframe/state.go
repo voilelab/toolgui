@@ -413,6 +413,19 @@ func (s *State) PutFile(key string, file *File) {
 	s.files.put(key, file)
 }
 
+// PutUpload is [State.PutFile] for a key the client named: a key
+// [State.HasFileKey] rejects is refused with [ErrNotOnPage] and the file
+// removed.
+func (s *State) PutUpload(key string, file *File) error {
+	if !s.HasFileKey(key) {
+		file.body.remove()
+		return ErrNotOnPage
+	}
+
+	s.PutFile(key, file)
+	return nil
+}
+
 // SetFile stores bs as the file under key.
 func (s *State) SetFile(key, name string, bs []byte) (*File, error) {
 	return s.WriteFile(key, name, bytes.NewReader(bs))
