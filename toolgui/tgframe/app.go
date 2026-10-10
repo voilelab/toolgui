@@ -382,23 +382,14 @@ func (app *App) menuNodes() []*MenuNode {
 	return app.menu.nodes
 }
 
-// RunWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
-// background context.
+// RunWithHandlingPanic runs page `name` and turns a panic into an error
+// wrapping [ErrPanic]. The panic's error chain is kept, so errors.Is still
+// finds [ErrUpdateInterrupt].
 func (app *App) RunWithHandlingPanic(
 	name string, state *State, notifyFunc SendNotifyPackFunc) error {
 
-	return app.RunContextWithHandlingPanic(
-		context.Background(), name, state, notifyFunc)
-}
-
-// RunContextWithHandlingPanic runs page `name` and turns a panic into an
-// error wrapping [ErrPanic]. The panic's error chain is kept, so errors.Is
-// still finds [ErrUpdateInterrupt].
-func (app *App) RunContextWithHandlingPanic(ctx context.Context,
-	name string, state *State, notifyFunc SendNotifyPackFunc) error {
-
 	return app.runContextWithHandlingPanic(
-		ctx, name, nil, state, notifyFunc, nil)
+		context.Background(), name, nil, state, notifyFunc, nil)
 }
 
 // runEndFunc receives what an uncut run asked of its session: the
@@ -406,7 +397,7 @@ func (app *App) RunContextWithHandlingPanic(ctx context.Context,
 // set; navigate wins.
 type runEndFunc func(replaced url.Values, navigate *Navigation)
 
-// runContextWithHandlingPanic is [App.RunContextWithHandlingPanic] with a
+// runContextWithHandlingPanic is [App.RunWithHandlingPanic] with a context,
 // page query and onEnd.
 func (app *App) runContextWithHandlingPanic(ctx context.Context,
 	name string, query url.Values, state *State,
