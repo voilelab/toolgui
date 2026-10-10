@@ -13,6 +13,9 @@ var ErrNoSession = tgutil.NewError("no session, call start first")
 // ErrSessionReplaced is returned to sends of a session a later start replaced.
 var ErrSessionReplaced = tgutil.NewError("session replaced by a later start")
 
+// ErrNotOnPage is returned for an upload to a key [State.HasFileKey] rejects.
+var ErrNotOnPage = tgutil.NewError("component is not on the page")
+
 // SessionHost holds the one session of a single-user transport (a desktop
 // window, a browser tab): its state, and uploads in flight keyed by an id the
 // transport picks. U is the transport's upload type.

@@ -464,6 +464,7 @@ func TestToolGUIUploadFileHidesUntilFinish(t *testing.T) {
 	const componentID = "fileupload_component_file"
 
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		addTestComponent(p, componentID)
 		return nil
 	}))
 	defer backend.shutdown(t.Context())
@@ -504,6 +505,7 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 	const componentID = "fileupload_component_file"
 
 	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		addTestComponent(p, componentID)
 		return nil
 	}))
 	defer backend.shutdown(t.Context())
@@ -562,6 +564,33 @@ func TestToolGUIUploadFileOverlapping(t *testing.T) {
 
 	if file.Name() != "second.txt" {
 		t.Errorf("Name = %q, want second.txt", file.Name())
+	}
+}
+
+// TestToolGUIUploadFileNotOnPage checks an upload to a component the page
+// isn't showing is refused, as POST /api/files does.
+func TestToolGUIUploadFileNotOnPage(t *testing.T) {
+	backend, events := newTestToolGUI(t, newTestApp(func(p *tgframe.Params) error {
+		return nil
+	}))
+	defer backend.shutdown(t.Context())
+
+	if err := backend.Start(testPageName, ""); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	events.waitResult(t)
+
+	uploadID, err := backend.UploadFileStart("a.txt")
+	if err != nil {
+		t.Fatalf("UploadFileStart: %v", err)
+	}
+
+	if err := backend.UploadFileFinish("nowhere", uploadID); err != tgframe.ErrNotOnPage {
+		t.Errorf("UploadFileFinish error = %v, want ErrNotOnPage", err)
+	}
+
+	if getFile(t, backend, "nowhere") != nil {
+		t.Error("expect nothing stored under a component the page isn't showing")
 	}
 }
 

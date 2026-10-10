@@ -16,8 +16,13 @@ import (
 func testApp() *tgframe.App {
 	app := tgframe.NewApp()
 
+	// index shows a component uploads may target.
+	index := func(p *tgframe.Params) error {
+		p.Main.AddComponent(&tgframe.BaseComponent{Name: "test_component", ID: "comp"})
+		return nil
+	}
 	blank := func(p *tgframe.Params) error { return nil }
-	app.AddPage("index", "Index", blank)
+	app.AddPage("index", "Index", index)
 	app.AddPage("other", "Other", blank)
 
 	return app
@@ -215,8 +220,10 @@ func settle(b *bridge) {
 // written. No bytes cross the boundary at any point.
 func TestUploadFileStoresWhatThePageWrote(t *testing.T) {
 	b := newBridge(testApp())
+	discardPacks(b)
 	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
 	defer stopped(b)()
+	waitDrawn(t, b, "comp")
 
 	s := newUpload(t, b)
 	handle := writeUpload(t, s, "hello file")
@@ -248,6 +255,34 @@ func TestUploadFileStoresWhatThePageWrote(t *testing.T) {
 
 	if string(bs) != "hello file" {
 		t.Errorf("Bytes = %q, want hello file", bs)
+	}
+}
+
+// TestUploadFileNotOnPage checks a handover to a component the page isn't
+// showing is refused and its handle closed, as POST /api/files refuses it.
+func TestUploadFileNotOnPage(t *testing.T) {
+	b := newBridge(testApp())
+	discardPacks(b)
+	b.jsStart(js.Undefined(), []js.Value{js.ValueOf("index")})
+	defer stopped(b)()
+	waitDrawn(t, b, "comp")
+
+	s := newUpload(t, b)
+	handle := writeUpload(t, s, "hello file")
+
+	got := b.jsUploadFile(js.Undefined(), []js.Value{
+		js.ValueOf("nowhere"), js.ValueOf("a.txt"), js.ValueOf(s.Name), handle,
+	})
+	if got != tgframe.ErrNotOnPage.Error() {
+		t.Errorf("uploadFile = %v, want %v", got, tgframe.ErrNotOnPage)
+	}
+
+	if hostState(b).GetFile("nowhere") != nil {
+		t.Error("expect nothing stored under a component the page isn't showing")
+	}
+
+	if handleOpen(handle) {
+		t.Error("expect a handle the bridge would not take to be closed")
 	}
 }
 
@@ -392,4 +427,25 @@ func uploadCount(b *bridge) int {
 		return nil
 	})
 	return n
+}
+
+// discardPacks gives the bridge a pack callback that drops every pack, so a
+// page that draws can run to the end.
+func discardPacks(b *bridge) {
+	b.onPack = js.FuncOf(func(js.Value, []js.Value) any { return nil }).Value
+}
+
+// waitDrawn waits until the page's first run has drawn id.
+func waitDrawn(t *testing.T, b *bridge, id string) {
+	t.Helper()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if state := hostState(b); state != nil && state.HasComponentID(id) {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+
+	t.Fatalf("page never drew %q", id)
 }
