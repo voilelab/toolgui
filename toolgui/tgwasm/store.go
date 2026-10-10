@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"hash/crc32"
+	"io"
 	"io/fs"
 	"maps"
 	"regexp"
@@ -579,12 +580,22 @@ func (f *syncFile) readAll() ([]byte, error) {
 
 	arr := opfs.Uint8Array.New(n)
 
-	got, err := opfs.Call(f.handle, "read", arr, opfs.At(0))
-	if err != nil {
-		return nil, tgutil.Errorf("%w", err)
+	// read may return fewer bytes than asked, so loop until the whole file
+	// is in. A short file would read as a torn tail and get cut.
+	for off := 0; off < n; {
+		got, err := opfs.Call(f.handle, "read", arr.Call("subarray", off), opfs.At(int64(off)))
+		if err != nil {
+			return nil, tgutil.Errorf("%w", err)
+		}
+
+		if got.Int() == 0 {
+			return nil, tgutil.Errorf("read %d of %d bytes: %w", off, n, io.ErrUnexpectedEOF)
+		}
+
+		off += got.Int()
 	}
 
-	bs := make([]byte, got.Int())
+	bs := make([]byte, n)
 	js.CopyBytesToGo(bs, arr)
 
 	return bs, nil
