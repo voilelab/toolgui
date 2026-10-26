@@ -91,9 +91,12 @@ func TestWindowsWebView2Strategy(t *testing.T) {
 			}
 			cmd := exec.Command("go", "list", "-f", "{{join .GoFiles \",\"}}", "-tags", strings.Join(tags, ","), "github.com/wailsapp/wails/v2/internal/wv2installer")
 			cmd.Env = append(os.Environ(), "GOOS=windows", "GOARCH=amd64", "CGO_ENABLED=0", "GOFLAGS=")
-			data, err := cmd.CombinedOutput()
+			// Keep stderr out of the parsed list; it may contain "go: downloading" lines.
+			var stderr bytes.Buffer
+			cmd.Stderr = &stderr
+			data, err := cmd.Output()
 			if err != nil {
-				t.Fatalf("go list: %v\n%s", err, data)
+				t.Fatalf("go list: %v\n%s", err, &stderr)
 			}
 			files := strings.Split(strings.TrimSpace(string(data)), ",")
 			want := "download.go"
