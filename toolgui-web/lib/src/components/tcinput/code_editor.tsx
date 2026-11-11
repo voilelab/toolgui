@@ -249,8 +249,7 @@ export default function CodeEditor({ node, update, theme }: Props) {
       labelProps={{
         id: labelId,
         onClick: () => view.current?.focus(),
-      }}
-      mb="md">
+      }}>
       <div ref={host} className="toolgui-code-input"
         style={codeInputBoxStyle(node.props.height, node.props.max_height)} />
     </Input.Wrapper>

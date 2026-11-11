@@ -158,7 +158,6 @@ export function TFileupload({ node, update, upload }: Props) {
       multiple={multiple}
       error={error}
       placeholder={placeholder}
-      mb="md"
       onChange={handleFileChange}
       inputWrapperOrder={['label', 'input', 'description', 'error']}
       description={

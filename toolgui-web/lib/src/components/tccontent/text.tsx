@@ -5,6 +5,7 @@ import { emojize } from "../../util/emoji"
 
 export function TText({ node }: Props) {
   return (
-    <div id={node.props.id || undefined} style={{ whiteSpace: "pre-wrap" }}>{emojize(node.props.text)}</div>
+    <div id={node.props.id || undefined} className="toolgui-text"
+      style={{ whiteSpace: "pre-wrap" }}>{emojize(node.props.text)}</div>
   )
 }

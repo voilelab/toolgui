@@ -34,7 +34,6 @@ export function TMultiselect({ node, update }: Props) {
       placeholder={node.props.placeholder}
       disabled={node.props.disabled}
       data={data}
-      mb="md"
       value={selected.map(String)}
       onChange={(values) => {
         // Ordered by items rather than by the order they were picked in,

@@ -5,6 +5,6 @@ import { Props } from "../component_interface"
 
 export function TDivider({ node }: Props) {
   return (
-    <Divider id={node.props.id || undefined} my="md" />
+    <Divider id={node.props.id || undefined} />
   )
 }

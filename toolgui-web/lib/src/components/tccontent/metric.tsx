@@ -14,7 +14,7 @@ export function TMetric({ node }: Props) {
   const tone: string = node.props.tone
 
   return (
-    <Box id={node.props.id || undefined} mb="md">
+    <Box id={node.props.id || undefined}>
       <Text size="sm" c="dimmed">{emojize(node.props.label)}</Text>
       <Text size="xl" fw={700}>{emojize(node.props.value)}</Text>
       {node.props.delta &&

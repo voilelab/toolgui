@@ -8,7 +8,7 @@ export function TProgressar({ node }: Props) {
     <div>
       <Text>{node.props.label}</Text>
       <Progress id={node.props.id || undefined}
-        value={node.props.value} mb="md" />
+        value={node.props.value} />
     </div>
   )
 }

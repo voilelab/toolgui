@@ -7,7 +7,7 @@ import '@toolgui-web/lib/src/assets/css/heading.css'
 
 export function TTitle({ node }: Props) {
   return (
-    <Title id={node.props.id || undefined} order={1} mb="md"
+    <Title id={node.props.id || undefined} order={1}
       className="toolgui-title">
       {emojize(node.props.text)}
     </Title>

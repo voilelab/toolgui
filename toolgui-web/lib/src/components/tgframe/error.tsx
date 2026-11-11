@@ -10,8 +10,7 @@ export function TError({ node }: Props) {
   return (
     <Alert id={node.props.id || undefined}
       color="red"
-      title="Component error"
-      mb="md">
+      title="Component error">
       {node.props.message}
     </Alert>
   )

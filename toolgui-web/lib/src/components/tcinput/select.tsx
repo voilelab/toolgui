@@ -24,7 +24,6 @@ export function TSelect({ node, update }: Props) {
     <Select
       id={node.props.id}
       label={node.props.label}
-      mb="md"
       placeholder="Please select an option"
       disabled={node.props.disabled}
       data={data}

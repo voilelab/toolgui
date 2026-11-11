@@ -21,7 +21,6 @@ export function TToggle({ node, update }: Props) {
       label={node.props.label}
       checked={checked}
       disabled={node.props.disabled}
-      mb="md"
       onChange={(event) => {
         const next = event.currentTarget.checked
         stateValues[id] = next

@@ -3,7 +3,6 @@
    past the viewport. */
 .toolgui-toolbar {
   min-width: 0;
-  margin-bottom: 1rem;
 }
 
 /* The container a toolbar hands out arrives as a div of its own, the way
@@ -11,6 +10,11 @@
    of the row, rather than one item holding all of them. */
 .toolgui-toolbar > div {
   display: contents;
+}
+
+/* The items are the row's, not a stack's: they size to their content. */
+.toolgui-toolbar > div > * {
+  flex: initial;
 }
 
 /* Sticky rides the page's own scrolling -- the shell scrolls the document, so

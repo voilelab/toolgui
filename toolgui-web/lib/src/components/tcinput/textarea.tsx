@@ -22,7 +22,6 @@ function TextareaInner({ node, update }: Props) {
       label={node.props.label}
       rows={node.props.height}
       styles={inputBorderStyles(node.props.color)}
-      mb="md"
       value={value}
       onChange={(event) => {
         stateValues[event.target.id] = event.target.value

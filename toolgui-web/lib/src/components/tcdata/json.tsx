@@ -8,7 +8,7 @@ import '@toolgui-web/lib/src/assets/css/json.css'
 
 export function TJson({ node, theme }: Props) {
   return (
-    <Box id={node.props.id || undefined} className="toolgui-json" mb="md">
+    <Box id={node.props.id || undefined} className="toolgui-json">
       <pre>
         <JsonValue val={JSON.parse(node.props.value)} pad={0} theme={theme} />
       </pre>

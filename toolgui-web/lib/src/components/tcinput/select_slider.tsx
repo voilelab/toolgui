@@ -15,9 +15,9 @@ export function TSelectSlider({ node, update }: Props) {
   const marks = items.map((item, idx) => ({ value: idx, label: item }))
 
   return (
-    // The marks are drawn under the track, so the bottom margin is the wider
-    // one — see slider.tsx for the wrapper itself.
-    <Input.Wrapper label={node.props.label} labelElement="div" mb="xl">
+    // The marks are drawn under the track and overflow it, so the wrapper
+    // pads below for them -- see slider.tsx for the wrapper itself.
+    <Input.Wrapper label={node.props.label} labelElement="div" pb="lg">
       <Slider
         id={id}
         min={0}
