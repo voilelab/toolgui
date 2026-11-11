@@ -33,7 +33,7 @@ func TestExternalProject(t *testing.T) {
 		t.Fatal(err)
 	}
 	consumer := t.TempDir()
-	writeTestFile(t, filepath.Join(consumer, "go.mod"), "module example.org/desktop-consumer\n\ngo 1.27.4\n\nrequire "+desktopImport+" v0.0.0\n\nreplace "+desktopImport+" => "+strconv.Quote(filepath.ToSlash(desktop))+"\nreplace github.com/voilelab/toolgui => "+strconv.Quote(filepath.ToSlash(filepath.Dir(desktop)))+"\n")
+	writeTestFile(t, filepath.Join(consumer, "go.mod"), "module example.org/desktop-consumer\n\ngo 1.27\n\nrequire "+desktopImport+" v0.0.0\n\nreplace "+desktopImport+" => "+strconv.Quote(filepath.ToSlash(desktop))+"\nreplace github.com/voilelab/toolgui => "+strconv.Quote(filepath.ToSlash(filepath.Dir(desktop)))+"\n")
 	main, err := os.ReadFile(filepath.Join(source, "testdata", "app", "main.go"))
 	if err != nil {
 		t.Fatal(err)
