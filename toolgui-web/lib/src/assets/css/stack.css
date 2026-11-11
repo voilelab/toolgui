@@ -3,8 +3,8 @@
    components keep no outer margin of their own.
 
    A block component takes a row of its own. Inline ones -- buttons, links,
-   badges, images -- share a row with their neighbours and wrap, as they did
-   when they flowed inline. */
+   badges, images, frames -- keep their own width, share a row with their
+   neighbours and wrap, as they did when they flowed inline. */
 .toolgui-stack {
   display: flex;
   flex-flow: row wrap;
@@ -20,7 +20,7 @@
   margin-block: 0;
 }
 
-.toolgui-stack > :where(button, a, img, .mantine-Badge-root) {
+.toolgui-stack > :where(button, a, img, iframe, .mantine-Badge-root) {
   flex: 0 0 auto;
   max-width: 100%;
 }
