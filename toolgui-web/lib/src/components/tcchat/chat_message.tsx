@@ -39,7 +39,7 @@ export function TChatMessage({ node, update, upload, download, theme }: Props) {
       aria-label={`${props.role} message`}
       // The user's own messages are set apart, as a chat does.
       bg={props.kind === 'user' ? 'var(--mantine-color-gray-light)' : undefined}
-      radius="md" p="sm" mb="md">
+      radius="md" p="sm">
       <Group wrap="nowrap" align="flex-start" gap="sm">
         <Avatar src={props.avatar_src || undefined}
           alt={props.role}

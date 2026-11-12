@@ -5,12 +5,6 @@
   padding-top: 6px;
 }
 
-/* The message's own padding is the space below its content. Important, as
-   components set their margin inline. */
-.toolgui-chat-message-body > :last-child > :last-child {
-  margin-bottom: 0 !important;
-}
-
 /* Stays at the bottom of the window while the page scrolls under it. */
 .toolgui-page-bottom {
   position: sticky;

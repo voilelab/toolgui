@@ -1,15 +1,20 @@
-/* A heading opens a section, so it keeps its distance from what came before.
-   The element in the selector outranks Mantine's own margin reset. */
-h1.toolgui-title {
-  margin-top: var(--mantine-spacing-lg);
+/* A heading opens a section: it adds space above the stack's gap. Not in a
+   toolbar or grid, whose container only hands its items to the row. */
+.toolgui-stack:not(.toolgui-toolbar > *, .toolgui-grid > *)
+  > .toolgui-title:not(:first-child) {
+  margin-top: var(--mantine-spacing-md);
 }
 
-h2.toolgui-subtitle {
-  margin-top: var(--mantine-spacing-xl);
+.toolgui-stack:not(.toolgui-toolbar > *, .toolgui-grid > *)
+  > .toolgui-subtitle:not(:first-child) {
+  margin-top: var(--mantine-spacing-xs);
 }
 
-/* Nothing above the first one to keep away from. */
-h1.toolgui-title:first-child,
-h2.toolgui-subtitle:first-child {
-  margin-top: 0;
+/* A caption or badge right above a heading labels it, so the two sit
+   closer than the gap. */
+.toolgui-stack:not(.toolgui-toolbar > *, .toolgui-grid > *)
+  > :is(.toolgui-caption, .mantine-Badge-root)
+  + :is(.toolgui-title, .toolgui-subtitle) {
+  margin-top: calc(var(--mantine-spacing-xs)
+    - var(--tg-stack-gap, var(--mantine-spacing-md)));
 }

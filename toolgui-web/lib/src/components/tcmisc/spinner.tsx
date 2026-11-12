@@ -5,7 +5,7 @@ import { Props } from "../component_interface"
 
 export function TSpinner({ node }: Props) {
   return (
-    <Group id={node.props.id || undefined} gap="xs" mb="md">
+    <Group id={node.props.id || undefined} gap="xs">
       <Loader size="sm" />
       <Text>{node.props.label}</Text>
     </Group>

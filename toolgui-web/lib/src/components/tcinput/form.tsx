@@ -8,6 +8,8 @@ import { FormSubmitContext } from "./form_context"
 
 import { UpdateEvent } from "../../app/UpdateEvent"
 
+import '@toolgui-web/lib/src/assets/css/stack.css'
+
 export function TForm({ node, update, upload, download, theme }: Props) {
   // A ref, not a plain const: the queue has to survive a re-render. Nothing
   // inside a form reruns the page, so a queue rebuilt by the next render of
@@ -46,7 +48,7 @@ export function TForm({ node, update, upload, download, theme }: Props) {
   }, [queue])
 
   return (
-    <div id={node.props.id || undefined}>
+    <div id={node.props.id || undefined} className="toolgui-stack">
       <FormSubmitContext.Provider value={submit}>
         {
           node.children.map(child =>

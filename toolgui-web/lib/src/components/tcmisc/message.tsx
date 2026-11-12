@@ -10,8 +10,7 @@ export function TMessage({ node }: Props) {
       // A colourless message stays neutral, the way it always was; Mantine
       // would otherwise paint it in the primary colour.
       color={mantineColor(node.props.color) || 'gray'}
-      title={node.props.title || undefined}
-      mb="md">
+      title={node.props.title || undefined}>
       {node.props.body}
     </Alert>
   )

@@ -8,7 +8,7 @@ export function TBox({ node, update, upload, download, theme }: Props) {
   return (
     <Paper id={node.props.id || undefined}
       className="toolgui-box"
-      shadow="xs" radius="md" p="md" mb="md">
+      shadow="xs" radius="md" p="md">
       {
         node.children.map(child =>
           <TComponent key={child.reactKey} node={child}

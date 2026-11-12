@@ -41,7 +41,6 @@ export function TNumber({ node, update }: Props) {
       clampBehavior="none"
       styles={inputBorderStyles(node.props.color)}
       error={outOfRange ? 'Value out of range' : undefined}
-      mb="md"
       value={value}
       onChange={(next) => {
         const val = Number(next)

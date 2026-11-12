@@ -328,7 +328,7 @@ export function TChart({ node, theme }: Props) {
   }, [])
 
   return (
-    <Box mb="md" style={{ height: node.props.height, position: 'relative' }}>
+    <Box style={{ height: node.props.height, position: 'relative' }}>
       <canvas ref={canvasRef} id={node.props.id} role="img"
         aria-label={chartLabel(node.props)} />
     </Box>

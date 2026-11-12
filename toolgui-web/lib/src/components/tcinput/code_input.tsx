@@ -28,7 +28,7 @@ export function codeInputBoxStyle(
 export function TCodeInput(props: Props) {
   // Holds the editor's place while it loads, so the page does not jump.
   const fallback = (
-    <Input.Wrapper label={props.node.props.label} labelElement="div" mb="md">
+    <Input.Wrapper label={props.node.props.label} labelElement="div">
       <div style={{
         ...codeInputBoxStyle(props.node.props.height),
         minHeight: `calc(${lines(props.node.props.height)} + 2px)`,

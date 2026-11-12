@@ -1,0 +1,48 @@
+/* A container lays out its components with one fixed gap between rows, so
+   the space between two components never depends on which two they are. The
+   components keep no outer margin of their own.
+
+   A block component takes a row of its own. Inline ones -- buttons, links,
+   badges, images, frames -- keep their own width, share a row with their
+   neighbours and wrap, as they did when they flowed inline. */
+.toolgui-stack {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  row-gap: var(--tg-stack-gap, var(--mantine-spacing-md));
+  column-gap: var(--mantine-spacing-xs);
+}
+
+/* min-width:0 keeps wide content scrolling inside its row. */
+.toolgui-stack > * {
+  flex: 0 0 100%;
+  min-width: 0;
+  margin-block: 0;
+}
+
+.toolgui-stack > :where(button, a, img, iframe, .mantine-Badge-root) {
+  flex: 0 0 auto;
+  max-width: 100%;
+}
+
+/* Prism sets the code block's margin inline. */
+.toolgui-stack > .toolgui-code {
+  margin-block: 0 !important;
+}
+
+/* Consecutive texts read as lines of one block, as they did before. */
+.toolgui-stack:not(.toolgui-toolbar > *, .toolgui-grid > *)
+  > .toolgui-text + .toolgui-text {
+  margin-top: calc(-1 * var(--tg-stack-gap, var(--mantine-spacing-md)));
+}
+
+/* An empty slot or text would still take a gap. Not every empty element:
+   a divider is one too. */
+.toolgui-stack > div:empty:is(:not([class]), .toolgui-text) {
+  display: none;
+}
+
+/* A markdown block's last paragraph keeps no margin under it. */
+.toolgui-stack > .toolgui-markdown > :last-child {
+  margin-bottom: 0;
+}

@@ -25,7 +25,6 @@ function TextboxInner({ node, update }: Props) {
       placeholder={node.props.placeholder}
       disabled={node.props.disabled}
       styles={inputBorderStyles(node.props.color)}
-      mb="md"
       value={value}
       onChange={(event) => {
         stateValues[event.target.id] = event.target.value

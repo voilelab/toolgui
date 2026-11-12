@@ -15,7 +15,7 @@ export function TSlider({ node, update }: Props) {
     // form control, hence labelElement.
     <Input.Wrapper
       label={<>{node.props.label} <Text span c="dimmed" size="sm">{value}</Text></>}
-      labelElement="div" mb="md">
+      labelElement="div">
       <Slider
         id={id}
         min={node.props.min}

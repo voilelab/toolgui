@@ -313,7 +313,7 @@ export function TDataFrame({ node, update }: Props) {
   }
 
   return (
-    <Box id={node.props.id || undefined} mb="md">
+    <Box id={node.props.id || undefined}>
       {searchable &&
         <TextInput mb="xs" value={query}
           placeholder="Search"
