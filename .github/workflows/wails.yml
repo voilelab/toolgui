@@ -16,6 +16,8 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    # A few minutes normally; a hung apt mirror should fail, not run 6h.
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: toolgui-wails
@@ -35,9 +37,10 @@ jobs:
 
       - name: Install Linux webview dependencies
         if: runner.os == 'Linux'
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev xvfb xauth
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev xvfb xauth
 
       - name: Build the release frontend
         working-directory: toolgui-web
@@ -67,6 +70,7 @@ jobs:
   wails:
     name: Wails Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       WAILS_TAGS: production,webkit2_41
     defaults:
@@ -90,9 +94,10 @@ jobs:
           cache-dependency-path: toolgui-web/yarn.lock
 
       - name: Install webview deps
+        timeout-minutes: 10
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get -o Acquire::Retries=3 install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
       - name: Stub assets
         working-directory: .
